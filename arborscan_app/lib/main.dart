@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -41,8 +42,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
   Map<String, dynamic>? _result;
   Uint8List? _annotatedImageBytes;
 
-  // TODO: поменяй на свой реальный URL Railway
-  final String _apiUrl = 'https://your-railway-app-url.up.railway.app/analyze-tree';
+  // ⬇️ ВАЖНО: здесь ТВОЙ Railway URL
+  final String _apiUrl =
+      'https://arborscanbackend-production.up.railway.app/analyze-tree';
 
   Future<void> _pickImage(ImageSource source) async {
     setState(() {
@@ -50,7 +52,10 @@ class _ArborScanPageState extends State<ArborScanPage> {
       _result = null;
       _annotatedImageBytes = null;
     });
-    final XFile? picked = await _picker.pickImage(source: source, imageQuality: 95);
+
+    final XFile? picked =
+        await _picker.pickImage(source: source, imageQuality: 95);
+
     if (picked != null) {
       setState(() {
         _imageFile = File(picked.path);
@@ -78,6 +83,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       request.files.add(
         await http.MultipartFile.fromPath('file', _imageFile!.path),
       );
+
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
 
@@ -97,7 +103,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
       } else {
         Uint8List? annotatedBytes;
         if (data['annotated_image_base64'] != null) {
-          annotatedBytes = base64Decode(data['annotated_image_base64'] as String);
+          annotatedBytes =
+              base64Decode(data['annotated_image_base64'] as String);
         }
         setState(() {
           _result = data;
@@ -153,12 +160,16 @@ class _ArborScanPageState extends State<ArborScanPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Вид: $species', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          'Вид: $species',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         Text('Высота: ${height ?? '-'} м'),
         Text('Ширина кроны: ${crown ?? '-'} м'),
         Text('Диаметр ствола: ${trunk ?? '-'} м'),
-        if (scale != null) Text('Масштаб: 1 px = ${scale.toStringAsFixed(4)} м'),
+        if (scale != null)
+          Text('Масштаб: 1 px = ${scale.toStringAsFixed(4)} м'),
       ],
     );
   }

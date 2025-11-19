@@ -123,63 +123,47 @@ def classify_tree(model, tfm, img_bgr, bbox):
 
 
 def draw_results_image(img_bgr, mask, bbox, species, h_m, cw_m, dbh_m, scale):
-    # контуры
+    # Рисуем контуры дерева
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in cnts:
         epsilon = 0.003 * cv2.arcLength(cnt, True)
         approx = cv2.approxPolyDP(cnt, epsilon, True)
-        cv2.drawContours(img_bgr, [approx], -1, (0, 255, 0), 2)
+        cv2.drawContours(img_bgr, [approx], -1, (0, 255, 0), 3)
 
-    # панель с текстом
+    # Рисуем бокс дерева
+    x1, y1, x2, y2 = bbox
+    cv2.rectangle(img_bgr, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    # Добавляем подписи прямо на картинку (слева сверху)
+    txt = [
+        f"Вид: {species}",
+        f"Высота: {h_m if h_m else '-'} м",
+        f"Крона: {cw_m if cw_m else '-'} м",
+        f"Диаметр: {dbh_m if dbh_m else '-'} м",
+        f"1 px = {round(scale, 4) if scale else '-'} м"
+    ]
+
+    y0 = 30
+    for t in txt:
+        cv2.putText(
+            img_bgr, 
+            t, 
+            (20, y0), 
+            cv2.FONT_HERSHEY_SIMPLEX, 
+            0.8, 
+            (0, 0, 0), 
+            2, 
+            cv2.LINE_AA
+        )
+        y0 += 35
+
+    # Возвращаем изображение в base64
     rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
     pil = Image.fromarray(rgb)
-
-    font_size = max(18, pil.width // 60)
-    try:
-        if os.path.exists(FONT_PATH):
-            font = ImageFont.truetype(FONT_PATH, font_size)
-        else:
-            font = ImageFont.load_default()
-    except OSError:
-        font = ImageFont.load_default()
-
-    lines = [f"Вид: {species or 'не определён'}"]
-    if scale:
-        lines += [
-            f"Высота: {h_m} м" if h_m is not None else "Высота: -",
-            f"Ширина кроны: {cw_m} м" if cw_m is not None else "Ширина кроны: -",
-            f"Диаметр ствола: {dbh_m} м" if dbh_m is not None else "Диаметр ствола: -",
-            f"1 px = {scale:.4f} м",
-        ]
-    else:
-        lines += [
-            "⚠ Масштаб по палке не найден",
-        ]
-
-    max_text_width = 0
-    for line in lines:
-        bbox = font.getbbox(line)
-        w = bbox[2] - bbox[0]
-        max_text_width = max(max_text_width, w)
-    panel_width = max(260, max_text_width + 40)
-    new_w = pil.width + panel_width
-    new_h = pil.height
-
-    new_img = Image.new("RGB", (new_w, new_h), (240, 240, 240))
-    new_img.paste(pil, (0, 0))
-
-    draw = ImageDraw.Draw(new_img)
-    y_offset = 20
-    for line in lines:
-        draw.text((pil.width + 20, y_offset), line, fill=(0, 0, 0), font=font)
-        y_offset += font_size + 8
-
-    # возвращаем в base64
     buf = io.BytesIO()
-    new_img.save(buf, format="JPEG", quality=90)
-    img_bytes = buf.getvalue()
-    img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-    return img_b64
+    pil.save(buf, format="JPEG", quality=90)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
 
 
 # =========================
