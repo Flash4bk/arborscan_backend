@@ -2,6 +2,8 @@ name: arborscan_app
 description: ArborScan mobile application
 publish_to: 'none'
 
+version: 1.0.0+1
+
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
@@ -10,9 +12,35 @@ dependencies:
     sdk: flutter
   http: ^1.2.0
   image_picker: ^1.0.7
-  shared_preferences: ^2.3.2
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.5
+  lottie: ^2.6.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.3.10
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/lottie/
+    - assets/icons/
+    - assets/images/
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/arborscan_icon.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/icons/arborscan_icon.png
+  android: true
+  ios: true
+  android_gravity: center
+  ios_content_mode: center
+  fullscreen: true
