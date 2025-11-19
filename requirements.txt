@@ -13,8 +13,12 @@ Pillow==10.2.0
 # HTTP
 requests==2.31.0
 
-# Supabase SDK
-supabase-py==2.3.4
+# Supabase (совместимо с python 3.12)
+supabase==1.4.7
+gotrue==2.4.4
+postgrest==0.16.1
+realtime==1.0.0
+storage3==0.7.3
 
 # Utils
 python-dotenv==1.0.1
