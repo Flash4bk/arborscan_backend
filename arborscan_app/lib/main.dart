@@ -25,6 +25,8 @@ class AnalysisResult {
   final double? scale;
   final String imageBase64;
   final DateTime timestamp;
+  final String? riskCategory;
+  final double? riskIndex;
 
   AnalysisResult({
     required this.species,
@@ -34,6 +36,8 @@ class AnalysisResult {
     this.crown,
     this.trunk,
     this.scale,
+    this.riskCategory,
+    this.riskIndex,
   });
 
   Map<String, dynamic> toJson() => {
@@ -44,6 +48,8 @@ class AnalysisResult {
         'scale': scale,
         'imageBase64': imageBase64,
         'timestamp': timestamp.toIso8601String(),
+        'riskCategory': riskCategory,
+        'riskIndex': riskIndex,
       };
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
@@ -54,8 +60,11 @@ class AnalysisResult {
         scale: (json['scale'] as num?)?.toDouble(),
         imageBase64: json['imageBase64'] as String,
         timestamp: DateTime.parse(json['timestamp'] as String),
+        riskCategory: json['riskCategory'] as String?,
+        riskIndex: (json['riskIndex'] as num?)?.toDouble(),
       );
 }
+
 
 /// ============================
 ///   Приложение + темы
@@ -196,6 +205,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final scaleNum =
           data['scale_m_per_px'] ?? data['scale_px_to_m']; // оба варианта
       final scaleVal = (scaleNum is num) ? scaleNum.toDouble() : null;
+      final riskMap = data['risk'] as Map<String, dynamic>?;
 
       final result = AnalysisResult(
         species: data['species'] as String,
@@ -205,6 +215,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
         scale: scaleVal,
         imageBase64: imgBytes != null ? base64Encode(imgBytes) : '',
         timestamp: DateTime.now(),
+        riskCategory: riskMap?['category'] as String?,
+        riskIndex: (riskMap?['index'] as num?)?.toDouble(),
       );
 
       _history.insert(0, result);
@@ -799,6 +811,28 @@ class HistoryPage extends StatelessWidget {
     );
   }
 
+  String _formatDate(DateTime dt) {
+    final d = dt.day.toString().padLeft(2, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final y = dt.year.toString();
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '$d.$m.$y $hh:$mm';
+  }
+
+  Color _riskColor(String? category) {
+    switch (category) {
+      case 'низкий':
+        return Colors.green;
+      case 'средний':
+        return Colors.orange;
+      case 'высокий':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (history.isEmpty) {
@@ -816,28 +850,54 @@ class HistoryPage extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final item = history[index];
-          final img = item.imageBase64.isNotEmpty
+          final imgWidget = item.imageBase64.isNotEmpty
               ? Image.memory(
                   base64Decode(item.imageBase64),
                   fit: BoxFit.cover,
                 )
               : null;
+          final dateStr = _formatDate(item.timestamp);
+          final riskCategory = item.riskCategory;
 
           return Card(
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ListTile(
-              leading: img != null
+              leading: imgWidget != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: SizedBox(width: 56, height: 56, child: img),
+                      child: SizedBox(width: 56, height: 56, child: imgWidget),
                     )
                   : const Icon(Icons.park),
               title: Text(item.species),
-              subtitle: Text(
-                'Высота: ${item.height ?? '-'} м\n'
-                'Крона: ${item.crown ?? '-'} м',
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dateStr,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Высота: ${item.height ?? '-'} м'),
+                  Text('Крона: ${item.crown ?? '-'} м'),
+                ],
               ),
+              trailing: riskCategory == null
+                  ? null
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 7,
+                          backgroundColor: _riskColor(riskCategory),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          riskCategory,
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      ],
+                    ),
             ),
           );
         },
@@ -845,3 +905,4 @@ class HistoryPage extends StatelessWidget {
     );
   }
 }
+
