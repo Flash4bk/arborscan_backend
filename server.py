@@ -21,9 +21,9 @@ from ultralytics import YOLO
 #   Модели
 # -------------------------------
 
-CLASSIFIER_PATH = "classifier.pth"
-STICK_MODEL_PATH = "stick_model.pt"
-TREE_MODEL_PATH = "tree_model.pt"
+CLASSIFIER_PATH = "D:\arborscan_backend\models\classifier.pth"
+STICK_MODEL_PATH = "D:\arborscan_backend\models\stick_model.pt"
+TREE_MODEL_PATH = "D:\arborscan_backend\models\tree_model.pt"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
