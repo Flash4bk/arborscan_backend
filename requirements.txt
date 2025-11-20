@@ -2,23 +2,13 @@ fastapi==0.110.0
 uvicorn==0.27.1
 python-multipart==0.0.9
 
-# ML / CV
 torch==2.1.2
 torchvision==0.16.2
 ultralytics==8.1.30
+
 opencv-python-headless==4.9.0.80
 numpy==1.26.4
 Pillow==10.2.0
 
-# HTTP
 requests==2.31.0
-
-# Supabase (совместимо с python 3.12)
-supabase==1.4.7
-gotrue==2.4.4
-postgrest==0.16.1
-realtime==1.0.0
-storage3==0.7.3
-
-# Utils
 python-dotenv==1.0.1
