@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lottie/lottie.dart';
 import 'splash_screen.dart';
+import 'map_page.dart';
+import 'package:animations/animations.dart';
 
 void main() {
   runApp(const ArborScanApp());
@@ -27,6 +29,9 @@ class AnalysisResult {
   final DateTime timestamp;
   final String? riskCategory;
   final double? riskIndex;
+  final double? lat;
+  final double? lon;
+  final String? address;
 
   AnalysisResult({
     required this.species,
@@ -38,6 +43,9 @@ class AnalysisResult {
     this.scale,
     this.riskCategory,
     this.riskIndex,
+    this.lat,
+    this.lon,
+    this.address,
   });
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +58,9 @@ class AnalysisResult {
         'timestamp': timestamp.toIso8601String(),
         'riskCategory': riskCategory,
         'riskIndex': riskIndex,
+        'lat': lat,
+        'lon': lon,
+        'address': address,
       };
 
   factory AnalysisResult.fromJson(Map<String, dynamic> json) => AnalysisResult(
@@ -62,6 +73,9 @@ class AnalysisResult {
         timestamp: DateTime.parse(json['timestamp'] as String),
         riskCategory: json['riskCategory'] as String?,
         riskIndex: (json['riskIndex'] as num?)?.toDouble(),
+        lat: (json['lat'] as num?)?.toDouble(),
+        lon: (json['lon'] as num?)?.toDouble(),
+        address: json['address'] as String?,
       );
 }
 
@@ -76,15 +90,28 @@ class ArborScanApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ArborScan',
+      debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.green,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeThroughPageTransitionsBuilder(),
+            TargetPlatform.iOS: FadeThroughPageTransitionsBuilder(),
+          },
+        ),
         brightness: Brightness.light,
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.green,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeThroughPageTransitionsBuilder(),
+            TargetPlatform.iOS: FadeThroughPageTransitionsBuilder(),
+          },
+        ),
         brightness: Brightness.dark,
       ),
       home: const SplashScreen(),
@@ -119,6 +146,41 @@ class _ArborScanPageState extends State<ArborScanPage> {
   static const _historyKey = 'arborscan_history';
 
   static const _animDuration = Duration(milliseconds: 350);
+
+  void _openMap() {
+    final withGps =
+        _history.where((e) => e.lat != null && e.lon != null).toList();
+
+    if (withGps.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Нет GPS данных'),
+          content: const Text(
+            'В истории нет измерений с координатами. '
+            'Убедитесь, что у фотографии есть геометки (EXIF).',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('ОК'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final points = withGps.map((e) => e.toJson()).toList(growable: false);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapPage(points: points),
+      ),
+    );
+  }
+
 
   @override
   void initState() {
@@ -206,6 +268,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
           data['scale_m_per_px'] ?? data['scale_px_to_m']; // оба варианта
       final scaleVal = (scaleNum is num) ? scaleNum.toDouble() : null;
       final riskMap = data['risk'] as Map<String, dynamic>?;
+      final gpsMap = data['gps'] as Map<String, dynamic>?;
 
       final result = AnalysisResult(
         species: data['species'] as String,
@@ -217,6 +280,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
         timestamp: DateTime.now(),
         riskCategory: riskMap?['category'] as String?,
         riskIndex: (riskMap?['index'] as num?)?.toDouble(),
+        lat: (gpsMap?['lat'] as num?)?.toDouble(),
+        lon: (gpsMap?['lon'] as num?)?.toDouble(),
+        address: data['address'] as String?,
       );
 
       _history.insert(0, result);
@@ -260,10 +326,21 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
 
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       clipBehavior: Clip.antiAlias,
-      child: AspectRatio(aspectRatio: 3 / 4, child: child),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: AspectRatio(
+          key: ValueKey(_annotatedImageBytes != null
+              ? 'annotated'
+              : _imageFile != null
+                  ? 'original'
+                  : 'placeholder'),
+          aspectRatio: 3 / 4,
+          child: child,
+        ),
+      ),
     );
   }
 
@@ -271,12 +348,26 @@ class _ArborScanPageState extends State<ArborScanPage> {
     if (_error != null) {
       return Card(
         color: Colors.red.withOpacity(0.08),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            _error!,
-            style: const TextStyle(color: Colors.red),
+          padding: const EdgeInsets.all(18.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _error!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -291,25 +382,57 @@ class _ArborScanPageState extends State<ArborScanPage> {
         (scaleNum is num) ? scaleNum.toStringAsFixed(4) : '-';
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
-        padding: const EdgeInsets.all(18.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Вид: ${_result!['species']}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.park,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Вид: ${_result!['species']}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                Text('Высота: ${_result!['height_m'] ?? '-'} м'),
+                Text('Крона: ${_result!['crown_width_m'] ?? '-'} м'),
+                Text('Ствол: ${_result!['trunk_diameter_m'] ?? '-'} м'),
+              ],
             ),
             const SizedBox(height: 8),
-            Text('Высота: ${_result!['height_m'] ?? '-'} м'),
-            Text('Ширина кроны: ${_result!['crown_width_m'] ?? '-'} м'),
-            Text('Диаметр ствола: ${_result!['trunk_diameter_m'] ?? '-'} м'),
-            Text('Масштаб: 1 px = $scaleStr м'),
+            Text(
+              'Масштаб: 1 px = $scaleStr м',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
           ],
         ),
       ),
@@ -700,6 +823,18 @@ class _ArborScanPageState extends State<ArborScanPage> {
       ),
       body: Stack(
         children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  Theme.of(context).colorScheme.surface,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(12),
@@ -731,38 +866,63 @@ class _ArborScanPageState extends State<ArborScanPage> {
                     duration: _animDuration,
                     child: hasResult ? _buildRiskCard() : const SizedBox(),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: _isLoading
-                              ? null
-                              : () => _pickImage(ImageSource.camera),
-                          icon: const Icon(Icons.photo_camera),
-                          label: const Text('Камера'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _isLoading
-                              ? null
-                              : () => _pickImage(ImageSource.gallery),
-                          icon: const Icon(Icons.photo_library),
-                          label: const Text('Галерея'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _isLoading ? null : _analyze,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Text('Анализировать'),
+                  const SizedBox(height: 18),
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () => _pickImage(ImageSource.camera),
+                                  icon: const Icon(Icons.photo_camera),
+                                  label: const Text('Камера'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () => _pickImage(ImageSource.gallery),
+                                  icon: const Icon(Icons.photo_library),
+                                  label: const Text('Галерея'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _openMap,
+                              icon: const Icon(Icons.map),
+                              label: const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Text('Карта измерений'),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _isLoading ? null : _analyze,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Text('Анализировать'),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -859,45 +1019,82 @@ class HistoryPage extends StatelessWidget {
           final dateStr = _formatDate(item.timestamp);
           final riskCategory = item.riskCategory;
 
-          return Card(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: ListTile(
-              leading: imgWidget != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: SizedBox(width: 56, height: 56, child: imgWidget),
-                    )
-                  : const Icon(Icons.park),
-              title: Text(item.species),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dateStr,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 4),
-                  Text('Высота: ${item.height ?? '-'} м'),
-                  Text('Крона: ${item.crown ?? '-'} м'),
-                ],
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Card(
+              key: ValueKey(item.timestamp.toIso8601String()),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
               ),
-              trailing: riskCategory == null
-                  ? null
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 7,
-                          backgroundColor: _riskColor(riskCategory),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    if (imgWidget != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          width: 64,
+                          height: 64,
+                          child: imgWidget,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          riskCategory,
-                          style: const TextStyle(fontSize: 10),
+                      )
+                    else
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Theme.of(context).colorScheme.surfaceVariant,
                         ),
-                      ],
+                        child: const Icon(Icons.park),
+                      ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.species,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            dateStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text('Высота: ${item.height ?? '-'} м'),
+                          Text('Крона: ${item.crown ?? '-'} м'),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    if (riskCategory != null)
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 8,
+                            backgroundColor: _riskColor(riskCategory),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            riskCategory,
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
             ),
           );
         },
@@ -905,4 +1102,5 @@ class HistoryPage extends StatelessWidget {
     );
   }
 }
+
 
