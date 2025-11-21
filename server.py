@@ -15,8 +15,6 @@ from fastapi.responses import JSONResponse
 # CONFIG
 # -------------------------------------
 
-# Ключ погоды: бери из переменных окружения Railway
-#   WEATHER_API_KEY = <твой ключ OpenWeather>
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
@@ -28,25 +26,24 @@ NOMINATIM_USER_AGENT = os.getenv(
     "arborscan-backend/1.0 (contact: example@mail.com)",
 )
 
-# Включение/выключение анализа окружения (погода+почва+риск)
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
 # -------------------------------------
-# CLASSES / CONSTANTS
+# CONSTANTS
 # -------------------------------------
 
 CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
-REAL_STICK_M = 1.0  # длина палки в метрах
+REAL_STICK_M = 1.0  # метры
 
 # -------------------------------------
 # MODELS
 # -------------------------------------
 
-print("[*] Loading YOLO models.")
-tree_model = YOLO("models/tree_model.pt")
-stick_model = YOLO("models/stick_model.pt")
+print("[*] Loading YOLO models...")
+tree_model = YOLO("models/tree_model.pt")     # YOLOv8-seg
+stick_model = YOLO("models/stick_model.pt")   # YOLOv8-det
 
-print("[*] Loading classifier.")
+print("[*] Loading classifier...")
 classifier = models.resnet18(weights=None)
 classifier.fc = torch.nn.Linear(classifier.fc.in_features, 5)
 classifier.load_state_dict(torch.load("models/classifier.pth", map_location="cpu"))
@@ -66,10 +63,9 @@ transformer = transforms.Compose(
 print("[*] Models loaded.")
 
 
-# =============================================
-# EXIF → GPS
-# =============================================
-
+# ============================================================
+# ----------------------- GPS EXIF ---------------------------
+# ============================================================
 
 def _deg(v):
     d = v[0][0] / v[0][1]
@@ -79,73 +75,53 @@ def _deg(v):
 
 
 def extract_gps(image_bytes):
-    """
-    Достаём GPS из EXIF (если есть).
-    Возвращает dict {"lat": ..., "lon": ...} или None.
-    """
     try:
         img = Image.open(io.BytesIO(image_bytes))
         exif = img._getexif()
         if not exif:
             return None
-
         gps_info = None
         for k, v in exif.items():
-            tag = ExifTags.TAGS.get(k)
-            if tag == "GPSInfo":
+            if ExifTags.TAGS.get(k) == "GPSInfo":
                 gps_info = v
                 break
-
         if not gps_info:
             return None
 
         lat = _deg(gps_info[2])
         lon = _deg(gps_info[4])
-
         if gps_info[1] == "S":
             lat = -lat
         if gps_info[3] == "W":
             lon = -lon
 
         return {"lat": lat, "lon": lon}
-    except Exception:
+    except:
         return None
 
 
-# =============================================
-# Reverse geocode (OSM)
-# =============================================
-
+# ============================================================
+# ------------- Reverse Geocode OSM --------------------------
+# ============================================================
 
 def reverse_geocode(lat, lon):
-    """
-    Превращаем координаты в текстовый адрес через Nominatim.
-    """
     try:
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "format": "jsonv2",
-        }
+        params = {"lat": lat, "lon": lon, "format": "jsonv2"}
         headers = {"User-Agent": NOMINATIM_USER_AGENT}
         r = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=10)
         if r.status_code != 200:
             return None
         data = r.json()
         return data.get("display_name")
-    except Exception:
+    except:
         return None
 
 
-# =============================================
-# WEATHER (OpenWeather)
-# =============================================
-
+# ============================================================
+# ------------------- Weather --------------------------------
+# ============================================================
 
 def get_weather(lat, lon):
-    """
-    Простая погода для точки (темп, ветер, порывы)
-    """
     if not WEATHER_API_KEY:
         return None
     try:
@@ -159,42 +135,33 @@ def get_weather(lat, lon):
         r = requests.get(WEATHER_BASE_URL, params=params, timeout=10)
         if r.status_code != 200:
             return None
-        data = r.json()
+        d = r.json()
         return {
-            "temp": data.get("main", {}).get("temp"),
-            "wind_speed": data.get("wind", {}).get("speed"),
-            "wind_gust": data.get("wind", {}).get("gust"),
-            "pressure": data.get("main", {}).get("pressure"),
+            "temp": d.get("main", {}).get("temp"),
+            "wind_speed": d.get("wind", {}).get("speed"),
+            "wind_gust": d.get("wind", {}).get("gust"),
+            "pressure": d.get("main", {}).get("pressure"),
         }
-    except Exception:
+    except:
         return None
 
 
-# =============================================
-# SOILGRIDS (почва)
-# =============================================
-
+# ============================================================
+# ------------------- SoilGrids ------------------------------
+# ============================================================
 
 def _extract_soil_layer(prop, layer="0-30cm"):
-    """Берём среднее по слою 0-30 см."""
     try:
-        if not prop:
-            return None
-        arr = prop.get("layers", [])
-        for lyr in arr:
-            if lyr.get("depth", "") == layer:
+        for lyr in prop.get("layers", []):
+            if lyr.get("depth") == layer:
                 vals = lyr.get("values", {})
-                # пробуем взять "mean" или что-то похожее
                 return vals.get("mean") or vals.get("M") or list(vals.values())[0]
-    except Exception:
-        return None
+    except:
+        pass
     return None
 
 
 def get_soil(lat, lon):
-    """
-    Берём базовые параметры почвы (глина/песок/SOC/pH) из SoilGrids.
-    """
     try:
         params = {
             "lat": lat,
@@ -206,21 +173,20 @@ def get_soil(lat, lon):
         r = requests.get(SOILGRIDS_URL, params=params, timeout=10)
         if r.status_code != 200:
             return None
-        data = r.json()
-        props = data.get("properties", {})
+        props = r.json().get("properties", {})
         return {
             "clay": _extract_soil_layer(props.get("clay")),
             "sand": _extract_soil_layer(props.get("sand")),
             "soc": _extract_soil_layer(props.get("soc")),
             "phh2o": _extract_soil_layer(props.get("phh2o")),
         }
-    except Exception:
+    except:
         return None
 
 
-# =============================================
-# RISK MODEL (очень упрощённо)
-# =============================================
+# ============================================================
+# ---------------------- Risk Model ---------------------------
+# ============================================================
 
 SPECIES_BASE = {
     "Береза": 0.6,
@@ -232,10 +198,6 @@ SPECIES_BASE = {
 
 
 def slenderness_score(h, d):
-    """
-    Оценка по H/D.
-    h – высота (м), d – диаметр ствола (м)
-    """
     if not h or not d or d == 0:
         return 0.5
     ratio = h / d
@@ -248,30 +210,26 @@ def slenderness_score(h, d):
     return 1.0
 
 
-def soil_score(soil):
-    if not soil:
+def soil_score(s):
+    if not s:
         return 0.5
-
-    clay = soil.get("clay") or 0
-    sand = soil.get("sand") or 0
-    soc = soil.get("soc") or 0
-
+    clay = s.get("clay") or 0
+    sand = s.get("sand") or 0
+    soc = s.get("soc") or 0
     score = 0.5
-
     if clay > 40:
         score += 0.2
     if sand > 70:
         score += 0.1
     if soc > 100:
         score += 0.1
-
     return max(0, min(score, 1))
 
 
-def wind_score(weather):
-    if not weather:
+def wind_score(w):
+    if not w:
         return 0.5
-    gust = weather.get("wind_gust") or weather.get("wind_speed") or 0
+    gust = w.get("wind_gust") or w.get("wind_speed") or 0
     if gust <= 5:
         return 0.2
     if gust <= 10:
@@ -283,22 +241,22 @@ def wind_score(weather):
     return 1.0
 
 
-def compute_risk(species, height, crown, diameter, weather, soil):
+def compute_risk(species, h, c, d, weather, soil):
     expl = []
 
     base = SPECIES_BASE.get(species, 0.7)
     expl.append(f"Порода ({species}) базовый риск: {base:.2f}")
 
-    s_score = slenderness_score(height, diameter)
-    expl.append(f"Коэфф. стройности H/D: {height/diameter if diameter else 0:.1f} → {s_score:.2f}")
+    slim = slenderness_score(h, d)
+    expl.append(f"Стройность H/D: {slim:.2f}")
 
-    w_score = wind_score(weather)
-    expl.append(f"Ветровая нагрузка: {w_score:.2f}")
+    w = wind_score(weather)
+    expl.append(f"Ветер: {w:.2f}")
 
-    soil_s = soil_score(soil)
-    expl.append(f"Почвенный фактор: {soil_s:.2f}")
+    so = soil_score(soil)
+    expl.append(f"Почва: {so:.2f}")
 
-    index = 0.3 * base + 0.3 * s_score + 0.25 * w_score + 0.15 * soil_s
+    index = 0.3 * base + 0.3 * slim + 0.25 * w + 0.15 * so
     index = max(0, min(index, 1))
 
     if index < 0.4:
@@ -310,17 +268,12 @@ def compute_risk(species, height, crown, diameter, weather, soil):
 
     expl.append(f"Итоговый риск {index:.2f} ({cat})")
 
-    return {
-        "index": index,
-        "category": cat,
-        "explanation": expl,
-    }
+    return {"index": index, "category": cat, "explanation": expl}
 
 
-# =============================================
-# DRAW MASK ONLY
-# =============================================
-
+# ============================================================
+# ---------------- Draw mask into image -----------------------
+# ============================================================
 
 def draw_mask(img_bgr, mask):
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -335,11 +288,11 @@ def draw_mask(img_bgr, mask):
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-# =============================================
-# MAIN APP
-# =============================================
+# ============================================================
+# --------------------- FastAPI ------------------------------
+# ============================================================
 
-app = FastAPI(title="ArborScan API v2.0")
+app = FastAPI(title="ArborScan API")
 
 
 @app.post("/analyze-tree")
@@ -349,51 +302,51 @@ async def analyze_tree(file: UploadFile = File(...)):
     img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
     if img is None:
-        return JSONResponse({"error": "Не удалось прочитать изображение"}, status_code=400)
+        return JSONResponse({"error": "Не удалось прочитать изображение"}, 400)
 
     H, W = img.shape[:2]
 
-    # ---------------------------------------------
-    # YOLO TREE
-    # ---------------------------------------------
-    tree_res = tree_model(img)[0]
+    # ----------------------------------------------------
+    # YOLO (SEGMENTATION) — ИСПРАВЛЕНО
+    # ----------------------------------------------------
+    tree_res = tree_model.predict(source=img, task="segment")[0]
+
     if tree_res.masks is None:
-        return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
+        return JSONResponse({"error": "Дерево не найдено"}, 400)
 
     masks = []
     areas = []
-    for i, m in enumerate(tree_res.masks.data):
+
+    for m in tree_res.masks.data:
         mask = (m.cpu().numpy() > 0.5).astype(np.uint8) * 255
         mask = cv2.resize(mask, (W, H), interpolation=cv2.INTER_NEAREST)
-        areas.append(mask.sum())
         masks.append(mask)
+        areas.append(mask.sum())
 
     idx = int(np.argmax(areas))
     mask = masks[idx]
 
-    # ---------------------------------------------
-    # YOLO STICK
-    # ---------------------------------------------
-    stick_res = stick_model(img)[0]
+    # ----------------------------------------------------
+    # Stick (YOLOv8-det)
+    # ----------------------------------------------------
+    stick_res = stick_model.predict(source=img)[0]
     scale = None
+
     if len(stick_res.boxes) > 0:
-        best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
-        x1s, y1s, x2s, y2s = best.xyxy[0].cpu().numpy().astype(int)
+        b = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
+        x1s, y1s, x2s, y2s = b.xyxy[0].cpu().numpy().astype(int)
         stick_h = y2s - y1s
         if stick_h > 10:
             scale = REAL_STICK_M / stick_h
 
-    # ---------------------------------------------
+    # ----------------------------------------------------
     # MEASUREMENTS
-    # ---------------------------------------------
+    # ----------------------------------------------------
     ys, xs = np.where(mask > 0)
     y_min, y_max = ys.min(), ys.max()
     height_px = y_max - y_min
 
-    if scale:
-        height_m = round(height_px * scale, 2)
-    else:
-        height_m = None
+    height_m = round(height_px * scale, 2) if scale else None
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
@@ -405,6 +358,7 @@ async def analyze_tree(file: UploadFile = File(...)):
 
     trunk_vals = []
     trunk_top = y_max - int(0.2 * height_px)
+
     for y in range(trunk_top, y_max):
         row = np.where(mask[y] > 0)[0]
         if len(row) > 0:
@@ -413,26 +367,28 @@ async def analyze_tree(file: UploadFile = File(...)):
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # ---------------------------------------------
-    # CLASSIFIER (RESNET)
-    # ---------------------------------------------
+    # ----------------------------------------------------
+    # CLASSIFIER
+    # ----------------------------------------------------
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
     crop = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
     pil_crop = Image.fromarray(crop)
     tens = transformer(pil_crop).unsqueeze(0)
+
     with torch.no_grad():
         pred = classifier(tens)
         cls_id = int(torch.argmax(pred))
+
     species_name = CLASS_NAMES_RU[cls_id]
 
-    # ---------------------------------------------
+    # ----------------------------------------------------
     # Annotated image
-    # ---------------------------------------------
+    # ----------------------------------------------------
     annotated_b64 = draw_mask(img.copy(), mask)
 
-    # ---------------------------------------------
-    # ENVIRONMENT ANALYSIS
-    # ---------------------------------------------
+    # ----------------------------------------------------
+    # ENVIRONMENT
+    # ----------------------------------------------------
     gps = None
     address = None
     weather = None
@@ -455,21 +411,22 @@ async def analyze_tree(file: UploadFile = File(...)):
             soil,
         )
 
-    # ---------------------------------------------
-    # RESPONSE
-    # ---------------------------------------------
-    response = {
-        "species": species_name,
-        "height_m": height_m,
-        "crown_width_m": crown_m,
-        "trunk_diameter_m": trunk_m,
-        "scale_px_to_m": scale,
-        "annotated_image_base64": annotated_b64,
-        "gps": gps,
-        "address": address,
-        "weather": weather,
-        "soil": soil,
-        "risk": risk,
-    }
-
-    return JSONResponse(response, status_code=200)
+    # ----------------------------------------------------
+    # Response
+    # ----------------------------------------------------
+    return JSONResponse(
+        {
+            "species": species_name,
+            "height_m": height_m,
+            "crown_width_m": crown_m,
+            "trunk_diameter_m": trunk_m,
+            "scale_px_to_m": scale,
+            "annotated_image_base64": annotated_b64,
+            "gps": gps,
+            "address": address,
+            "weather": weather,
+            "soil": soil,
+            "risk": risk,
+        },
+        200,
+    )
