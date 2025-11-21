@@ -11,17 +11,12 @@ import torch
 from torchvision import models, transforms
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-from supabase import create_client, Client
 from uuid import uuid4
 
 
 # -------------------------------------
 # CONFIG
 # -------------------------------------
-SUPABASE_URL = "https://unzwklebqizjqtipnxot.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuendrbGVicWl6anF0aXBueG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NzQ2MjgsImV4cCI6MjA3OTE1MDYyOH0.qpUBc1EMBp0pfxe-mPus57s2Q1wLoY8WmUqGc7C8I1U"
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
