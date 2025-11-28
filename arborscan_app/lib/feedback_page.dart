@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'mask_drawing_page.dart';
 
 class FeedbackPage extends StatefulWidget {
   final String analysisId;
@@ -32,23 +33,45 @@ class _FeedbackPageState extends State<FeedbackPage> {
   String _selectedSpecies = "";
   final TextEditingController _customSpeciesController = TextEditingController();
 
-  // --- Контроллеры параметров ---
+  // --- Controllers for parameters ---
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _crownController = TextEditingController();
   final TextEditingController _trunkController = TextEditingController();
+
+  // --- Mask ---
+  String? _maskBase64;
+  bool get _maskAdded => _maskBase64 != null;
 
   @override
   void initState() {
     super.initState();
     _selectedSpecies = widget.species;
 
-    // Заполняем контроллеры исходными значениями
     _heightController.text =
         widget.heightM != null ? widget.heightM!.toStringAsFixed(2) : "";
     _crownController.text =
         widget.crownWidthM != null ? widget.crownWidthM!.toStringAsFixed(2) : "";
     _trunkController.text =
         widget.trunkDiameterM != null ? widget.trunkDiameterM!.toStringAsFixed(2) : "";
+  }
+
+  Future<void> _openMaskDrawing() async {
+    final originalBytes = base64Decode(widget.annotatedImageBase64);
+
+    final mask = await Navigator.push<String?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MaskDrawingPage(
+          originalImageBytes: originalBytes,
+        ),
+      ),
+    );
+
+    if (mask != null) {
+      setState(() {
+        _maskBase64 = mask;
+      });
+    }
   }
 
   @override
@@ -66,23 +89,27 @@ class _FeedbackPageState extends State<FeedbackPage> {
             borderRadius: BorderRadius.circular(16),
             child: Image.memory(imgBytes),
           ),
+
           const SizedBox(height: 20),
 
-          // --- TREE OK ---
+          // TREE OK
           _buildSwitch(
             "Дерево выделено правильно",
             _treeOk,
             (v) => setState(() => _treeOk = v),
           ),
 
-          // --- STICK OK ---
+          // ==== Кнопка рисования маски, если дерево выделено неверно ====
+          if (!_treeOk) _buildMaskButton(),
+
+          // STICK OK
           _buildSwitch(
             "Палка определена правильно",
             _stickOk,
             (v) => setState(() => _stickOk = v),
           ),
 
-          // --- PARAMS OK ---
+          // PARAMS OK
           _buildSwitch(
             "Параметры рассчитаны верно",
             _paramsOk,
@@ -91,7 +118,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
           if (!_paramsOk) _buildParamsCorrection(),
 
-          // --- SPECIES OK ---
+          // SPECIES OK
           _buildSwitch(
             "Вид определён верно",
             _speciesOk,
@@ -109,23 +136,67 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 "stick_ok": _stickOk,
                 "params_ok": _paramsOk,
                 "species_ok": _speciesOk,
+
                 "correct_species":
                     _speciesOk ? null : _selectedSpecies.trim(),
+
                 "correct_height":
                     _paramsOk ? null : double.tryParse(_heightController.text),
                 "correct_crown":
                     _paramsOk ? null : double.tryParse(_crownController.text),
                 "correct_trunk":
                     _paramsOk ? null : double.tryParse(_trunkController.text),
-                "user_mask_base64": null, // шаг 3.2.2
+
+                // ← маска
+                "user_mask_base64": _maskBase64,
               });
             },
             child: const Padding(
               padding: EdgeInsets.symmetric(vertical: 14),
-              child: Text("Продолжить"),
+              child: Text("Отправить"),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Mask button
+  Widget _buildMaskButton() {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Исправьте контур дерева:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+
+            FilledButton.icon(
+              onPressed: _openMaskDrawing,
+              icon: const Icon(Icons.brush),
+              label: const Text("Нарисовать маску"),
+            ),
+
+            if (_maskAdded) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.green),
+                  SizedBox(width: 6),
+                  Text(
+                    "Маска добавлена",
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -141,9 +212,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
 
-  /// =============================
-  /// Блок исправления параметров
-  /// =============================
   Widget _buildParamsCorrection() {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -157,12 +225,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-
             _buildNumberField("Высота (м)", _heightController),
-
             const SizedBox(height: 12),
             _buildNumberField("Ширина кроны (м)", _crownController),
-
             const SizedBox(height: 12),
             _buildNumberField("Диаметр ствола (м)", _trunkController),
           ],
@@ -183,9 +248,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
 
-  /// =============================
-  /// Блок исправления вида
-  /// =============================
   Widget _buildSpeciesSelector() {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),

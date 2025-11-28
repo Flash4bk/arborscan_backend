@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart'; // <<< ВАЖНО: даёт RenderRepaintBoundary
 
 class MaskDrawingPage extends StatefulWidget {
   final Uint8List originalImageBytes;
@@ -16,22 +18,20 @@ class MaskDrawingPage extends StatefulWidget {
 }
 
 class _MaskDrawingPageState extends State<MaskDrawingPage> {
-  List<Offset?> _points = [];
   final GlobalKey _canvasKey = GlobalKey();
+  List<Offset?> _points = [];
 
-  // Очистка холста
   void _clear() {
     setState(() => _points = []);
   }
 
-  // Сохранение в PNG + Base64
   Future<void> _saveMask() async {
     try {
-      final boundary = _canvasKey.currentContext!
-          .findRenderObject() as RenderRepaintBoundary;
+      final boundary =
+          _canvasKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
       final ui.Image maskImage =
-          await boundary.toImage(pixelRatio: 1.5);
+          await boundary.toImage(pixelRatio: 2.0); // можно 1.5–3.0
 
       final byteData =
           await maskImage.toByteData(format: ui.ImageByteFormat.png);
@@ -41,6 +41,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
       Navigator.pop(context, base64mask);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Ошибка сохранения маски: $e")),
       );
@@ -49,7 +50,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final original = Image.memory(widget.originalImageBytes);
+    final original = Image.memory(widget.originalImageBytes, fit: BoxFit.cover);
 
     return Scaffold(
       appBar: AppBar(
@@ -57,10 +58,12 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
+            tooltip: "Очистить",
             onPressed: _clear,
           ),
           IconButton(
             icon: const Icon(Icons.check),
+            tooltip: "Сохранить маску",
             onPressed: _saveMask,
           ),
         ],
@@ -75,18 +78,20 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
               children: [
                 Positioned.fill(child: original),
 
-                // Рисование поверх Canvas
+                // Рисуем поверх
                 Positioned.fill(
                   child: RepaintBoundary(
                     key: _canvasKey,
                     child: CustomPaint(
                       painter: _MaskPainter(points: _points),
                       child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
                         onPanUpdate: (details) {
                           setState(() {
-                            final box = context.findRenderObject() as RenderBox;
-                            final localPos =
-                                box.globalToLocal(details.globalPosition);
+                            final renderBox = _canvasKey.currentContext!
+                                .findRenderObject() as RenderBox;
+                            final localPos = renderBox
+                                .globalToLocal(details.globalPosition);
                             _points.add(localPos);
                           });
                         },
@@ -106,9 +111,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   }
 }
 
-// Painter — рисует маску
 class _MaskPainter extends CustomPainter {
   final List<Offset?> points;
+
   _MaskPainter({required this.points});
 
   @override
@@ -119,8 +124,10 @@ class _MaskPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     for (int i = 0; i < points.length - 1; i++) {
-      if (points[i] != null && points[i + 1] != null) {
-        canvas.drawLine(points[i]!, points[i + 1]!, paint);
+      final p1 = points[i];
+      final p2 = points[i + 1];
+      if (p1 != null && p2 != null) {
+        canvas.drawLine(p1, p2, paint);
       }
     }
   }
