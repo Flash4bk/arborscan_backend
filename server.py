@@ -15,35 +15,30 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
-from supabase import create_client, Client
-
 
 # -------------------------------------
 # CONFIG
 # -------------------------------------
 
+# Supabase config: URL и SERVICE KEY задаём через переменные окружения на Railway
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("[!] Warning: Supabase credentials not set. /feedback endpoint will not work.")
+    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
-# Supabase storage bucket names
+# Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
 
-
+# Старые настройки окружения
 WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
-SOILGRIDS_URL = (
-    "https://rest.isric.org/soilgrids/v2.0/properties/query"
-)
+SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
 
-NOMINATIM_URL = (
-    "https://nominatim.openstreetmap.org/reverse"
-)
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 NOMINATIM_USER_AGENT = os.getenv(
     "NOMINATIM_USER_AGENT",
     "arborscan-backend/1.0 (contact: example@mail.com)"
@@ -52,7 +47,7 @@ NOMINATIM_USER_AGENT = os.getenv(
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
 # -------------------------------------
-# CLASSES
+# CLASSES / CONSTANTS
 # -------------------------------------
 
 CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
@@ -84,30 +79,26 @@ transformer = transforms.Compose([
 print("[*] Models loaded.")
 
 # =============================================
-# SUPABASE CLIENT
-# =============================================
-
-supabase: Client | None = None
-if SUPABASE_URL and SUPABASE_SERVICE_KEY:
-    try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-        print("[*] Supabase client initialized.")
-    except Exception as e:
-        print(f"[!] Failed to initialize Supabase client: {e}")
-else:
-    print("[!] Supabase URL or SERVICE_KEY is not set; feedback storage disabled.\n")
-
-# =============================================
-# SUPABASE UTILS
+# SUPABASE UTILS (через HTTP requests)
 # =============================================
 
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
-    """Upload raw bytes to Supabase Storage with upsert."""
-    if supabase is None:
-        raise RuntimeError("Supabase client is not initialized")
-    res = supabase.storage.from_(bucket).upload(path, data, {"upsert": True})
-    if isinstance(res, dict) and res.get("error"):
-        raise RuntimeError(f"Supabase upload error: {res['error']}")
+    """
+    Загрузка бинарных данных в Supabase Storage через REST API.
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
+
+    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/octet-stream",
+        "x-upsert": "true",
+    }
+    resp = requests.post(url, headers=headers, data=data, timeout=30)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Supabase upload error {resp.status_code}: {resp.text}")
+
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
@@ -122,7 +113,7 @@ def _deg(v):
     d = v[0][0] / v[0][1]
     m = v[1][0] / v[1][1]
     s = v[2][0] / v[2][1]
-    return d + m/60 + s/3600
+    return d + m / 60 + s / 3600
 
 def extract_gps(image_bytes):
     try:
@@ -149,11 +140,7 @@ def extract_gps(image_bytes):
         if gps_info[3] == "W":
             lon = -lon
 
-        return {
-            "lat": lat,
-            "lon": lon
-        }
-
+        return {"lat": lat, "lon": lon}
     except:
         return None
 
@@ -170,7 +157,6 @@ def reverse_geocode(lat, lon):
             "format": "jsonv2"
         }
         headers = {"User-Agent": NOMINATIM_USER_AGENT}
-
         r = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=5)
         r.raise_for_status()
         data = r.json()
@@ -186,7 +172,6 @@ def reverse_geocode(lat, lon):
 def get_weather(lat, lon):
     if not WEATHER_API_KEY:
         return None
-
     try:
         params = {
             "lat": lat,
@@ -198,7 +183,6 @@ def get_weather(lat, lon):
         r = requests.get(WEATHER_BASE_URL, params=params, timeout=5)
         r.raise_for_status()
         data = r.json()
-
         wind = data.get("wind", {})
         main = data.get("main", {})
 
@@ -207,9 +191,8 @@ def get_weather(lat, lon):
             "wind_speed": wind.get("speed"),
             "wind_gust": wind.get("gust"),
             "pressure": main.get("pressure"),
-            "humidity": main.get("humidity")
+            "humidity": main.get("humidity"),
         }
-
     except:
         return None
 
@@ -224,14 +207,13 @@ def get_soil(lat, lon):
             "lon": lon,
             "lat": lat,
             "property": "clay,sand,silt,soc,phh2o",
-            "depth": "0-5cm"
+            "depth": "0-5cm",
         }
         r = requests.get(SOILGRIDS_URL, params=params, timeout=7)
         r.raise_for_status()
         data = r.json()
 
         result = {}
-
         layers = data.get("properties", {}).get("layers", [])
         for layer in layers:
             name = layer.get("name")
@@ -239,9 +221,7 @@ def get_soil(lat, lon):
             if first_depth:
                 mean = first_depth[0].get("values", {}).get("mean")
                 result[name] = mean
-
         return result
-
     except:
         return None
 
@@ -273,11 +253,9 @@ def slenderness_score(height, diameter):
 def soil_score(soil):
     if not soil:
         return 0.5
-
     clay = soil.get("clay") or 0
     sand = soil.get("sand") or 0
     org = soil.get("soc") or 0
-
     if org > 80:
         return 1.0
     if clay > 40:
@@ -330,12 +308,12 @@ def compute_risk(species, height, crown, diameter, weather, soil):
     return {
         "index": index,
         "category": cat,
-        "explanation": expl
+        "explanation": expl,
     }
 
 
 # =============================================
-# DRAW MASK ONLY (NO BBOX / NO TEXT)
+# DRAW MASK ONLY
 # =============================================
 
 def draw_mask(img_bgr, mask):
@@ -352,9 +330,8 @@ def draw_mask(img_bgr, mask):
 
 
 # =============================================
-# MAIN APP
+# FASTAPI + MODELS
 # =============================================
-
 
 class FeedbackRequest(BaseModel):
     analysis_id: str
@@ -369,25 +346,28 @@ class FeedbackRequest(BaseModel):
 
 app = FastAPI(title="ArborScan API v2.0")
 
+
 @app.post("/analyze-tree")
 async def analyze_tree(file: UploadFile = File(...)):
     image_bytes = await file.read()
     np_img = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
+    if img is None:
+        raise HTTPException(status_code=400, detail="Не удалось прочитать изображение")
+
     H, W = img.shape[:2]
 
-    # ---------------------------------------------
+    # -----------------------------
     # YOLO TREE
-    # ---------------------------------------------
+    # -----------------------------
     tree_res = tree_model(img)[0]
     if tree_res.masks is None:
         return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
 
-    # выбираем самый большой mask
     masks = []
     areas = []
-    for i, m in enumerate(tree_res.masks.data):
+    for m in tree_res.masks.data:
         mask = (m.cpu().numpy() > 0.5).astype(np.uint8) * 255
         mask = cv2.resize(mask, (W, H), interpolation=cv2.INTER_NEAREST)
         areas.append(mask.sum())
@@ -396,37 +376,32 @@ async def analyze_tree(file: UploadFile = File(...)):
     idx = int(np.argmax(areas))
     mask = masks[idx]
 
-    # ---------------------------------------------
+    # -----------------------------
     # YOLO STICK
-    # ---------------------------------------------
+    # -----------------------------
     stick_res = stick_model(img)[0]
     scale = None
     if len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
-        x1, y1, x2, y2 = best.xyxy[0].cpu().numpy().astype(int)
-        stick_h = y2 - y1
+        x1s, y1s, x2s, y2s = best.xyxy[0].cpu().numpy().astype(int)
+        stick_h = y2s - y1s
         if stick_h > 10:
             scale = REAL_STICK_M / stick_h
 
-    # ---------------------------------------------
+    # -----------------------------
     # MEASUREMENTS
-    # ---------------------------------------------
-
+    # -----------------------------
     ys, xs = np.where(mask > 0)
     y_min, y_max = ys.min(), ys.max()
     height_px = y_max - y_min
 
-    if scale:
-        height_m = round(height_px * scale, 2)
-    else:
-        height_m = None
+    height_m = round(height_px * scale, 2) if scale else None
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
         row = np.where(mask[y] > 0)[0]
         if len(row) > 0:
             crown_width_px = max(crown_width_px, row.max() - row.min())
-
     crown_m = round(crown_width_px * scale, 2) if scale else None
 
     trunk_vals = []
@@ -435,13 +410,12 @@ async def analyze_tree(file: UploadFile = File(...)):
         row = np.where(mask[y] > 0)[0]
         if len(row) > 0:
             trunk_vals.append(row.max() - row.min())
-
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # ---------------------------------------------
-    # CLASSIFIER (RESNET)
-    # ---------------------------------------------
+    # -----------------------------
+    # CLASSIFIER
+    # -----------------------------
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
     crop = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
     pil_crop = Image.fromarray(crop)
@@ -451,15 +425,14 @@ async def analyze_tree(file: UploadFile = File(...)):
         cls_id = int(torch.argmax(pred))
     species_name = CLASS_NAMES_RU[cls_id]
 
-    # ---------------------------------------------
-    # Annotated image
-    # ---------------------------------------------
+    # -----------------------------
+    # ANNOTATED IMAGE
+    # -----------------------------
     annotated_b64 = draw_mask(img.copy(), mask)
 
-    # ---------------------------------------------
-    # ENVIRONMENT ANALYSIS
-    # ---------------------------------------------
-
+    # -----------------------------
+    # ENVIRONMENT
+    # -----------------------------
     gps = None
     address = None
     weather = None
@@ -479,16 +452,14 @@ async def analyze_tree(file: UploadFile = File(...)):
             crown_m or 0,
             trunk_m or 0,
             weather,
-            soil
+            soil,
         )
 
-    # ---------------------------------------------
-    # TEMP CACHE FOR FEEDBACK & RESPONSE
-    # ---------------------------------------------
-
+    # -----------------------------
+    # TEMP CACHE FOR FEEDBACK
+    # -----------------------------
     analysis_id = str(uuid4())
 
-    # Подготовим метаданные для обучения
     meta = {
         "analysis_id": analysis_id,
         "species": species_name,
@@ -503,7 +474,6 @@ async def analyze_tree(file: UploadFile = File(...)):
         "risk": risk,
     }
 
-    # Пишем временные файлы в /tmp/<analysis_id>, чтобы потом забрать их в /feedback
     try:
         tmp_dir = Path("/tmp") / analysis_id
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -512,7 +482,15 @@ async def analyze_tree(file: UploadFile = File(...)):
         with open(tmp_dir / "input.jpg", "wb") as f:
             f.write(image_bytes)
 
-        # Предсказание дерева (bbox + conf + класс)
+        # Аннотированное изображение (дополнительно, для обучения/контроля)
+        try:
+            annotated_bytes = base64.b64decode(annotated_b64)
+            with open(tmp_dir / "annotated.jpg", "wb") as f:
+                f.write(annotated_bytes)
+        except Exception as e:
+            print(f"[!] Failed to save annotated for {analysis_id}: {e}")
+
+        # Предсказание дерева
         tree_box_xyxy = tree_res.boxes.xyxy[idx].cpu().numpy().tolist()
         tree_conf = None
         tree_cls_id = None
@@ -558,10 +536,11 @@ async def analyze_tree(file: UploadFile = File(...)):
             json.dump(meta, f, ensure_ascii=False, indent=2)
 
     except Exception as e:
-        # Не падаем, если кэш не записался
         print(f"[!] Failed to cache analysis {analysis_id} in /tmp: {e}")
 
-    # Формируем ответ клиенту
+    # -----------------------------
+    # RESPONSE
+    # -----------------------------
     response = {
         "analysis_id": analysis_id,
         "species": species_name,
@@ -588,17 +567,18 @@ async def analyze_tree(file: UploadFile = File(...)):
 
 @app.post("/feedback")
 def send_feedback(feedback: FeedbackRequest):
-    """Получаем подтверждение/исправление от пользователя и,
+    """
+    Получаем подтверждение/исправление от пользователя и,
     если всё ок, сохраняем пример в Supabase для будущего обучения моделей.
     """
-    if supabase is None:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
 
     tmp_dir = Path("/tmp") / feedback.analysis_id
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
-    # Если пользователь не хочет использовать этот пример для обучения — просто выходим
+    # Если пользователь не хочет использовать пример
     if not feedback.use_for_training:
         try:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -610,24 +590,24 @@ def send_feedback(feedback: FeedbackRequest):
     if not meta_path.exists():
         raise HTTPException(status_code=500, detail="meta.json не найден для указанного analysis_id")
 
-    # Загружаем исходные метаданные
+    # Загружаем исходное meta
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
 
-    # Обновляем мета с учётом фидбека
+    # Обновляем meta фидбеком
     meta["tree_ok"] = feedback.tree_ok
     meta["stick_ok"] = feedback.stick_ok
     meta["params_ok"] = feedback.params_ok
     meta["species_ok"] = feedback.species_ok
     meta["correct_species"] = feedback.correct_species
 
-    # Если вид был исправлен — переписываем его в метаданных
+    # Исправленный вид дерева
     if (not feedback.species_ok) and feedback.correct_species:
         meta["species"] = feedback.correct_species
 
-    # Простейший trust_score
+    # Trust score
     trust = 0.0
     if feedback.tree_ok:
         trust += 0.3
@@ -642,7 +622,7 @@ def send_feedback(feedback: FeedbackRequest):
     analysis_id = feedback.analysis_id
 
     # -----------------------------
-    # Загружаем файлы в Supabase
+    # UPLOAD TO SUPABASE
     # -----------------------------
     try:
         # input.jpg
@@ -654,7 +634,16 @@ def send_feedback(feedback: FeedbackRequest):
                 input_path.read_bytes(),
             )
 
-        # user_mask (если есть)
+        # annotated.jpg
+        annotated_path = tmp_dir / "annotated.jpg"
+        if annotated_path.exists():
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{analysis_id}/annotated.jpg",
+                annotated_path.read_bytes(),
+            )
+
+        # user_mask.png
         meta["has_user_mask"] = False
         if feedback.user_mask_base64:
             try:
@@ -686,7 +675,7 @@ def send_feedback(feedback: FeedbackRequest):
                 stick_pred_path.read_bytes(),
             )
 
-        # meta.json (уже обновлённый)
+        # meta.json (обновлённый)
         supabase_upload_json(
             SUPABASE_BUCKET_META,
             f"{analysis_id}.json",
@@ -698,7 +687,7 @@ def send_feedback(feedback: FeedbackRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
 
-    # После успешной загрузки можно подчистить временную папку
+    # Чистим /tmp
     try:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     except Exception as e:
