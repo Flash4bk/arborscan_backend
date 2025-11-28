@@ -716,13 +716,22 @@ class _ArborScanPageState extends State<ArborScanPage> {
       return;
     }
 
-    final feedback = await Navigator.push<Map<String, dynamic>?>(
+    // Загружаем оригинальное фото
+final Uint8List originalBytes = await _imageFile!.readAsBytes();
+
+// Раскодируем аннотированное фото
+final Uint8List annotatedBytes = base64Decode(
+  annotatedB64 ?? "",
+);
+
+// Открываем FeedbackPage
+final feedback = await Navigator.push<Map<String, dynamic>?>(
   context,
   MaterialPageRoute(
     builder: (_) => FeedbackPage(
       analysisId: analysisId,
-      originalImageBase64: data['original_image_base64'] ??
-          (base64Encode(_imageFile!.readAsBytesSync())),
+      originalBytes: originalBytes,
+      annotatedBytes: annotatedBytes,
       species: data['species'] ?? 'Неизвестно',
       heightM: (data['height_m'] as num?)?.toDouble(),
       crownWidthM: (data['crown_width_m'] as num?)?.toDouble(),
@@ -730,6 +739,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
     ),
   ),
 );
+
 
 
     if (feedback != null) {
