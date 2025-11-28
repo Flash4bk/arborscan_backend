@@ -1,16 +1,15 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart'; // <<< ВАЖНО: даёт RenderRepaintBoundary
+import 'package:flutter/rendering.dart';
 
 class MaskDrawingPage extends StatefulWidget {
-  final Uint8List originalImageBytes;
+  final Uint8List imageBytes;
 
   const MaskDrawingPage({
     super.key,
-    required this.originalImageBytes,
+    required this.imageBytes,
   });
 
   @override
@@ -18,120 +17,98 @@ class MaskDrawingPage extends StatefulWidget {
 }
 
 class _MaskDrawingPageState extends State<MaskDrawingPage> {
-  final GlobalKey _canvasKey = GlobalKey();
-  List<Offset?> _points = [];
+  final GlobalKey _paintKey = GlobalKey();
 
-  void _clear() {
-    setState(() => _points = []);
-  }
-
-  Future<void> _saveMask() async {
-    try {
-      final boundary =
-          _canvasKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-
-      final ui.Image maskImage =
-          await boundary.toImage(pixelRatio: 2.0); // можно 1.5–3.0
-
-      final byteData =
-          await maskImage.toByteData(format: ui.ImageByteFormat.png);
-
-      final pngBytes = byteData!.buffer.asUint8List();
-      final base64mask = base64Encode(pngBytes);
-
-      Navigator.pop(context, base64mask);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Ошибка сохранения маски: $e")),
-      );
-    }
-  }
+  List<Offset?> points = [];
 
   @override
   Widget build(BuildContext context) {
-    final original = Image.memory(widget.originalImageBytes, fit: BoxFit.cover);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Исправьте контур дерева"),
+        title: const Text("Обведите дерево"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: "Очистить",
-            onPressed: _clear,
-          ),
-          IconButton(
             icon: const Icon(Icons.check),
-            tooltip: "Сохранить маску",
             onPressed: _saveMask,
           ),
         ],
       ),
       body: Center(
-        child: InteractiveViewer(
-          maxScale: 5,
-          minScale: 1,
-          child: AspectRatio(
-            aspectRatio: 3 / 4,
-            child: Stack(
-              children: [
-                Positioned.fill(child: original),
+        child: RepaintBoundary(
+          key: _paintKey,
+          child: Stack(
+            children: [
+              Image.memory(widget.imageBytes), // <<< ИСХОДНОЕ ФОТО
+              Positioned.fill(
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    final box = _paintKey.currentContext!.findRenderObject() as RenderBox;
+                    final localPosition = box.globalToLocal(details.globalPosition);
 
-                // Рисуем поверх
-                Positioned.fill(
-                  child: RepaintBoundary(
-                    key: _canvasKey,
-                    child: CustomPaint(
-                      painter: _MaskPainter(points: _points),
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onPanUpdate: (details) {
-                          setState(() {
-                            final renderBox = _canvasKey.currentContext!
-                                .findRenderObject() as RenderBox;
-                            final localPos = renderBox
-                                .globalToLocal(details.globalPosition);
-                            _points.add(localPos);
-                          });
-                        },
-                        onPanEnd: (_) {
-                          setState(() => _points.add(null));
-                        },
-                      ),
-                    ),
+                    setState(() {
+                      points.add(localPosition);
+                    });
+                  },
+                  onPanEnd: (_) {
+                    points.add(null); // разрыв линии
+                  },
+                  child: CustomPaint(
+                    painter: MaskPainter(points),
+                    size: Size.infinite,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  Future<void> _saveMask() async {
+    try {
+      final boundary =
+          _paintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+
+      final image = await boundary.toImage(pixelRatio: 1.0);
+
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+      if (byteData == null) {
+        throw Exception("Ошибка конвертации изображения");
+      }
+
+      final pngBytes = byteData.buffer.asUint8List();
+
+      Navigator.pop(context, pngBytes); // вернуть mask PNG
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Ошибка: $e")),
+      );
+    }
+  }
 }
 
-class _MaskPainter extends CustomPainter {
+class MaskPainter extends CustomPainter {
   final List<Offset?> points;
 
-  _MaskPainter({required this.points});
+  MaskPainter(this.points);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 12
-      ..strokeCap = StrokeCap.round;
+      ..color = const Color(0xFF00FF00) // <<< КАК У ИИ
+      ..strokeWidth = 3 // <<< КАК У ИИ
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
 
     for (int i = 0; i < points.length - 1; i++) {
-      final p1 = points[i];
-      final p2 = points[i + 1];
-      if (p1 != null && p2 != null) {
-        canvas.drawLine(p1, p2, paint);
+      if (points[i] != null && points[i + 1] != null) {
+        canvas.drawLine(points[i]!, points[i + 1]!, paint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(_MaskPainter oldDelegate) => true;
+  bool shouldRepaint(MaskPainter oldDelegate) => true;
 }

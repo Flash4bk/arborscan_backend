@@ -62,8 +62,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
       context,
       MaterialPageRoute(
         builder: (_) => MaskDrawingPage(
-          originalImageBytes: originalBytes,
-        ),
+        imageBytes: originalBytes,
+      ),
       ),
     );
 

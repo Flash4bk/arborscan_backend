@@ -472,6 +472,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
+        "original_image_base64": base64.b64encode(image_bytes).decode("ascii"),
     }
 
     try:
