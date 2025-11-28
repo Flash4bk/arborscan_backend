@@ -31,7 +31,7 @@ class AnalysisResult {
   final String imageBase64;
   final DateTime timestamp;
 
-  // >>> Новое поле: analysisId <<<
+  // analysis ID
   final String analysisId;
 
   AnalysisResult({
@@ -265,7 +265,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final double? riskIndex = (risk['index'] as num?)?.toDouble();
       final String? riskCategory = risk['category'] as String?;
 
-      // >>> Сохраняем analysis_id <<<
       final analysisId = data['analysis_id'] as String? ?? '';
 
       final historyItem = AnalysisResult(
@@ -537,7 +536,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Заголовок + риск
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -652,7 +650,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
       ),
     );
   }
-
   Future<void> _sendFeedbackToServer(
     Map<String, dynamic> feedback,
     String analysisId,
@@ -665,7 +662,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       "params_ok": feedback["params_ok"],
       "species_ok": feedback["species_ok"],
       "correct_species": feedback["correct_species"],
-      "user_mask_base64": null, // маска появится на шаге 3.2
+      "user_mask_base64": null, // будет добавлено позже на шаге 3.2
     };
 
     try {
@@ -685,8 +682,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text("Ошибка отправки фидбека: ${resp.statusCode.toString()}"),
+            content: Text(
+                "Ошибка отправки фидбека: ${resp.statusCode.toString()}"),
           ),
         );
       }
@@ -702,23 +699,22 @@ class _ArborScanPageState extends State<ArborScanPage> {
     if (_result == null) return;
 
     final data = _result!;
-    final annotatedB64 = data['annotated_image_base64'] as String?;
     final analysisId = data['analysis_id']?.toString();
+    final annotatedB64 = data['annotated_image_base64'] as String?;
 
-if (analysisId == null || analysisId.isEmpty) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text("Сервер не прислал analysis_id")),
-  );
-  return;
-}
+    if (analysisId == null || analysisId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Сервер не прислал analysis_id")),
+      );
+      return;
+    }
 
-if (_annotatedImageBytes == null) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text("Нет аннотированного изображения.")),
-  );
-  return;
-}
-
+    if (_annotatedImageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Нет аннотированного изображения.")),
+      );
+      return;
+    }
 
     final feedback = await Navigator.push<Map<String, dynamic>?>(
       context,
@@ -729,7 +725,7 @@ if (_annotatedImageBytes == null) {
           heightM: (data['height_m'] as num?)?.toDouble(),
           crownWidthM: (data['crown_width_m'] as num?)?.toDouble(),
           trunkDiameterM: (data['trunk_diameter_m'] as num?)?.toDouble(),
-          annotatedImageBase64: annotatedB64,
+          annotatedImageBase64: annotatedB64 ?? "",
         ),
       ),
     );
@@ -799,23 +795,29 @@ if (_annotatedImageBytes == null) {
                   _buildResultCard(),
                   const SizedBox(height: 12),
 
-                  // >>> Новая кнопка подтверждения анализа <<<
-                  if (_annotatedImageBytes != null && _result?['analysis_id'] != null)
-                  SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _openFeedback,
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Подтвердить анализ'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
+                  // >>> КНОПКА ПОДТВЕРЖДЕНИЯ АНАЛИЗА <<<
+                  if (_annotatedImageBytes != null &&
+                      _result != null &&
+                      _result?['analysis_id'] != null)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _openFeedback,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Подтвердить анализ'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
 
+                  if (_annotatedImageBytes != null &&
+                      _result != null &&
+                      _result?['analysis_id'] != null)
+                    const SizedBox(height: 16),
 
                   // Кнопки выбора изображения
                   Row(
