@@ -717,18 +717,20 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
 
     final feedback = await Navigator.push<Map<String, dynamic>?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FeedbackPage(
-          analysisId: analysisId,
-          species: data['species'] as String? ?? 'Неизвестно',
-          heightM: (data['height_m'] as num?)?.toDouble(),
-          crownWidthM: (data['crown_width_m'] as num?)?.toDouble(),
-          trunkDiameterM: (data['trunk_diameter_m'] as num?)?.toDouble(),
-          annotatedImageBase64: annotatedB64 ?? "",
-        ),
-      ),
-    );
+  context,
+  MaterialPageRoute(
+    builder: (_) => FeedbackPage(
+      analysisId: analysisId,
+      originalImageBase64: data['original_image_base64'] ??
+          (base64Encode(_imageFile!.readAsBytesSync())),
+      species: data['species'] ?? 'Неизвестно',
+      heightM: (data['height_m'] as num?)?.toDouble(),
+      crownWidthM: (data['crown_width_m'] as num?)?.toDouble(),
+      trunkDiameterM: (data['trunk_diameter_m'] as num?)?.toDouble(),
+    ),
+  ),
+);
+
 
     if (feedback != null) {
       await _sendFeedbackToServer(feedback, analysisId);
