@@ -32,10 +32,23 @@ class _FeedbackPageState extends State<FeedbackPage> {
   String _selectedSpecies = "";
   final TextEditingController _customSpeciesController = TextEditingController();
 
+  // --- Контроллеры параметров ---
+  final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _crownController = TextEditingController();
+  final TextEditingController _trunkController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _selectedSpecies = widget.species;
+
+    // Заполняем контроллеры исходными значениями
+    _heightController.text =
+        widget.heightM != null ? widget.heightM!.toStringAsFixed(2) : "";
+    _crownController.text =
+        widget.crownWidthM != null ? widget.crownWidthM!.toStringAsFixed(2) : "";
+    _trunkController.text =
+        widget.trunkDiameterM != null ? widget.trunkDiameterM!.toStringAsFixed(2) : "";
   }
 
   @override
@@ -76,14 +89,14 @@ class _FeedbackPageState extends State<FeedbackPage> {
             (v) => setState(() => _paramsOk = v),
           ),
 
+          if (!_paramsOk) _buildParamsCorrection(),
+
           // --- SPECIES OK ---
           _buildSwitch(
             "Вид определён верно",
             _speciesOk,
             (v) => setState(() => _speciesOk = v),
           ),
-
-          const SizedBox(height: 10),
 
           if (!_speciesOk) _buildSpeciesSelector(),
 
@@ -96,7 +109,15 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 "stick_ok": _stickOk,
                 "params_ok": _paramsOk,
                 "species_ok": _speciesOk,
-                "correct_species": _speciesOk ? null : _selectedSpecies,
+                "correct_species":
+                    _speciesOk ? null : _selectedSpecies.trim(),
+                "correct_height":
+                    _paramsOk ? null : double.tryParse(_heightController.text),
+                "correct_crown":
+                    _paramsOk ? null : double.tryParse(_crownController.text),
+                "correct_trunk":
+                    _paramsOk ? null : double.tryParse(_trunkController.text),
+                "user_mask_base64": null, // шаг 3.2.2
               });
             },
             child: const Padding(
@@ -120,47 +141,98 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
 
-  Widget _buildSpeciesSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Выберите правильный вид:",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-          value: _selectedSpecies,
-          items: const [
-            DropdownMenuItem(value: "Береза", child: Text("Берёза")),
-            DropdownMenuItem(value: "Дуб", child: Text("Дуб")),
-            DropdownMenuItem(value: "Ель", child: Text("Ель")),
-            DropdownMenuItem(value: "Сосна", child: Text("Сосна")),
-            DropdownMenuItem(value: "Тополь", child: Text("Тополь")),
-            DropdownMenuItem(value: "Другое", child: Text("Другое")),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _selectedSpecies = value ?? "Другое";
-            });
-          },
-        ),
-        const SizedBox(height: 10),
-        if (_selectedSpecies == "Другое")
-          TextField(
-            controller: _customSpeciesController,
-            decoration: const InputDecoration(
-              labelText: "Введите вид дерева",
-              border: OutlineInputBorder(),
+  /// =============================
+  /// Блок исправления параметров
+  /// =============================
+  Widget _buildParamsCorrection() {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Исправьте параметры:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
-            onChanged: (text) {
-              _selectedSpecies = text;
-            },
-          ),
-      ],
+            const SizedBox(height: 12),
+
+            _buildNumberField("Высота (м)", _heightController),
+
+            const SizedBox(height: 12),
+            _buildNumberField("Ширина кроны (м)", _crownController),
+
+            const SizedBox(height: 12),
+            _buildNumberField("Диаметр ствола (м)", _trunkController),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberField(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      keyboardType:
+          const TextInputType.numberWithOptions(decimal: true, signed: false),
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+    );
+  }
+
+  /// =============================
+  /// Блок исправления вида
+  /// =============================
+  Widget _buildSpeciesSelector() {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Выберите правильный вид:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+              ),
+              value: _selectedSpecies,
+              items: const [
+                DropdownMenuItem(value: "Береза", child: Text("Берёза")),
+                DropdownMenuItem(value: "Дуб", child: Text("Дуб")),
+                DropdownMenuItem(value: "Ель", child: Text("Ель")),
+                DropdownMenuItem(value: "Сосна", child: Text("Сосна")),
+                DropdownMenuItem(value: "Тополь", child: Text("Тополь")),
+                DropdownMenuItem(value: "Другое", child: Text("Другое")),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedSpecies = value ?? "Другое";
+                });
+              },
+            ),
+            const SizedBox(height: 10),
+            if (_selectedSpecies == "Другое")
+              TextField(
+                controller: _customSpeciesController,
+                decoration: const InputDecoration(
+                  labelText: "Введите вид дерева",
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (text) {
+                  _selectedSpecies = text;
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
