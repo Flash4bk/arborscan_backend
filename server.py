@@ -1,7 +1,8 @@
-
 import os
 import io
 import base64
+import json
+import shutil
 import cv2
 import numpy as np
 import requests
@@ -9,14 +10,28 @@ from ultralytics import YOLO
 from PIL import Image, ImageDraw, ImageFont, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from uuid import uuid4
+from pathlib import Path
+from pydantic import BaseModel
+from supabase import create_client, Client
 
 
 # -------------------------------------
 # CONFIG
 # -------------------------------------
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    print("[!] Warning: Supabase credentials not set. /feedback endpoint will not work.")
+
+# Supabase storage bucket names
+SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
+SUPABASE_BUCKET_PRED = "arborscan-predictions"
+SUPABASE_BUCKET_META = "arborscan-meta"
 
 
 WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
@@ -67,6 +82,36 @@ transformer = transforms.Compose([
 ])
 
 print("[*] Models loaded.")
+
+# =============================================
+# SUPABASE CLIENT
+# =============================================
+
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        print("[*] Supabase client initialized.")
+    except Exception as e:
+        print(f"[!] Failed to initialize Supabase client: {e}")
+else:
+    print("[!] Supabase URL or SERVICE_KEY is not set; feedback storage disabled.\n")
+
+# =============================================
+# SUPABASE UTILS
+# =============================================
+
+def supabase_upload_bytes(bucket: str, path: str, data: bytes):
+    """Upload raw bytes to Supabase Storage with upsert."""
+    if supabase is None:
+        raise RuntimeError("Supabase client is not initialized")
+    res = supabase.storage.from_(bucket).upload(path, data, {"upsert": True})
+    if isinstance(res, dict) and res.get("error"):
+        raise RuntimeError(f"Supabase upload error: {res['error']}")
+
+def supabase_upload_json(bucket: str, path: str, obj: dict):
+    data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
+    supabase_upload_bytes(bucket, path, data)
 
 
 # =============================================
@@ -202,7 +247,7 @@ def get_soil(lat, lon):
 
 
 # =============================================
-# Risk Calculation (based on PDFs you uploaded)
+# Risk Calculation
 # =============================================
 
 SPECIES_BASE = {
@@ -309,6 +354,18 @@ def draw_mask(img_bgr, mask):
 # =============================================
 # MAIN APP
 # =============================================
+
+
+class FeedbackRequest(BaseModel):
+    analysis_id: str
+    use_for_training: bool
+    tree_ok: bool
+    stick_ok: bool
+    params_ok: bool
+    species_ok: bool
+    correct_species: str | None = None
+    user_mask_base64: str | None = None
+
 
 app = FastAPI(title="ArborScan API v2.0")
 
@@ -426,11 +483,85 @@ async def analyze_tree(file: UploadFile = File(...)):
         )
 
     # ---------------------------------------------
-    # RESPONSE
+    # TEMP CACHE FOR FEEDBACK & RESPONSE
     # ---------------------------------------------
 
     analysis_id = str(uuid4())
 
+    # Подготовим метаданные для обучения
+    meta = {
+        "analysis_id": analysis_id,
+        "species": species_name,
+        "height_m": height_m,
+        "crown_width_m": crown_m,
+        "trunk_diameter_m": trunk_m,
+        "scale_px_to_m": scale,
+        "gps": gps,
+        "address": address,
+        "weather": weather,
+        "soil": soil,
+        "risk": risk,
+    }
+
+    # Пишем временные файлы в /tmp/<analysis_id>, чтобы потом забрать их в /feedback
+    try:
+        tmp_dir = Path("/tmp") / analysis_id
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+
+        # Оригинальное изображение
+        with open(tmp_dir / "input.jpg", "wb") as f:
+            f.write(image_bytes)
+
+        # Предсказание дерева (bbox + conf + класс)
+        tree_box_xyxy = tree_res.boxes.xyxy[idx].cpu().numpy().tolist()
+        tree_conf = None
+        tree_cls_id = None
+        try:
+            tree_conf = float(tree_res.boxes.conf[idx].cpu().item())
+        except Exception:
+            pass
+        try:
+            tree_cls_id = int(tree_res.boxes.cls[idx].cpu().item())
+        except Exception:
+            pass
+
+        tree_pred = {
+            "box_xyxy": tree_box_xyxy,
+            "confidence": tree_conf,
+            "class_id": tree_cls_id,
+        }
+        with open(tmp_dir / "tree_pred.json", "w", encoding="utf-8") as f:
+            json.dump(tree_pred, f, ensure_ascii=False, indent=2)
+
+        # Предсказание палки
+        stick_pred = {
+            "box_xyxy": None,
+            "scale_px_to_m": scale,
+        }
+        try:
+            if len(stick_res.boxes) > 0:
+                best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
+                x1b, y1b, x2b, y2b = best.xyxy[0].cpu().numpy().astype(int)
+                stick_pred["box_xyxy"] = [int(x1b), int(y1b), int(x2b), int(y2b)]
+                try:
+                    stick_pred["confidence"] = float(best.conf[0].cpu().item())
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        with open(tmp_dir / "stick_pred.json", "w", encoding="utf-8") as f:
+            json.dump(stick_pred, f, ensure_ascii=False, indent=2)
+
+        # Метаданные
+        with open(tmp_dir / "meta.json", "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+
+    except Exception as e:
+        # Не падаем, если кэш не записался
+        print(f"[!] Failed to cache analysis {analysis_id} in /tmp: {e}")
+
+    # Формируем ответ клиенту
     response = {
         "analysis_id": analysis_id,
         "species": species_name,
@@ -453,3 +584,128 @@ async def analyze_tree(file: UploadFile = File(...)):
         response["risk"] = risk
 
     return JSONResponse(response)
+
+
+@app.post("/feedback")
+def send_feedback(feedback: FeedbackRequest):
+    """Получаем подтверждение/исправление от пользователя и,
+    если всё ок, сохраняем пример в Supabase для будущего обучения моделей.
+    """
+    if supabase is None:
+        raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
+
+    tmp_dir = Path("/tmp") / feedback.analysis_id
+    if not tmp_dir.exists():
+        raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
+
+    # Если пользователь не хочет использовать этот пример для обучения — просто выходим
+    if not feedback.use_for_training:
+        try:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
+        return {"status": "ignored", "reason": "user_disabled_training"}
+
+    meta_path = tmp_dir / "meta.json"
+    if not meta_path.exists():
+        raise HTTPException(status_code=500, detail="meta.json не найден для указанного analysis_id")
+
+    # Загружаем исходные метаданные
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
+
+    # Обновляем мета с учётом фидбека
+    meta["tree_ok"] = feedback.tree_ok
+    meta["stick_ok"] = feedback.stick_ok
+    meta["params_ok"] = feedback.params_ok
+    meta["species_ok"] = feedback.species_ok
+    meta["correct_species"] = feedback.correct_species
+
+    # Если вид был исправлен — переписываем его в метаданных
+    if (not feedback.species_ok) and feedback.correct_species:
+        meta["species"] = feedback.correct_species
+
+    # Простейший trust_score
+    trust = 0.0
+    if feedback.tree_ok:
+        trust += 0.3
+    if feedback.stick_ok:
+        trust += 0.2
+    if feedback.params_ok:
+        trust += 0.2
+    if feedback.species_ok or feedback.correct_species:
+        trust += 0.3
+    meta["trust_score"] = trust
+
+    analysis_id = feedback.analysis_id
+
+    # -----------------------------
+    # Загружаем файлы в Supabase
+    # -----------------------------
+    try:
+        # input.jpg
+        input_path = tmp_dir / "input.jpg"
+        if input_path.exists():
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{analysis_id}/input.jpg",
+                input_path.read_bytes(),
+            )
+
+        # user_mask (если есть)
+        meta["has_user_mask"] = False
+        if feedback.user_mask_base64:
+            try:
+                mask_bytes = base64.b64decode(feedback.user_mask_base64)
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_INPUTS,
+                    f"{analysis_id}/user_mask.png",
+                    mask_bytes,
+                )
+                meta["has_user_mask"] = True
+            except Exception as e:
+                print(f"[!] Failed to decode/upload user mask for {analysis_id}: {e}")
+
+        # tree_pred.json
+        tree_pred_path = tmp_dir / "tree_pred.json"
+        if tree_pred_path.exists():
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_PRED,
+                f"{analysis_id}/tree_pred.json",
+                tree_pred_path.read_bytes(),
+            )
+
+        # stick_pred.json
+        stick_pred_path = tmp_dir / "stick_pred.json"
+        if stick_pred_path.exists():
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_PRED,
+                f"{analysis_id}/stick_pred.json",
+                stick_pred_path.read_bytes(),
+            )
+
+        # meta.json (уже обновлённый)
+        supabase_upload_json(
+            SUPABASE_BUCKET_META,
+            f"{analysis_id}.json",
+            meta,
+        )
+
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
+
+    # После успешной загрузки можно подчистить временную папку
+    try:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    except Exception as e:
+        print(f"[!] Failed to remove tmp dir for {analysis_id}: {e}")
+
+    return {
+        "status": "ok",
+        "analysis_id": analysis_id,
+        "trust_score": trust,
+    }
