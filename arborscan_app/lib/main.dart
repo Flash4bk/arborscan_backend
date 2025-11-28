@@ -703,21 +703,22 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
     final data = _result!;
     final annotatedB64 = data['annotated_image_base64'] as String?;
-    final analysisId = data['analysis_id'] as String? ?? '';
+    final analysisId = data['analysis_id']?.toString();
 
-    if (annotatedB64 == null || annotatedB64.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Нет аннотированного изображения.")),
-      );
-      return;
-    }
+if (analysisId == null || analysisId.isEmpty) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Сервер не прислал analysis_id")),
+  );
+  return;
+}
 
-    if (analysisId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("analysis_id не найден.")),
-      );
-      return;
-    }
+if (_annotatedImageBytes == null) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Нет аннотированного изображения.")),
+  );
+  return;
+}
+
 
     final feedback = await Navigator.push<Map<String, dynamic>?>(
       context,
@@ -799,22 +800,22 @@ class _ArborScanPageState extends State<ArborScanPage> {
                   const SizedBox(height: 12),
 
                   // >>> Новая кнопка подтверждения анализа <<<
-                  if (_result != null)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _openFeedback,
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('Подтвердить анализ'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
+                  if (_annotatedImageBytes != null && _result?['analysis_id'] != null)
+                  SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _openFeedback,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Подтвердить анализ'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
-                  if (_result != null) const SizedBox(height: 16),
+                  ),
+                ),
+
 
                   // Кнопки выбора изображения
                   Row(
