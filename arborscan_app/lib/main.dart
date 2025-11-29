@@ -31,7 +31,7 @@ class AnalysisResult {
   final String imageBase64;
   final DateTime timestamp;
 
-  // analysis ID
+  // ID анализа, чтобы связать с /feedback
   final String analysisId;
 
   AnalysisResult({
@@ -302,6 +302,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       }
     }
   }
+
   String _capitalise(String s) {
     if (s.isEmpty) return s;
     return s[0].toUpperCase() + s.substring(1);
@@ -536,6 +537,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Заголовок + риск
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -650,19 +652,22 @@ class _ArborScanPageState extends State<ArborScanPage> {
       ),
     );
   }
+
   Future<void> _sendFeedbackToServer(
     Map<String, dynamic> feedback,
     String analysisId,
   ) async {
+    // Аккуратно собираем тело, чтобы не сломаться, даже если каких-то ключей нет
     final body = {
       "analysis_id": analysisId,
-      "use_for_training": true,
-      "tree_ok": feedback["tree_ok"],
-      "stick_ok": feedback["stick_ok"],
-      "params_ok": feedback["params_ok"],
-      "species_ok": feedback["species_ok"],
+      "use_for_training": feedback["use_for_training"] ?? true,
+      "tree_ok": feedback["tree_ok"] ?? true,
+      "stick_ok": feedback["stick_ok"] ?? true,
+      "params_ok": feedback["params_ok"] ?? true,
+      "species_ok": feedback["species_ok"] ?? true,
       "correct_species": feedback["correct_species"],
-      "user_mask_base64": null, // будет добавлено позже на шаге 3.2
+      // ВАЖНО: теперь берём маску из feedback, а не null
+      "user_mask_base64": feedback["user_mask_base64"],
     };
 
     try {
@@ -683,7 +688,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                "Ошибка отправки фидбека: ${resp.statusCode.toString()}"),
+              "Ошибка отправки фидбека: ${resp.statusCode.toString()}",
+            ),
           ),
         );
       }
@@ -696,44 +702,44 @@ class _ArborScanPageState extends State<ArborScanPage> {
   }
 
   Future<void> _openFeedback() async {
-  if (_result == null) return;
+    if (_result == null) return;
 
-  final analysisId = _result!['analysis_id'] as String?;
-  if (analysisId == null || analysisId.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("analysis_id отсутствует")),
-    );
-    return;
-  }
+    final analysisId = _result!['analysis_id'] as String?;
+    if (analysisId == null || analysisId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("analysis_id отсутствует")),
+      );
+      return;
+    }
 
-  final originalB64 = _result!['original_image_base64'] as String? ?? "";
-  if (originalB64.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Оригинальное изображение недоступно")),
-    );
-    return;
-  }
+    // Берём ОРИГИНАЛЬНОЕ фото для рисования маски
+    final originalB64 = _result!['original_image_base64'] as String? ?? "";
+    if (originalB64.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Оригинальное изображение недоступно")),
+      );
+      return;
+    }
 
-  final feedback = await Navigator.push<Map<String, dynamic>?>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => FeedbackPage(
-        analysisId: analysisId,
-        originalImageBase64: originalB64,
-        species: _result!['species'] ?? 'Неизвестно',
-        heightM: (_result!['height_m'] as num?)?.toDouble(),
-        crownWidthM: (_result!['crown_width_m'] as num?)?.toDouble(),
-        trunkDiameterM: (_result!['trunk_diameter_m'] as num?)?.toDouble(),
-        scalePxToM: (_result!['scale_px_to_m'] as num?)?.toDouble(),
+    final feedback = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FeedbackPage(
+          analysisId: analysisId,
+          originalImageBase64: originalB64,
+          species: _result!['species'] ?? 'Неизвестно',
+          heightM: (_result!['height_m'] as num?)?.toDouble(),
+          crownWidthM: (_result!['crown_width_m'] as num?)?.toDouble(),
+          trunkDiameterM: (_result!['trunk_diameter_m'] as num?)?.toDouble(),
+          scalePxToM: (_result!['scale_px_to_m'] as num?)?.toDouble(),
+        ),
       ),
-    ),
-  );
+    );
 
-  if (feedback != null) {
-    await _sendFeedbackToServer(feedback, analysisId);
+    if (feedback != null) {
+      await _sendFeedbackToServer(feedback, analysisId);
+    }
   }
-}
-
 
   Future<void> _openHistory() async {
     final cleared = await Navigator.of(context).push<bool>(
@@ -787,15 +793,13 @@ class _ArborScanPageState extends State<ArborScanPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Фото
                   _buildImageCard(),
                   const SizedBox(height: 16),
 
-                  // Результат
                   _buildResultCard(),
                   const SizedBox(height: 12),
 
-                  // >>> КНОПКА ПОДТВЕРЖДЕНИЯ АНАЛИЗА <<<
+                  // КНОПКА ПОДТВЕРЖДЕНИЯ АНАЛИЗА
                   if (_annotatedImageBytes != null &&
                       _result != null &&
                       _result?['analysis_id'] != null)
@@ -872,13 +876,11 @@ class _ArborScanPageState extends State<ArborScanPage> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Кнопка анализа
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _imageFile == null || _isLoading
-                          ? null
-                          : _analyze,
+                      onPressed:
+                          _imageFile == null || _isLoading ? null : _analyze,
                       icon: const Icon(Icons.play_arrow_rounded),
                       label: const Text(
                         'Анализировать',
@@ -909,7 +911,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
             ),
           ),
 
-          // Лоадер поверх
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.2),

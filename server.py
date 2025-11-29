@@ -588,6 +588,12 @@ async def analyze_tree(file: UploadFile = File(...)):
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
     }
+    # добавляем оригинальное изображение
+    try:
+        response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
+    except:
+        response["original_image_base64"] = None
+
 
     if gps:
         response["gps"] = gps
