@@ -32,7 +32,7 @@ class AnalysisResult {
   final String imageBase64;
   final DateTime timestamp;
 
-  // ID анализа, чтобы связать с /feedback
+  // ID анализа
   final String analysisId;
 
   AnalysisResult({
@@ -179,8 +179,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
       _history
         ..clear()
         ..addAll(list.map((e) {
-          final json = jsonDecode(e) as Map<String, dynamic>;
-          return AnalysisResult.fromJson(json);
+          final jsonMap = jsonDecode(e) as Map<String, dynamic>;
+          return AnalysisResult.fromJson(jsonMap);
         }));
     });
   }
@@ -254,15 +254,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
         annotatedBytes = base64Decode(annotatedB64);
       }
 
-    Future<void> _openTrustedExamples() async {
-      await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const TrustedExamplesPage(),
-      ),
-      );
-      }
-
-
       final risk = (data['risk'] ?? {}) as Map<String, dynamic>;
       final gps = data['gps'] as Map<String, dynamic>?;
       final String? address = data['address'] as String?;
@@ -275,7 +266,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final double? riskIndex = (risk['index'] as num?)?.toDouble();
       final String? riskCategory = risk['category'] as String?;
 
-      final analysisId = data['analysis_id'] as String? ?? '';
+      final String analysisId = data['analysis_id'] as String? ?? '';
 
       final historyItem = AnalysisResult(
         species: data['species'] as String? ?? 'Неизвестно',
@@ -663,27 +654,21 @@ class _ArborScanPageState extends State<ArborScanPage> {
     );
   }
 
+  /// --------- ОТПРАВКА ФИДБЕКА НА СЕРВЕР ---------
   Future<void> _sendFeedbackToServer(
     Map<String, dynamic> feedback,
     String analysisId,
   ) async {
-    // Аккуратно собираем тело, чтобы не сломаться, даже если каких-то ключей нет
     final body = {
-    "analysis_id": analysisId,
-    "use_for_training": feedback["use_for_training"] ?? true,
-    "tree_ok": feedback["tree_ok"],
-    "stick_ok": feedback["stick_ok"],
-    "params_ok": feedback["params_ok"],
-    "species_ok": feedback["species_ok"],
-    "correct_species": feedback["correct_species"],
-    "user_mask_base64": feedback["user_mask_base64"],
-    // новые поля с откорректированными параметрами
-    "height_m": feedback["height_m"],
-    "crown_width_m": feedback["crown_width_m"],
-    "trunk_diameter_m": feedback["trunk_diameter_m"],
-    "scale_px_to_m": feedback["scale_px_to_m"],
-  };
-
+      "analysis_id": analysisId,
+      "use_for_training": feedback["use_for_training"] ?? true,
+      "tree_ok": feedback["tree_ok"],
+      "stick_ok": feedback["stick_ok"],
+      "params_ok": feedback["params_ok"],
+      "species_ok": feedback["species_ok"],
+      "correct_species": feedback["correct_species"],
+      "user_mask_base64": feedback["user_mask_base64"],
+    };
 
     try {
       final uri = Uri.parse(_feedbackUrl);
@@ -703,8 +688,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "Ошибка отправки фидбека: ${resp.statusCode.toString()}",
-            ),
+                "Ошибка отправки фидбека: ${resp.statusCode.toString()}"),
           ),
         );
       }
@@ -716,10 +700,12 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
+  /// --------- ОТКРЫТИЕ ЭКРАНА ФИДБЕКА ---------
   Future<void> _openFeedback() async {
     if (_result == null) return;
 
-    final analysisId = _result!['analysis_id'] as String?;
+    final data = _result!;
+    final analysisId = data['analysis_id'] as String?;
     if (analysisId == null || analysisId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("analysis_id отсутствует")),
@@ -727,8 +713,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       return;
     }
 
-    // Берём ОРИГИНАЛЬНОЕ фото для рисования маски
-    final originalB64 = _result!['original_image_base64'] as String? ?? "";
+    final originalB64 = data['original_image_base64'] as String? ?? "";
     if (originalB64.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Оригинальное изображение недоступно")),
@@ -736,17 +721,20 @@ class _ArborScanPageState extends State<ArborScanPage> {
       return;
     }
 
+    final annotatedB64 = data['annotated_image_base64'] as String?;
+
     final feedback = await Navigator.push<Map<String, dynamic>?>(
       context,
       MaterialPageRoute(
         builder: (_) => FeedbackPage(
           analysisId: analysisId,
           originalImageBase64: originalB64,
-          species: _result!['species'] ?? 'Неизвестно',
-          heightM: (_result!['height_m'] as num?)?.toDouble(),
-          crownWidthM: (_result!['crown_width_m'] as num?)?.toDouble(),
-          trunkDiameterM: (_result!['trunk_diameter_m'] as num?)?.toDouble(),
-          scalePxToM: (_result!['scale_px_to_m'] as num?)?.toDouble(),
+          annotatedImageBase64: annotatedB64,
+          species: data['species'] ?? 'Неизвестно',
+          heightM: (data['height_m'] as num?)?.toDouble(),
+          crownWidthM: (data['crown_width_m'] as num?)?.toDouble(),
+          trunkDiameterM: (data['trunk_diameter_m'] as num?)?.toDouble(),
+          scalePxToM: (data['scale_px_to_m'] as num?)?.toDouble(),
         ),
       ),
     );
@@ -770,6 +758,14 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
+  Future<void> _openTrustedExamples() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const TrustedExamplesPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -777,20 +773,19 @@ class _ArborScanPageState extends State<ArborScanPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ArborScan'),
-          actions: [
-    IconButton(
-      icon: const Icon(Icons.storage_outlined),
-      tooltip: 'Доверенные примеры',
-      onPressed: _openTrustedExamples,
-    ),
-    IconButton(
-      icon: const Icon(Icons.history),
-      tooltip: 'История',
-      onPressed: _history.isEmpty ? null : _openHistory,
-    ),
-    ],
-  ),
-
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.storage_outlined),
+            tooltip: 'Доверенные примеры',
+            onPressed: _openTrustedExamples,
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'История',
+            onPressed: _history.isEmpty ? null : _openHistory,
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           SafeArea(

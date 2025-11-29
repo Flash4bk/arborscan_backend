@@ -1,24 +1,25 @@
+import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-
-import 'mask_drawing_page.dart';
+import 'package:flutter/rendering.dart';
 
 class StickPage extends StatefulWidget {
   final Uint8List imageBytes;
 
-  final double? heightM;
-  final double? crownWidthM;
-  final double? trunkDiameterM;
-  final double? scalePxToM;
+  final double? initialHeightM;
+  final double? initialCrownWidthM;
+  final double? initialTrunkDiameterM;
+  final double? initialScalePxToM;
 
   const StickPage({
     super.key,
     required this.imageBytes,
-    required this.heightM,
-    required this.crownWidthM,
-    required this.trunkDiameterM,
-    required this.scalePxToM,
+    this.initialHeightM,
+    this.initialCrownWidthM,
+    this.initialTrunkDiameterM,
+    this.initialScalePxToM,
   });
 
   @override
@@ -26,27 +27,33 @@ class StickPage extends StatefulWidget {
 }
 
 class _StickPageState extends State<StickPage> {
+  final GlobalKey _paintKey = GlobalKey();
+
+  Offset? _start;
+  Offset? _end;
+
   late TextEditingController _heightCtrl;
   late TextEditingController _crownCtrl;
   late TextEditingController _trunkCtrl;
   late TextEditingController _scaleCtrl;
 
-  String? _stickMaskBase64; // если захочешь отдельную маску палки
+  bool _stickOk = true;
+  bool _paramsOk = true;
 
   @override
   void initState() {
     super.initState();
     _heightCtrl = TextEditingController(
-      text: widget.heightM?.toStringAsFixed(2) ?? "",
+      text: widget.initialHeightM?.toStringAsFixed(2),
     );
     _crownCtrl = TextEditingController(
-      text: widget.crownWidthM?.toStringAsFixed(2) ?? "",
+      text: widget.initialCrownWidthM?.toStringAsFixed(2),
     );
     _trunkCtrl = TextEditingController(
-      text: widget.trunkDiameterM?.toStringAsFixed(2) ?? "",
+      text: widget.initialTrunkDiameterM?.toStringAsFixed(2),
     );
     _scaleCtrl = TextEditingController(
-      text: widget.scalePxToM?.toStringAsFixed(4) ?? "",
+      text: widget.initialScalePxToM?.toStringAsFixed(4),
     );
   }
 
@@ -59,48 +66,20 @@ class _StickPageState extends State<StickPage> {
     super.dispose();
   }
 
-  Future<void> _openStickMaskDrawing() async {
-    final bytes = await Navigator.push<Uint8List?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MaskDrawingPage(
-          imageBytes: widget.imageBytes,
-          title: "Обведите палку",
-          hint: "Аккуратно обведите мерную палку.\n"
-              "Эта маска поможет точнее определять масштаб.",
-        ),
-      ),
-    );
-
-    if (bytes != null) {
-      setState(() {
-        _stickMaskBase64 = base64Encode(bytes);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Маска палки сохранена.")),
-      );
-    }
+  double? _parseDouble(String text) {
+    if (text.trim().isEmpty) return null;
+    return double.tryParse(text.replaceAll(',', '.'));
   }
 
   void _onSave() {
-    double? parseD(String s) {
-      s = s.replaceAll(",", ".").trim();
-      if (s.isEmpty) return null;
-      return double.tryParse(s);
-    }
-
-    final height = parseD(_heightCtrl.text);
-    final crown = parseD(_crownCtrl.text);
-    final trunk = parseD(_trunkCtrl.text);
-    final scale = parseD(_scaleCtrl.text);
-
-    Navigator.pop<Map<String, double?>>(context, {
-      "height_m": height,
-      "crown_width_m": crown,
-      "trunk_diameter_m": trunk,
-      "scale_px_to_m": scale,
-      // маску палки сейчас НИЖЕ не возвращаем в main,
-      // можно добавить через FeedbackPage при необходимости
+    Navigator.pop<Map<String, dynamic>>(context, {
+      "height_m": _parseDouble(_heightCtrl.text),
+      "crown_width_m": _parseDouble(_crownCtrl.text),
+      "trunk_diameter_m": _parseDouble(_trunkCtrl.text),
+      "scale_px_to_m": _parseDouble(_scaleCtrl.text),
+      "stick_ok": _stickOk,
+      "params_ok": _paramsOk,
+      // при необходимости можно добавить mask палки, как на дереве
     });
   }
 
@@ -111,59 +90,106 @@ class _StickPageState extends State<StickPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Коррекция палки и параметров"),
+        actions: [
+          IconButton(
+            onPressed: _onSave,
+            icon: const Icon(Icons.check),
+          )
+        ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.all(16),
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Image.memory(
-              widget.imageBytes,
-              fit: BoxFit.cover,
+          RepaintBoundary(
+            key: _paintKey,
+            child: GestureDetector(
+              onPanStart: (details) {
+                setState(() {
+                  _start = details.localPosition;
+                  _end = details.localPosition;
+                });
+              },
+              onPanUpdate: (details) {
+                setState(() {
+                  _end = details.localPosition;
+                });
+              },
+              onPanEnd: (_) {
+                // линия зафиксирована
+              },
+              child: AspectRatio(
+                aspectRatio: 3 / 4,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.memory(
+                      widget.imageBytes,
+                      fit: BoxFit.cover,
+                    ),
+                    CustomPaint(
+                      painter: _StickPainter(start: _start, end: _end),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 16),
+
           Text(
             "Проверьте корректность параметров:",
             style: theme.textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 12),
-          _buildNumberField(
-            controller: _heightCtrl,
-            label: "Высота дерева, м",
-            helper: "Если измерения неверны — укажите правильную высоту.",
+          const SizedBox(height: 8),
+
+          Card(
+            child: SwitchListTile(
+              title: const Text("Палка определена правильно"),
+              value: _stickOk,
+              onChanged: (v) => setState(() => _stickOk = v),
+            ),
           ),
-          const SizedBox(height: 10),
-          _buildNumberField(
-            controller: _crownCtrl,
-            label: "Ширина кроны, м",
-            helper: "Максимальная ширина кроны.",
+          Card(
+            child: SwitchListTile(
+              title: const Text("Высота / крона / ствол рассчитаны верно"),
+              value: _paramsOk,
+              onChanged: (v) => setState(() => _paramsOk = v),
+            ),
           ),
-          const SizedBox(height: 10),
-          _buildNumberField(
-            controller: _trunkCtrl,
-            label: "Диаметр ствола, м",
-            helper: "Диаметр ствола на уровне груди.",
-          ),
-          const SizedBox(height: 10),
-          _buildNumberField(
-            controller: _scaleCtrl,
-            label: "Масштаб (1 px ≈ X м)",
-            helper: "При необходимости скорректируйте масштаб.",
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: _openStickMaskDrawing,
-            icon: const Icon(Icons.brush_outlined),
-            label: const Text("Нарисовать маску палки"),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
+
+          const SizedBox(height: 8),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _numberField(
+                    label: "Высота, м",
+                    controller: _heightCtrl,
+                  ),
+                  const SizedBox(height: 12),
+                  _numberField(
+                    label: "Крона, м",
+                    controller: _crownCtrl,
+                  ),
+                  const SizedBox(height: 12),
+                  _numberField(
+                    label: "Диаметр ствола, м",
+                    controller: _trunkCtrl,
+                  ),
+                  const SizedBox(height: 12),
+                  _numberField(
+                    label: "Масштаб (м за 1 пиксель)",
+                    controller: _scaleCtrl,
+                    hint: "например 0.0182",
+                  ),
+                ],
               ),
             ),
           ),
+
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -180,10 +206,10 @@ class _StickPageState extends State<StickPage> {
     );
   }
 
-  Widget _buildNumberField({
-    required TextEditingController controller,
+  Widget _numberField({
     required String label,
-    required String helper,
+    required TextEditingController controller,
+    String? hint,
   }) {
     return TextField(
       controller: controller,
@@ -191,11 +217,33 @@ class _StickPageState extends State<StickPage> {
           const TextInputType.numberWithOptions(decimal: true, signed: false),
       decoration: InputDecoration(
         labelText: label,
-        helperText: helper,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        hintText: hint,
+        border: const OutlineInputBorder(),
       ),
     );
   }
+}
+
+class _StickPainter extends CustomPainter {
+  final Offset? start;
+  final Offset? end;
+
+  _StickPainter({this.start, this.end});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (start == null || end == null) return;
+
+    final paint = Paint()
+      ..color = Colors.redAccent
+      ..strokeWidth = 5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(start!, end!, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StickPainter oldDelegate) =>
+      oldDelegate.start != start || oldDelegate.end != end;
 }
