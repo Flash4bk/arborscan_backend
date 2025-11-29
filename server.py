@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import requests
 from ultralytics import YOLO
-from PIL import Image, ImageDraw, ImageFont, ExifTags
+from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -32,7 +32,12 @@ SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
 
-# Старые настройки окружения
+# Таблица в Supabase Postgres для очереди доверенных примеров
+# (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
+SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
+SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
+
+# Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
 WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
@@ -79,7 +84,7 @@ transformer = transforms.Compose([
 print("[*] Models loaded.")
 
 # =============================================
-# SUPABASE UTILS (через HTTP requests)
+# SUPABASE UTILS (Storage + DB)
 # =============================================
 
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
@@ -104,6 +109,27 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
 
+
+def supabase_db_insert(table: str, row: dict):
+    """
+    Вставка записи в Supabase Postgres через REST (PostgREST).
+    Используется для очереди доверенных примеров.
+    """
+    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase DB is not configured")
+
+    url = f"{SUPABASE_DB_BASE}/{table}"
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    resp = requests.post(url, headers=headers, json=row, timeout=10)
+    if resp.status_code >= 400:
+        raise RuntimeError(
+            f"Supabase DB insert error {resp.status_code}: {resp.text}"
+        )
 
 # =============================================
 # EXIF → GPS
@@ -141,7 +167,7 @@ def extract_gps(image_bytes):
             lon = -lon
 
         return {"lat": lat, "lon": lon}
-    except:
+    except Exception:
         return None
 
 
@@ -161,7 +187,7 @@ def reverse_geocode(lat, lon):
         r.raise_for_status()
         data = r.json()
         return data.get("display_name")
-    except:
+    except Exception:
         return None
 
 
@@ -193,7 +219,7 @@ def get_weather(lat, lon):
             "pressure": main.get("pressure"),
             "humidity": main.get("humidity"),
         }
-    except:
+    except Exception:
         return None
 
 
@@ -222,7 +248,7 @@ def get_soil(lat, lon):
                 mean = first_depth[0].get("values", {}).get("mean")
                 result[name] = mean
         return result
-    except:
+    except Exception:
         return None
 
 
@@ -284,8 +310,12 @@ def compute_risk(species, height, crown, diameter, weather, soil):
     base = SPECIES_BASE.get(species, 0.7)
     expl.append(f"Порода ({species}) базовый риск: {base:.2f}")
 
+    if diameter and diameter > 0:
+        S = height / diameter
+    else:
+        S = 0.0
     s_score = slenderness_score(height, diameter)
-    expl.append(f"Коэфф. стройности H/D: {height/diameter if diameter else 0:.1f} → {s_score:.2f}")
+    expl.append(f"Коэфф. стройности H/D: {S:.1f} → {s_score:.2f}")
 
     w_score = wind_score(weather)
     expl.append(f"Ветровая нагрузка: {w_score:.2f}")
@@ -313,7 +343,7 @@ def compute_risk(species, height, crown, diameter, weather, soil):
 
 
 # =============================================
-# DRAW MASK ONLY
+# DRAW MASK ONLY (для аннотации)
 # =============================================
 
 def draw_mask(img_bgr, mask):
@@ -342,13 +372,14 @@ class FeedbackRequest(BaseModel):
     species_ok: bool
     correct_species: str | None = None
 
+    # новые поля для исправленных параметров и масштаба
     correct_height_m: float | None = None
     correct_crown_width_m: float | None = None
     correct_trunk_diameter_m: float | None = None
     correct_scale_px_to_m: float | None = None
 
+    # PNG маска, закодированная в base64
     user_mask_base64: str | None = None
-
 
 
 app = FastAPI(title="ArborScan API v2.0")
@@ -479,7 +510,6 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
-        "original_image_base64": base64.b64encode(image_bytes).decode("ascii"),
     }
 
     try:
@@ -490,7 +520,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         with open(tmp_dir / "input.jpg", "wb") as f:
             f.write(image_bytes)
 
-        # Аннотированное изображение (дополнительно, для обучения/контроля)
+        # Аннотированное изображение (для контроля/обучения)
         try:
             annotated_bytes = base64.b64decode(annotated_b64)
             with open(tmp_dir / "annotated.jpg", "wb") as f:
@@ -557,7 +587,6 @@ async def analyze_tree(file: UploadFile = File(...)):
         "trunk_diameter_m": trunk_m,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
-        "original_image_base64": base64.b64encode(image_bytes).decode("utf-8"),
     }
 
     if gps:
@@ -578,7 +607,8 @@ async def analyze_tree(file: UploadFile = File(...)):
 def send_feedback(feedback: FeedbackRequest):
     """
     Получаем подтверждение/исправление от пользователя и,
-    если всё ок, сохраняем пример в Supabase для будущего обучения моделей.
+    если всё ок, сохраняем пример в Supabase для будущего обучения моделей
+    + кладём запись в очередь доверенных примеров (Supabase DB).
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
@@ -587,7 +617,7 @@ def send_feedback(feedback: FeedbackRequest):
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
-    # Если пользователь не хочет использовать пример
+    # Если пользователь не хочет использовать пример в обучении
     if not feedback.use_for_training:
         try:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -611,23 +641,20 @@ def send_feedback(feedback: FeedbackRequest):
     meta["params_ok"] = feedback.params_ok
     meta["species_ok"] = feedback.species_ok
     meta["correct_species"] = feedback.correct_species
-    # новые параметры
-    if feedback.correct_height_m is not None:
-        meta["height_m"] = feedback.correct_height_m
-
-    if feedback.correct_crown_width_m is not None:
-        meta["crown_width_m"] = feedback.correct_crown_width_m
-
-    if feedback.correct_trunk_diameter_m is not None:
-        meta["trunk_diameter_m"] = feedback.correct_trunk_diameter_m
-
-    if feedback.correct_scale_px_to_m is not None:
-        meta["scale_px_to_m"] = feedback.correct_scale_px_to_m
-
 
     # Исправленный вид дерева
     if (not feedback.species_ok) and feedback.correct_species:
         meta["species"] = feedback.correct_species
+
+    # Исправленные численные параметры (если пришли от клиента)
+    if feedback.correct_height_m is not None:
+        meta["height_m"] = feedback.correct_height_m
+    if feedback.correct_crown_width_m is not None:
+        meta["crown_width_m"] = feedback.correct_crown_width_m
+    if feedback.correct_trunk_diameter_m is not None:
+        meta["trunk_diameter_m"] = feedback.correct_trunk_diameter_m
+    if feedback.correct_scale_px_to_m is not None:
+        meta["scale_px_to_m"] = feedback.correct_scale_px_to_m
 
     # Trust score
     trust = 0.0
@@ -644,7 +671,7 @@ def send_feedback(feedback: FeedbackRequest):
     analysis_id = feedback.analysis_id
 
     # -----------------------------
-    # UPLOAD TO SUPABASE
+    # UPLOAD TO SUPABASE STORAGE
     # -----------------------------
     try:
         # input.jpg
@@ -708,6 +735,25 @@ def send_feedback(feedback: FeedbackRequest):
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
+
+    # -----------------------------
+    # Запись в очередь доверенных примеров (Supabase DB)
+    # -----------------------------
+    try:
+        queue_row = {
+            "analysis_id": analysis_id,
+            "trust_score": trust,
+            "species": meta.get("species"),
+            "has_user_mask": meta.get("has_user_mask", False),
+            "tree_ok": meta.get("tree_ok"),
+            "stick_ok": meta.get("stick_ok"),
+            "params_ok": meta.get("params_ok"),
+            "species_ok": meta.get("species_ok"),
+        }
+        supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
+    except Exception as e:
+        # Не падаем для пользователя, просто логируем
+        print(f"[!] Failed to insert feedback into DB queue for {analysis_id}: {e}")
 
     # Чистим /tmp
     try:
