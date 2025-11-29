@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 
 import 'feedback_page.dart';
+import 'trusted_examples_page.dart';
 
 void main() {
   runApp(const ArborScanApp());
@@ -252,6 +253,15 @@ class _ArborScanPageState extends State<ArborScanPage> {
       if (annotatedB64 != null && annotatedB64.isNotEmpty) {
         annotatedBytes = base64Decode(annotatedB64);
       }
+
+    Future<void> _openTrustedExamples() async {
+      await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const TrustedExamplesPage(),
+      ),
+      );
+      }
+
 
       final risk = (data['risk'] ?? {}) as Map<String, dynamic>;
       final gps = data['gps'] as Map<String, dynamic>?;
@@ -659,16 +669,21 @@ class _ArborScanPageState extends State<ArborScanPage> {
   ) async {
     // Аккуратно собираем тело, чтобы не сломаться, даже если каких-то ключей нет
     final body = {
-      "analysis_id": analysisId,
-      "use_for_training": feedback["use_for_training"] ?? true,
-      "tree_ok": feedback["tree_ok"] ?? true,
-      "stick_ok": feedback["stick_ok"] ?? true,
-      "params_ok": feedback["params_ok"] ?? true,
-      "species_ok": feedback["species_ok"] ?? true,
-      "correct_species": feedback["correct_species"],
-      // ВАЖНО: теперь берём маску из feedback, а не null
-      "user_mask_base64": feedback["user_mask_base64"],
-    };
+    "analysis_id": analysisId,
+    "use_for_training": feedback["use_for_training"] ?? true,
+    "tree_ok": feedback["tree_ok"],
+    "stick_ok": feedback["stick_ok"],
+    "params_ok": feedback["params_ok"],
+    "species_ok": feedback["species_ok"],
+    "correct_species": feedback["correct_species"],
+    "user_mask_base64": feedback["user_mask_base64"],
+    // новые поля с откорректированными параметрами
+    "height_m": feedback["height_m"],
+    "crown_width_m": feedback["crown_width_m"],
+    "trunk_diameter_m": feedback["trunk_diameter_m"],
+    "scale_px_to_m": feedback["scale_px_to_m"],
+  };
+
 
     try {
       final uri = Uri.parse(_feedbackUrl);
@@ -762,14 +777,20 @@ class _ArborScanPageState extends State<ArborScanPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ArborScan'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'История',
-            onPressed: _history.isEmpty ? null : _openHistory,
-          ),
-        ],
-      ),
+          actions: [
+    IconButton(
+      icon: const Icon(Icons.storage_outlined),
+      tooltip: 'Доверенные примеры',
+      onPressed: _openTrustedExamples,
+    ),
+    IconButton(
+      icon: const Icon(Icons.history),
+      tooltip: 'История',
+      onPressed: _history.isEmpty ? null : _openHistory,
+    ),
+    ],
+  ),
+
       body: Stack(
         children: [
           SafeArea(

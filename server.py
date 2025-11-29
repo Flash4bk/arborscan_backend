@@ -109,6 +109,48 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
 
+def supabase_list_objects(bucket: str, prefix: str = ""):
+    """
+    Вернуть список объектов в Supabase Storage (метаданные).
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
+
+    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "prefix": prefix,
+        "limit": 200,
+        "offset": 0,
+        "sortBy": {"column": "name", "order": "desc"},
+    }
+    resp = requests.post(url, headers=headers, json=payload, timeout=15)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Supabase list error {resp.status_code}: {resp.text}")
+    return resp.json()
+
+
+def supabase_download_bytes(bucket: str, path: str) -> bytes:
+    """
+    Скачать файл из Supabase Storage.
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
+
+    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+    }
+    resp = requests.get(url, headers=headers, timeout=30)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Supabase download error {resp.status_code}: {resp.text}")
+    return resp.content
+
+
+
 
 def supabase_db_insert(table: str, row: dict):
     """
@@ -381,6 +423,22 @@ class FeedbackRequest(BaseModel):
     # PNG маска, закодированная в base64
     user_mask_base64: str | None = None
 
+class TrustedExample(BaseModel):
+    analysis_id: str
+    species: str | None = None
+    trust_score: float | None = None
+    created_at: str | None = None
+
+    tree_ok: bool | None = None
+    stick_ok: bool | None = None
+    params_ok: bool | None = None
+    species_ok: bool | None = None
+
+    has_user_mask: bool | None = None
+    use_for_training: bool | None = None
+    needs_manual_review: bool | None = None
+
+
 
 app = FastAPI(title="ArborScan API v2.0")
 
@@ -593,6 +651,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
     except:
         response["original_image_base64"] = None
+        return JSONResponse(response)
 
 
     if gps:
