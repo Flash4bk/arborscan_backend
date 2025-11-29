@@ -341,7 +341,14 @@ class FeedbackRequest(BaseModel):
     params_ok: bool
     species_ok: bool
     correct_species: str | None = None
+
+    correct_height_m: float | None = None
+    correct_crown_width_m: float | None = None
+    correct_trunk_diameter_m: float | None = None
+    correct_scale_px_to_m: float | None = None
+
     user_mask_base64: str | None = None
+
 
 
 app = FastAPI(title="ArborScan API v2.0")
@@ -550,6 +557,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         "trunk_diameter_m": trunk_m,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
+        "original_image_base64": base64.b64encode(image_bytes).decode("utf-8"),
     }
 
     if gps:
@@ -603,6 +611,19 @@ def send_feedback(feedback: FeedbackRequest):
     meta["params_ok"] = feedback.params_ok
     meta["species_ok"] = feedback.species_ok
     meta["correct_species"] = feedback.correct_species
+    # новые параметры
+    if feedback.correct_height_m is not None:
+        meta["height_m"] = feedback.correct_height_m
+
+    if feedback.correct_crown_width_m is not None:
+        meta["crown_width_m"] = feedback.correct_crown_width_m
+
+    if feedback.correct_trunk_diameter_m is not None:
+        meta["trunk_diameter_m"] = feedback.correct_trunk_diameter_m
+
+    if feedback.correct_scale_px_to_m is not None:
+        meta["scale_px_to_m"] = feedback.correct_scale_px_to_m
+
 
     # Исправленный вид дерева
     if (not feedback.species_ok) and feedback.correct_species:

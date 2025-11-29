@@ -696,56 +696,44 @@ class _ArborScanPageState extends State<ArborScanPage> {
   }
 
   Future<void> _openFeedback() async {
-    if (_result == null) return;
+  if (_result == null) return;
 
-    final data = _result!;
-    final analysisId = data['analysis_id']?.toString();
-    final annotatedB64 = data['annotated_image_base64'] as String?;
-
-    if (analysisId == null || analysisId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Сервер не прислал analysis_id")),
-      );
-      return;
-    }
-
-    if (_annotatedImageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Нет аннотированного изображения.")),
-      );
-      return;
-    }
-
-    // Загружаем оригинальное фото
-final Uint8List originalBytes = await _imageFile!.readAsBytes();
-
-// Раскодируем аннотированное фото
-final Uint8List annotatedBytes = base64Decode(
-  annotatedB64 ?? "",
-);
-
-// Открываем FeedbackPage
-final feedback = await Navigator.push<Map<String, dynamic>?>(
-  context,
-  MaterialPageRoute(
-    builder: (_) => FeedbackPage(
-      analysisId: analysisId,
-      originalBytes: originalBytes,
-      annotatedBytes: annotatedBytes,
-      species: data['species'] ?? 'Неизвестно',
-      heightM: (data['height_m'] as num?)?.toDouble(),
-      crownWidthM: (data['crown_width_m'] as num?)?.toDouble(),
-      trunkDiameterM: (data['trunk_diameter_m'] as num?)?.toDouble(),
-    ),
-  ),
-);
-
-
-
-    if (feedback != null) {
-      await _sendFeedbackToServer(feedback, analysisId);
-    }
+  final analysisId = _result!['analysis_id'] as String?;
+  if (analysisId == null || analysisId.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("analysis_id отсутствует")),
+    );
+    return;
   }
+
+  final originalB64 = _result!['original_image_base64'] as String? ?? "";
+  if (originalB64.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Оригинальное изображение недоступно")),
+    );
+    return;
+  }
+
+  final feedback = await Navigator.push<Map<String, dynamic>?>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => FeedbackPage(
+        analysisId: analysisId,
+        originalImageBase64: originalB64,
+        species: _result!['species'] ?? 'Неизвестно',
+        heightM: (_result!['height_m'] as num?)?.toDouble(),
+        crownWidthM: (_result!['crown_width_m'] as num?)?.toDouble(),
+        trunkDiameterM: (_result!['trunk_diameter_m'] as num?)?.toDouble(),
+        scalePxToM: (_result!['scale_px_to_m'] as num?)?.toDouble(),
+      ),
+    ),
+  );
+
+  if (feedback != null) {
+    await _sendFeedbackToServer(feedback, analysisId);
+  }
+}
+
 
   Future<void> _openHistory() async {
     final cleared = await Navigator.of(context).push<bool>(
