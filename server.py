@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
+from datetime import datetime
 
 # -------------------------------------
 # CONFIG
@@ -1108,12 +1109,13 @@ def build_dataset(req: DatasetBuildRequest):
     (base_dir / "meta").mkdir(parents=True, exist_ok=True)
 
     manifest = {
-        "dataset_id": dataset_id,
-        "dataset_type": req.dataset_type,
-        "created_at": dataset_id,
-        "total_samples": len(samples),
-        "samples": [],
-    }
+    "dataset_id": dataset_id,
+    "dataset_type": req.dataset_type,
+    "created_at": datetime.utcnow().isoformat(),
+    "total_samples": len(samples),
+    "samples": [],
+}
+
 
     # 2. Скачиваем файлы
     for idx, row in enumerate(samples, start=1):
