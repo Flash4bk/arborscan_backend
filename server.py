@@ -414,6 +414,7 @@ class TrustedExample(BaseModel):
 app = FastAPI(title="ArborScan API v2.1 (raw dataset + model versions)")
 
 
+
 @app.post("/analyze-tree")
 async def analyze_tree(file: UploadFile = File(...)):
     image_bytes = await file.read()
@@ -539,9 +540,10 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
-        "model_version": MODEL_VERSION,          # ВАЖНО: версии моделей в каждом примере
-        "raw_prefix": RAW_PREFIX,                # чтобы понимать, где лежит RAW в storage
-    }
+        "model_version": get_active_model_versions(),  # ← ВАЖНО
+        "raw_prefix": RAW_PREFIX,
+            }
+
 
     # -----------------------------
     # TEMP CACHE FOR FEEDBACK (локально, как и было)
@@ -868,3 +870,26 @@ def send_feedback(feedback: FeedbackRequest):
         "analysis_id": analysis_id,
         "trust_score": trust,
     }
+
+
+
+@app.get("/admin/model-versions")
+def list_model_versions():
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/model_versions"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
+    }
+    params = {
+        "select": "*",
+        "order": "created_at.desc"
+    }
+
+    r = requests.get(url, headers=headers, params=params, timeout=10)
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=r.text)
+
+    return r.json()
