@@ -155,6 +155,12 @@ class _ArborScanPageState extends State<ArborScanPage> {
   bool _isLoading = false;
   String? _error;
 
+  // Режим администратора
+  bool _isAdmin = false;
+  static const String _adminFlagKey = 'arborscan_is_admin';
+  // Код администратора (можно поменять на свой)
+  static const String _adminPasscode = '8426';
+
   static const String _apiUrl =
       'https://arborscanbackend-production.up.railway.app/analyze-tree';
 
@@ -168,6 +174,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
   void initState() {
     super.initState();
     _loadHistory();
+    _loadAdminFlag();
   }
 
   Future<void> _loadHistory() async {
@@ -197,6 +204,173 @@ class _ArborScanPageState extends State<ArborScanPage> {
     setState(() {
       _history.clear();
     });
+  }
+
+  /// Загрузка флага режима администратора
+  Future<void> _loadAdminFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isAdmin = prefs.getBool(_adminFlagKey) ?? false;
+    setState(() {
+      _isAdmin = isAdmin;
+    });
+  }
+
+  /// Установка флага режима администратора
+  Future<void> _setAdmin(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_adminFlagKey, value);
+    if (!mounted) return;
+    setState(() {
+      _isAdmin = value;
+    });
+  }
+
+  /// Экран / bottom-sheet с настройками и вводом кода администратора
+  Future<void> _openSettings() async {
+    final controller = TextEditingController();
+    final theme = Theme.of(context);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              Text(
+                'Настройки',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _isAdmin
+                          ? 'Режим администратора включён.\nКнопка исправления анализа доступна.'
+                          : 'Режим администратора выключен.\nПользователь может только смотреть анализ.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _isAdmin
+                          ? const Color(0xFFD9F5DC)
+                          : const Color(0xFFE0E0E0),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _isAdmin ? 'ADMIN' : 'USER',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Код администратора',
+                  border: OutlineInputBorder(),
+                  helperText: 'Введите код, чтобы включить режим администратора.',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                      },
+                      child: const Text('Отмена'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () async {
+                        final code = controller.text.trim();
+                        if (code == _adminPasscode) {
+                          await _setAdmin(true);
+                          if (context.mounted) {
+                            Navigator.of(ctx).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Режим администратора включён.'),
+                              ),
+                            );
+                          }
+                        } else {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(
+                              content: Text('Неверный код администратора.'),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Войти как администратор'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_isAdmin)
+                Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      await _setAdmin(false);
+                      if (context.mounted) {
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Режим администратора отключён.'),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Выйти из режима администратора'),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -775,6 +949,11 @@ class _ArborScanPageState extends State<ArborScanPage> {
         title: const Text('ArborScan'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Настройки',
+            onPressed: _openSettings,
+          ),
+          IconButton(
             icon: const Icon(Icons.storage_outlined),
             tooltip: 'Доверенные примеры',
             onPressed: _openTrustedExamples,
@@ -815,8 +994,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
                   _buildResultCard(),
                   const SizedBox(height: 12),
 
-                  // КНОПКА ПОДТВЕРЖДЕНИЯ АНАЛИЗА
-                  if (_annotatedImageBytes != null &&
+                  // КНОПКА ПОДТВЕРЖДЕНИЯ АНАЛИЗА — ТОЛЬКО ДЛЯ АДМИНА
+                  if (_isAdmin &&
+                      _annotatedImageBytes != null &&
                       _result != null &&
                       _result?['analysis_id'] != null)
                     SizedBox(
@@ -824,7 +1004,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
                       child: FilledButton.icon(
                         onPressed: _openFeedback,
                         icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('Подтвердить анализ'),
+                        label: const Text('Подтвердить / исправить анализ'),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -834,7 +1014,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
                       ),
                     ),
 
-                  if (_annotatedImageBytes != null &&
+                  if (_isAdmin &&
+                      _annotatedImageBytes != null &&
                       _result != null &&
                       _result?['analysis_id'] != null)
                     const SizedBox(height: 16),

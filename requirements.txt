@@ -7,4 +7,8 @@ ultralytics
 opencv-python-headless==4.10.0.84
 numpy
 python-multipart
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
 

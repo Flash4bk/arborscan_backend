@@ -1,25 +1,16 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 class StickPage extends StatefulWidget {
-  final Uint8List imageBytes;
-
-  final double? initialHeightM;
-  final double? initialCrownWidthM;
-  final double? initialTrunkDiameterM;
-  final double? initialScalePxToM;
+  final String originalImageBase64;
+  final double currentScalePxToM;
 
   const StickPage({
     super.key,
-    required this.imageBytes,
-    this.initialHeightM,
-    this.initialCrownWidthM,
-    this.initialTrunkDiameterM,
-    this.initialScalePxToM,
+    required this.originalImageBase64,
+    required this.currentScalePxToM,
   });
 
   @override
@@ -27,223 +18,208 @@ class StickPage extends StatefulWidget {
 }
 
 class _StickPageState extends State<StickPage> {
-  final GlobalKey _paintKey = GlobalKey();
+  late Uint8List _imageBytes;
 
-  Offset? _start;
-  Offset? _end;
+  final TransformationController _controller = TransformationController();
 
-  late TextEditingController _heightCtrl;
-  late TextEditingController _crownCtrl;
-  late TextEditingController _trunkCtrl;
-  late TextEditingController _scaleCtrl;
+  /// две точки палки (низ и верх)
+  final List<Offset> _points = [];
 
-  bool _stickOk = true;
-  bool _paramsOk = true;
+  int? _dragIndex;
+  bool _lockPan = false;
+
+  Offset? _downScenePos;
+  bool _moved = false;
+
+  static const double _pointRadius = 3;
+  static const double _hitRadius = 18;
+  static const double _moveThreshold = 4;
 
   @override
   void initState() {
     super.initState();
-    _heightCtrl = TextEditingController(
-      text: widget.initialHeightM?.toStringAsFixed(2),
-    );
-    _crownCtrl = TextEditingController(
-      text: widget.initialCrownWidthM?.toStringAsFixed(2),
-    );
-    _trunkCtrl = TextEditingController(
-      text: widget.initialTrunkDiameterM?.toStringAsFixed(2),
-    );
-    _scaleCtrl = TextEditingController(
-      text: widget.initialScalePxToM?.toStringAsFixed(4),
-    );
+    _imageBytes = base64Decode(widget.originalImageBase64);
   }
 
-  @override
-  void dispose() {
-    _heightCtrl.dispose();
-    _crownCtrl.dispose();
-    _trunkCtrl.dispose();
-    _scaleCtrl.dispose();
-    super.dispose();
+  /// перевод координат экрана → координаты сцены (с учётом зума)
+  Offset _scene(Offset local) {
+    return _controller.toScene(local);
   }
 
-  double? _parseDouble(String text) {
-    if (text.trim().isEmpty) return null;
-    return double.tryParse(text.replaceAll(',', '.'));
+  int? _hitPoint(Offset scenePos) {
+    for (int i = 0; i < _points.length; i++) {
+      if ((scenePos - _points[i]).distance <= _hitRadius) {
+        return i;
+      }
+    }
+    return null;
   }
 
-  void _onSave() {
-    Navigator.pop<Map<String, dynamic>>(context, {
-      "height_m": _parseDouble(_heightCtrl.text),
-      "crown_width_m": _parseDouble(_crownCtrl.text),
-      "trunk_diameter_m": _parseDouble(_trunkCtrl.text),
-      "scale_px_to_m": _parseDouble(_scaleCtrl.text),
-      "stick_ok": _stickOk,
-      "params_ok": _paramsOk,
-      // при необходимости можно добавить mask палки, как на дереве
+  // ================= POINTER EVENTS =================
+
+  void _onPointerDown(PointerDownEvent e) {
+    final scenePos = _scene(e.localPosition);
+    _downScenePos = scenePos;
+    _moved = false;
+
+    _dragIndex = _hitPoint(scenePos);
+    _lockPan = _dragIndex != null;
+  }
+
+  void _onPointerMove(PointerMoveEvent e) {
+    if (_downScenePos == null) return;
+
+    final scenePos = _scene(e.localPosition);
+    final dist = (scenePos - _downScenePos!).distance;
+
+    if (dist > _moveThreshold) {
+      _moved = true;
+    }
+
+    if (_dragIndex != null) {
+      setState(() {
+        _points[_dragIndex!] = scenePos;
+      });
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent e) {
+    final scenePos = _scene(e.localPosition);
+
+    if (!_moved) {
+      final hit = _hitPoint(scenePos);
+
+      setState(() {
+        if (hit != null) {
+          _dragIndex = hit;
+        } else if (_points.length < 2) {
+          _points.add(scenePos);
+        } else {
+          final d0 = (scenePos - _points[0]).distance;
+          final d1 = (scenePos - _points[1]).distance;
+          _points[d0 < d1 ? 0 : 1] = scenePos;
+        }
+      });
+    }
+
+    _dragIndex = null;
+    _downScenePos = null;
+    _lockPan = false;
+  }
+
+  // ================= LOGIC =================
+
+  double? _lengthPx() {
+    if (_points.length != 2) return null;
+    return (_points[0] - _points[1]).distance;
+  }
+
+  double? _scalePxToM() {
+    final len = _lengthPx();
+    if (len == null || len <= 0) return null;
+    return 1 / len;
+  }
+
+  void _apply() {
+    final scale = _scalePxToM();
+    if (scale == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Поставьте 2 точки на палке (1 м)')),
+      );
+      return;
+    }
+    Navigator.pop(context, scale);
+  }
+
+  void _clear() {
+    setState(() {
+      _points.clear();
+      _dragIndex = null;
+      _lockPan = false;
     });
   }
 
+  // ================= UI =================
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final length = _lengthPx();
+    final scale = _scalePxToM();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Коррекция палки и параметров"),
+        title: const Text('Коррекция палки'),
         actions: [
           IconButton(
-            onPressed: _onSave,
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _clear,
+          ),
+          IconButton(
             icon: const Icon(Icons.check),
-          )
+            onPressed: _apply,
+          ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          RepaintBoundary(
-            key: _paintKey,
-            child: GestureDetector(
-              onPanStart: (details) {
-                setState(() {
-                  _start = details.localPosition;
-                  _end = details.localPosition;
-                });
-              },
-              onPanUpdate: (details) {
-                setState(() {
-                  _end = details.localPosition;
-                });
-              },
-              onPanEnd: (_) {
-                // линия зафиксирована
-              },
-              child: AspectRatio(
-                aspectRatio: 3 / 4,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.memory(
-                      widget.imageBytes,
-                      fit: BoxFit.cover,
-                    ),
-                    CustomPaint(
-                      painter: _StickPainter(start: _start, end: _end),
-                    ),
-                  ],
+      body: Listener(
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
+        child: InteractiveViewer(
+          transformationController: _controller,
+          minScale: 1,
+          maxScale: 8,
+          panEnabled: !_lockPan,
+          scaleEnabled: true,
+          boundaryMargin: const EdgeInsets.all(200),
+          child: Stack(
+            children: [
+              Image.memory(_imageBytes, fit: BoxFit.contain),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _StickPainter(points: _points),
                 ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
-
-          Text(
-            "Проверьте корректность параметров:",
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-
-          Card(
-            child: SwitchListTile(
-              title: const Text("Палка определена правильно"),
-              value: _stickOk,
-              onChanged: (v) => setState(() => _stickOk = v),
-            ),
-          ),
-          Card(
-            child: SwitchListTile(
-              title: const Text("Высота / крона / ствол рассчитаны верно"),
-              value: _paramsOk,
-              onChanged: (v) => setState(() => _paramsOk = v),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _numberField(
-                    label: "Высота, м",
-                    controller: _heightCtrl,
-                  ),
-                  const SizedBox(height: 12),
-                  _numberField(
-                    label: "Крона, м",
-                    controller: _crownCtrl,
-                  ),
-                  const SizedBox(height: 12),
-                  _numberField(
-                    label: "Диаметр ствола, м",
-                    controller: _trunkCtrl,
-                  ),
-                  const SizedBox(height: 12),
-                  _numberField(
-                    label: "Масштаб (м за 1 пиксель)",
-                    controller: _scaleCtrl,
-                    hint: "например 0.0182",
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _onSave,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 14),
-                child: Text("Сохранить"),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _numberField({
-    required String label,
-    required TextEditingController controller,
-    String? hint,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true, signed: false),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text(
+          length == null
+              ? 'Поставьте 2 точки по палке (1 м)'
+              : 'Длина: ${length.toStringAsFixed(1)} px\n'
+                'Масштаб: ${scale!.toStringAsFixed(6)} м/px',
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
 }
 
 class _StickPainter extends CustomPainter {
-  final Offset? start;
-  final Offset? end;
+  final List<Offset> points;
 
-  _StickPainter({this.start, this.end});
+  _StickPainter({required this.points});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (start == null || end == null) return;
+    final linePaint = Paint()
+      ..color = Colors.red
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
 
-    final paint = Paint()
-      ..color = Colors.redAccent
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final dotPaint = Paint()..color = Colors.red;
 
-    canvas.drawLine(start!, end!, paint);
+    if (points.length == 2) {
+      canvas.drawLine(points[0], points[1], linePaint);
+    }
+
+    for (final pt in points) {
+      canvas.drawCircle(pt, 3, dotPaint);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _StickPainter oldDelegate) =>
-      oldDelegate.start != start || oldDelegate.end != end;
+  bool shouldRepaint(covariant _StickPainter oldDelegate) => true;
 }

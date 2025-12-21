@@ -17,6 +17,7 @@ dependencies:
   lottie: ^2.6.0
   google_maps_flutter: ^2.6.0
   animations: ^2.0.8
+  vector_math: ^2.1.4
 
 dev_dependencies:
   flutter_test:

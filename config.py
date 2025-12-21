@@ -1,5 +1,18 @@
 import os
 from pydantic import BaseModel
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+
+# путь к service account ключу
+GOOGLE_DRIVE_CREDENTIALS = BASE_DIR / "credentials" / "arborscan-drive-sa.json"
+
+# имя корневой папки на Google Drive
+GOOGLE_DRIVE_ROOT_FOLDER = "ArborScan"
+
+# подпапки
+GOOGLE_DRIVE_UPLOADS_FOLDER = "uploads"
+GOOGLE_DRIVE_MODELS_FOLDER = "models"
 
 class Settings(BaseModel):
     # URL твоего бэкенда остаётся как есть

@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 import 'mask_drawing_page.dart';
@@ -40,184 +38,203 @@ class _FeedbackPageState extends State<FeedbackPage> {
   bool _speciesOk = true;
   bool _useForTraining = true;
 
-  late String _currentSpecies;
-  final TextEditingController _speciesController = TextEditingController();
+  String _selectedSpecies = '';
+  final TextEditingController _customSpeciesController = TextEditingController();
 
-  double? _heightM;
-  double? _crownWidthM;
-  double? _trunkDiameterM;
-  double? _scalePxToM;
+  late TextEditingController _heightController;
+  late TextEditingController _crownController;
+  late TextEditingController _trunkController;
+  late TextEditingController _scaleController;
 
   String? _userMaskBase64;
 
   @override
   void initState() {
     super.initState();
-    _currentSpecies = widget.species;
-    _heightM = widget.heightM;
-    _crownWidthM = widget.crownWidthM;
-    _trunkDiameterM = widget.trunkDiameterM;
-    _scalePxToM = widget.scalePxToM;
+    _selectedSpecies = widget.species;
+
+    _heightController =
+        TextEditingController(text: widget.heightM?.toStringAsFixed(2) ?? '');
+    _crownController =
+        TextEditingController(text: widget.crownWidthM?.toStringAsFixed(2) ?? '');
+    _trunkController =
+        TextEditingController(text: widget.trunkDiameterM?.toStringAsFixed(2) ?? '');
+    _scaleController =
+        TextEditingController(text: widget.scalePxToM?.toStringAsFixed(6) ?? '');
   }
 
   @override
   void dispose() {
-    _speciesController.dispose();
+    _customSpeciesController.dispose();
+    _heightController.dispose();
+    _crownController.dispose();
+    _trunkController.dispose();
+    _scaleController.dispose();
     super.dispose();
   }
 
-  String _formatDouble(double? v, {String suffix = "м"}) {
-    if (v == null) return "—";
-    return "${v.toStringAsFixed(2)} $suffix";
+  double? _parseDouble(String text) {
+    if (text.trim().isEmpty) return null;
+    return double.tryParse(text.replaceAll(',', '.'));
   }
 
-  Future<void> _openMaskDrawing() async {
-    final bytes = base64Decode(widget.originalImageBase64);
+  String _displaySpecies() {
+    if (!_speciesOk && _selectedSpecies.isNotEmpty) {
+      return _selectedSpecies;
+    }
+    return widget.species;
+  }
 
-    final String? maskB64 = await Navigator.push<String?>(
-      context,
+  Future<void> _openMaskPage() async {
+    final resultMask = await Navigator.of(context).push<String?>(
       MaterialPageRoute(
         builder: (_) => MaskDrawingPage(
-          imageBytes: bytes,
+          originalImageBase64: widget.originalImageBase64,
+          initialMaskBase64: _userMaskBase64,
         ),
       ),
     );
 
-    if (maskB64 != null) {
+    if (resultMask != null) {
       setState(() {
-        _userMaskBase64 = maskB64;
-        _treeOk = false; // раз пользователь рисовал маску — значит ИИ был не идеален
+        _userMaskBase64 = resultMask;
+        _treeOk = true;
       });
     }
   }
 
+  /// Коррекция палки: 2 точки => возвращается новый scale (м/px)
   Future<void> _openStickPage() async {
-    final bytes = base64Decode(widget.originalImageBase64);
+    final currentScalePxToM =
+        _parseDouble(_scaleController.text) ?? widget.scalePxToM;
 
-    final result = await Navigator.push<Map<String, dynamic>?>(
-      context,
+    if (currentScalePxToM == null || currentScalePxToM <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Сначала нужен найденный масштаб палки.')),
+      );
+      return;
+    }
+
+    final newScale = await Navigator.of(context).push<double?>(
       MaterialPageRoute(
         builder: (_) => StickPage(
-          imageBytes: bytes,
-          initialHeightM: _heightM,
-          initialCrownWidthM: _crownWidthM,
-          initialTrunkDiameterM: _trunkDiameterM,
-          initialScalePxToM: _scalePxToM,
+          originalImageBase64: widget.originalImageBase64,
+          currentScalePxToM: currentScalePxToM,
         ),
       ),
     );
 
-    if (result != null) {
-      setState(() {
-        _heightM = result["height_m"] as double?;
-        _crownWidthM = result["crown_width_m"] as double?;
-        _trunkDiameterM = result["trunk_diameter_m"] as double?;
-        _scalePxToM = result["scale_px_to_m"] as double?;
-        _stickOk = result["stick_ok"] as bool? ?? _stickOk;
-        _paramsOk = result["params_ok"] as bool? ?? _paramsOk;
-      });
-    }
+    if (newScale == null) return;
+
+    setState(() {
+      final oldScale = currentScalePxToM;
+      final factor = newScale / oldScale;
+
+      _scaleController.text = newScale.toStringAsFixed(6);
+
+      final h = _parseDouble(_heightController.text) ?? widget.heightM;
+      final c = _parseDouble(_crownController.text) ?? widget.crownWidthM;
+      final t = _parseDouble(_trunkController.text) ?? widget.trunkDiameterM;
+
+      if (h != null) _heightController.text = (h * factor).toStringAsFixed(2);
+      if (c != null) _crownController.text = (c * factor).toStringAsFixed(2);
+      if (t != null) _trunkController.text = (t * factor).toStringAsFixed(2);
+
+      _stickOk = true;
+      _paramsOk = true;
+    });
   }
 
-  void _onSave() {
-    String? correctSpecies;
-    if (!_speciesOk) {
-      if (_speciesController.text.trim().isNotEmpty) {
-        correctSpecies = _speciesController.text.trim();
-      } else {
-        correctSpecies = _currentSpecies;
-      }
-    }
-
-    Navigator.pop<Map<String, dynamic>>(context, {
+  void _submit() {
+    final feedback = <String, dynamic>{
       "tree_ok": _treeOk,
       "stick_ok": _stickOk,
       "params_ok": _paramsOk,
       "species_ok": _speciesOk,
-      "correct_species": correctSpecies,
-      "use_for_training": _useForTraining,
+      "correct_species": _speciesOk ? null : _selectedSpecies,
       "user_mask_base64": _userMaskBase64,
-      // при желании сюда можно добавить исправленные параметры,
-      // а затем расширить серверную модель FeedbackRequest
-      // "fixed_height_m": _heightM,
-      // ...
-    });
+      "use_for_training": _useForTraining,
+
+      "height_m_corrected": _parseDouble(_heightController.text),
+      "crown_width_m_corrected": _parseDouble(_crownController.text),
+      "trunk_diameter_m_corrected": _parseDouble(_trunkController.text),
+      "scale_px_to_m_corrected": _parseDouble(_scaleController.text),
+    };
+
+    Navigator.of(context).pop(feedback);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    Uint8List headerBytes;
-    if (widget.annotatedImageBase64 != null &&
-        widget.annotatedImageBase64!.isNotEmpty) {
-      headerBytes = base64Decode(widget.annotatedImageBase64!);
-    } else {
-      headerBytes = base64Decode(widget.originalImageBase64);
-    }
+    final bytes = base64Decode(
+      widget.annotatedImageBase64 ?? widget.originalImageBase64,
+    );
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Проверка анализа"),
-        actions: [
-          IconButton(
-            onPressed: _onSave,
-            icon: const Icon(Icons.check),
-          )
-        ],
+        title: const Text('Проверка анализа'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: Image.memory(headerBytes),
+            child: Image.memory(bytes),
           ),
           const SizedBox(height: 16),
 
-          // Блок текущих параметров
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Текущий результат",
+                    'Общий итог',
                     style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                        ?.copyWith(fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
-                      _metricChip(
-                        icon: Icons.park,
-                        label: "Вид",
-                        value: _currentSpecies,
+                      _buildChip(
+                        ok: _treeOk,
+                        label: 'Дерево',
+                        onTap: () => setState(() => _treeOk = !_treeOk),
                       ),
-                      _metricChip(
-                        icon: Icons.height,
-                        label: "Высота",
-                        value: _formatDouble(_heightM),
+                      _buildChip(
+                        ok: _stickOk,
+                        label: 'Палка',
+                        onTap: () => setState(() => _stickOk = !_stickOk),
                       ),
-                      _metricChip(
-                        icon: Icons.landscape_outlined,
-                        label: "Крона",
-                        value: _formatDouble(_crownWidthM),
+                      _buildChip(
+                        ok: _paramsOk,
+                        label: 'Параметры',
+                        onTap: () => setState(() => _paramsOk = !_paramsOk),
                       ),
-                      _metricChip(
-                        icon: Icons.circle_outlined,
-                        label: "Ствол",
-                        value: _formatDouble(_trunkDiameterM),
+                      _buildChip(
+                        ok: _speciesOk,
+                        label: 'Порода',
+                        onTap: () => setState(() => _speciesOk = !_speciesOk),
                       ),
-                      _metricChip(
-                        icon: Icons.straighten,
-                        label: "Масштаб",
-                        value: _scalePxToM == null
-                            ? "—"
-                            : "1 px ≈ ${_scalePxToM!.toStringAsFixed(4)} м",
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Switch(
+                        value: _useForTraining,
+                        onChanged: (v) => setState(() => _useForTraining = v),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Разрешить использовать этот пример для дообучения модели',
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ),
                     ],
                   ),
@@ -227,126 +244,142 @@ class _FeedbackPageState extends State<FeedbackPage> {
           ),
           const SizedBox(height: 16),
 
-          // Свитчи корректности
-          _switchCard(
-            title: "Дерево выделено правильно",
-            value: _treeOk,
-            onChanged: (v) => setState(() => _treeOk = v),
-          ),
-          _switchCard(
-            title: "Палка определена правильно",
-            value: _stickOk,
-            onChanged: (v) => setState(() => _stickOk = v),
-          ),
-          _switchCard(
-            title: "Параметры рассчитаны верно",
-            value: _paramsOk,
-            onChanged: (v) => setState(() => _paramsOk = v),
-          ),
-          _switchCard(
-            title: "Вид определён верно",
-            value: _speciesOk,
-            onChanged: (v) => setState(() => _speciesOk = v),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Исправление вида
-          if (!_speciesOk)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Уточните вид дерева",
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _speciesController
-                        ..text = _speciesController.text.isEmpty
-                            ? _currentSpecies
-                            : _speciesController.text,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: "Введите корректный вид",
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          _buildSectionHeader(
+            icon: Icons.forest_outlined,
+            title: 'Выделение дерева (маска)',
+            trailing: TextButton.icon(
+              icon: const Icon(Icons.brush_outlined),
+              label: const Text('Редактировать'),
+              onPressed: _openMaskPage,
             ),
-
-          const SizedBox(height: 12),
-
-          // Кнопки «нарисовать маску» и «палка / параметры»
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _openMaskDrawing,
-                  icon: const Icon(Icons.brush),
-                  label: const Text("Нарисовать маску"),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _openStickPage,
-                  icon: const Icon(Icons.straighten),
-                  label: const Text("Палка / параметры"),
-                ),
-              ),
-            ],
           ),
-
+          Card(
+            child: SwitchListTile(
+              title: const Text('Дерево выделено правильно'),
+              value: _treeOk,
+              onChanged: (v) => setState(() => _treeOk = v),
+            ),
+          ),
           const SizedBox(height: 16),
 
-          // Флаг использования в обучении
+          _buildSectionHeader(
+            icon: Icons.straighten,
+            title: 'Палка (масштаб)',
+            trailing: TextButton.icon(
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Исправить'),
+              onPressed: _openStickPage,
+            ),
+          ),
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Использовать этот пример для обучения",
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "При включении изображение и ваши правки будут сохранены как доверенный пример.",
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: Colors.black54),
-                        ),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Палка определена правильно'),
+                  value: _stickOk,
+                  onChanged: (v) => setState(() => _stickOk = v),
+                ),
+                ListTile(
+                  title: const Text('Масштаб, м/px'),
+                  subtitle: TextField(
+                    controller: _scaleController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      hintText: 'Например: 0.004500',
+                    ),
+                    onChanged: (_) => setState(() => _paramsOk = false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          _buildSectionHeader(
+            icon: Icons.analytics_outlined,
+            title: 'Параметры дерева',
+          ),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Параметры рассчитаны верно'),
+                  value: _paramsOk,
+                  onChanged: (v) => setState(() => _paramsOk = v),
+                ),
+                _buildParamField(label: 'Высота, м', controller: _heightController),
+                _buildParamField(label: 'Ширина кроны, м', controller: _crownController),
+                _buildParamField(label: 'Диаметр ствола, м', controller: _trunkController),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          _buildSectionHeader(
+            icon: Icons.park,
+            title: 'Вид дерева',
+          ),
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  title: const Text('Вид определён верно'),
+                  value: _speciesOk,
+                  onChanged: (v) => setState(() => _speciesOk = v),
+                ),
+                if (!_speciesOk) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedSpecies.isEmpty ? null : _selectedSpecies,
+                      items: const [
+                        DropdownMenuItem(value: 'Береза', child: Text('Берёза')),
+                        DropdownMenuItem(value: 'Дуб', child: Text('Дуб')),
+                        DropdownMenuItem(value: 'Ель', child: Text('Ель')),
+                        DropdownMenuItem(value: 'Сосна', child: Text('Сосна')),
+                        DropdownMenuItem(value: 'Тополь', child: Text('Тополь')),
+                        DropdownMenuItem(value: 'Другое', child: Text('Другое')),
                       ],
+                      decoration: const InputDecoration(
+                        labelText: 'Правильный вид',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) => setState(() => _selectedSpecies = value ?? ''),
                     ),
                   ),
-                  Switch(
-                    value: _useForTraining,
-                    onChanged: (v) =>
-                        setState(() => _useForTraining = v),
+                  if (_selectedSpecies == 'Другое')
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: TextField(
+                        controller: _customSpeciesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Введите вид дерева',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (text) => _selectedSpecies = text,
+                      ),
+                    ),
+                ] else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Text(
+                      'Текущий вид: ${_displaySpecies()}',
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ),
-                ],
-              ),
+              ],
             ),
           ),
-
           const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _onSave,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 14),
-                child: Text("Сохранить и отправить"),
-              ),
+
+          FilledButton.icon(
+            onPressed: _submit,
+            icon: const Icon(Icons.send_rounded),
+            label: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Сохранить и отправить'),
             ),
           ),
         ],
@@ -354,38 +387,64 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
 
-  Widget _switchCard({
+  Widget _buildSectionHeader({
+    required IconData icon,
     required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
+    Widget? trailing,
   }) {
-    return Card(
-      child: SwitchListTile(
-        title: Text(title),
-        value: value,
-        onChanged: onChanged,
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (trailing != null) trailing,
+        ],
       ),
     );
   }
 
-  Widget _metricChip({
-    required IconData icon,
+  Widget _buildParamField({
     required String label,
-    required String value,
+    required TextEditingController controller,
   }) {
-    return Chip(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      avatar: Icon(icon, size: 18),
-      label: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 11)),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ],
+    return ListTile(
+      title: Text(label),
+      subtitle: TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: false),
+        decoration: const InputDecoration(hintText: 'Измените при необходимости'),
+        onChanged: (_) => setState(() => _paramsOk = false),
+      ),
+    );
+  }
+
+  Widget _buildChip({
+    required bool ok,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final colorBg = ok ? const Color(0xFFD9F5DC) : const Color(0xFFFFE1E1);
+    final colorFg = ok ? const Color(0xFF1B5E20) : const Color(0xFFB71C1C);
+    return GestureDetector(
+      onTap: onTap,
+      child: Chip(
+        backgroundColor: colorBg,
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(ok ? Icons.check_circle : Icons.error_outline, size: 16, color: colorFg),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(color: colorFg, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }
