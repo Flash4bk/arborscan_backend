@@ -25,7 +25,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
+    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. Raw upload and /feedback will not upload to Supabase.")
 
 # Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
@@ -37,19 +37,32 @@ SUPABASE_BUCKET_META = "arborscan-meta"
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 
-# Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
-WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
-WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+# Погода / Почва / Геокодирование
+# ВАЖНО: сохраняем обратную совместимость: сначала нормальная переменная WEATHER_API_KEY,
+# а если её нет — пробуем старую "dc825..." (как у тебя было), чтобы не сломать деплой.
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY") or os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
+WEATHER_BASE_URL = os.getenv("WEATHER_BASE_URL", "https://api.openweathermap.org/data/2.5/weather")
 
-SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
+SOILGRIDS_URL = os.getenv("SOILGRIDS_URL", "https://rest.isric.org/soilgrids/v2.0/properties/query")
 
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
+NOMINATIM_URL = os.getenv("NOMINATIM_URL", "https://nominatim.openstreetmap.org/reverse")
 NOMINATIM_USER_AGENT = os.getenv(
     "NOMINATIM_USER_AGENT",
     "arborscan-backend/1.0 (contact: example@mail.com)"
 )
 
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
+
+# Версии моделей (для датасета и отката)
+MODEL_VERSION = {
+    "tree": os.getenv("TREE_MODEL_VERSION", "v1.0"),
+    "stick": os.getenv("STICK_MODEL_VERSION", "v1.0"),
+    "classifier": os.getenv("CLASSIFIER_MODEL_VERSION", "v1.0"),
+}
+
+# Куда складывать RAW-данные в Supabase (без новых bucket’ов)
+# Все анализы будут сохраняться в подпапку raw/{analysis_id}/...
+RAW_PREFIX = os.getenv("RAW_PREFIX", "raw")
 
 # -------------------------------------
 # CLASSES / CONSTANTS
@@ -108,48 +121,6 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
-
-def supabase_list_objects(bucket: str, prefix: str = ""):
-    """
-    Вернуть список объектов в Supabase Storage (метаданные).
-    """
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
-    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}"
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "prefix": prefix,
-        "limit": 200,
-        "offset": 0,
-        "sortBy": {"column": "name", "order": "desc"},
-    }
-    resp = requests.post(url, headers=headers, json=payload, timeout=15)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Supabase list error {resp.status_code}: {resp.text}")
-    return resp.json()
-
-
-def supabase_download_bytes(bucket: str, path: str) -> bytes:
-    """
-    Скачать файл из Supabase Storage.
-    """
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
-    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-    }
-    resp = requests.get(url, headers=headers, timeout=30)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Supabase download error {resp.status_code}: {resp.text}")
-    return resp.content
-
-
 
 
 def supabase_db_insert(table: str, row: dict):
@@ -439,8 +410,7 @@ class TrustedExample(BaseModel):
     needs_manual_review: bool | None = None
 
 
-
-app = FastAPI(title="ArborScan API v2.0")
+app = FastAPI(title="ArborScan API v2.1 (raw dataset + model versions)")
 
 
 @app.post("/analyze-tree")
@@ -552,7 +522,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         )
 
     # -----------------------------
-    # TEMP CACHE FOR FEEDBACK
+    # ID + META
     # -----------------------------
     analysis_id = str(uuid4())
 
@@ -568,8 +538,13 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
+        "model_version": MODEL_VERSION,          # ВАЖНО: версии моделей в каждом примере
+        "raw_prefix": RAW_PREFIX,                # чтобы понимать, где лежит RAW в storage
     }
 
+    # -----------------------------
+    # TEMP CACHE FOR FEEDBACK (локально, как и было)
+    # -----------------------------
     try:
         tmp_dir = Path("/tmp") / analysis_id
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -635,6 +610,62 @@ async def analyze_tree(file: UploadFile = File(...)):
         print(f"[!] Failed to cache analysis {analysis_id} in /tmp: {e}")
 
     # -----------------------------
+    # RAW DATASET UPLOAD (НОВОЕ)
+    # Сохраняем ВСЕ анализы в Supabase Storage, даже без feedback.
+    # Делаем best-effort: если Supabase не настроен — анализ всё равно вернётся.
+    # -----------------------------
+    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        try:
+            raw_base = f"{RAW_PREFIX}/{analysis_id}"
+
+            # input.jpg
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{raw_base}/input.jpg",
+                image_bytes,
+            )
+
+            # annotated.jpg
+            try:
+                annotated_bytes = base64.b64decode(annotated_b64)
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_INPUTS,
+                    f"{raw_base}/annotated.jpg",
+                    annotated_bytes,
+                )
+            except Exception as e:
+                print(f"[!] RAW upload annotated failed for {analysis_id}: {e}")
+
+            # tree_pred.json + stick_pred.json из /tmp (если есть)
+            tmp_dir = Path("/tmp") / analysis_id
+
+            tp = tmp_dir / "tree_pred.json"
+            if tp.exists():
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_PRED,
+                    f"{raw_base}/tree_pred.json",
+                    tp.read_bytes(),
+                )
+
+            sp = tmp_dir / "stick_pred.json"
+            if sp.exists():
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_PRED,
+                    f"{raw_base}/stick_pred.json",
+                    sp.read_bytes(),
+                )
+
+            # meta.json (в meta bucket — привычный формат)
+            supabase_upload_json(
+                SUPABASE_BUCKET_META,
+                f"{raw_base}/meta.json",
+                meta,
+            )
+
+        except Exception as e:
+            print(f"[!] RAW upload failed for {analysis_id}: {e}")
+
+    # -----------------------------
     # RESPONSE
     # -----------------------------
     response = {
@@ -645,14 +676,14 @@ async def analyze_tree(file: UploadFile = File(...)):
         "trunk_diameter_m": trunk_m,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
+        "model_version": MODEL_VERSION,
     }
+
     # добавляем оригинальное изображение
     try:
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
-    except:
+    except Exception:
         response["original_image_base64"] = None
-        return JSONResponse(response)
-
 
     if gps:
         response["gps"] = gps
@@ -674,6 +705,9 @@ def send_feedback(feedback: FeedbackRequest):
     Получаем подтверждение/исправление от пользователя и,
     если всё ок, сохраняем пример в Supabase для будущего обучения моделей
     + кладём запись в очередь доверенных примеров (Supabase DB).
+
+    ВАЖНО: raw-пример уже сохранён в raw/{analysis_id}/...
+    Здесь мы сохраняем именно "исправленную/подтверждённую" часть.
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
@@ -706,6 +740,7 @@ def send_feedback(feedback: FeedbackRequest):
     meta["params_ok"] = feedback.params_ok
     meta["species_ok"] = feedback.species_ok
     meta["correct_species"] = feedback.correct_species
+    meta["use_for_training"] = feedback.use_for_training
 
     # Исправленный вид дерева
     if (not feedback.species_ok) and feedback.correct_species:
@@ -736,7 +771,7 @@ def send_feedback(feedback: FeedbackRequest):
     analysis_id = feedback.analysis_id
 
     # -----------------------------
-    # UPLOAD TO SUPABASE STORAGE
+    # UPLOAD "CORRECTED/TRUSTED" TO SUPABASE STORAGE (как и было)
     # -----------------------------
     try:
         # input.jpg
@@ -790,6 +825,7 @@ def send_feedback(feedback: FeedbackRequest):
             )
 
         # meta.json (обновлённый)
+        # Оставляем совместимость: в meta bucket как раньше {analysis_id}.json
         supabase_upload_json(
             SUPABASE_BUCKET_META,
             f"{analysis_id}.json",
