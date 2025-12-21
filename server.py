@@ -1074,3 +1074,105 @@ def training_queue_set_status(req: QueueStatusRequest):
         raise HTTPException(status_code=500, detail=r.text)
 
     return {"status": "ok", "analysis_id": req.analysis_id, "new_status": req.status}
+
+class DatasetBuildRequest(BaseModel):
+    dataset_type: str          # yolo_tree | yolo_stick | classifier
+    limit: int = 100           # сколько примеров брать
+    note: str | None = None
+
+@app.post("/admin/dataset/build")
+def build_dataset(req: DatasetBuildRequest):
+    headers = sb_headers()
+
+    # 1. Получаем accepted примеры
+    q_url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/training_queue"
+    params = {
+        "status": "eq.accepted",
+        "order": "created_at.asc",
+        "limit": str(req.limit),
+        "select": "*",
+    }
+
+    r = requests.get(q_url, headers=headers, params=params, timeout=15)
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=r.text)
+
+    samples = r.json()
+    if not samples:
+        raise HTTPException(status_code=400, detail="No accepted samples")
+
+    dataset_id = str(uuid4())
+    base_dir = Path(f"/tmp/datasets/{dataset_id}")
+    (base_dir / "images").mkdir(parents=True, exist_ok=True)
+    (base_dir / "labels").mkdir(parents=True, exist_ok=True)
+    (base_dir / "meta").mkdir(parents=True, exist_ok=True)
+
+    manifest = {
+        "dataset_id": dataset_id,
+        "dataset_type": req.dataset_type,
+        "created_at": dataset_id,
+        "total_samples": len(samples),
+        "samples": [],
+    }
+
+    # 2. Скачиваем файлы
+    for idx, row in enumerate(samples, start=1):
+        aid = row["analysis_id"]
+        fname = f"{idx:06d}"
+
+        # image
+        img_bytes = sb_download(
+            BUCKET_INPUTS,
+            f"{RAW_PREFIX}/{aid}/input.jpg",
+        )
+        (base_dir / "images" / f"{fname}.jpg").write_bytes(img_bytes)
+
+        # meta
+        meta_bytes = sb_download(
+            BUCKET_META,
+            f"{RAW_PREFIX}/{aid}/meta.json",
+        )
+        (base_dir / "meta" / f"{fname}.json").write_bytes(meta_bytes)
+
+        # labels (ПОКА заглушка)
+        (base_dir / "labels" / f"{fname}.txt").write_text("# placeholder\n")
+
+        manifest["samples"].append({
+            "analysis_id": aid,
+            "file": fname,
+        })
+
+    # 3. Сохраняем manifest
+    manifest_path = base_dir / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    # 4. Регистрируем сборку в БД
+    db_url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/dataset_builds"
+    payload = {
+        "dataset_type": req.dataset_type,
+        "status": "ready",
+        "total_samples": len(samples),
+        "manifest": manifest,
+        "note": req.note,
+        "storage_bucket": "local",
+        "storage_path": str(base_dir),
+        "finished_at": "now()",
+    }
+
+    r = requests.post(
+        db_url,
+        headers={**headers, "Content-Type": "application/json"},
+        json=payload,
+        timeout=10,
+    )
+    if r.status_code not in (200, 201):
+        raise HTTPException(status_code=500, detail=r.text)
+
+    return {
+        "status": "ok",
+        "dataset_id": dataset_id,
+        "total_samples": len(samples),
+    }
