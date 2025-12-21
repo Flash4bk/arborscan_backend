@@ -413,7 +413,38 @@ class TrustedExample(BaseModel):
 
 app = FastAPI(title="ArborScan API v2.1 (raw dataset + model versions)")
 
+def get_active_model_versions():
+    """
+    Получить активные версии моделей из Supabase DB
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return MODEL_VERSION  # fallback на env / константы
 
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/model_versions"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
+    }
+    params = {
+        "is_active": "eq.true",
+        "select": "model_type,version,storage_bucket,storage_path"
+    }
+
+    r = requests.get(url, headers=headers, params=params, timeout=10)
+    if r.status_code != 200:
+        print("[!] Failed to fetch model versions:", r.text)
+        return MODEL_VERSION
+
+    data = r.json()
+    versions = {}
+    for row in data:
+        versions[row["model_type"]] = {
+            "version": row["version"],
+            "bucket": row["storage_bucket"],
+            "path": row["storage_path"],
+        }
+
+    return versions
 
 @app.post("/analyze-tree")
 async def analyze_tree(file: UploadFile = File(...)):
