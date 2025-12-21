@@ -101,26 +101,27 @@ print("[*] Models loaded.")
 # =============================================
 
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
-    """
-    Загрузка бинарных данных в Supabase Storage через REST API.
-    """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
+        return
 
-    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
+    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{path}"
+
     headers = {
+        # 🔴 КРИТИЧЕСКИ ВАЖНО
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
         "Content-Type": "application/octet-stream",
         "x-upsert": "true",
     }
-    resp = requests.post(url, headers=headers, data=data, timeout=30)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Supabase upload error {resp.status_code}: {resp.text}")
+
+    r = requests.post(url, headers=headers, data=data, timeout=30)
+
+    if r.status_code >= 400:
+        raise RuntimeError(f"Supabase upload error {r.status_code}: {r.text}")
 
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
-    data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
-    supabase_upload_bytes(bucket, path, data)
+    supabase_upload_bytes(bucket, path, json.dumps(obj).encode("utf-8"))
 
 
 def supabase_db_insert(table: str, row: dict):
