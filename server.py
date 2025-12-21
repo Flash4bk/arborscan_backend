@@ -145,6 +145,17 @@ def supabase_db_insert(table: str, row: dict):
             f"Supabase DB insert error {resp.status_code}: {resp.text}"
         )
 
+def load_model_from_supabase(bucket: str, path: str) -> bytes:
+    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{path}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
+    }
+    r = requests.get(url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        raise RuntimeError(f"Failed to load model {bucket}/{path}: {r.text}")
+    return r.content
+
 # =============================================
 # EXIF → GPS
 # =============================================
@@ -445,6 +456,34 @@ def get_active_model_versions():
         }
 
     return versions
+
+def load_active_models():
+    versions = get_active_model_versions()
+
+    # TREE
+    tb = load_model_from_supabase(versions["tree"]["bucket"], versions["tree"]["path"])
+    tpath = "/tmp/tree_model.pt"
+    with open(tpath, "wb") as f: f.write(tb)
+    tree = YOLO(tpath)
+
+    # STICK
+    sb = load_model_from_supabase(versions["stick"]["bucket"], versions["stick"]["path"])
+    spath = "/tmp/stick_model.pt"
+    with open(spath, "wb") as f: f.write(sb)
+    stick = YOLO(spath)
+
+    # CLASSIFIER
+    cb = load_model_from_supabase(versions["classifier"]["bucket"], versions["classifier"]["path"])
+    cpath = "/tmp/classifier.pth"
+    with open(cpath, "wb") as f: f.write(cb)
+
+    clf = models.resnet18(weights=None)
+    clf.fc = torch.nn.Linear(clf.fc.in_features, 5)
+    clf.load_state_dict(torch.load(cpath, map_location="cpu"))
+    clf.eval()
+
+    return tree, stick, clf
+
 
 @app.post("/analyze-tree")
 async def analyze_tree(file: UploadFile = File(...)):
@@ -924,3 +963,41 @@ def list_model_versions():
         raise HTTPException(status_code=500, detail=r.text)
 
     return r.json()
+
+class ActivateModelRequest(BaseModel):
+    model_type: str   # tree | stick | classifier
+    version: str      # v1.1, v2.0, ...
+
+@app.post("/admin/activate-model")
+def activate_model(req: ActivateModelRequest):
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Content-Type": "application/json",
+    }
+
+    # деактивируем текущую
+    requests.patch(
+        f"{SUPABASE_URL.rstrip('/')}/rest/v1/model_versions"
+        f"?model_type=eq.{req.model_type}",
+        headers=headers,
+        json={"is_active": False},
+        timeout=10,
+    )
+
+    # активируем выбранную
+    r = requests.patch(
+        f"{SUPABASE_URL.rstrip('/')}/rest/v1/model_versions"
+        f"?model_type=eq.{req.model_type}&version=eq.{req.version}",
+        headers=headers,
+        json={"is_active": True},
+        timeout=10,
+    )
+    if r.status_code not in (200, 204):
+        raise HTTPException(status_code=500, detail=r.text)
+
+    # hot-reload
+    global tree_model, stick_model, classifier
+    tree_model, stick_model, classifier = load_active_models()
+
+    return {"status": "ok", "model_type": req.model_type, "version": req.version}
