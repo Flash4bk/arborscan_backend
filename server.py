@@ -1001,3 +1001,76 @@ def activate_model(req: ActivateModelRequest):
     tree_model, stick_model, classifier = load_active_models()
 
     return {"status": "ok", "model_type": req.model_type, "version": req.version}
+
+class QueueAddRequest(BaseModel):
+    analysis_id: str
+    trust_score: float | None = None
+    species: str | None = None
+    has_user_mask: bool | None = None
+    note: str | None = None
+
+
+@app.post("/admin/training-queue/add")
+def training_queue_add(req: QueueAddRequest):
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/training_queue"
+    headers = {**sb_headers(), "Content-Type": "application/json"}
+
+    row = {
+        "analysis_id": req.analysis_id,
+        "trust_score": req.trust_score,
+        "species": req.species,
+        "has_user_mask": bool(req.has_user_mask) if req.has_user_mask is not None else None,
+        "note": req.note,
+        "status": "queued",
+    }
+
+    # Supabase: для upsert удобно добавить Prefer, но пока сделаем строго insert
+    r = requests.post(url, headers=headers, json=row, timeout=10)
+    if r.status_code not in (200, 201):
+        raise HTTPException(status_code=500, detail=r.text)
+
+    return {"status": "ok", "analysis_id": req.analysis_id}
+
+@app.get("/admin/training-queue")
+def training_queue_list(status: str = "queued", limit: int = 50):
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/training_queue"
+    headers = sb_headers()
+    params = {
+        "status": f"eq.{status}",
+        "select": "*",
+        "order": "created_at.desc",
+        "limit": str(max(1, min(limit, 200))),
+    }
+
+    r = requests.get(url, headers=headers, params=params, timeout=10)
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=r.text)
+
+    return r.json()
+
+class QueueStatusRequest(BaseModel):
+    analysis_id: str
+    status: str  # accepted | rejected | trained
+    note: str | None = None
+
+
+@app.post("/admin/training-queue/status")
+def training_queue_set_status(req: QueueStatusRequest):
+    if req.status not in ("accepted", "rejected", "trained"):
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    url = (
+        f"{SUPABASE_URL.rstrip('/')}/rest/v1/training_queue"
+        f"?analysis_id=eq.{req.analysis_id}"
+    )
+    headers = {**sb_headers(), "Content-Type": "application/json"}
+
+    payload = {"status": req.status}
+    if req.note is not None:
+        payload["note"] = req.note
+
+    r = requests.patch(url, headers=headers, json=payload, timeout=10)
+    if r.status_code not in (200, 204):
+        raise HTTPException(status_code=500, detail=r.text)
+
+    return {"status": "ok", "analysis_id": req.analysis_id, "new_status": req.status}
