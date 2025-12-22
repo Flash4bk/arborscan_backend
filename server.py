@@ -1121,14 +1121,15 @@ def build_dataset(req: DatasetBuildRequest):
 
         # image
         img_bytes = sb_download(
-            BUCKET_INPUTS,
+            SUPABASE_BUCKET_INPUTS,
             f"{RAW_PREFIX}/{aid}/input.jpg",
         )
+
         (base_dir / "images" / f"{fname}.jpg").write_bytes(img_bytes)
 
         # meta
         meta_bytes = sb_download(
-            BUCKET_META,
+            SUPABASE_BUCKET_META,
             f"{RAW_PREFIX}/{aid}/meta.json",
         )
         (base_dir / "meta" / f"{fname}.json").write_bytes(meta_bytes)
