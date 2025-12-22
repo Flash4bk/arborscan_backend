@@ -16,6 +16,7 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 # -------------------------------------
 # CONFIG
@@ -418,6 +419,13 @@ class TrustedExample(BaseModel):
     has_user_mask: bool | None = None
     use_for_training: bool | None = None
     needs_manual_review: bool | None = None
+
+class TrainRequest(BaseModel):
+    dataset_id: str
+    train_yolo: bool = True
+    train_classifier: bool = True
+    epochs: int = 10
+    note: Optional[str] = None
 
 
 app = FastAPI(title="ArborScan API v2.1 (raw dataset + model versions)")
@@ -1175,4 +1183,60 @@ def build_dataset(req: DatasetBuildRequest):
         "status": "ok",
         "dataset_id": dataset_id,
         "total_samples": len(samples),
+    }
+
+@app.post("/admin/train")
+def train_stub(req: TrainRequest):
+    """
+    Заглушка обучения YOLO + классификатора.
+    Проверяет dataset и готовность к обучению.
+    """
+
+    headers = sb_headers()
+
+    # 1. Проверяем, что dataset существует
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/dataset_builds"
+    params = {
+        "dataset_id": f"eq.{req.dataset_id}",
+        "select": "*",
+    }
+
+    r = requests.get(url, headers=headers, params=params, timeout=10)
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=r.text)
+
+    datasets = r.json()
+    if not datasets:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Dataset {req.dataset_id} not found",
+        )
+
+    dataset = datasets[0]
+
+    # 2. Проверяем, что в датасете есть samples
+    total_samples = dataset.get("total_samples", 0)
+    if total_samples <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Dataset has no samples",
+        )
+
+    # 3. (опционально) логируем запуск обучения
+    print(
+        f"[TRAIN-STUB] Dataset={req.dataset_id}, "
+        f"YOLO={req.train_yolo}, "
+        f"Classifier={req.train_classifier}, "
+        f"Epochs={req.epochs}"
+    )
+
+    # 4. Возвращаем успех
+    return {
+        "status": "ok",
+        "message": "Training stub executed",
+        "dataset_id": req.dataset_id,
+        "total_samples": total_samples,
+        "train_yolo": req.train_yolo,
+        "train_classifier": req.train_classifier,
+        "epochs": req.epochs,
     }
