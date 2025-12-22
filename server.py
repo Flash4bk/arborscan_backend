@@ -1150,9 +1150,10 @@ def build_dataset(req: DatasetBuildRequest):
 
         # meta
         meta_bytes = sb_download(
-            SUPABASE_BUCKET_META,
-            f"{RAW_PREFIX}/{aid}/meta.json",
+        SUPABASE_BUCKET_META,
+        f"{aid}.json",
         )
+
         (base_dir / "meta" / f"{fname}.json").write_bytes(meta_bytes)
 
         # labels (ПОКА заглушка)
