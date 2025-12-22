@@ -1160,6 +1160,7 @@ def build_dataset(req: DatasetBuildRequest):
     # 4. Регистрируем сборку в БД
     db_url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/dataset_builds"
     payload = {
+        "id": dataset_id,  # ← ДОБАВИТЬ ВОТ ЭТО
         "dataset_type": req.dataset_type,
         "status": "ready",
         "total_samples": len(samples),
