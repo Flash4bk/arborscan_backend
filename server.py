@@ -1197,9 +1197,10 @@ def train_stub(req: TrainRequest):
     # 1. Проверяем, что dataset существует
     url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/dataset_builds"
     params = {
-        "dataset_id": f"eq.{req.dataset_id}",
-        "select": "*",
+    "id": f"eq.{req.dataset_id}",
+    "select": "*",
     }
+
 
     r = requests.get(url, headers=headers, params=params, timeout=10)
     if r.status_code != 200:
