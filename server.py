@@ -101,60 +101,57 @@ print("[*] Models loaded.")
 # SUPABASE UTILS (Storage + DB)
 # =============================================
 
-def supabase_upload_bytes(bucket: str, path: str, data: bytes):
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        return
+# =============================================
+# SUPABASE COMMON UTILS
+# =============================================
 
-    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{path}"
-
-    headers = {
-        # 🔴 КРИТИЧЕСКИ ВАЖНО
+def sb_headers() -> dict:
+    if not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase service key is missing")
+    return {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
         "apikey": SUPABASE_SERVICE_KEY,
+    }
+
+
+def supabase_upload_bytes(bucket: str, path: str, data: bytes):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase is not configured")
+
+    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{path}"
+    headers = {
+        **sb_headers(),
         "Content-Type": "application/octet-stream",
         "x-upsert": "true",
     }
 
     r = requests.post(url, headers=headers, data=data, timeout=30)
-
     if r.status_code >= 400:
-        raise RuntimeError(f"Supabase upload error {r.status_code}: {r.text}")
+        raise RuntimeError(
+            f"Supabase upload error {r.status_code}: {r.text}"
+        )
 
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
-    supabase_upload_bytes(bucket, path, json.dumps(obj).encode("utf-8"))
+    supabase_upload_bytes(
+        bucket,
+        path,
+        json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8"),
+    )
 
 
-def supabase_db_insert(table: str, row: dict):
-    """
-    Вставка записи в Supabase Postgres через REST (PostgREST).
-    Используется для очереди доверенных примеров.
-    """
-    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase DB is not configured")
+def sb_download(bucket: str, path: str) -> bytes:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase is not configured")
 
-    url = f"{SUPABASE_DB_BASE}/{table}"
-    headers = {
-        "apikey": SUPABASE_SERVICE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-    }
-    resp = requests.post(url, headers=headers, json=row, timeout=10)
-    if resp.status_code >= 400:
+    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{path}"
+    r = requests.get(url, headers=sb_headers(), timeout=60)
+
+    if r.status_code != 200:
         raise RuntimeError(
-            f"Supabase DB insert error {resp.status_code}: {resp.text}"
+            f"Supabase download error {r.status_code}: {bucket}/{path} -> {r.text}"
         )
 
-def load_model_from_supabase(bucket: str, path: str) -> bytes:
-    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{path}"
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "apikey": SUPABASE_SERVICE_KEY,
-    }
-    r = requests.get(url, headers=headers, timeout=60)
-    if r.status_code != 200:
-        raise RuntimeError(f"Failed to load model {bucket}/{path}: {r.text}")
     return r.content
 
 # =============================================
