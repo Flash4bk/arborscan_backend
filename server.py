@@ -1149,10 +1149,22 @@ def build_dataset(req: DatasetBuildRequest):
         (base_dir / "images" / f"{fname}.jpg").write_bytes(img_bytes)
 
         # meta
-        meta_bytes = sb_download(
-        SUPABASE_BUCKET_META,
-        f"{aid}.json",
-        )
+        # meta (пытаемся сначала RAW-путь, затем legacy)
+        try:
+            meta_bytes = sb_download(
+                SUPABASE_BUCKET_META,
+                f"{RAW_PREFIX}/{aid}/meta.json",
+            )
+        except Exception:
+            try:
+                meta_bytes = sb_download(
+                    SUPABASE_BUCKET_META,
+                    f"{aid}.json",
+                )
+            except Exception:
+                meta_bytes = json.dumps(
+                    {"analysis_id": aid}, ensure_ascii=False
+                ).encode("utf-8")
 
         (base_dir / "meta" / f"{fname}.json").write_bytes(meta_bytes)
 
@@ -1249,10 +1261,15 @@ def train_stub(req: TrainRequest):
             SUPABASE_BUCKET_INPUTS,
             f"{RAW_PREFIX}/{aid}/input.jpg",
         )
-        label_bytes = sb_download(
-            SUPABASE_BUCKET_INPUTS,
-            f"{RAW_PREFIX}/{aid}/yolo.txt",
-        )
+        try:
+            label_bytes = sb_download(
+                SUPABASE_BUCKET_INPUTS,
+                f"{RAW_PREFIX}/{aid}/yolo.txt",
+            )
+        except Exception:
+            # Если разметки ещё нет (не отправляли feedback), кладём заглушку
+            label_bytes = b"0 0.5 0.5 0.8 0.8\n"
+
 
         (images_dir / f"{aid}.jpg").write_bytes(img_bytes)
         (labels_dir / f"{aid}.txt").write_bytes(label_bytes)
