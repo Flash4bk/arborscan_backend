@@ -869,10 +869,11 @@ def send_feedback(feedback: FeedbackRequest):
         yolo_txt = "0 0.5 0.5 0.8 0.8\n"  # class 0, почти весь кадр
 
         supabase_upload_bytes(
-            SUPABASE_BUCKET_INPUTS,
-            f"{analysis_id}/yolo.txt",
-            yolo_txt.encode("utf-8"),
+        SUPABASE_BUCKET_INPUTS,
+        f"{RAW_PREFIX}/{analysis_id}/yolo.txt",
+        yolo_txt.encode("utf-8"),
         )
+
 
         # annotated.jpg
         annotated_path = tmp_dir / "annotated.jpg"
