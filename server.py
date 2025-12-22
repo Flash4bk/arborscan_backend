@@ -1217,6 +1217,63 @@ def train_stub(req: TrainRequest):
 
     dataset = datasets[0]
 
+    # ===== YOLO DATA PREP =====
+
+    train_dir = Path("/tmp/train/yolo")
+    images_dir = train_dir / "images/train"
+    labels_dir = train_dir / "labels/train"
+
+    images_dir.mkdir(parents=True, exist_ok=True)
+    labels_dir.mkdir(parents=True, exist_ok=True)
+
+    samples = dataset["manifest"]["samples"]
+
+    for s in samples:
+        aid = s["analysis_id"]
+
+        # пути к raw данным
+        img_bytes = sb_download(
+            SUPABASE_BUCKET_INPUTS,
+            f"{RAW_PREFIX}/{aid}/input.jpg",
+        )
+        label_bytes = sb_download(
+            SUPABASE_BUCKET_INPUTS,
+            f"{RAW_PREFIX}/{aid}/yolo.txt",
+        )
+
+        (images_dir / f"{aid}.jpg").write_bytes(img_bytes)
+        (labels_dir / f"{aid}.txt").write_bytes(label_bytes)
+
+    # data.yaml
+    data_yaml = {
+        "path": str(train_dir),
+        "train": "images/train",
+        "val": "images/train",   # для теста используем train
+        "nc": 2,                 # дерево + палка
+        "names": ["tree", "stick"],
+    }
+
+    with open(train_dir / "data.yaml", "w") as f:
+        yaml.safe_dump(data_yaml, f)
+
+    # ===== YOLO TRAIN =====
+
+    print("[YOLO] Starting training...")
+
+    model = YOLO("yolov8n.pt")  # лёгкая базовая модель
+
+    results = model.train(
+        data=str(train_dir / "data.yaml"),
+        epochs=req.epochs,
+        imgsz=416,
+        batch=2,
+        device="cpu",
+        workers=1,
+    )
+
+    print("[YOLO] Training finished")
+
+
     # 2. Проверяем, что в датасете есть samples
     total_samples = dataset.get("total_samples", 0)
     if total_samples <= 0:
@@ -1244,41 +1301,3 @@ def train_stub(req: TrainRequest):
         "epochs": req.epochs,
     }
 
-# ===== YOLO DATA PREP =====
-
-train_dir = Path("/tmp/train/yolo")
-images_dir = train_dir / "images/train"
-labels_dir = train_dir / "labels/train"
-
-images_dir.mkdir(parents=True, exist_ok=True)
-labels_dir.mkdir(parents=True, exist_ok=True)
-
-samples = dataset["manifest"]["samples"]
-
-for s in samples:
-    aid = s["analysis_id"]
-
-    # пути к raw данным
-    img_bytes = sb_download(
-        SUPABASE_BUCKET_INPUTS,
-        f"{RAW_PREFIX}/{aid}/input.jpg",
-    )
-    label_bytes = sb_download(
-        SUPABASE_BUCKET_INPUTS,
-        f"{RAW_PREFIX}/{aid}/yolo.txt",
-    )
-
-    (images_dir / f"{aid}.jpg").write_bytes(img_bytes)
-    (labels_dir / f"{aid}.txt").write_bytes(label_bytes)
-
-# data.yaml
-data_yaml = {
-    "path": str(train_dir),
-    "train": "images/train",
-    "val": "images/train",   # для теста используем train
-    "nc": 2,                 # дерево + палка
-    "names": ["tree", "stick"],
-}
-
-with open(train_dir / "data.yaml", "w") as f:
-    yaml.safe_dump(data_yaml, f)
