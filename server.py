@@ -32,6 +32,9 @@ SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
 
+# NEW: bucket для сохранения всех загрузок (raw dataset)
+SUPABASE_BUCKET_RAW = "arborscan-raw"
+
 # Таблица в Supabase Postgres для очереди доверенных примеров
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
@@ -569,6 +572,25 @@ async def analyze_tree(file: UploadFile = File(...)):
         "soil": soil,
         "risk": risk,
     }
+
+    # -----------------------------
+    # NEW: SAVE RAW SAMPLE (ALWAYS) → Supabase Storage
+    # -----------------------------
+    # Сохраняем все загрузки обычных пользователей независимо от feedback.
+    # Если Supabase не настроен/временно недоступен — анализ НЕ ломаем.
+    try:
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/input.jpg",
+            image_bytes,
+        )
+        supabase_upload_json(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/meta_auto.json",
+            meta,
+        )
+    except Exception as e:
+        print(f"[!] Failed to upload raw sample {analysis_id} to Supabase: {e}")
 
     try:
         tmp_dir = Path("/tmp") / analysis_id
