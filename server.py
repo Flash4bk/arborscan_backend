@@ -16,6 +16,41 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 
+from typing import Optional, List, Literal, Any, Dict
+from datetime import datetime
+
+# ----------------------------
+# Pydantic request models
+# ----------------------------
+class TrainingQueueAddRequest(BaseModel):
+    analysis_id: str
+    trust_score: float = 1.0
+    species: Optional[str] = None
+    has_user_mask: bool = False
+    tree_ok: Optional[bool] = None
+    stick_ok: Optional[bool] = None
+    params_ok: Optional[bool] = None
+    species_ok: Optional[bool] = None
+    status: Literal['queued', 'accepted', 'rejected'] = 'queued'
+    note: Optional[str] = None
+
+class TrainingQueueSetStatusRequest(BaseModel):
+    analysis_id: str
+    status: Literal['queued', 'accepted', 'rejected']
+    note: Optional[str] = None
+
+class DatasetBuildRequest(BaseModel):
+    dataset_type: str = 'yolo_tree'
+    limit: int = 100
+    note: Optional[str] = None
+
+class TrainRequest(BaseModel):
+    dataset_id: str
+    train_yolo: bool = True
+    train_classifier: bool = True
+    epochs: int = 10
+    note: Optional[str] = None
+
 # -------------------------------------
 # CONFIG
 # -------------------------------------
