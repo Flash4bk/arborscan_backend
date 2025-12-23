@@ -31,6 +31,7 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
+SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 
 # NEW: bucket для сохранения всех загрузок (raw dataset)
 SUPABASE_BUCKET_RAW = "arborscan-raw"
@@ -71,6 +72,7 @@ BUILD_INFO = {
 }
 SCHEMA_VERSION = "1.0.0"
 API_VERSION = "2.0.0"
+VERIFIED_TRUST_THRESHOLD = 0.7
 
 # -------------------------------------
 # CLASSES / CONSTANTS
@@ -822,6 +824,16 @@ def send_feedback(feedback: FeedbackRequest):
         trust += 0.3
     meta["trust_score"] = trust
 
+    # ---------------------------------------------
+    # VERIFIED PIPELINE
+    # ---------------------------------------------
+
+    is_verified = (
+    feedback.use_for_training and
+    trust >= VERIFIED_TRUST_THRESHOLD
+    )
+
+
     analysis_id = feedback.analysis_id
 
     # -----------------------------
@@ -884,6 +896,62 @@ def send_feedback(feedback: FeedbackRequest):
             f"{analysis_id}.json",
             meta,
         )
+
+        if is_verified:
+            try:
+                # input
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/input.jpg",
+                    (tmp_dir / "input.jpg").read_bytes(),
+                )
+
+                # annotated
+                annotated_path = tmp_dir / "annotated.jpg"
+                if annotated_path.exists():
+                    supabase_upload_bytes(
+                        SUPABASE_BUCKET_VERIFIED,
+                        f"{analysis_id}/annotated.jpg",
+                        annotated_path.read_bytes(),
+                    )
+
+                # user mask (если есть)
+                if feedback.user_mask_base64:
+                    mask_bytes = base64.b64decode(feedback.user_mask_base64)
+                    supabase_upload_bytes(
+                        SUPABASE_BUCKET_VERIFIED,
+                        f"{analysis_id}/user_mask.png",
+                        mask_bytes,
+                    )
+
+                # predictions
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/tree_pred.json",
+                    (tmp_dir / "tree_pred.json").read_bytes(),
+                )
+
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/stick_pred.json",
+                    (tmp_dir / "stick_pred.json").read_bytes(),
+                )
+
+                # VERIFIED META
+                meta_verified = meta.copy()
+                meta_verified["verified"] = True
+                meta_verified["verified_at"] = datetime.utcnow().isoformat()
+                meta_verified["verifier_role"] = "admin" if not feedback.use_for_training else "user"
+
+                supabase_upload_json(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/meta_verified.json",
+                    meta_verified,
+                )
+
+            except Exception as e:
+                print(f"[!] Failed to upload VERIFIED sample {analysis_id}: {e}")
+
 
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
