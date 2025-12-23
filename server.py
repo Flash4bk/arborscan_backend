@@ -67,8 +67,11 @@ MODEL_VERSIONS = {
 BUILD_INFO = {
     # желательно прокидывать из CI / Railway
     "git_commit": os.getenv("GIT_COMMIT", "unknown"),
-    "build_time": os.getenv("BUILD_TIME"),
+    "build_time": os.getenv("BUILD_TIME")
 }
+SCHEMA_VERSION = "1.0.0"
+API_VERSION = "2.0.0"
+
 # -------------------------------------
 # CLASSES / CONSTANTS
 # -------------------------------------
@@ -589,6 +592,9 @@ async def analyze_tree(file: UploadFile = File(...)):
         "model_versions": MODEL_VERSIONS,
         "model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
+        "schema_version": SCHEMA_VERSION,
+        "api_version": API_VERSION,
+
     }
 
     # -----------------------------
