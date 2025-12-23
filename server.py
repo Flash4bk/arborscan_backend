@@ -757,23 +757,81 @@ async def analyze_tree(file: UploadFile = File(...)):
 @app.post("/feedback")
 def send_feedback(feedback: FeedbackRequest):
     """
-    Получаем подтверждение/исправление от пользователя и,
-    если всё ок, сохраняем пример в Supabase для будущего обучения моделей
-    + кладём запись в очередь доверенных примеров (Supabase DB).
+    Получаем подтверждение/исправление от пользователя и, если пример разрешён для обучения,
+    сохраняем:
+      1) "raw" артефакты в Storage (bucket inputs + meta/pred),
+      2) запись в очередь training_queue (Postgres через PostgREST).
+
+    ВАЖНО:
+      - /analyze-tree сохраняет tmp-артефакты в /tmp/{analysis_id}
+      - здесь мы добавляем/обновляем meta.json и (при наличии) mask/labels.
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
 
-    tmp_dir = Path("/tmp") / feedback.analysis_id
+    analysis_id = feedback.analysis_id
+    tmp_dir = Path("/tmp") / analysis_id
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
-    # Если пользователь не хочет использовать пример в обучении
+    # Если пользователь запретил использовать пример в обучении — просто чистим /tmp и выходим
     if not feedback.use_for_training:
-    try:
-        raw_base = f"{RAW_PREFIX}/{analysis_id}"
+        try:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
+        return {"status": "ignored", "reason": "user_disabled_training"}
 
-        # input.jpg (always try to persist)
+    # --- meta.json (источник — локальный tmp) ---
+    meta_path = tmp_dir / "meta.json"
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
+    else:
+        meta = {"analysis_id": analysis_id}
+
+    # Обновляем meta фидбеком
+    meta["tree_ok"] = bool(feedback.tree_ok)
+    meta["stick_ok"] = bool(feedback.stick_ok)
+    meta["params_ok"] = bool(feedback.params_ok)
+    meta["species_ok"] = bool(feedback.species_ok)
+    meta["correct_species"] = feedback.correct_species
+    meta["use_for_training"] = bool(feedback.use_for_training)
+
+    # Исправленный вид дерева
+    if (not feedback.species_ok) and feedback.correct_species:
+        meta["species"] = feedback.correct_species
+
+    # Исправленные численные параметры (если пришли от клиента)
+    if feedback.correct_height_m is not None:
+        meta["height_m"] = feedback.correct_height_m
+    if feedback.correct_crown_width_m is not None:
+        meta["crown_width_m"] = feedback.correct_crown_width_m
+    if feedback.correct_trunk_diameter_m is not None:
+        meta["trunk_diameter_m"] = feedback.correct_trunk_diameter_m
+    if feedback.correct_scale_px_to_m is not None:
+        meta["scale_px_to_m"] = feedback.correct_scale_px_to_m
+
+    # Trust score
+    trust = 0.0
+    if feedback.tree_ok:
+        trust += 0.3
+    if feedback.stick_ok:
+        trust += 0.2
+    if feedback.params_ok:
+        trust += 0.2
+    if feedback.species_ok or feedback.correct_species:
+        trust += 0.3
+    meta["trust_score"] = float(trust)
+
+    # Папка RAW в inputs bucket
+    raw_base = f"{RAW_PREFIX}/{analysis_id}"
+
+    # --- UPLOAD в Storage ---
+    try:
+        # input.jpg
         input_path = tmp_dir / "input.jpg"
         if input_path.exists():
             supabase_upload_bytes(
@@ -782,7 +840,7 @@ def send_feedback(feedback: FeedbackRequest):
                 input_path.read_bytes(),
             )
 
-        # annotated.jpg (optional)
+        # annotated.jpg (если есть)
         annotated_path = tmp_dir / "annotated.jpg"
         if annotated_path.exists():
             supabase_upload_bytes(
@@ -791,7 +849,7 @@ def send_feedback(feedback: FeedbackRequest):
                 annotated_path.read_bytes(),
             )
 
-        # user_mask.png + yolo.txt (bbox from mask)
+        # user_mask.png (если пришла)
         meta["has_user_mask"] = False
         if feedback.user_mask_base64:
             try:
@@ -802,50 +860,24 @@ def send_feedback(feedback: FeedbackRequest):
                     mask_bytes,
                 )
                 meta["has_user_mask"] = True
-
-                # compute bbox from mask pixels
-                from PIL import Image
-                import numpy as np
-                mask_img = Image.open(BytesIO(mask_bytes)).convert("L")
-                mask_arr = np.array(mask_img)
-                ys, xs = np.where(mask_arr > 0)
-                if ys.size > 0 and xs.size > 0 and input_path.exists():
-                    x1, x2 = int(xs.min()), int(xs.max())
-                    y1, y2 = int(ys.min()), int(ys.max())
-                    w = max(1, x2 - x1)
-                    h = max(1, y2 - y1)
-
-                    img_w, img_h = Image.open(input_path).size
-                    xc = (x1 + x2) / 2.0 / img_w
-                    yc = (y1 + y2) / 2.0 / img_h
-                    ww = w / img_w
-                    hh = h / img_h
-
-                    # class 0 = tree (default)
-                    yolo_txt = f"0 {xc:.6f} {yc:.6f} {ww:.6f} {hh:.6f}\n"
-                    supabase_upload_bytes(
-                        SUPABASE_BUCKET_INPUTS,
-                        f"{raw_base}/yolo.txt",
-                        yolo_txt.encode("utf-8"),
-                    )
             except Exception as e:
                 print(f"[!] Failed to decode/upload user mask for {analysis_id}: {e}")
 
-        # If no mask provided, still ensure yolo.txt exists (temporary fallback)
-        if not meta.get("has_user_mask"):
-            yolo_txt = "0 0.5 0.5 0.8 0.8\n"
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{raw_base}/yolo.txt",
-                yolo_txt.encode("utf-8"),
-            )
+        # yolo.txt (пока stub — если клиент не прислал разметку)
+        # Формат YOLO: class cx cy w h (normalized)
+        yolo_txt = "0 0.5 0.5 0.8 0.8\n"
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_INPUTS,
+            f"{raw_base}/yolo.txt",
+            yolo_txt.encode("utf-8"),
+        )
 
-        # predictions
+        # tree_pred.json / stick_pred.json (если лежат в tmp)
         tree_pred_path = tmp_dir / "tree_pred.json"
         if tree_pred_path.exists():
             supabase_upload_bytes(
                 SUPABASE_BUCKET_PRED,
-                f"{raw_base}/tree_pred.json",
+                f"{analysis_id}/tree_pred.json",
                 tree_pred_path.read_bytes(),
             )
 
@@ -853,11 +885,11 @@ def send_feedback(feedback: FeedbackRequest):
         if stick_pred_path.exists():
             supabase_upload_bytes(
                 SUPABASE_BUCKET_PRED,
-                f"{raw_base}/stick_pred.json",
+                f"{analysis_id}/stick_pred.json",
                 stick_pred_path.read_bytes(),
             )
 
-        # meta.json (updated)
+        # meta.json (новый путь + legacy для совместимости)
         supabase_upload_json(
             SUPABASE_BUCKET_META,
             f"{raw_base}/meta.json",
@@ -869,13 +901,16 @@ def send_feedback(feedback: FeedbackRequest):
             meta,
         )
 
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # сохраняем локально обновлённый meta тоже (на случай отладки)
+        try:
+            meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
 
-    # Запись в очередь доверенных примеров (Supabase DB)
-    # -----------------------------
+    # --- запись в очередь (DB) ---
     try:
         queue_row = {
             "analysis_id": analysis_id,
@@ -886,10 +921,10 @@ def send_feedback(feedback: FeedbackRequest):
             "stick_ok": meta.get("stick_ok"),
             "params_ok": meta.get("params_ok"),
             "species_ok": meta.get("species_ok"),
+            "status": "queued",
         }
         supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
     except Exception as e:
-        # Не падаем для пользователя, просто логируем
         print(f"[!] Failed to insert feedback into DB queue for {analysis_id}: {e}")
 
     # Чистим /tmp
@@ -898,47 +933,7 @@ def send_feedback(feedback: FeedbackRequest):
     except Exception as e:
         print(f"[!] Failed to remove tmp dir for {analysis_id}: {e}")
 
-    return {
-        "status": "ok",
-        "analysis_id": analysis_id,
-        "trust_score": trust,
-    }
-
-# ============================================================
-# ADMIN / TRAINING PIPELINE
-# ============================================================
-
-from pydantic import BaseModel, Field
-from typing import Optional, Literal
-
-class TrainingQueueAddRequest(BaseModel):
-    analysis_id: str
-    trust_score: float = 0.0
-    species: Optional[str] = None
-    has_user_mask: bool = False
-    tree_ok: Optional[bool] = None
-    stick_ok: Optional[bool] = None
-    params_ok: Optional[bool] = None
-    species_ok: Optional[bool] = None
-    status: Literal["queued", "accepted", "rejected"] = "queued"
-
-class TrainingQueueSetStatusRequest(BaseModel):
-    analysis_id: str
-    status: Literal["queued", "accepted", "rejected"]
-
-class DatasetBuildRequest(BaseModel):
-    dataset_type: str = Field(default="yolo_tree")
-    limit: int = Field(default=100, ge=1, le=5000)
-    note: Optional[str] = None
-
-class TrainRequest(BaseModel):
-    dataset_id: str
-    train_yolo: bool = True
-    train_classifier: bool = True
-    epochs: int = Field(default=10, ge=1, le=500)
-    note: Optional[str] = None
-
-
+    return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
 @app.get("/admin/training-queue")
 def admin_training_queue(status: str = "queued", limit: int = 50):
     headers = sb_headers()
