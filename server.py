@@ -54,6 +54,17 @@ NOMINATIM_USER_AGENT = os.getenv(
 
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
+
+# -------------------------------------
+# MODEL VERSIONS
+# -------------------------------------
+
+MODEL_VERSIONS = {
+    "tree_yolo": "tree_yolov8_seg_v1.2.0",
+    "stick_yolo": "stick_yolov8_det_v1.0.3",
+    "classifier": "resnet18_species_v0.9.1",
+}
+
 # -------------------------------------
 # CLASSES / CONSTANTS
 # -------------------------------------
@@ -571,6 +582,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
+        "model_versions": MODEL_VERSIONS,
     }
 
     # -----------------------------
