@@ -72,7 +72,7 @@ BUILD_INFO = {
 }
 SCHEMA_VERSION = "1.0.0"
 API_VERSION = "2.0.0"
-VERIFIED_TRUST_THRESHOLD = 0.7
+VERIFIED_TRUST_THRESHOLD = 0.0
 
 # -------------------------------------
 # CLASSES / CONSTANTS
@@ -948,6 +948,8 @@ def send_feedback(feedback: FeedbackRequest):
                     f"{analysis_id}/meta_verified.json",
                     meta_verified,
                 )
+               
+                
 
             except Exception as e:
                 print(f"[!] Failed to upload VERIFIED sample {analysis_id}: {e}")
