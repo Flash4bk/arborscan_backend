@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
+from datetime import datetime, timezone
 
 # -------------------------------------
 # CONFIG
@@ -31,9 +32,6 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
-
-# NEW: bucket для сохранения всех загрузок (raw dataset)
-SUPABASE_BUCKET_RAW = "arborscan-raw"
 
 # Таблица в Supabase Postgres для очереди доверенных примеров
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
@@ -54,16 +52,23 @@ NOMINATIM_USER_AGENT = os.getenv(
 
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
-
 # -------------------------------------
-# MODEL VERSIONS
+# MODEL / BUILD INFO
 # -------------------------------------
-
+# Указывайте версии моделей вручную (и обновляйте при замене файлов моделей).
 MODEL_VERSIONS = {
     "tree_yolo": "tree_yolov8_seg_v1.2.0",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
     "classifier": "resnet18_species_v0.9.1",
 }
+
+# Данные сборки (желательно задавать через переменные окружения при деплое).
+# Railway: Variables → GIT_COMMIT (например short SHA), BUILD_TIME (ISO8601).
+BUILD_INFO = {
+    "git_commit": os.getenv("GIT_COMMIT", "unknown"),
+    "build_time": os.getenv("BUILD_TIME", datetime.now(timezone.utc).isoformat()),
+}
+
 
 # -------------------------------------
 # CLASSES / CONSTANTS
@@ -582,104 +587,11 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
+    
         "model_versions": MODEL_VERSIONS,
+        "build": BUILD_INFO,
     }
 
-    # -----------------------------
-    # PREPARE PRED OBJECTS (also for RAW storage)
-    # -----------------------------
-    # tree_pred
-    tree_box_xyxy = tree_res.boxes.xyxy[idx].cpu().numpy().tolist()
-    tree_conf = None
-    tree_cls_id = None
-    try:
-        tree_conf = float(tree_res.boxes.conf[idx].cpu().item())
-    except Exception:
-        pass
-    try:
-        tree_cls_id = int(tree_res.boxes.cls[idx].cpu().item())
-    except Exception:
-        pass
-
-    tree_pred = {
-        "box_xyxy": tree_box_xyxy,
-        "confidence": tree_conf,
-        "class_id": tree_cls_id,
-    }
-
-    # stick_pred
-    stick_pred = {
-        "box_xyxy": None,
-        "scale_px_to_m": scale,
-    }
-    try:
-        if len(stick_res.boxes) > 0:
-            best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
-            x1b, y1b, x2b, y2b = best.xyxy[0].cpu().numpy().astype(int)
-            stick_pred["box_xyxy"] = [int(x1b), int(y1b), int(x2b), int(y2b)]
-            try:
-                stick_pred["confidence"] = float(best.conf[0].cpu().item())
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-    # -----------------------------
-    # NEW: SAVE RAW SAMPLE (ALWAYS) → Supabase Storage
-    # -----------------------------
-    # Сохраняем все загрузки обычных пользователей независимо от feedback.
-    # Если Supabase не настроен/временно недоступен — анализ НЕ ломаем.
-    try:
-        # input
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/input.jpg",
-            image_bytes,
-        )
-
-        # meta
-        supabase_upload_json(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/meta_auto.json",
-            meta,
-        )
-
-        # annotated image (jpg)
-        try:
-            annotated_bytes_for_raw = base64.b64decode(annotated_b64)
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_RAW,
-                f"{analysis_id}/annotated.jpg",
-                annotated_bytes_for_raw,
-            )
-        except Exception as e:
-            print(f"[!] Failed to decode/upload annotated.jpg to RAW for {analysis_id}: {e}")
-
-        # predictions (json)
-        try:
-            supabase_upload_json(
-                SUPABASE_BUCKET_RAW,
-                f"{analysis_id}/tree_pred.json",
-                tree_pred,
-            )
-        except Exception as e:
-            print(f"[!] Failed to upload tree_pred.json to RAW for {analysis_id}: {e}")
-
-        try:
-            supabase_upload_json(
-                SUPABASE_BUCKET_RAW,
-                f"{analysis_id}/stick_pred.json",
-                stick_pred,
-            )
-        except Exception as e:
-            print(f"[!] Failed to upload stick_pred.json to RAW for {analysis_id}: {e}")
-
-    except Exception as e:
-        print(f"[!] Failed to upload raw sample {analysis_id} to Supabase: {e}")
-
-    # -----------------------------
-    # CACHE IN /tmp FOR FEEDBACK
-    # -----------------------------
     try:
         tmp_dir = Path("/tmp") / analysis_id
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -697,10 +609,43 @@ async def analyze_tree(file: UploadFile = File(...)):
             print(f"[!] Failed to save annotated for {analysis_id}: {e}")
 
         # Предсказание дерева
+        tree_box_xyxy = tree_res.boxes.xyxy[idx].cpu().numpy().tolist()
+        tree_conf = None
+        tree_cls_id = None
+        try:
+            tree_conf = float(tree_res.boxes.conf[idx].cpu().item())
+        except Exception:
+            pass
+        try:
+            tree_cls_id = int(tree_res.boxes.cls[idx].cpu().item())
+        except Exception:
+            pass
+
+        tree_pred = {
+            "box_xyxy": tree_box_xyxy,
+            "confidence": tree_conf,
+            "class_id": tree_cls_id,
+        }
         with open(tmp_dir / "tree_pred.json", "w", encoding="utf-8") as f:
             json.dump(tree_pred, f, ensure_ascii=False, indent=2)
 
         # Предсказание палки
+        stick_pred = {
+            "box_xyxy": None,
+            "scale_px_to_m": scale,
+        }
+        try:
+            if len(stick_res.boxes) > 0:
+                best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
+                x1b, y1b, x2b, y2b = best.xyxy[0].cpu().numpy().astype(int)
+                stick_pred["box_xyxy"] = [int(x1b), int(y1b), int(x2b), int(y2b)]
+                try:
+                    stick_pred["confidence"] = float(best.conf[0].cpu().item())
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         with open(tmp_dir / "stick_pred.json", "w", encoding="utf-8") as f:
             json.dump(stick_pred, f, ensure_ascii=False, indent=2)
 
