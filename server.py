@@ -100,6 +100,7 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
         "Content-Type": "application/octet-stream",
         "x-upsert": "true",
     }
@@ -111,6 +112,60 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
+
+
+
+def supabase_upload_raw_sample(analysis_id: str, tmp_dir: Path, meta: dict) -> dict:
+    """Upload RAW artifacts produced by /analyze-tree into Supabase Storage.
+
+    Files are uploaded under: {RAW_PREFIX}/{analysis_id}/...
+    Returns dict with keys: ok(bool), uploaded(list[str]), errors(list[str])
+    """
+    result = {"ok": True, "uploaded": [], "errors": []}
+
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        result["ok"] = False
+        result["errors"].append("supabase_not_configured")
+        return result
+
+    def _put(bucket: str, rel_path: str, data: bytes):
+        try:
+            supabase_upload_bytes(bucket, rel_path, data)
+            result["uploaded"].append(f"{bucket}:{rel_path}")
+        except Exception as e:
+            result["ok"] = False
+            result["errors"].append(f"{bucket}:{rel_path}: {e}")
+
+    # inputs
+    input_path = tmp_dir / "input.jpg"
+    if input_path.exists():
+        _put(SUPABASE_BUCKET_INPUTS, f"{RAW_PREFIX}/{analysis_id}/input.jpg", input_path.read_bytes())
+
+    annotated_path = tmp_dir / "annotated.jpg"
+    if annotated_path.exists():
+        _put(SUPABASE_BUCKET_INPUTS, f"{RAW_PREFIX}/{analysis_id}/annotated.jpg", annotated_path.read_bytes())
+
+    # predictions
+    tree_pred_path = tmp_dir / "tree_pred.json"
+    if tree_pred_path.exists():
+        _put(SUPABASE_BUCKET_PRED, f"{RAW_PREFIX}/{analysis_id}/tree_pred.json", tree_pred_path.read_bytes())
+
+    stick_pred_path = tmp_dir / "stick_pred.json"
+    if stick_pred_path.exists():
+        _put(SUPABASE_BUCKET_PRED, f"{RAW_PREFIX}/{analysis_id}/stick_pred.json", stick_pred_path.read_bytes())
+
+    # meta (raw + legacy for backward compatibility)
+    try:
+        _put(SUPABASE_BUCKET_META, f"{RAW_PREFIX}/{analysis_id}/meta.json",
+             json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"))
+        # legacy: {analysis_id}.json (some flows still rely on it)
+        _put(SUPABASE_BUCKET_META, f"{analysis_id}.json",
+             json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"))
+    except Exception as e:
+        result["ok"] = False
+        result["errors"].append(f"meta_upload_failed: {e}")
+
+    return result
 
 def supabase_list_objects(bucket: str, prefix: str = ""):
     """
@@ -681,10 +736,8 @@ async def analyze_tree(file: UploadFile = File(...)):
     # добавляем оригинальное изображение
     try:
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
-    except:
+    except Exception:
         response["original_image_base64"] = None
-        return JSONResponse(response)
-
 
     if gps:
         response["gps"] = gps
@@ -696,6 +749,14 @@ async def analyze_tree(file: UploadFile = File(...)):
         response["soil"] = soil
     if risk:
         response["risk"] = risk
+
+    # Upload RAW artifacts to Supabase right after analysis (so /admin/dataset/build can use them)
+    if os.getenv("AUTO_UPLOAD_RAW", "1") not in ("0", "false", "False"):
+        try:
+            raw_res = supabase_upload_raw_sample(analysis_id, tmp_dir, meta)
+            response["raw_upload"] = raw_res
+        except Exception as e:
+            response["raw_upload"] = {"ok": False, "uploaded": [], "errors": [str(e)]}
 
     return JSONResponse(response)
 
