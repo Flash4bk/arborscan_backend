@@ -24,6 +24,11 @@ from pydantic import BaseModel
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
+# ---- Supabase config/buckets ----
+SUPABASE_DATASET_BUILDS_TABLE = os.getenv("SUPABASE_DATASET_BUILDS_TABLE", "dataset_builds")
+RAW_PREFIX = os.getenv("RAW_PREFIX", "raw")  # raw/{analysis_id}/... in arborscan-inputs
+
+
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
@@ -31,9 +36,6 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
-
-# Canonical prefix inside Storage buckets
-RAW_PREFIX = "raw"
 
 # Таблица в Supabase Postgres для очереди доверенных примеров
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
@@ -100,7 +102,6 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "apikey": SUPABASE_SERVICE_KEY,
         "Content-Type": "application/octet-stream",
         "x-upsert": "true",
     }
@@ -112,60 +113,6 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
-
-
-
-def supabase_upload_raw_sample(analysis_id: str, tmp_dir: Path, meta: dict) -> dict:
-    """Upload RAW artifacts produced by /analyze-tree into Supabase Storage.
-
-    Files are uploaded under: {RAW_PREFIX}/{analysis_id}/...
-    Returns dict with keys: ok(bool), uploaded(list[str]), errors(list[str])
-    """
-    result = {"ok": True, "uploaded": [], "errors": []}
-
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        result["ok"] = False
-        result["errors"].append("supabase_not_configured")
-        return result
-
-    def _put(bucket: str, rel_path: str, data: bytes):
-        try:
-            supabase_upload_bytes(bucket, rel_path, data)
-            result["uploaded"].append(f"{bucket}:{rel_path}")
-        except Exception as e:
-            result["ok"] = False
-            result["errors"].append(f"{bucket}:{rel_path}: {e}")
-
-    # inputs
-    input_path = tmp_dir / "input.jpg"
-    if input_path.exists():
-        _put(SUPABASE_BUCKET_INPUTS, f"{RAW_PREFIX}/{analysis_id}/input.jpg", input_path.read_bytes())
-
-    annotated_path = tmp_dir / "annotated.jpg"
-    if annotated_path.exists():
-        _put(SUPABASE_BUCKET_INPUTS, f"{RAW_PREFIX}/{analysis_id}/annotated.jpg", annotated_path.read_bytes())
-
-    # predictions
-    tree_pred_path = tmp_dir / "tree_pred.json"
-    if tree_pred_path.exists():
-        _put(SUPABASE_BUCKET_PRED, f"{RAW_PREFIX}/{analysis_id}/tree_pred.json", tree_pred_path.read_bytes())
-
-    stick_pred_path = tmp_dir / "stick_pred.json"
-    if stick_pred_path.exists():
-        _put(SUPABASE_BUCKET_PRED, f"{RAW_PREFIX}/{analysis_id}/stick_pred.json", stick_pred_path.read_bytes())
-
-    # meta (raw + legacy for backward compatibility)
-    try:
-        _put(SUPABASE_BUCKET_META, f"{RAW_PREFIX}/{analysis_id}/meta.json",
-             json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"))
-        # legacy: {analysis_id}.json (some flows still rely on it)
-        _put(SUPABASE_BUCKET_META, f"{analysis_id}.json",
-             json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8"))
-    except Exception as e:
-        result["ok"] = False
-        result["errors"].append(f"meta_upload_failed: {e}")
-
-    return result
 
 def supabase_list_objects(bucket: str, prefix: str = ""):
     """
@@ -234,6 +181,35 @@ def supabase_db_insert(table: str, row: dict):
 # =============================================
 # EXIF → GPS
 # =============================================
+
+
+def sb_headers() -> dict:
+    """Headers for Supabase PostgREST calls (service role)."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase is not configured")
+    return {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Accept": "application/json",
+    }
+
+
+def sb_download(bucket: str, path: str) -> bytes:
+    """Download object bytes from Supabase Storage."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase is not configured")
+
+    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket}/{path.lstrip('/')}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
+    }
+    r = requests.get(url, headers=headers, timeout=60)
+    if r.status_code != 200:
+        raise RuntimeError(
+            f"Supabase download error {r.status_code}: {bucket}/{path} -> {r.text}"
+        )
+    return r.content
 
 def _deg(v):
     d = v[0][0] / v[0][1]
@@ -462,35 +438,6 @@ def draw_mask(img_bgr, mask):
 # =============================================
 # FASTAPI + MODELS
 # =============================================
-
-
-def mask_png_bytes_to_bbox(mask_bytes: bytes):
-    """Return (x1,y1,x2,y2) bbox from a PNG mask (non-zero pixels)."""
-    img = cv2.imdecode(np.frombuffer(mask_bytes, np.uint8), cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        return None
-    ys, xs = np.where(img > 0)
-    if xs.size == 0 or ys.size == 0:
-        return None
-    x1, x2 = int(xs.min()), int(xs.max())
-    y1, y2 = int(ys.min()), int(ys.max())
-    return x1, y1, x2, y2
-
-def xyxy_to_yolo_line(x1: int, y1: int, x2: int, y2: int, w: int, h: int, class_id: int) -> str:
-    """Convert pixel bbox (xyxy) to a YOLO label line with normalized coords."""
-    # Clamp
-    x1 = max(0, min(int(x1), w - 1))
-    x2 = max(0, min(int(x2), w - 1))
-    y1 = max(0, min(int(y1), h - 1))
-    y2 = max(0, min(int(y2), h - 1))
-    if x2 <= x1 or y2 <= y1:
-        return ""
-    xc = ((x1 + x2) / 2.0) / float(w)
-    yc = ((y1 + y2) / 2.0) / float(h)
-    bw = (x2 - x1) / float(w)
-    bh = (y2 - y1) / float(h)
-    return f"{class_id} {xc:.6f} {yc:.6f} {bw:.6f} {bh:.6f}"
-
 
 class FeedbackRequest(BaseModel):
     analysis_id: str
@@ -724,6 +671,58 @@ async def analyze_tree(file: UploadFile = File(...)):
     # -----------------------------
     # RESPONSE
     # -----------------------------
+    # -----------------------------
+    # SAVE RAW ARTIFACTS TO SUPABASE (raw/{analysis_id}/...)
+    # -----------------------------
+    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        try:
+            raw_base = f"{RAW_PREFIX}/{analysis_id}"
+
+            # input.jpg
+            input_path = tmp_dir / "input.jpg"
+            if input_path.exists():
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_INPUTS,
+                    f"{raw_base}/input.jpg",
+                    input_path.read_bytes(),
+                )
+
+            # annotated.jpg (optional)
+            annotated_path = tmp_dir / "annotated.jpg"
+            if annotated_path.exists():
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_INPUTS,
+                    f"{raw_base}/annotated.jpg",
+                    annotated_path.read_bytes(),
+                )
+
+            # predictions
+            tree_pred_path = tmp_dir / "tree_pred.json"
+            if tree_pred_path.exists():
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_PRED,
+                    f"{raw_base}/tree_pred.json",
+                    tree_pred_path.read_bytes(),
+                )
+
+            stick_pred_path = tmp_dir / "stick_pred.json"
+            if stick_pred_path.exists():
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_PRED,
+                    f"{raw_base}/stick_pred.json",
+                    stick_pred_path.read_bytes(),
+                )
+
+            # meta.json (both raw path and legacy {analysis_id}.json)
+            meta_path = tmp_dir / "meta.json"
+            if meta_path.exists():
+                meta_obj = json.loads(meta_path.read_text(encoding="utf-8"))
+                supabase_upload_json(SUPABASE_BUCKET_META, f"{raw_base}/meta.json", meta_obj)
+                supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta_obj)
+
+        except Exception as e:
+            print(f"[!] Failed to upload RAW artifacts for {analysis_id}: {e}")
+
     response = {
         "analysis_id": analysis_id,
         "species": species_name,
@@ -736,8 +735,10 @@ async def analyze_tree(file: UploadFile = File(...)):
     # добавляем оригинальное изображение
     try:
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
-    except Exception:
+    except:
         response["original_image_base64"] = None
+        return JSONResponse(response)
+
 
     if gps:
         response["gps"] = gps
@@ -750,14 +751,6 @@ async def analyze_tree(file: UploadFile = File(...)):
     if risk:
         response["risk"] = risk
 
-    # Upload RAW artifacts to Supabase right after analysis (so /admin/dataset/build can use them)
-    if os.getenv("AUTO_UPLOAD_RAW", "1") not in ("0", "false", "False"):
-        try:
-            raw_res = supabase_upload_raw_sample(analysis_id, tmp_dir, meta)
-            response["raw_upload"] = raw_res
-        except Exception as e:
-            response["raw_upload"] = {"ok": False, "uploaded": [], "errors": [str(e)]}
-
     return JSONResponse(response)
 
 
@@ -767,189 +760,122 @@ def send_feedback(feedback: FeedbackRequest):
     Получаем подтверждение/исправление от пользователя и,
     если всё ок, сохраняем пример в Supabase для будущего обучения моделей
     + кладём запись в очередь доверенных примеров (Supabase DB).
-
-    Реальная разметка:
-    - если пользователь прислал маску (user_mask_base64), строим bbox по маске и пишем YOLO label
-    - иначе берём bbox из tree_pred.json (и при наличии stick_pred.json)
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
 
-    analysis_id = feedback.analysis_id
-    tmp_dir = Path("/tmp") / analysis_id
+    tmp_dir = Path("/tmp") / feedback.analysis_id
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
     # Если пользователь не хочет использовать пример в обучении
     if not feedback.use_for_training:
-        try:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-        except Exception:
-            pass
-        return {"status": "ignored", "reason": "user_disabled_training"}
-
-    meta_path = tmp_dir / "meta.json"
-    if not meta_path.exists():
-        raise HTTPException(status_code=500, detail="meta.json не найден для указанного analysis_id")
-
-    # Загружаем исходное meta
     try:
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
+        raw_base = f"{RAW_PREFIX}/{analysis_id}"
 
-    # Обновляем meta фидбеком
-    meta["tree_ok"] = feedback.tree_ok
-    meta["stick_ok"] = feedback.stick_ok
-    meta["params_ok"] = feedback.params_ok
-    meta["species_ok"] = feedback.species_ok
-    meta["correct_species"] = feedback.correct_species
-    meta["use_for_training"] = feedback.use_for_training
-
-    # Исправленный вид дерева
-    if (not feedback.species_ok) and feedback.correct_species:
-        meta["species"] = feedback.correct_species
-
-    # Исправленные численные параметры (если пришли от клиента)
-    if feedback.correct_height_m is not None:
-        meta["height_m"] = feedback.correct_height_m
-    if feedback.correct_crown_width_m is not None:
-        meta["crown_width_m"] = feedback.correct_crown_width_m
-    if feedback.correct_trunk_diameter_m is not None:
-        meta["trunk_diameter_m"] = feedback.correct_trunk_diameter_m
-    if feedback.correct_scale_px_to_m is not None:
-        meta["scale_px_to_m"] = feedback.correct_scale_px_to_m
-
-    # Trust score
-    trust = 0.0
-    if feedback.tree_ok:
-        trust += 0.3
-    if feedback.stick_ok:
-        trust += 0.2
-    if feedback.params_ok:
-        trust += 0.2
-    if feedback.species_ok or feedback.correct_species:
-        trust += 0.3
-    meta["trust_score"] = trust
-
-    try:
-        # -----------------------------
-        # Upload to Supabase Storage
-        # -----------------------------
+        # input.jpg (always try to persist)
         input_path = tmp_dir / "input.jpg"
-        if not input_path.exists():
-            raise HTTPException(status_code=500, detail="input.jpg не найден для указанного analysis_id")
+        if input_path.exists():
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{raw_base}/input.jpg",
+                input_path.read_bytes(),
+            )
 
-        input_bytes = input_path.read_bytes()
-
-        # legacy + canonical raw
-        supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/input.jpg", input_bytes)
-        supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{RAW_PREFIX}/{analysis_id}/input.jpg", input_bytes)
-
-        # Determine image size
-        img_cv = cv2.imdecode(np.frombuffer(input_bytes, np.uint8), cv2.IMREAD_COLOR)
-        if img_cv is None:
-            raise HTTPException(status_code=500, detail="Не удалось декодировать input.jpg")
-        H, W = img_cv.shape[:2]
-        meta["image_w"] = int(W)
-        meta["image_h"] = int(H)
-
+        # annotated.jpg (optional)
         annotated_path = tmp_dir / "annotated.jpg"
         if annotated_path.exists():
-            ann_bytes = annotated_path.read_bytes()
-            supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/annotated.jpg", ann_bytes)
-            supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{RAW_PREFIX}/{analysis_id}/annotated.jpg", ann_bytes)
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{raw_base}/annotated.jpg",
+                annotated_path.read_bytes(),
+            )
 
-        # user_mask.png
+        # user_mask.png + yolo.txt (bbox from mask)
         meta["has_user_mask"] = False
-        mask_bytes = None
         if feedback.user_mask_base64:
             try:
                 mask_bytes = base64.b64decode(feedback.user_mask_base64)
-                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/user_mask.png", mask_bytes)
-                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{RAW_PREFIX}/{analysis_id}/user_mask.png", mask_bytes)
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_INPUTS,
+                    f"{raw_base}/user_mask.png",
+                    mask_bytes,
+                )
                 meta["has_user_mask"] = True
+
+                # compute bbox from mask pixels
+                from PIL import Image
+                import numpy as np
+                mask_img = Image.open(BytesIO(mask_bytes)).convert("L")
+                mask_arr = np.array(mask_img)
+                ys, xs = np.where(mask_arr > 0)
+                if ys.size > 0 and xs.size > 0 and input_path.exists():
+                    x1, x2 = int(xs.min()), int(xs.max())
+                    y1, y2 = int(ys.min()), int(ys.max())
+                    w = max(1, x2 - x1)
+                    h = max(1, y2 - y1)
+
+                    img_w, img_h = Image.open(input_path).size
+                    xc = (x1 + x2) / 2.0 / img_w
+                    yc = (y1 + y2) / 2.0 / img_h
+                    ww = w / img_w
+                    hh = h / img_h
+
+                    # class 0 = tree (default)
+                    yolo_txt = f"0 {xc:.6f} {yc:.6f} {ww:.6f} {hh:.6f}\n"
+                    supabase_upload_bytes(
+                        SUPABASE_BUCKET_INPUTS,
+                        f"{raw_base}/yolo.txt",
+                        yolo_txt.encode("utf-8"),
+                    )
             except Exception as e:
                 print(f"[!] Failed to decode/upload user mask for {analysis_id}: {e}")
 
-        # Upload predictions (legacy + raw)
+        # If no mask provided, still ensure yolo.txt exists (temporary fallback)
+        if not meta.get("has_user_mask"):
+            yolo_txt = "0 0.5 0.5 0.8 0.8\n"
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{raw_base}/yolo.txt",
+                yolo_txt.encode("utf-8"),
+            )
+
+        # predictions
         tree_pred_path = tmp_dir / "tree_pred.json"
         if tree_pred_path.exists():
-            tp_bytes = tree_pred_path.read_bytes()
-            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/tree_pred.json", tp_bytes)
-            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{RAW_PREFIX}/{analysis_id}/tree_pred.json", tp_bytes)
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_PRED,
+                f"{raw_base}/tree_pred.json",
+                tree_pred_path.read_bytes(),
+            )
 
         stick_pred_path = tmp_dir / "stick_pred.json"
         if stick_pred_path.exists():
-            sp_bytes = stick_pred_path.read_bytes()
-            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/stick_pred.json", sp_bytes)
-            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{RAW_PREFIX}/{analysis_id}/stick_pred.json", sp_bytes)
-
-        # -----------------------------
-        # Build REAL YOLO labels
-        # -----------------------------
-        yolo_lines = []
-
-        # Tree (class 0): prefer mask bbox
-        if mask_bytes:
-            bbox = mask_png_bytes_to_bbox(mask_bytes)
-            if bbox:
-                ln = xyxy_to_yolo_line(bbox[0], bbox[1], bbox[2], bbox[3], W, H, 0)
-                if ln:
-                    yolo_lines.append(ln)
-                    meta["labels_source"] = "user_mask"
-            else:
-                meta["labels_source"] = "user_mask_empty"
-
-        # Fallback: tree_pred.json
-        if not yolo_lines:
-            try:
-                if tree_pred_path.exists():
-                    tp = json.loads(tree_pred_path.read_text(encoding="utf-8"))
-                    box = tp.get("box_xyxy") or tp.get("bbox") or tp.get("box")
-                    if isinstance(box, (list, tuple)) and len(box) == 4:
-                        ln = xyxy_to_yolo_line(box[0], box[1], box[2], box[3], W, H, 0)
-                        if ln:
-                            yolo_lines.append(ln)
-                            meta["labels_source"] = "auto_tree_pred"
-            except Exception as e:
-                print(f"[!] Failed to build YOLO from tree_pred for {analysis_id}: {e}")
-
-        # Stick (class 1): optional from stick_pred.json
-        try:
-            if stick_pred_path.exists():
-                sp = json.loads(stick_pred_path.read_text(encoding="utf-8"))
-                sbox = sp.get("box_xyxy") or sp.get("bbox") or sp.get("box")
-                if isinstance(sbox, (list, tuple)) and len(sbox) == 4:
-                    ln = xyxy_to_yolo_line(sbox[0], sbox[1], sbox[2], sbox[3], W, H, 1)
-                    if ln:
-                        yolo_lines.append(ln)
-        except Exception as e:
-            print(f"[!] Failed to add stick YOLO label for {analysis_id}: {e}")
-
-        yolo_lines = [ln for ln in yolo_lines if ln and ln.strip()]
-        if yolo_lines:
-            yolo_txt = "\n".join(yolo_lines) + "\n"
             supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{RAW_PREFIX}/{analysis_id}/yolo.txt",
-                yolo_txt.encode("utf-8"),
+                SUPABASE_BUCKET_PRED,
+                f"{raw_base}/stick_pred.json",
+                stick_pred_path.read_bytes(),
             )
-            meta["has_yolo_labels"] = True
-        else:
-            meta["has_yolo_labels"] = False
 
-        # meta.json (обновлённый): legacy key
-        supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta)
+        # meta.json (updated)
+        supabase_upload_json(
+            SUPABASE_BUCKET_META,
+            f"{raw_base}/meta.json",
+            meta,
+        )
+        supabase_upload_json(
+            SUPABASE_BUCKET_META,
+            f"{analysis_id}.json",
+            meta,
+        )
 
-    except HTTPException:
-        raise
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
 
-    # Queue row
+    # Запись в очередь доверенных примеров (Supabase DB)
+    # -----------------------------
     try:
         queue_row = {
             "analysis_id": analysis_id,
@@ -963,9 +889,10 @@ def send_feedback(feedback: FeedbackRequest):
         }
         supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
     except Exception as e:
+        # Не падаем для пользователя, просто логируем
         print(f"[!] Failed to insert feedback into DB queue for {analysis_id}: {e}")
 
-    # Cleanup
+    # Чистим /tmp
     try:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     except Exception as e:
@@ -975,6 +902,204 @@ def send_feedback(feedback: FeedbackRequest):
         "status": "ok",
         "analysis_id": analysis_id,
         "trust_score": trust,
-        "has_yolo_labels": meta.get("has_yolo_labels", False),
-        "labels_source": meta.get("labels_source"),
+    }
+
+# ============================================================
+# ADMIN / TRAINING PIPELINE
+# ============================================================
+
+from pydantic import BaseModel, Field
+from typing import Optional, Literal
+
+class TrainingQueueAddRequest(BaseModel):
+    analysis_id: str
+    trust_score: float = 0.0
+    species: Optional[str] = None
+    has_user_mask: bool = False
+    tree_ok: Optional[bool] = None
+    stick_ok: Optional[bool] = None
+    params_ok: Optional[bool] = None
+    species_ok: Optional[bool] = None
+    status: Literal["queued", "accepted", "rejected"] = "queued"
+
+class TrainingQueueSetStatusRequest(BaseModel):
+    analysis_id: str
+    status: Literal["queued", "accepted", "rejected"]
+
+class DatasetBuildRequest(BaseModel):
+    dataset_type: str = Field(default="yolo_tree")
+    limit: int = Field(default=100, ge=1, le=5000)
+    note: Optional[str] = None
+
+class TrainRequest(BaseModel):
+    dataset_id: str
+    train_yolo: bool = True
+    train_classifier: bool = True
+    epochs: int = Field(default=10, ge=1, le=500)
+    note: Optional[str] = None
+
+
+@app.get("/admin/training-queue")
+def admin_training_queue(status: str = "queued", limit: int = 50):
+    headers = sb_headers()
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{SUPABASE_QUEUE_TABLE}"
+    params = {
+        "status": f"eq.{status}",
+        "order": "created_at.desc",
+        "limit": str(limit),
+        "select": "*",
+    }
+    r = requests.get(url, headers=headers, params=params, timeout=15)
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=r.text)
+    return r.json()
+
+
+@app.post("/admin/training-queue/add")
+def admin_training_queue_add(req: TrainingQueueAddRequest):
+    row = req.model_dump()
+    row.setdefault("created_at", datetime.utcnow().isoformat())
+    try:
+        supabase_db_insert(SUPABASE_QUEUE_TABLE, row)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "ok", "analysis_id": req.analysis_id}
+
+
+@app.post("/admin/training-queue/status")
+def admin_training_queue_set_status(req: TrainingQueueSetStatusRequest):
+    headers = sb_headers()
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{SUPABASE_QUEUE_TABLE}"
+    params = {"analysis_id": f"eq.{req.analysis_id}"}
+    r = requests.patch(
+        url,
+        headers={**headers, "Content-Type": "application/json"},
+        params=params,
+        json={"status": req.status},
+        timeout=15,
+    )
+    if r.status_code not in (200, 204):
+        raise HTTPException(status_code=500, detail=r.text)
+    return {"status": "ok", "analysis_id": req.analysis_id, "new_status": req.status}
+
+
+@app.post("/admin/dataset/build")
+def build_dataset(req: DatasetBuildRequest):
+    headers = sb_headers()
+    q_url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{SUPABASE_QUEUE_TABLE}"
+    params = {
+        "status": "eq.accepted",
+        "order": "created_at.asc",
+        "limit": str(req.limit),
+        "select": "*",
+    }
+    r = requests.get(q_url, headers=headers, params=params, timeout=20)
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=r.text)
+
+    queue_rows = r.json()
+    if not queue_rows:
+        raise HTTPException(status_code=400, detail="No accepted samples")
+
+    dataset_id = str(uuid4())
+    base_dir = Path(f"/tmp/datasets/{dataset_id}")
+    (base_dir / "images").mkdir(parents=True, exist_ok=True)
+    (base_dir / "labels").mkdir(parents=True, exist_ok=True)
+    (base_dir / "meta").mkdir(parents=True, exist_ok=True)
+
+    manifest = {
+        "dataset_id": dataset_id,
+        "dataset_type": req.dataset_type,
+        "created_at": datetime.utcnow().isoformat(),
+        "total_samples": 0,
+        "samples": [],
+    }
+
+    usable = 0
+    missing = 0
+
+    for idx, row in enumerate(queue_rows, start=1):
+        aid = row.get("analysis_id")
+        if not aid:
+            continue
+        fname = f"{idx:06d}"
+        raw_base = f"{RAW_PREFIX}/{aid}"
+
+        try:
+            img_bytes = sb_download(SUPABASE_BUCKET_INPUTS, f"{raw_base}/input.jpg")
+            yolo_bytes = sb_download(SUPABASE_BUCKET_INPUTS, f"{raw_base}/yolo.txt")
+        except Exception:
+            missing += 1
+            continue
+
+        (base_dir / "images" / f"{fname}.jpg").write_bytes(img_bytes)
+        (base_dir / "labels" / f"{fname}.txt").write_bytes(yolo_bytes)
+
+        try:
+            meta_bytes = sb_download(SUPABASE_BUCKET_META, f"{raw_base}/meta.json")
+        except Exception:
+            try:
+                meta_bytes = sb_download(SUPABASE_BUCKET_META, f"{aid}.json")
+            except Exception:
+                meta_bytes = json.dumps({"analysis_id": aid}, ensure_ascii=False).encode("utf-8")
+
+        (base_dir / "meta" / f"{fname}.json").write_bytes(meta_bytes)
+
+        usable += 1
+        manifest["samples"].append({"analysis_id": aid, "file": fname})
+
+    if usable == 0:
+        raise HTTPException(status_code=400, detail="No usable samples (missing files)")
+
+    manifest["total_samples"] = usable
+    (base_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    db_url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{SUPABASE_DATASET_BUILDS_TABLE}"
+    payload = {
+        "id": dataset_id,
+        "dataset_type": req.dataset_type,
+        "status": "ready",
+        "total_samples": usable,
+        "manifest": manifest,
+        "note": req.note,
+        "storage_bucket": "local",
+        "storage_path": str(base_dir),
+        "finished_at": "now()",
+    }
+
+    r = requests.post(
+        db_url,
+        headers={**headers, "Content-Type": "application/json"},
+        json=payload,
+        timeout=20,
+    )
+    if r.status_code not in (200, 201):
+        raise HTTPException(status_code=500, detail=r.text)
+
+    return {"status": "ok", "dataset_id": dataset_id, "total_samples": usable, "skipped_missing": missing}
+
+
+@app.post("/admin/train")
+def train_stub(req: TrainRequest):
+    headers = sb_headers()
+    url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/{SUPABASE_DATASET_BUILDS_TABLE}"
+    params = {"id": f"eq.{req.dataset_id}", "select": "*", "limit": "1"}
+    r = requests.get(url, headers=headers, params=params, timeout=15)
+    if r.status_code != 200:
+        raise HTTPException(status_code=500, detail=r.text)
+    rows = r.json()
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"Dataset {req.dataset_id} not found")
+
+    dataset_row = rows[0]
+    total = int(dataset_row.get("total_samples") or 0)
+
+    return {
+        "status": "ok",
+        "message": "training stub executed",
+        "dataset_id": req.dataset_id,
+        "total_samples": total,
+        "train_yolo": req.train_yolo,
+        "train_classifier": req.train_classifier,
+        "epochs": req.epochs,
     }
