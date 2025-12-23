@@ -988,3 +988,91 @@ def send_feedback(feedback: FeedbackRequest):
         "analysis_id": analysis_id,
         "trust_score": trust,
     }
+@app.get("/admin/verified-list")
+def admin_verified_list():
+    """
+    Возвращает список analysis_id из arborscan-verified
+    + краткую информацию из meta_verified.json
+    """
+    try:
+        objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
+
+    results = []
+
+    for aid in analysis_ids:
+        try:
+            meta_bytes = supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{aid}/meta_verified.json",
+            )
+            meta = json.loads(meta_bytes)
+
+            results.append({
+                "analysis_id": aid,
+                "species": meta.get("species"),
+                "risk_category": meta.get("risk", {}).get("category"),
+                "trust_score": meta.get("trust_score"),
+                "verified": meta.get("verified", True),
+                "verified_at": meta.get("verified_at"),
+            })
+        except Exception:
+            # если meta не найден или битый — просто пропускаем
+            continue
+
+    return {
+        "count": len(results),
+        "items": results,
+    }
+@app.get("/admin/analysis/{analysis_id}")
+def admin_get_analysis(analysis_id: str):
+    """
+    Детали одного verified анализа для админки
+    """
+    try:
+        input_img = supabase_download_bytes(
+            SUPABASE_BUCKET_VERIFIED,
+            f"{analysis_id}/input.jpg",
+        )
+        annotated_img = supabase_download_bytes(
+            SUPABASE_BUCKET_VERIFIED,
+            f"{analysis_id}/annotated.jpg",
+        )
+        tree_pred = json.loads(
+            supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/tree_pred.json",
+            )
+        )
+        stick_pred = json.loads(
+            supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/stick_pred.json",
+            )
+        )
+        meta = json.loads(
+            supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/meta_verified.json",
+            )
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Analysis {analysis_id} not found or incomplete: {e}",
+        )
+
+    return {
+        "analysis_id": analysis_id,
+        "images": {
+            "input_base64": base64.b64encode(input_img).decode("utf-8"),
+            "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
+        },
+        "tree_pred": tree_pred,
+        "stick_pred": stick_pred,
+        "meta": meta,
+    }
