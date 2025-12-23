@@ -134,7 +134,7 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
-    url = f"{SUPABASE_STORAGE_URL.rstrip('/')}/object/{bucket}/{path}"
+    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
         "Content-Type": "application/octet-stream",
