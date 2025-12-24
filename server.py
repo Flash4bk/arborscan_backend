@@ -16,6 +16,12 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
+from fastapi import FastAPI, HTTPException
+
+
+
+
+
 
 # -------------------------------------
 # CONFIG
@@ -1078,4 +1084,61 @@ def admin_get_analysis(analysis_id: str):
         "tree_pred": tree_pred,
         "stick_pred": stick_pred,
         "meta": meta,
+    }
+
+
+DATASET_ROOT = "datasets/trees_segmentation"
+IMAGES_DIR = os.path.join(DATASET_ROOT, "images")
+MASKS_DIR = os.path.join(DATASET_ROOT, "masks")
+META_DIR = os.path.join(DATASET_ROOT, "meta")
+
+os.makedirs(IMAGES_DIR, exist_ok=True)
+os.makedirs(MASKS_DIR, exist_ok=True)
+os.makedirs(META_DIR, exist_ok=True)
+
+
+class UserMaskPayload(BaseModel):
+    analysis_id: str
+    image_base64: str
+    mask_base64: str
+    meta: dict
+
+
+@app.post("/dataset/user-mask")
+def save_user_mask(payload: UserMaskPayload):
+    analysis_id = payload.analysis_id
+
+    try:
+        image_bytes = base64.b64decode(payload.image_base64)
+        mask_bytes = base64.b64decode(payload.mask_base64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 data")
+
+    image_path = os.path.join(IMAGES_DIR, f"{analysis_id}.jpg")
+    mask_path = os.path.join(MASKS_DIR, f"{analysis_id}.png")
+    meta_path = os.path.join(META_DIR, f"{analysis_id}.json")
+
+    with open(image_path, "wb") as f:
+        f.write(image_bytes)
+
+    with open(mask_path, "wb") as f:
+        f.write(mask_bytes)
+
+    meta = {
+        "analysis_id": analysis_id,
+        "saved_at": datetime.utcnow().isoformat(),
+        **payload.meta
+    }
+
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+    return {
+        "status": "ok",
+        "analysis_id": analysis_id,
+        "files": {
+            "image": image_path,
+            "mask": mask_path,
+            "meta": meta_path
+        }
     }
