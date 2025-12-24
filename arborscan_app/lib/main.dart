@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'admin_gate.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -986,6 +987,15 @@ class _ArborScanPageState extends State<ArborScanPage> {
                       color: Colors.black54,
                     ),
                   ),
+                  const SizedBox(height: 12),
+
+                  AdminGate(
+                    isAdmin: _isAdmin,
+                    onOpenFeedback: _openFeedback,
+                  ),
+
+                  const SizedBox(height: 16),
+
                   const SizedBox(height: 16),
 
                   _buildImageCard(),

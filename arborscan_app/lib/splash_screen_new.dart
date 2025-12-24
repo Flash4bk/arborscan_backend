@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'main.dart';
+import 'pages/arborscan_page.dart';
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({Key? key}) : super(key: key);
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Text('ArborScan'),
+      ),
+    );
+  }
 }
+
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
