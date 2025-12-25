@@ -914,19 +914,21 @@ def send_feedback(feedback: FeedbackRequest):
             )
 
         # user_mask.png (segmentation ground truth)
-# ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
-meta["has_user_mask"] = False
-if feedback.user_mask_base64:
-    try:
-        mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_INPUTS,
-            f"{analysis_id}/user_mask.png",
-            mask_png_bytes,
-        )
-        meta["has_user_mask"] = True
-    except Exception as e:
-        print(f"[!] Failed to decode/normalize/upload user mask for {analysis_id}: {e}")# tree_pred.json
+        # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
+        meta["has_user_mask"] = False
+        if feedback.user_mask_base64:
+            try:
+                mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_INPUTS,
+                    f"{analysis_id}/user_mask.png",
+                    mask_png_bytes,
+                )
+                meta["has_user_mask"] = True
+            except Exception as e:
+                print(f"[!] Failed to decode/normalize/upload user mask for {analysis_id}: {e}")
+
+        # tree_pred.json
         tree_pred_path = tmp_dir / "tree_pred.json"
         if tree_pred_path.exists():
             supabase_upload_bytes(
@@ -970,14 +972,19 @@ if feedback.user_mask_base64:
                     )
 
                 
-# user mask (если есть) — нормализуем в валидный PNG
-if feedback.user_mask_base64:
-    mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
-    supabase_upload_bytes(
-        SUPABASE_BUCKET_VERIFIED,
-        f"{analysis_id}/user_mask.png",
-        mask_png_bytes,
-    )# predictions
+                # user mask (если есть) — нормализуем в валидный PNG
+                if feedback.user_mask_base64:
+                    try:
+                        mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
+                        supabase_upload_bytes(
+                            SUPABASE_BUCKET_VERIFIED,
+                            f"{analysis_id}/user_mask.png",
+                            mask_png_bytes,
+                        )
+                    except Exception as e:
+                        print(f"[!] Failed to upload VERIFIED user mask for {analysis_id}: {e}")
+
+                # predictions
                 supabase_upload_bytes(
                     SUPABASE_BUCKET_VERIFIED,
                     f"{analysis_id}/tree_pred.json",
@@ -990,7 +997,6 @@ if feedback.user_mask_base64:
                     (tmp_dir / "stick_pred.json").read_bytes(),
                 )
 
-                # VERIFIED META
                 meta_verified = meta.copy()
                 meta_verified["verified"] = True
                 meta_verified["verified_at"] = datetime.utcnow().isoformat()
