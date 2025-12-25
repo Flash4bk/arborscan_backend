@@ -835,6 +835,14 @@ class _ArborScanPageState extends State<ArborScanPage> {
     String analysisId,
   ) async {
     final body = {
+      "height_m_corrected": feedback["height_m_corrected"],
+      "crown_width_m_corrected": feedback["crown_width_m_corrected"],
+      "trunk_diameter_m_corrected": feedback["trunk_diameter_m_corrected"],
+      "scale_px_to_m_corrected": feedback["scale_px_to_m_corrected"],
+
+      // кто подтверждает (для meta_verified)
+      "verifier_role": _isAdmin ? "admin" : "user",
+
       "analysis_id": analysisId,
       "use_for_training": feedback["use_for_training"] ?? true,
       "tree_ok": feedback["tree_ok"],

@@ -16,12 +16,6 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
-from fastapi import FastAPI, HTTPException
-
-
-
-
-
 
 # -------------------------------------
 # CONFIG
@@ -202,6 +196,60 @@ def supabase_db_insert(table: str, row: dict):
         raise RuntimeError(
             f"Supabase DB insert error {resp.status_code}: {resp.text}"
         )
+
+# =============================================
+# BASE64 / IMAGE UTILS
+# =============================================
+
+def _strip_data_url(b64: str) -> str:
+    # Accept 'data:image/png;base64,...' or plain base64
+    if not b64:
+        return b64
+    b64 = b64.strip()
+    if b64.startswith("data:") and "base64," in b64:
+        b64 = b64.split("base64,", 1)[1]
+    return "".join(b64.split())  # remove whitespace/newlines
+
+def decode_base64_bytes(b64: str) -> bytes:
+    """Decode base64 string into bytes. Supports data-URL prefix.
+    Also supports 'double base64' (base64 of a base64 string) that sometimes happens in clients."""
+    if b64 is None:
+        return b""
+    b64_clean = _strip_data_url(b64)
+
+    # First attempt: regular base64 -> bytes
+    raw = base64.b64decode(b64_clean, validate=False)
+
+    # If it looks like ASCII base64 text (double-encoded), try decode again
+    try:
+        as_text = raw.decode("utf-8").strip()
+        if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
+            # second pass
+            raw2 = base64.b64decode(_strip_data_url(as_text), validate=False)
+            # If second pass yields a PNG signature, prefer it
+            if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff":
+                return raw2
+    except Exception:
+        pass
+
+    return raw
+
+def ensure_png_mask_bytes(mask_b64: str) -> bytes:
+    """Return VALID PNG bytes for a mask.
+    Accepts base64 that should represent a PNG. If decoded payload is not a valid image,
+    raises ValueError.
+    Output is binarized (0/255) grayscale PNG."""
+    raw = decode_base64_bytes(mask_b64)
+    np_buf = np.frombuffer(raw, np.uint8)
+    mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
+    # Binarize for segmentation ground truth
+    _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    ok, out = cv2.imencode(".png", mask_bin)
+    if not ok:
+        raise ValueError("Failed to encode mask as PNG")
+    return out.tobytes()
 
 # =============================================
 # EXIF → GPS
@@ -865,21 +913,20 @@ def send_feedback(feedback: FeedbackRequest):
                 annotated_path.read_bytes(),
             )
 
-        # user_mask.png
-        meta["has_user_mask"] = False
-        if feedback.user_mask_base64:
-            try:
-                mask_bytes = base64.b64decode(feedback.user_mask_base64)
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_INPUTS,
-                    f"{analysis_id}/user_mask.png",
-                    mask_bytes,
-                )
-                meta["has_user_mask"] = True
-            except Exception as e:
-                print(f"[!] Failed to decode/upload user mask for {analysis_id}: {e}")
-
-        # tree_pred.json
+        # user_mask.png (segmentation ground truth)
+# ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
+meta["has_user_mask"] = False
+if feedback.user_mask_base64:
+    try:
+        mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_INPUTS,
+            f"{analysis_id}/user_mask.png",
+            mask_png_bytes,
+        )
+        meta["has_user_mask"] = True
+    except Exception as e:
+        print(f"[!] Failed to decode/normalize/upload user mask for {analysis_id}: {e}")# tree_pred.json
         tree_pred_path = tmp_dir / "tree_pred.json"
         if tree_pred_path.exists():
             supabase_upload_bytes(
@@ -922,16 +969,15 @@ def send_feedback(feedback: FeedbackRequest):
                         annotated_path.read_bytes(),
                     )
 
-                # user mask (если есть)
-                if feedback.user_mask_base64:
-                    mask_bytes = base64.b64decode(feedback.user_mask_base64)
-                    supabase_upload_bytes(
-                        SUPABASE_BUCKET_VERIFIED,
-                        f"{analysis_id}/user_mask.png",
-                        mask_bytes,
-                    )
-
-                # predictions
+                
+# user mask (если есть) — нормализуем в валидный PNG
+if feedback.user_mask_base64:
+    mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
+    supabase_upload_bytes(
+        SUPABASE_BUCKET_VERIFIED,
+        f"{analysis_id}/user_mask.png",
+        mask_png_bytes,
+    )# predictions
                 supabase_upload_bytes(
                     SUPABASE_BUCKET_VERIFIED,
                     f"{analysis_id}/tree_pred.json",
@@ -1086,6 +1132,9 @@ def admin_get_analysis(analysis_id: str):
         "meta": meta,
     }
 
+# =============================================
+# DATASET COLLECTION ENDPOINT (for training from app)
+# =============================================
 
 DATASET_ROOT = "datasets/trees_segmentation"
 IMAGES_DIR = os.path.join(DATASET_ROOT, "images")
@@ -1101,16 +1150,20 @@ class UserMaskPayload(BaseModel):
     analysis_id: str
     image_base64: str
     mask_base64: str
-    meta: dict
+    meta: dict | None = None
 
 
 @app.post("/dataset/user-mask")
 def save_user_mask(payload: UserMaskPayload):
+    """Сохраняет пару (оригинал + маска) в локальный датасет.
+    Маска нормализуется в валидный PNG (0/255). Поддерживает data-URL prefix."""
     analysis_id = payload.analysis_id
 
     try:
-        image_bytes = base64.b64decode(payload.image_base64)
-        mask_bytes = base64.b64decode(payload.mask_base64)
+        image_bytes = decode_base64_bytes(payload.image_base64)
+        mask_png_bytes = ensure_png_mask_bytes(payload.mask_base64)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid base64 data")
 
@@ -1122,12 +1175,12 @@ def save_user_mask(payload: UserMaskPayload):
         f.write(image_bytes)
 
     with open(mask_path, "wb") as f:
-        f.write(mask_bytes)
+        f.write(mask_png_bytes)
 
     meta = {
         "analysis_id": analysis_id,
         "saved_at": datetime.utcnow().isoformat(),
-        **payload.meta
+        **(payload.meta or {}),
     }
 
     with open(meta_path, "w", encoding="utf-8") as f:
