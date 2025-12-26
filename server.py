@@ -1201,3 +1201,4 @@ def save_user_mask(payload: UserMaskPayload):
             "meta": meta_path
         }
     }
+if "faskw"
