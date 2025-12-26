@@ -41,9 +41,16 @@ SUPABASE_BUCKET_RAW = "arborscan-raw"
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
+# Включать ли вставку в Postgres-очередь. По умолчанию выключено,
+# чтобы отсутствие таблицы не ломало пайплайн обучения.
+SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
 # Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
-WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
+WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
+                 or os.getenv("OPENWEATHER_API_KEY")
+                 or os.getenv("OPENWEATHERMAP_API_KEY")
+                 or os.getenv("dc825ffd002731568ec7766eafb54bc9")
+                 or None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
@@ -211,45 +218,112 @@ def _strip_data_url(b64: str) -> str:
     return "".join(b64.split())  # remove whitespace/newlines
 
 def decode_base64_bytes(b64: str) -> bytes:
-    """Decode base64 string into bytes. Supports data-URL prefix.
-    Also supports 'double base64' (base64 of a base64 string) that sometimes happens in clients."""
+    """Decode base64 string into bytes.
+
+    Supports:
+      - data-URL prefix (data:image/png;base64,...)
+      - urlsafe base64 ('-' and '_' instead of '+' and '/')
+      - missing padding '='
+      - "double base64" (base64 of a base64 string) that sometimes happens in clients
+    """
     if b64 is None:
         return b""
-    b64_clean = _strip_data_url(b64)
 
-    # First attempt: regular base64 -> bytes
+    b64_clean = _strip_data_url(str(b64)).strip()
+
+    # Normalize urlsafe alphabet and padding
+    b64_clean = b64_clean.replace("-", "+").replace("_", "/")
+    pad = len(b64_clean) % 4
+    if pad:
+        b64_clean += "=" * (4 - pad)
+
+    # First pass
     raw = base64.b64decode(b64_clean, validate=False)
 
     # If it looks like ASCII base64 text (double-encoded), try decode again
     try:
         as_text = raw.decode("utf-8").strip()
         if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
-            # second pass
-            raw2 = base64.b64decode(_strip_data_url(as_text), validate=False)
-            # If second pass yields a PNG signature, prefer it
+            as_text = _strip_data_url(as_text).strip().replace("-", "+").replace("_", "/")
+            pad2 = len(as_text) % 4
+            if pad2:
+                as_text += "=" * (4 - pad2)
+            raw2 = base64.b64decode(as_text, validate=False)
+            # If second pass yields a PNG/JPEG signature, prefer it
             if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff":
                 return raw2
+    except Exception:
+        pass
+
+        return raw
+
     except Exception:
         pass
 
     return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
-    """Return VALID PNG bytes for a mask.
-    Accepts base64 that should represent a PNG. If decoded payload is not a valid image,
-    raises ValueError.
-    Output is binarized (0/255) grayscale PNG."""
+    """Return VALID PNG bytes for a user-provided mask.
+
+    Accepts base64 representing:
+      - PNG/JPEG image bytes (preferred)
+      - data-URL prefix (data:image/png;base64,...)
+      - urlsafe base64 and missing padding
+      - raw RGBA byte buffer from a canvas (common Flutter pitfall):
+        if the decoded payload length is 4 * N * N, we interpret it as NxN RGBA and
+        use the alpha channel as the mask.
+
+    Output is binarized (0/255) grayscale PNG.
+    Raises ValueError only if payload is present but cannot be interpreted.
+    """
     raw = decode_base64_bytes(mask_b64)
-    np_buf = np.frombuffer(raw, np.uint8)
-    mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
-    if mask is None:
-        raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
-    # Binarize for segmentation ground truth
-    _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
-    ok, out = cv2.imencode(".png", mask_bin)
-    if not ok:
-        raise ValueError("Failed to encode mask as PNG")
-    return out.tobytes()
+    if not raw:
+        raise ValueError("Empty mask payload")
+
+    # 1) Try OpenCV decode as image
+    try:
+        np_buf = np.frombuffer(raw, np.uint8)
+        mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
+        if mask is not None:
+            _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+            ok, out = cv2.imencode(".png", mask_bin)
+            if not ok:
+                raise ValueError("Failed to encode mask as PNG")
+            return out.tobytes()
+    except Exception:
+        pass
+
+    # 2) Try Pillow decode as image (handles more formats and edge cases)
+    try:
+        img = Image.open(io.BytesIO(raw)).convert("L")
+        arr = np.array(img, dtype=np.uint8)
+        _, mask_bin = cv2.threshold(arr, 127, 255, cv2.THRESH_BINARY)
+        ok, out = cv2.imencode(".png", mask_bin)
+        if not ok:
+            raise ValueError("Failed to encode mask as PNG")
+        return out.tobytes()
+    except Exception:
+        pass
+
+    # 3) Try raw RGBA NxN payload (use alpha channel)
+    try:
+        if len(raw) % 4 != 0:
+            raise ValueError("Not RGBA")
+        n = int((len(raw) // 4) ** 0.5)
+        if n <= 0 or (n * n * 4) != len(raw):
+            raise ValueError("Not square RGBA")
+        rgba = np.frombuffer(raw, dtype=np.uint8).reshape((n, n, 4))
+        alpha = rgba[:, :, 3]
+        _, mask_bin = cv2.threshold(alpha, 127, 255, cv2.THRESH_BINARY)
+        ok, out = cv2.imencode(".png", mask_bin)
+        if not ok:
+            raise ValueError("Failed to encode mask as PNG")
+        return out.tobytes()
+    except Exception:
+        pass
+
+    raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
+
 
 # =============================================
 # EXIF → GPS
@@ -915,10 +989,18 @@ def send_feedback(feedback: FeedbackRequest):
 
         # user_mask.png (segmentation ground truth)
         # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
+                # Маска пользователя (обводка) — опционально.
+        # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
         meta["has_user_mask"] = False
-        if feedback.user_mask_base64:
+        mask_b64 = feedback.user_mask_base64
+        if mask_b64 is not None:
+            mask_b64_str = str(mask_b64).strip().lower()
+        else:
+            mask_b64_str = ""
+
+        if mask_b64_str and mask_b64_str not in ("null", "undefined"):
             try:
-                mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
+                mask_png_bytes = ensure_png_mask_bytes(str(mask_b64))
                 supabase_upload_bytes(
                     SUPABASE_BUCKET_INPUTS,
                     f"{analysis_id}/user_mask.png",
@@ -926,7 +1008,12 @@ def send_feedback(feedback: FeedbackRequest):
                 )
                 meta["has_user_mask"] = True
             except Exception as e:
-                print(f"[!] Failed to decode/normalize/upload user mask for {analysis_id}: {e}")
+                # Не валим feedback целиком; просто предупреждаем, что маску не удалось распарсить.
+                print(f"[!] User mask provided but could not be decoded for {analysis_id}: {e}")
+        else:
+            # Маски нет — нормальный кейс.
+            pass
+
 
         # tree_pred.json
         tree_pred_path = tmp_dir / "tree_pred.json"
@@ -1022,22 +1109,28 @@ def send_feedback(feedback: FeedbackRequest):
     # -----------------------------
     # Запись в очередь доверенных примеров (Supabase DB)
     # -----------------------------
-    try:
-        queue_row = {
-            "analysis_id": analysis_id,
-            "trust_score": trust,
-            "species": meta.get("species"),
-            "has_user_mask": meta.get("has_user_mask", False),
-            "tree_ok": meta.get("tree_ok"),
-            "stick_ok": meta.get("stick_ok"),
-            "params_ok": meta.get("params_ok"),
-            "species_ok": meta.get("species_ok"),
-        }
-        supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
-    except Exception as e:
-        # Не падаем для пользователя, просто логируем
-        print(f"[!] Failed to insert feedback into DB queue for {analysis_id}: {e}")
-
+    # -----------------------------
+    # 7) (Опционально) очередь доверенных примеров (Supabase Postgres)
+    # -----------------------------
+    if SUPABASE_ENABLE_QUEUE:
+        try:
+            queue_row = {
+                "analysis_id": analysis_id,
+                "trust_score": trust,
+                "species": meta.get("species"),
+                "has_user_mask": meta.get("has_user_mask", False),
+                "tree_ok": meta.get("tree_ok"),
+                "stick_ok": meta.get("stick_ok"),
+                "params_ok": meta.get("params_ok"),
+                "species_ok": meta.get("species_ok"),
+            }
+            supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
+        except Exception as e:
+            # Не падаем для пользователя; отсутствие таблицы / ошибки очереди не должны блокировать обучение.
+            print(f"[!] Queue insert skipped for {analysis_id}: {e}")
+    else:
+        # Очередь выключена — нормально для пайплайна обучения через Storage.
+        pass
     # Чистим /tmp
     try:
         shutil.rmtree(tmp_dir, ignore_errors=True)

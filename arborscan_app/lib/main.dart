@@ -162,11 +162,11 @@ class _ArborScanPageState extends State<ArborScanPage> {
   // Код администратора (можно поменять на свой)
   static const String _adminPasscode = '8426';
 
-  static const String _apiUrl =
-      'https://arborscanbackend-production.up.railway.app/analyze-tree';
+  static const String _baseUrl =
+      'https://arborscanbackend-production.up.railway.app';
 
-  static const String _feedbackUrl =
-      'https://arborscanbackend-production.up.railway.app/feedback';
+  static String get _apiUrl => '$_baseUrl/analyze-tree';
+  static String get _feedbackUrl => '$_baseUrl/feedback';
 
   static const String _historyKey = 'arborscan_history';
   final List<AnalysisResult> _history = [];
