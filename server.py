@@ -263,66 +263,37 @@ def decode_base64_bytes(b64: str) -> bytes:
     return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
-    """Return VALID PNG bytes for a user-provided mask.
+    """Return VALID PNG bytes for a mask.
 
-    Accepts base64 representing:
-      - PNG/JPEG image bytes (preferred)
-      - data-URL prefix (data:image/png;base64,...)
-      - urlsafe base64 and missing padding
-      - raw RGBA byte buffer from a canvas (common Flutter pitfall):
-        if the decoded payload length is 4 * N * N, we interpret it as NxN RGBA and
-        use the alpha channel as the mask.
+    Supported inputs for `mask_b64`:
+    1) base64(PNG/JPEG bytes)
+    2) base64(JSON) where JSON contains `mask_png_base64` (base64 PNG bytes)
 
     Output is binarized (0/255) grayscale PNG.
-    Raises ValueError only if payload is present but cannot be interpreted.
     """
     raw = decode_base64_bytes(mask_b64)
-    if not raw:
-        raise ValueError("Empty mask payload")
 
-    # 1) Try OpenCV decode as image
+    # If the client sent base64(JSON), extract embedded PNG base64.
     try:
-        np_buf = np.frombuffer(raw, np.uint8)
-        mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
-        if mask is not None:
-            _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
-            ok, out = cv2.imencode(".png", mask_bin)
-            if not ok:
-                raise ValueError("Failed to encode mask as PNG")
-            return out.tobytes()
+        if raw[:1] in (b"{", b"["):
+            obj = json.loads(raw.decode("utf-8"))
+            if isinstance(obj, dict) and obj.get("mask_png_base64"):
+                raw = decode_base64_bytes(str(obj["mask_png_base64"]))
     except Exception:
         pass
 
-    # 2) Try Pillow decode as image (handles more formats and edge cases)
-    try:
-        img = Image.open(io.BytesIO(raw)).convert("L")
-        arr = np.array(img, dtype=np.uint8)
-        _, mask_bin = cv2.threshold(arr, 127, 255, cv2.THRESH_BINARY)
-        ok, out = cv2.imencode(".png", mask_bin)
-        if not ok:
-            raise ValueError("Failed to encode mask as PNG")
-        return out.tobytes()
-    except Exception:
-        pass
+    np_buf = np.frombuffer(raw, np.uint8)
+    mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
 
-    # 3) Try raw RGBA NxN payload (use alpha channel)
-    try:
-        if len(raw) % 4 != 0:
-            raise ValueError("Not RGBA")
-        n = int((len(raw) // 4) ** 0.5)
-        if n <= 0 or (n * n * 4) != len(raw):
-            raise ValueError("Not square RGBA")
-        rgba = np.frombuffer(raw, dtype=np.uint8).reshape((n, n, 4))
-        alpha = rgba[:, :, 3]
-        _, mask_bin = cv2.threshold(alpha, 127, 255, cv2.THRESH_BINARY)
-        ok, out = cv2.imencode(".png", mask_bin)
-        if not ok:
-            raise ValueError("Failed to encode mask as PNG")
-        return out.tobytes()
-    except Exception:
-        pass
+    # Binarize for segmentation ground truth
+    _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    ok, out = cv2.imencode(".png", mask_bin)
+    if not ok:
+        raise ValueError("Failed to encode mask as PNG")
+    return out.tobytes()
 
-    raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
 
 
 # =============================================

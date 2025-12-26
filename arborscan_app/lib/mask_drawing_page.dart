@@ -145,7 +145,56 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     });
   }
 
-  void _finish() {
+  
+  // =========================================================
+  // NEW: Rasterize polygon to a real PNG mask (base64)
+  // This keeps your existing polygon workflow unchanged,
+  // but also provides a PNG that the backend can store/train on.
+  // =========================================================
+  Future<String?> _rasterizeMaskPngBase64(Size boxSize) async {
+    try {
+      if (_points.length < 3) return null;
+
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      // Black background
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, boxSize.width, boxSize.height),
+        Paint()..color = Colors.black,
+      );
+
+      // Convert normalized points to pixel points
+      final pixelPts = _points
+          .map((p) => Offset(p.dx * boxSize.width, p.dy * boxSize.height))
+          .toList();
+
+      // Fill polygon in white
+      final path = Path()..addPolygon(pixelPts, true);
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill,
+      );
+
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(
+        boxSize.width.round(),
+        boxSize.height.round(),
+      );
+
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return null;
+
+      return base64Encode(byteData.buffer.asUint8List());
+    } catch (_) {
+      return null;
+    }
+  }
+
+Future<void> _finish() async {
     if (_points.length < 3 || !_closed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -155,11 +204,18 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       return;
     }
 
-    final payload = <String, dynamic>{
+    
+    // NEW: rasterize current polygon to PNG so backend can store/train segmentation
+    final size = MediaQuery.of(context).size;
+    final String? maskPngBase64 =
+        (size == null) ? null : await _rasterizeMaskPngBase64(size);
+
+final payload = <String, dynamic>{
       'type': 'tree_segmentation',
       'format': 'yolo_poly_v1',
       'points': _points.map((p) => [p.dx, p.dy]).toList(),
-    };
+          if (maskPngBase64 != null) 'mask_png_base64': maskPngBase64,
+};
 
     final jsonStr = jsonEncode(payload);
     final b64 = base64Encode(utf8.encode(jsonStr));
