@@ -1,46 +1,55 @@
-# build_yolo_dataset.py
 import cv2
 import numpy as np
-import os
-from tqdm import tqdm
+from pathlib import Path
 
-RAW = "raw_data"
-OUT = "dataset"
-IMG_OUT = f"{OUT}/images/train"
-LBL_OUT = f"{OUT}/labels/train"
+RAW = Path("raw_data")
+OUT = Path("yolo_dataset")
 
-os.makedirs(IMG_OUT, exist_ok=True)
-os.makedirs(LBL_OUT, exist_ok=True)
+OUT_IMG = OUT / "images/train"
+OUT_LBL = OUT / "labels/train"
 
-def mask_to_polygon(mask):
-    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not cnts:
-        return None
-    c = max(cnts, key=cv2.contourArea)
-    return c.reshape(-1, 2)
+OUT_IMG.mkdir(parents=True, exist_ok=True)
+OUT_LBL.mkdir(parents=True, exist_ok=True)
 
-for aid in tqdm(os.listdir(RAW)):
-    src = os.path.join(RAW, aid)
-    img_path = f"{src}/input.jpg"
-    mask_path = f"{src}/user_mask.png"
+for sample in RAW.iterdir():
+    img = sample / "input.jpg"
+    mask = sample / "user_mask.png"
 
-    if not os.path.exists(mask_path):
+    if not img.exists() or not mask.exists():
         continue
 
-    img = cv2.imread(img_path)
-    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-    h, w = mask.shape
+    image = cv2.imread(str(img))
+    mask_img = cv2.imread(str(mask), cv2.IMREAD_GRAYSCALE)
 
-    poly = mask_to_polygon(mask)
-    if poly is None or len(poly) < 6:
+    if mask_img is None:
+        print(f"❌ bad mask: {sample.name}")
         continue
 
-    poly = poly.astype(float)
-    poly[:, 0] /= w
-    poly[:, 1] /= h
+    h, w = mask_img.shape
 
-    label = "0 " + " ".join([f"{x:.6f} {y:.6f}" for x, y in poly])
+    # contours → YOLO-seg
+    contours, _ = cv2.findContours(mask_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    cv2.imwrite(f"{IMG_OUT}/{aid}.jpg", img)
-    with open(f"{LBL_OUT}/{aid}.txt", "w") as f:
-        f.write(label)
+    if not contours:
+        continue
+
+    label_lines = []
+    for cnt in contours:
+        if cv2.contourArea(cnt) < 100:
+            continue
+
+        cnt = cnt.squeeze()
+        norm = cnt / np.array([[w, h]])
+
+        line = "0 " + " ".join(f"{x:.6f} {y:.6f}" for x, y in norm)
+        label_lines.append(line)
+
+    if not label_lines:
+        continue
+
+    cv2.imwrite(str(OUT_IMG / f"{sample.name}.jpg"), image)
+
+    with open(OUT_LBL / f"{sample.name}.txt", "w") as f:
+        f.write("\n".join(label_lines))
+
+print("✅ Dataset built")
