@@ -1,7 +1,6 @@
 path: D:\arborscan_backend\tools\dataset_yolov8
 train: images/train
-val: images/train
-
+val: images/val
 
 names:
   0: tree

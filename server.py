@@ -8,6 +8,7 @@ import numpy as np
 import requests
 from ultralytics import YOLO
 from PIL import Image, ExifTags
+from supabase import create_client
 import torch
 from torchvision import models, transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -16,7 +17,7 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
-from supabase import create_client
+
 # -------------------------------------
 # CONFIG
 # -------------------------------------
@@ -28,6 +29,54 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
+
+# Папка с моделями (в контейнере это /app/models).
+MODELS_DIR = Path(__file__).resolve().parent / "models"
+
+# Supabase client (нужен для training_state и autoload последней модели)
+supabase = None
+if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    except Exception as e:
+        print(f"[!] Warning: failed to init Supabase client: {e}")
+
+def _get_training_state():
+    """Читает training_state (id=1). Если Supabase не настроен — возвращает None."""
+    if supabase is None:
+        return None
+    try:
+        return supabase.table("training_state").select("*").eq("id", 1).single().execute().data
+    except Exception as e:
+        print(f"[!] Warning: failed to read training_state: {e}")
+        return None
+
+def get_latest_tree_model_path() -> Path:
+    """
+    Автоматически выбирает модель сегментации/детекции дерева:
+    - если training_state.last_model_version > 0 и файл models/model_vX.pt существует -> используем его
+    - иначе fallback на models/tree_model.pt
+    """
+    state = _get_training_state()
+    version = 0
+    if state and state.get("last_model_version") is not None:
+        try:
+            version = int(state.get("last_model_version") or 0)
+        except Exception:
+            version = 0
+
+    if version > 0:
+        candidate = MODELS_DIR / f"model_v{version}.pt"
+        if candidate.exists():
+            print(f"[✓] Using latest tree model from training_state: {candidate}")
+            return candidate
+        else:
+            print(f"[!] training_state points to {candidate}, but file not found. Falling back to tree_model.pt")
+
+    fallback = MODELS_DIR / "tree_model.pt"
+    print(f"[✓] Using fallback tree model: {fallback}")
+    return fallback
+
 # Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
@@ -36,24 +85,14 @@ SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 
 # NEW: bucket для сохранения всех загрузок (raw dataset)
 SUPABASE_BUCKET_RAW = "arborscan-raw"
-supabase = create_client(
-    SUPABASE_URL,
-    SUPABASE_SERVICE_KEY
-)
+
 # Таблица в Supabase Postgres для очереди доверенных примеров
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
-# Включать ли вставку в Postgres-очередь. По умолчанию выключено,
-# чтобы отсутствие таблицы не ломало пайплайн обучения.
-SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
 # Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
-WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
-                 or os.getenv("OPENWEATHER_API_KEY")
-                 or os.getenv("OPENWEATHERMAP_API_KEY")
-                 or os.getenv("dc825ffd002731568ec7766eafb54bc9")
-                 or None)
+WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
@@ -97,7 +136,7 @@ REAL_STICK_M = 1.0
 # -------------------------------------
 
 print("[*] Loading YOLO models...")
-tree_model = YOLO("models/tree_model.pt")
+tree_model = YOLO(str(get_latest_tree_model_path()))
 stick_model = YOLO("models/stick_model.pt")
 
 print("[*] Loading classifier...")
@@ -221,45 +260,24 @@ def _strip_data_url(b64: str) -> str:
     return "".join(b64.split())  # remove whitespace/newlines
 
 def decode_base64_bytes(b64: str) -> bytes:
-    """Decode base64 string into bytes.
-
-    Supports:
-      - data-URL prefix (data:image/png;base64,...)
-      - urlsafe base64 ('-' and '_' instead of '+' and '/')
-      - missing padding '='
-      - "double base64" (base64 of a base64 string) that sometimes happens in clients
-    """
+    """Decode base64 string into bytes. Supports data-URL prefix.
+    Also supports 'double base64' (base64 of a base64 string) that sometimes happens in clients."""
     if b64 is None:
         return b""
+    b64_clean = _strip_data_url(b64)
 
-    b64_clean = _strip_data_url(str(b64)).strip()
-
-    # Normalize urlsafe alphabet and padding
-    b64_clean = b64_clean.replace("-", "+").replace("_", "/")
-    pad = len(b64_clean) % 4
-    if pad:
-        b64_clean += "=" * (4 - pad)
-
-    # First pass
+    # First attempt: regular base64 -> bytes
     raw = base64.b64decode(b64_clean, validate=False)
 
     # If it looks like ASCII base64 text (double-encoded), try decode again
     try:
         as_text = raw.decode("utf-8").strip()
         if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
-            as_text = _strip_data_url(as_text).strip().replace("-", "+").replace("_", "/")
-            pad2 = len(as_text) % 4
-            if pad2:
-                as_text += "=" * (4 - pad2)
-            raw2 = base64.b64decode(as_text, validate=False)
-            # If second pass yields a PNG/JPEG signature, prefer it
+            # second pass
+            raw2 = base64.b64decode(_strip_data_url(as_text), validate=False)
+            # If second pass yields a PNG signature, prefer it
             if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff":
                 return raw2
-    except Exception:
-        pass
-
-        return raw
-
     except Exception:
         pass
 
@@ -267,37 +285,20 @@ def decode_base64_bytes(b64: str) -> bytes:
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
     """Return VALID PNG bytes for a mask.
-
-    Supported inputs for `mask_b64`:
-    1) base64(PNG/JPEG bytes)
-    2) base64(JSON) where JSON contains `mask_png_base64` (base64 PNG bytes)
-
-    Output is binarized (0/255) grayscale PNG.
-    """
+    Accepts base64 that should represent a PNG. If decoded payload is not a valid image,
+    raises ValueError.
+    Output is binarized (0/255) grayscale PNG."""
     raw = decode_base64_bytes(mask_b64)
-
-    # If the client sent base64(JSON), extract embedded PNG base64.
-    try:
-        if raw[:1] in (b"{", b"["):
-            obj = json.loads(raw.decode("utf-8"))
-            if isinstance(obj, dict) and obj.get("mask_png_base64"):
-                raw = decode_base64_bytes(str(obj["mask_png_base64"]))
-    except Exception:
-        pass
-
     np_buf = np.frombuffer(raw, np.uint8)
     mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
     if mask is None:
         raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
-
     # Binarize for segmentation ground truth
     _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
     ok, out = cv2.imencode(".png", mask_bin)
     if not ok:
         raise ValueError("Failed to encode mask as PNG")
     return out.tobytes()
-
-
 
 # =============================================
 # EXIF → GPS
@@ -862,68 +863,6 @@ async def analyze_tree(file: UploadFile = File(...)):
     return JSONResponse(response)
 
 
-
-# =============================
-# TRAINING TRIGGER (App -> Supabase -> retrain_worker)
-# =============================
-
-TRAIN_RETRAIN_MIN_NEW = int(os.getenv("TRAIN_RETRAIN_MIN_NEW", "1"))
-
-def count_untrained_masks() -> int:
-    """Counts verified samples that have a user mask and are not yet used for training.
-    Uses meta_verified.json in the arborscan-verified bucket as the source of truth.
-
-    Note: This is intentionally simple and safe for small/medium datasets.
-    """
-    try:
-        # Supabase Storage list is prefix-based. Root listing should return folder-like entries (analysis_id).
-        root_objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED, "")
-    except Exception as e:
-        print(f"[!] count_untrained_masks: failed to list bucket: {e}")
-        return 0
-
-    # Candidate analysis_ids (top-level folder names)
-    analysis_ids = []
-    for obj in root_objects or []:
-        name = (obj.get("name") or "").strip("/")
-        if not name:
-            continue
-        # Ignore nested paths returned by some list implementations
-        if "/" in name:
-            continue
-        analysis_ids.append(name)
-
-    count = 0
-    for analysis_id in analysis_ids:
-        try:
-            meta_bytes = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/meta_verified.json",
-            )
-            meta = json.loads(meta_bytes.decode("utf-8", errors="replace"))
-            if meta.get("has_user_mask") and not meta.get("used_for_training", False):
-                count += 1
-        except Exception:
-            # Missing/corrupt meta shouldn't break the pipeline
-            continue
-
-    return count
-
-def request_retrain_if_needed() -> None:
-    """Sets training_state.retrain_requested=True when enough new masks are available.
-    Backend does NOT train; it only requests a retrain for an external worker.
-    """
-    try:
-        count = count_untrained_masks()
-        if count >= TRAIN_RETRAIN_MIN_NEW:
-            supabase.table("training_state").update(
-                {"retrain_requested": True}
-            ).eq("id", 1).execute()
-    except Exception as e:
-        # Never fail user flow due to training trigger
-        print(f"[!] request_retrain_if_needed: {e}")
-
-
 @app.post("/feedback")
 def send_feedback(feedback: FeedbackRequest):
     """
@@ -1025,18 +964,10 @@ def send_feedback(feedback: FeedbackRequest):
 
         # user_mask.png (segmentation ground truth)
         # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
-                # Маска пользователя (обводка) — опционально.
-        # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
         meta["has_user_mask"] = False
-        mask_b64 = feedback.user_mask_base64
-        if mask_b64 is not None:
-            mask_b64_str = str(mask_b64).strip().lower()
-        else:
-            mask_b64_str = ""
-
-        if mask_b64_str and mask_b64_str not in ("null", "undefined"):
+        if feedback.user_mask_base64:
             try:
-                mask_png_bytes = ensure_png_mask_bytes(str(mask_b64))
+                mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
                 supabase_upload_bytes(
                     SUPABASE_BUCKET_INPUTS,
                     f"{analysis_id}/user_mask.png",
@@ -1044,12 +975,7 @@ def send_feedback(feedback: FeedbackRequest):
                 )
                 meta["has_user_mask"] = True
             except Exception as e:
-                # Не валим feedback целиком; просто предупреждаем, что маску не удалось распарсить.
-                print(f"[!] User mask provided but could not be decoded for {analysis_id}: {e}")
-        else:
-            # Маски нет — нормальный кейс.
-            pass
-
+                print(f"[!] Failed to decode/normalize/upload user mask for {analysis_id}: {e}")
 
         # tree_pred.json
         tree_pred_path = tmp_dir / "tree_pred.json"
@@ -1124,7 +1050,6 @@ def send_feedback(feedback: FeedbackRequest):
                 meta_verified["verified"] = True
                 meta_verified["verified_at"] = datetime.utcnow().isoformat()
                 meta_verified["verifier_role"] = "admin" if not feedback.use_for_training else "user"
-                meta_verified.setdefault("used_for_training", False)
 
                 supabase_upload_json(
                     SUPABASE_BUCKET_VERIFIED,
@@ -1144,34 +1069,25 @@ def send_feedback(feedback: FeedbackRequest):
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
 
     # -----------------------------
-    # TRAINING TRIGGER (do not block user flow)
+    # Запись в очередь доверенных примеров (Supabase DB)
     # -----------------------------
-    if is_verified and meta.get("has_user_mask", False):
-        request_retrain_if_needed()
+    try:
+        queue_row = {
+            "analysis_id": analysis_id,
+            "trust_score": trust,
+            "species": meta.get("species"),
+            "has_user_mask": meta.get("has_user_mask", False),
+            "tree_ok": meta.get("tree_ok"),
+            "stick_ok": meta.get("stick_ok"),
+            "params_ok": meta.get("params_ok"),
+            "species_ok": meta.get("species_ok"),
+        }
+        supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
+    except Exception as e:
+        # Не падаем для пользователя, просто логируем
+        print(f"[!] Failed to insert feedback into DB queue for {analysis_id}: {e}")
 
-    # -----------------------------
-    # (Optional) Queue of trusted samples (Supabase Postgres)
-    # -----------------------------
-    if SUPABASE_ENABLE_QUEUE:
-        try:
-            queue_row = {
-                "analysis_id": analysis_id,
-                "trust_score": trust,
-                "species": meta.get("species"),
-                "has_user_mask": meta.get("has_user_mask", False),
-                "tree_ok": meta.get("tree_ok"),
-                "stick_ok": meta.get("stick_ok"),
-                "params_ok": meta.get("params_ok"),
-                "species_ok": meta.get("species_ok"),
-            }
-            supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
-        except Exception as e:
-            # Queue failures must not break the user flow
-            print(f"[!] Queue insert skipped for {analysis_id}: {e}")
-
-    # -----------------------------
-    # Cleanup /tmp
-    # -----------------------------
+    # Чистим /tmp
     try:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     except Exception as e:
@@ -1182,8 +1098,6 @@ def send_feedback(feedback: FeedbackRequest):
         "analysis_id": analysis_id,
         "trust_score": trust,
     }
-
-
 @app.get("/admin/verified-list")
 def admin_verified_list():
     """
@@ -1336,12 +1250,3 @@ def save_user_mask(payload: UserMaskPayload):
             "meta": meta_path
         }
     }
-
-
-def get_latest_model_path():
-    state = supabase.table("training_state").select("*").eq("id", 1).single().execute().data
-    v = state["last_model_version"]
-
-    if v == 0:
-        return "models/base.pt"
-    return f"models/model_v{v}.pt"
