@@ -16,11 +16,14 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
-
+from supabase import create_client
 # -------------------------------------
 # CONFIG
 # -------------------------------------
-
+supabase = create_client(
+    SUPABASE_URL,
+    SUPABASE_SERVICE_KEY
+)
 # Supabase config: URL и SERVICE KEY задаём через переменные окружения на Railway
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
