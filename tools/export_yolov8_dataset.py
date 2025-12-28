@@ -14,10 +14,13 @@ import numpy as np
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
+print("SUPABASE_URL =", SUPABASE_URL)
+print("SUPABASE_SERVICE_KEY exists =", bool(SUPABASE_SERVICE_KEY))
+
+
 BUCKET = "arborscan-verified"
 
 OUT_DIR = Path("dataset_yolov8")
-IMG_SIZE = None            # None = оригинальный размер
 TRAIN_SPLIT = 0.8
 
 CLASSES = {
@@ -48,9 +51,6 @@ def download(path):
 # YOLO HELPERS
 # ==============================
 
-def norm_xy(x, y, w, h, img_w, img_h):
-    return x / img_w, y / img_h, w / img_w, h / img_h
-
 def norm_poly(points, img_w, img_h):
     out = []
     for x, y in points:
@@ -76,9 +76,13 @@ def main():
         (OUT_DIR / "images" / split).mkdir(parents=True, exist_ok=True)
         (OUT_DIR / "labels" / split).mkdir(parents=True, exist_ok=True)
 
-    random.shuffle(ids)
-    split_idx = int(len(ids) * TRAIN_SPLIT)
-    train_ids = set(ids[:split_idx])
+    if len(ids) < 5:
+        train_ids = set(ids)
+    else:
+        random.shuffle(ids)
+        split_idx = int(len(ids) * TRAIN_SPLIT)
+        train_ids = set(ids[:split_idx])
+
 
     for aid in ids:
         split = "train" if aid in train_ids else "val"
@@ -93,23 +97,48 @@ def main():
 
         labels = []
 
-        # ---- tree (segmentation)
-        tree_pred = json.loads(download(f"{aid}/tree_pred.json"))
-        if "mask" in tree_pred:
-            poly = tree_pred["mask"]
-            poly_norm = norm_poly(poly, w, h)
-            labels.append("0 " + " ".join(map(str, poly_norm)))
+        # =====================================================
+        # TREE — FROM USER MASK (SEGMENTATION)
+        # =====================================================
 
-        # ---- stick (bbox)
-        stick_pred = json.loads(download(f"{aid}/stick_pred.json"))
-        if stick_pred.get("box_xyxy"):
-            x1, y1, x2, y2 = stick_pred["box_xyxy"]
-            xc = (x1 + x2) / 2
-            yc = (y1 + y2) / 2
-            bw = x2 - x1
-            bh = y2 - y1
-            xc, yc, bw, bh = norm_xy(xc, yc, bw, bh, w, h)
-            labels.append(f"1 {xc} {yc} {bw} {bh}")
+        try:
+            mask_bytes = download(f"{aid}/user_mask.png")
+            mask_np = np.frombuffer(mask_bytes, np.uint8)
+            mask = cv2.imdecode(mask_np, cv2.IMREAD_GRAYSCALE)
+
+            _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+
+            contours, _ = cv2.findContours(
+                mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )
+
+            if contours:
+                # берём самый большой контур (дерево)
+                cnt = max(contours, key=cv2.contourArea)
+                cnt = cnt.squeeze()
+
+                if len(cnt.shape) == 2 and len(cnt) >= 3:
+                    poly_norm = norm_poly(cnt, w, h)
+                    labels.append("0 " + " ".join(map(str, poly_norm)))
+
+        except Exception as e:
+            print(f"[!] No valid user mask for {aid}: {e}")
+
+        # =====================================================
+        # STICK — BBOX (как было)
+        # =====================================================
+
+        try:
+            stick_pred = json.loads(download(f"{aid}/stick_pred.json"))
+            if stick_pred.get("box_xyxy"):
+                x1, y1, x2, y2 = stick_pred["box_xyxy"]
+                xc = (x1 + x2) / 2 / w
+                yc = (y1 + y2) / 2 / h
+                bw = (x2 - x1) / w
+                bh = (y2 - y1) / h
+                labels.append(f"1 {xc} {yc} {bw} {bh}")
+        except Exception:
+            pass
 
         label_path = OUT_DIR / "labels" / split / f"{aid}.txt"
         label_path.write_text("\n".join(labels))

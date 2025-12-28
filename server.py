@@ -859,6 +859,68 @@ async def analyze_tree(file: UploadFile = File(...)):
     return JSONResponse(response)
 
 
+
+# =============================
+# TRAINING TRIGGER (App -> Supabase -> retrain_worker)
+# =============================
+
+TRAIN_RETRAIN_MIN_NEW = int(os.getenv("TRAIN_RETRAIN_MIN_NEW", "10"))
+
+def count_untrained_masks() -> int:
+    """Counts verified samples that have a user mask and are not yet used for training.
+    Uses meta_verified.json in the arborscan-verified bucket as the source of truth.
+
+    Note: This is intentionally simple and safe for small/medium datasets.
+    """
+    try:
+        # Supabase Storage list is prefix-based. Root listing should return folder-like entries (analysis_id).
+        root_objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED, "")
+    except Exception as e:
+        print(f"[!] count_untrained_masks: failed to list bucket: {e}")
+        return 0
+
+    # Candidate analysis_ids (top-level folder names)
+    analysis_ids = []
+    for obj in root_objects or []:
+        name = (obj.get("name") or "").strip("/")
+        if not name:
+            continue
+        # Ignore nested paths returned by some list implementations
+        if "/" in name:
+            continue
+        analysis_ids.append(name)
+
+    count = 0
+    for analysis_id in analysis_ids:
+        try:
+            meta_bytes = supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/meta_verified.json",
+            )
+            meta = json.loads(meta_bytes.decode("utf-8", errors="replace"))
+            if meta.get("has_user_mask") and not meta.get("used_for_training", False):
+                count += 1
+        except Exception:
+            # Missing/corrupt meta shouldn't break the pipeline
+            continue
+
+    return count
+
+def request_retrain_if_needed() -> None:
+    """Sets training_state.retrain_requested=True when enough new masks are available.
+    Backend does NOT train; it only requests a retrain for an external worker.
+    """
+    try:
+        count = count_untrained_masks()
+        if count >= TRAIN_RETRAIN_MIN_NEW:
+            supabase.table("training_state").update(
+                {"retrain_requested": True}
+            ).eq("id", 1).execute()
+    except Exception as e:
+        # Never fail user flow due to training trigger
+        print(f"[!] request_retrain_if_needed: {e}")
+
+
 @app.post("/feedback")
 def send_feedback(feedback: FeedbackRequest):
     """
@@ -1059,6 +1121,7 @@ def send_feedback(feedback: FeedbackRequest):
                 meta_verified["verified"] = True
                 meta_verified["verified_at"] = datetime.utcnow().isoformat()
                 meta_verified["verifier_role"] = "admin" if not feedback.use_for_training else "user"
+                meta_verified.setdefault("used_for_training", False)
 
                 supabase_upload_json(
                     SUPABASE_BUCKET_VERIFIED,
@@ -1078,10 +1141,13 @@ def send_feedback(feedback: FeedbackRequest):
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
 
     # -----------------------------
-    # Запись в очередь доверенных примеров (Supabase DB)
+    # TRAINING TRIGGER (do not block user flow)
     # -----------------------------
+    if is_verified and meta.get("has_user_mask", False):
+        request_retrain_if_needed()
+
     # -----------------------------
-    # 7) (Опционально) очередь доверенных примеров (Supabase Postgres)
+    # (Optional) Queue of trusted samples (Supabase Postgres)
     # -----------------------------
     if SUPABASE_ENABLE_QUEUE:
         try:
@@ -1097,12 +1163,12 @@ def send_feedback(feedback: FeedbackRequest):
             }
             supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
         except Exception as e:
-            # Не падаем для пользователя; отсутствие таблицы / ошибки очереди не должны блокировать обучение.
+            # Queue failures must not break the user flow
             print(f"[!] Queue insert skipped for {analysis_id}: {e}")
-    else:
-        # Очередь выключена — нормально для пайплайна обучения через Storage.
-        pass
-    # Чистим /tmp
+
+    # -----------------------------
+    # Cleanup /tmp
+    # -----------------------------
     try:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     except Exception as e:
@@ -1113,6 +1179,8 @@ def send_feedback(feedback: FeedbackRequest):
         "analysis_id": analysis_id,
         "trust_score": trust,
     }
+
+
 @app.get("/admin/verified-list")
 def admin_verified_list():
     """
@@ -1265,3 +1333,12 @@ def save_user_mask(payload: UserMaskPayload):
             "meta": meta_path
         }
     }
+
+
+def get_latest_model_path():
+    state = supabase.table("training_state").select("*").eq("id", 1).single().execute().data
+    v = state["last_model_version"]
+
+    if v == 0:
+        return "models/base.pt"
+    return f"models/model_v{v}.pt"

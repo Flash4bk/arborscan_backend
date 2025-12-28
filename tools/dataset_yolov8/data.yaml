@@ -1,0 +1,8 @@
+path: D:\arborscan_backend\tools\dataset_yolov8
+train: images/train
+val: images/train
+
+
+names:
+  0: tree
+  1: stick
