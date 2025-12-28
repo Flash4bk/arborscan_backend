@@ -864,7 +864,7 @@ async def analyze_tree(file: UploadFile = File(...)):
 # TRAINING TRIGGER (App -> Supabase -> retrain_worker)
 # =============================
 
-TRAIN_RETRAIN_MIN_NEW = int(os.getenv("TRAIN_RETRAIN_MIN_NEW", "10"))
+TRAIN_RETRAIN_MIN_NEW = int(os.getenv("TRAIN_RETRAIN_MIN_NEW", "1"))
 
 def count_untrained_masks() -> int:
     """Counts verified samples that have a user mask and are not yet used for training.
