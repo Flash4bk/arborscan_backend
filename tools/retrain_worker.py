@@ -7,7 +7,7 @@ import argparse
 import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple, Optional
+from typing import List, Tuple, Optional
 
 from supabase import create_client
 
@@ -16,7 +16,10 @@ from supabase import create_client
 # Defaults (можно переопределять аргументами CLI)
 # -----------------------------
 DEFAULT_BUCKET_VERIFIED = "arborscan-verified"
-DEFAULT_MIN_NEW = 10
+
+# ВАЖНО: для обучения "из приложения" по кнопке — по умолчанию запускаем даже на малом датасете
+DEFAULT_MIN_NEW = 0
+
 DEFAULT_EPOCHS = 30
 DEFAULT_IMGSZ = 1024
 DEFAULT_BATCH = 4
@@ -139,9 +142,7 @@ def discover_verified_samples(
     analysis_ids = []
     for obj in top:
         name = obj.get("name", "")
-        # Supabase Storage list("") может вернуть файлы и "папки";
-        # у тебя структура: <analysis_id>/...
-        # Обычно "папки" возвращаются как dict с name = "<analysis_id>"
+        # структура: <analysis_id>/...
         if name and "/" not in name:
             analysis_ids.append(name)
 
@@ -194,8 +195,7 @@ def run_export_script(tools_dir: Path) -> None:
 
 def find_latest_train_dir(runs_segment_dir: Path, name: str) -> Path:
     """
-    При использовании Ultralytics с project=runs/segment и name=<name>,
-    итог будет в runs/segment/<name>/weights/best.pt
+    Итог будет в runs/segment/<name>/weights/best.pt
     """
     out_dir = runs_segment_dir / name
     if not out_dir.exists():
@@ -280,7 +280,6 @@ def mark_samples_used_for_training(
         try:
             storage_upload_json(supabase, bucket, f"{aid}/meta_verified.json", meta)
         except Exception as e:
-            # Не валим всю тренировку из-за одного мета-файла
             log(f"[!] Failed to mark used_for_training for {aid}: {e}")
 
 
@@ -358,9 +357,10 @@ def main():
             bucket=args.bucket,
             max_samples=args.max_samples,
         )
-        if len(samples) < args.min_new:
+
+        # Если min-new > 0 — соблюдаем порог; если 0 — обучаем сразу (кнопка из приложения)
+        if args.min_new > 0 and len(samples) < args.min_new:
             log(f"[*] Not enough new samples: {len(samples)} < {args.min_new}. Resetting retrain_requested to FALSE.")
-            # Снимаем флаг, чтобы не крутиться постоянно (можешь убрать, если хочешь держать флаг)
             update_training_state(supabase, {"retrain_requested": False})
             if args.once:
                 sys.exit(0)

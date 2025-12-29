@@ -1,34 +1,19 @@
 import 'dart:convert';
-import 'dart:async';
-import 'dart:math' as math;
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// Mask/segmentation editor that returns a **normalized polygon** (0..1)
-/// suitable for YOLOv8 Segmentation.
-///
-/// Returned payload (base64(JSON)):
-/// {
-///   "type": "tree_segmentation",
-///   "format": "yolo_poly_v1",
-///   "points": [[x,y], ...]   // x,y normalized to [0,1]
-/// }
 class MaskDrawingPage extends StatefulWidget {
-  final String originalImageBase64;
-
-  /// Optional initial mask payload (base64(JSON)).
-  /// Supported formats:
-  /// 1) New format: { "points": [[x,y],...], ... } with normalized points
-  /// 2) Legacy format: [[x,y], ...] (assumed normalized)
+  final String? originalImageBase64;
   final String? initialMaskBase64;
 
   const MaskDrawingPage({
-    super.key,
-    required this.originalImageBase64,
+    Key? key,
+    this.originalImageBase64,
     this.initialMaskBase64,
-  });
+  }) : super(key: key);
 
   @override
   State<MaskDrawingPage> createState() => _MaskDrawingPageState();
@@ -37,437 +22,362 @@ class MaskDrawingPage extends StatefulWidget {
 class _MaskDrawingPageState extends State<MaskDrawingPage> {
   late final Uint8List _imageBytes;
 
-  int? _imgW;
-  int? _imgH;
+  ui.Image? _image;
+  Size? _imageSize; // оригинальный размер изображения
 
-  /// Normalized points (0..1)
-  final List<Offset> _points = <Offset>[];
+  // Важно: Listener будет СНАРУЖИ InteractiveViewer, поэтому toScene() корректен
+  final TransformationController _controller = TransformationController();
 
-  /// Which point is being dragged
+  // Точки храним В scene-координатах child (px внутри CustomPaint размера drawSize)
+  final List<Offset> _points = [];
   int? _dragIndex;
-
   bool _closed = false;
+
+  // Размер child (CustomPaint). Нужен для экспорта и нормализации
+  Size? _drawSize;
+
+  // Gesture state
+  final Set<int> _activePointers = <int>{};
+  int? _primaryPointer;
+  bool _inPinch = false;
+
+  bool _tapCandidate = false;
+  Offset? _tapDownLocal; // viewport local (Listener local)
+  Offset? _tapDownScene; // scene position at down
+
+  static const double _tapSlopPx = 8.0;
 
   @override
   void initState() {
     super.initState();
-    _imageBytes = base64Decode(widget.originalImageBase64);
-    _decodeImageSize();
-    _tryLoadInitialMask();
-  }
-
-  Future<void> _decodeImageSize() async {
-    try {
-      final ui.Image img = await _decodeUiImage(_imageBytes);
-      if (!mounted) return;
-      setState(() {
-        _imgW = img.width;
-        _imgH = img.height;
-      });
-    } catch (_) {
-      // If image size can't be decoded, UI will still show but drawing will be disabled.
+    if (widget.originalImageBase64 == null) {
+      throw Exception('originalImageBase64 is required');
     }
+    _imageBytes = base64Decode(widget.originalImageBase64!);
+    _loadImage();
   }
 
-  Future<ui.Image> _decodeUiImage(Uint8List bytes) {
-    final completer = Completer<ui.Image>();
-    ui.decodeImageFromList(bytes, (ui.Image img) => completer.complete(img));
-    return completer.future;
-  }
-
-  void _tryLoadInitialMask() {
-    final s = widget.initialMaskBase64;
-    if (s == null || s.trim().isEmpty) return;
-
-    try {
-      final raw = utf8.decode(base64Decode(s));
-      final decoded = jsonDecode(raw);
-
-      List<dynamic>? ptsDyn;
-      if (decoded is Map<String, dynamic>) {
-        final p = decoded['points'];
-        if (p is List) ptsDyn = p;
-      } else if (decoded is List) {
-        ptsDyn = decoded;
-      }
-
-      if (ptsDyn == null) return;
-
-      for (final e in ptsDyn) {
-        if (e is List && e.length >= 2) {
-          final x = (e[0] as num).toDouble();
-          final y = (e[1] as num).toDouble();
-          _points.add(_clamp01(Offset(x, y)));
-        }
-      }
-    } catch (_) {
-      // ignore invalid legacy mask
-    }
-  }
-
-  Offset _clamp01(Offset o) {
-    final dx = o.dx.isNaN ? 0.0 : o.dx.clamp(0.0, 1.0);
-    final dy = o.dy.isNaN ? 0.0 : o.dy.clamp(0.0, 1.0);
-    return Offset(dx, dy);
-  }
-
-  bool get _canDraw => (_imgW != null && _imgH != null);
-
-  void _addPoint(Offset norm) {
-    if (_closed) return;
+  Future<void> _loadImage() async {
+    final codec = await ui.instantiateImageCodec(_imageBytes);
+    final frame = await codec.getNextFrame();
     setState(() {
-      _points.add(_clamp01(norm));
+      _image = frame.image;
+      _imageSize =
+          Size(frame.image.width.toDouble(), frame.image.height.toDouble());
     });
   }
 
-  void _toggleClosed() {
-    if (_points.length < 3) return;
-    setState(() {
-      _closed = !_closed;
-      _dragIndex = null;
-    });
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
-  void _undo() {
-    if (_points.isEmpty) return;
-    setState(() {
-      _closed = false;
-      _dragIndex = null;
-      _points.removeLast();
-    });
-  }
+  double get _scale => _controller.value.getMaxScaleOnAxis().clamp(1.0, 10.0);
 
-  void _clear() {
-    setState(() {
-      _closed = false;
-      _dragIndex = null;
-      _points.clear();
-    });
-  }
+  Offset _toScene(Offset viewportLocal) => _controller.toScene(viewportLocal);
 
-  
-  // =========================================================
-  // NEW: Rasterize polygon to a real PNG mask (base64)
-  // This keeps your existing polygon workflow unchanged,
-  // but also provides a PNG that the backend can store/train on.
-  // =========================================================
-  Future<String?> _rasterizeMaskPngBase64(Size boxSize) async {
-    try {
-      if (_points.length < 3) return null;
-
-      final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder);
-
-      // Black background
-      canvas.drawRect(
-        Rect.fromLTWH(0, 0, boxSize.width, boxSize.height),
-        Paint()..color = Colors.black,
-      );
-
-      // Convert normalized points to pixel points
-      final pixelPts = _points
-          .map((p) => Offset(p.dx * boxSize.width, p.dy * boxSize.height))
-          .toList();
-
-      // Fill polygon in white
-      final path = Path()..addPolygon(pixelPts, true);
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.fill,
-      );
-
-      final picture = recorder.endRecording();
-      final image = await picture.toImage(
-        boxSize.width.round(),
-        boxSize.height.round(),
-      );
-
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return null;
-
-      return base64Encode(byteData.buffer.asUint8List());
-    } catch (_) {
-      return null;
+  int? _hitTest(Offset scenePx) {
+    // Порог уменьшаем на зуме — чтобы "попадание" оставалось удобным
+    final threshold = 14.0 / _scale;
+    for (int i = 0; i < _points.length; i++) {
+      if ((_points[i] - scenePx).distance <= threshold) return i;
     }
-  }
-
-Future<void> _finish() async {
-    if (_points.length < 3 || !_closed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Нужно минимум 3 точки и замкнуть контур.'),
-        ),
-      );
-      return;
-    }
-
-    
-    // NEW: rasterize current polygon to PNG so backend can store/train segmentation
-    final size = MediaQuery.of(context).size;
-    final String? maskPngBase64 =
-        (size == null) ? null : await _rasterizeMaskPngBase64(size);
-
-final payload = <String, dynamic>{
-      'type': 'tree_segmentation',
-      'format': 'yolo_poly_v1',
-      'points': _points.map((p) => [p.dx, p.dy]).toList(),
-          if (maskPngBase64 != null) 'mask_png_base64': maskPngBase64,
-};
-
-    final jsonStr = jsonEncode(payload);
-    final b64 = base64Encode(utf8.encode(jsonStr));
-
-    Navigator.of(context).pop(b64);
-  }
-
-  // Finds nearest point index within threshold pixels
-  int? _findHitPoint(Offset localPx, Size boxSize, {double thresholdPx = 18}) {
-    if (_points.isEmpty) return null;
-
-    int? bestI;
-    double bestD = double.infinity;
-
-    for (var i = 0; i < _points.length; i++) {
-      final p = _points[i];
-      final px = Offset(p.dx * boxSize.width, p.dy * boxSize.height);
-      final d = (px - localPx).distance;
-      if (d < bestD) {
-        bestD = d;
-        bestI = i;
-      }
-    }
-
-    if (bestI != null && bestD <= thresholdPx) return bestI;
     return null;
+  }
+
+  Future<void> _finish() async {
+    if (_imageSize == null || _drawSize == null) return;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    // black bg
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, _imageSize!.width, _imageSize!.height),
+      Paint()..color = Colors.black,
+    );
+
+    if (_points.length >= 3) {
+      final path = Path();
+
+      final first = Offset(
+        _points.first.dx / _drawSize!.width * _imageSize!.width,
+        _points.first.dy / _drawSize!.height * _imageSize!.height,
+      );
+      path.moveTo(first.dx, first.dy);
+
+      for (int i = 1; i < _points.length; i++) {
+        path.lineTo(
+          _points[i].dx / _drawSize!.width * _imageSize!.width,
+          _points[i].dy / _drawSize!.height * _imageSize!.height,
+        );
+      }
+      path.close();
+
+      canvas.drawPath(path, Paint()..color = Colors.white);
+    }
+
+    final img = await recorder
+        .endRecording()
+        .toImage(_imageSize!.width.toInt(), _imageSize!.height.toInt());
+
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+
+    Navigator.pop(context, {
+      "mask_png_base64": base64Encode(bytes!.buffer.asUint8List()),
+      // points normalized 0..1 (relative to drawSize) — как раньше для твоего пайплайна
+      "points": _points
+          .map((p) => {
+                "x": p.dx / _drawSize!.width,
+                "y": p.dy / _drawSize!.height,
+              })
+          .toList(),
+      "closed": _closed,
+    });
+  }
+
+  void _resetTapState() {
+    _tapCandidate = false;
+    _tapDownLocal = null;
+    _tapDownScene = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    if (_image == null || _imageSize == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Контур дерева'),
+        title: const Text('Исправление маски'),
         actions: [
           IconButton(
-            tooltip: 'Готово',
-            icon: const Icon(Icons.check),
-            onPressed: _finish,
+            tooltip: 'Замкнуть контур',
+            icon: const Icon(Icons.link),
+            onPressed: _points.length >= 3 ? () => setState(() => _closed = true) : null,
+          ),
+          IconButton(
+            tooltip: 'Открыть контур',
+            icon: const Icon(Icons.link_off),
+            onPressed: _closed ? () => setState(() => _closed = false) : null,
+          ),
+          IconButton(
+            tooltip: 'Undo',
+            icon: const Icon(Icons.undo),
+            onPressed: _points.isEmpty
+                ? null
+                : () => setState(() {
+                      _points.removeLast();
+                      if (_points.length < 3) _closed = false;
+                    }),
+          ),
+          IconButton(
+            tooltip: 'Сброс зума',
+            icon: const Icon(Icons.zoom_out_map),
+            onPressed: () => _controller.value = Matrix4.identity(),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Canvas
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final canvasW = c.maxWidth;
-                final canvasH = c.maxHeight;
+      body: LayoutBuilder(
+        builder: (_, constraints) {
+          final fitScale = min(
+            constraints.maxWidth / _imageSize!.width,
+            constraints.maxHeight / _imageSize!.height,
+          );
 
-                if (!_canDraw) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Загружаем изображение…',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  );
-                }
+          final drawSize = Size(
+            _imageSize!.width * fitScale,
+            _imageSize!.height * fitScale,
+          );
 
-                final imgW = _imgW!.toDouble();
-                final imgH = _imgH!.toDouble();
+          // сохраняем актуальный drawSize
+          _drawSize = drawSize;
 
-                final scale = math.min(canvasW / imgW, canvasH / imgH);
-                final boxW = imgW * scale;
-                final boxH = imgH * scale;
+          return Center(
+            child: SizedBox(
+              width: drawSize.width,
+              height: drawSize.height,
 
-                // We draw inside this box, so local coords map 1:1 to box pixels.
-                return Center(
-                  child: SizedBox(
-                    width: boxW,
-                    height: boxH,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTapDown: (d) {
-                        if (_closed) return;
-                        final local = d.localPosition;
-                        final nx = (local.dx / boxW).clamp(0.0, 1.0);
-                        final ny = (local.dy / boxH).clamp(0.0, 1.0);
-                        _addPoint(Offset(nx, ny));
-                      },
-                      onPanStart: (d) {
-                        final idx = _findHitPoint(d.localPosition, Size(boxW, boxH));
-                        if (idx != null) {
-                          setState(() => _dragIndex = idx);
-                        }
-                      },
-                      onPanUpdate: (d) {
-                        if (_dragIndex == null) return;
-                        final local = d.localPosition;
-                        final nx = (local.dx / boxW).clamp(0.0, 1.0);
-                        final ny = (local.dy / boxH).clamp(0.0, 1.0);
-                        setState(() {
-                          _points[_dragIndex!] = Offset(nx, ny);
-                        });
-                      },
-                      onPanEnd: (_) {
-                        if (_dragIndex != null) {
-                          setState(() => _dragIndex = null);
-                        }
-                      },
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: Image.memory(
-                              _imageBytes,
-                              fit: BoxFit.fill,
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: CustomPaint(
-                              painter: _PolygonPainter(
-                                points: _points,
-                                closed: _closed,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+              // ✅ Listener СНАРУЖИ InteractiveViewer — это ключевое исправление
+              child: Listener(
+                behavior: HitTestBehavior.translucent,
+
+                onPointerDown: (e) {
+                  _activePointers.add(e.pointer);
+
+                  // Если стало 2+ пальца -> pinch, запрет на добавление точек
+                  if (_activePointers.length >= 2) {
+                    _inPinch = true;
+                    _dragIndex = null;
+                    _primaryPointer = null;
+                    _resetTapState();
+                    return;
+                  }
+
+                  // один палец
+                  _primaryPointer = e.pointer;
+
+                  final scene = _toScene(e.localPosition);
+
+                  // drag существующей точки разрешен всегда (даже если closed)
+                  final hit = _hitTest(scene);
+                  if (hit != null) {
+                    _dragIndex = hit;
+                    _resetTapState();
+                    return;
+                  }
+
+                  // новые точки — только если контур не замкнут
+                  if (_closed) {
+                    _resetTapState();
+                    return;
+                  }
+
+                  // кандидат на tap: фиксируем координату НА DOWN (чтобы transform не менял точку)
+                  _tapCandidate = true;
+                  _tapDownLocal = e.localPosition;
+                  _tapDownScene = scene;
+                },
+
+                onPointerMove: (e) {
+                  if (_primaryPointer != e.pointer) return;
+
+                  final scene = _toScene(e.localPosition);
+
+                  // перетаскивание точки
+                  if (_dragIndex != null) {
+                    setState(() {
+                      _points[_dragIndex!] = scene;
+                    });
+                    return;
+                  }
+
+                  // отменяем tap, если пользователь реально "повёл"
+                  if (_tapCandidate && _tapDownLocal != null) {
+                    final localDist = (e.localPosition - _tapDownLocal!).distance;
+                    if (localDist > _tapSlopPx) {
+                      _tapCandidate = false;
+                    }
+                  }
+                },
+
+                onPointerUp: (e) {
+                  _activePointers.remove(e.pointer);
+
+                  // как только все пальцы убраны — pinch закончился
+                  if (_activePointers.isEmpty) {
+                    _inPinch = false;
+                  }
+
+                  if (_primaryPointer == e.pointer) {
+                    // Добавляем точку только если это был реальный tap (без pinch, без pan)
+                    if (_tapCandidate && !_inPinch && !_closed && _tapDownScene != null) {
+                      setState(() {
+                        _points.add(_tapDownScene!);
+                      });
+                    }
+
+                    _dragIndex = null;
+                    _primaryPointer = null;
+                    _resetTapState();
+                  }
+                },
+
+                onPointerCancel: (e) {
+                  _activePointers.remove(e.pointer);
+                  if (_activePointers.isEmpty) _inPinch = false;
+                  _dragIndex = null;
+                  _primaryPointer = null;
+                  _resetTapState();
+                },
+
+                child: InteractiveViewer(
+                  transformationController: _controller,
+                  minScale: 1,
+                  maxScale: 6,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  child: CustomPaint(
+                    size: drawSize,
+                    painter: _MaskPainter(
+                      image: _image!,
+                      points: _points,
+                      closed: _closed,
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
-
-          // Controls
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _points.length >= 3 ? _toggleClosed : null,
-                        icon: Icon(_closed ? Icons.link_off : Icons.link),
-                        label: Text(_closed ? 'Разомкнуть' : 'Замкнуть'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _points.isNotEmpty ? _undo : null,
-                        icon: const Icon(Icons.undo),
-                        label: const Text('Отменить'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _points.isNotEmpty ? _clear : null,
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Очистить'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: (_points.length >= 3 && _closed) ? _finish : null,
-                        icon: const Icon(Icons.check),
-                        label: const Text('Сохранить'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Тап — добавить точку. Перетаскивай точки пальцем. Сначала поставь минимум 3 точки и нажми «Замкнуть».',
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-        ],
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _finish,
+        icon: const Icon(Icons.check),
+        label: const Text('Подтвердить'),
       ),
     );
   }
 }
 
-class _PolygonPainter extends CustomPainter {
-  final List<Offset> points; // normalized 0..1
+class _MaskPainter extends CustomPainter {
+  final ui.Image image;
+  final List<Offset> points;
   final bool closed;
 
-  _PolygonPainter({
+  _MaskPainter({
+    required this.image,
     required this.points,
     required this.closed,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(
+        0,
+        0,
+        image.width.toDouble(),
+        image.height.toDouble(),
+      ),
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint(),
+    );
+
     if (points.isEmpty) return;
 
-    final paintLine = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..color = Colors.greenAccent.shade400;
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    if (closed && points.length >= 3) path.close();
 
-    final paintFill = Paint()
-      ..style = PaintingStyle.fill
-      ..color = Colors.greenAccent.withOpacity(0.18);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.red
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
 
-    final paintPoint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = Colors.white;
-
-    final paintPointBorder = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = Colors.greenAccent.shade700;
-
-    final path = Path();
-
-    Offset toPx(Offset n) => Offset(n.dx * size.width, n.dy * size.height);
-
-    final p0 = toPx(points.first);
-    path.moveTo(p0.dx, p0.dy);
-    for (var i = 1; i < points.length; i++) {
-      final p = toPx(points[i]);
-      path.lineTo(p.dx, p.dy);
+    for (final p in points) {
+      canvas.drawCircle(p, 4, Paint()..color = Colors.cyanAccent);
     }
 
-    if (closed && points.length >= 3) {
-      path.close();
-      canvas.drawPath(path, paintFill);
-    }
-
-    canvas.drawPath(path, paintLine);
-
-    // Draw vertices
-    for (final n in points) {
-      final p = toPx(n);
-      canvas.drawCircle(p, 5.5, paintPoint);
-      canvas.drawCircle(p, 5.5, paintPointBorder);
-    }
+    // подсветка первой точки
+    canvas.drawCircle(
+      points.first,
+      6,
+      Paint()..color = Colors.yellowAccent.withOpacity(0.85),
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _PolygonPainter oldDelegate) {
-    return oldDelegate.points != points || oldDelegate.closed != closed;
-  }
+  bool shouldRepaint(covariant _MaskPainter oldDelegate) =>
+      oldDelegate.points != points || oldDelegate.closed != closed;
 }

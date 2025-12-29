@@ -41,15 +41,53 @@ if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     except Exception as e:
         print(f"[!] Warning: failed to init Supabase client: {e}")
 
+
+# ==========================
+# TRAINING STATE HELPERS
+# ==========================
+
+def _ensure_training_state_row():
+    """
+    Гарантирует наличие строки training_state (id=1).
+    Делает best-effort insert, если строки нет.
+    НИЧЕГО не ломает, если таблица/поля отличаются — просто лог.
+    """
+    if supabase is None:
+        return
+    try:
+        existing = supabase.table("training_state").select("id").eq("id", 1).execute().data
+        if existing:
+            return
+        # best-effort insert
+        supabase.table("training_state").insert({
+            "id": 1,
+            "retrain_requested": False,
+            "training_in_progress": False,
+            "last_model_version": 0,
+        }).execute()
+        print("[✓] Inserted training_state row id=1")
+    except Exception as e:
+        print(f"[!] Warning: failed to ensure training_state row: {e}")
+
+
 def _get_training_state():
     """Читает training_state (id=1). Если Supabase не настроен — возвращает None."""
     if supabase is None:
         return None
     try:
+        _ensure_training_state_row()
         return supabase.table("training_state").select("*").eq("id", 1).single().execute().data
     except Exception as e:
         print(f"[!] Warning: failed to read training_state: {e}")
         return None
+
+
+def _update_training_state(patch: dict):
+    if supabase is None:
+        raise RuntimeError("Supabase client is not initialized")
+    _ensure_training_state_row()
+    supabase.table("training_state").update(patch).eq("id", 1).execute()
+
 
 def get_latest_tree_model_path() -> Path:
     """
@@ -568,6 +606,44 @@ class TrustedExample(BaseModel):
 
 
 app = FastAPI(title="ArborScan API v2.0")
+
+
+# =============================================
+# TRAINING CONTROL ENDPOINTS (NEW)
+# =============================================
+
+@app.post("/request_retrain")
+def request_retrain():
+    """
+    Вызывается из приложения. Ставит retrain_requested=True, если обучение не идёт.
+    Ничего не обучает в этом процессе.
+    """
+    if supabase is None:
+        raise HTTPException(status_code=500, detail="Supabase not configured on server")
+
+    state = _get_training_state()
+    if not state:
+        raise HTTPException(status_code=500, detail="training_state unavailable")
+
+    if state.get("training_in_progress"):
+        return {"status": "busy", "message": "Training already in progress"}
+
+    _update_training_state({
+        "retrain_requested": True,
+        "updated_at": datetime.utcnow().isoformat(),
+    })
+    return {"status": "ok", "message": "Retraining requested"}
+
+
+@app.get("/training_status")
+def training_status():
+    """
+    Для UI: приложение может опрашивать и показывать статус/версию.
+    """
+    if supabase is None:
+        raise HTTPException(status_code=500, detail="Supabase not configured on server")
+    state = _get_training_state()
+    return state or {}
 
 
 @app.post("/analyze-tree")
@@ -1098,6 +1174,7 @@ def send_feedback(feedback: FeedbackRequest):
         "analysis_id": analysis_id,
         "trust_score": trust,
     }
+
 @app.get("/admin/verified-list")
 def admin_verified_list():
     """
@@ -1137,6 +1214,7 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
+
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
