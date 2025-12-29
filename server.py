@@ -8,7 +8,6 @@ import numpy as np
 import requests
 from ultralytics import YOLO
 from PIL import Image, ExifTags
-from supabase import create_client
 import torch
 from torchvision import models, transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -17,6 +16,7 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
+from supabase import create_client
 
 # -------------------------------------
 # CONFIG
@@ -29,91 +29,18 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
-
-# Папка с моделями (в контейнере это /app/models).
-MODELS_DIR = Path(__file__).resolve().parent / "models"
-
-# Supabase client (нужен для training_state и autoload последней модели)
+# Supabase client (DB)
 supabase = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     except Exception as e:
-        print(f"[!] Warning: failed to init Supabase client: {e}")
+        print(f"[!] Failed to init Supabase client: {e}")
+        supabase = None
 
+# Training state table
+TRAINING_STATE_TABLE = os.getenv('TRAINING_STATE_TABLE', 'training_state')
 
-# ==========================
-# TRAINING STATE HELPERS
-# ==========================
-
-def _ensure_training_state_row():
-    """
-    Гарантирует наличие строки training_state (id=1).
-    Делает best-effort insert, если строки нет.
-    НИЧЕГО не ломает, если таблица/поля отличаются — просто лог.
-    """
-    if supabase is None:
-        return
-    try:
-        existing = supabase.table("training_state").select("id").eq("id", 1).execute().data
-        if existing:
-            return
-        # best-effort insert
-        supabase.table("training_state").insert({
-            "id": 1,
-            "retrain_requested": False,
-            "training_in_progress": False,
-            "last_model_version": 0,
-        }).execute()
-        print("[✓] Inserted training_state row id=1")
-    except Exception as e:
-        print(f"[!] Warning: failed to ensure training_state row: {e}")
-
-
-def _get_training_state():
-    """Читает training_state (id=1). Если Supabase не настроен — возвращает None."""
-    if supabase is None:
-        return None
-    try:
-        _ensure_training_state_row()
-        return supabase.table("training_state").select("*").eq("id", 1).single().execute().data
-    except Exception as e:
-        print(f"[!] Warning: failed to read training_state: {e}")
-        return None
-
-
-def _update_training_state(patch: dict):
-    if supabase is None:
-        raise RuntimeError("Supabase client is not initialized")
-    _ensure_training_state_row()
-    supabase.table("training_state").update(patch).eq("id", 1).execute()
-
-
-def get_latest_tree_model_path() -> Path:
-    """
-    Автоматически выбирает модель сегментации/детекции дерева:
-    - если training_state.last_model_version > 0 и файл models/model_vX.pt существует -> используем его
-    - иначе fallback на models/tree_model.pt
-    """
-    state = _get_training_state()
-    version = 0
-    if state and state.get("last_model_version") is not None:
-        try:
-            version = int(state.get("last_model_version") or 0)
-        except Exception:
-            version = 0
-
-    if version > 0:
-        candidate = MODELS_DIR / f"model_v{version}.pt"
-        if candidate.exists():
-            print(f"[✓] Using latest tree model from training_state: {candidate}")
-            return candidate
-        else:
-            print(f"[!] training_state points to {candidate}, but file not found. Falling back to tree_model.pt")
-
-    fallback = MODELS_DIR / "tree_model.pt"
-    print(f"[✓] Using fallback tree model: {fallback}")
-    return fallback
 
 # Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
@@ -174,7 +101,111 @@ REAL_STICK_M = 1.0
 # -------------------------------------
 
 print("[*] Loading YOLO models...")
-tree_model = YOLO(str(get_latest_tree_model_path()))
+
+# -----------------------------
+# Training state / model versioning
+# -----------------------------
+
+def _ensure_training_state_row():
+    """Ensure training_state row id=1 exists."""
+    if supabase is None:
+        return
+    try:
+        data = supabase.table(TRAINING_STATE_TABLE).select('*').eq('id', 1).single().execute().data
+        if data:
+            return
+    except Exception:
+        pass
+    try:
+        supabase.table(TRAINING_STATE_TABLE).upsert({
+            'id': 1,
+            'retrain_requested': False,
+            'training_in_progress': False,
+            'last_model_version': 0,
+            'active_model_version': 0,
+            'last_trained_at': None,
+        }).execute()
+    except Exception as e:
+        print(f"[!] Failed to ensure training_state row: {e}")
+
+
+def _get_training_state() -> dict:
+    if supabase is None:
+        return {
+            'id': 1,
+            'retrain_requested': False,
+            'training_in_progress': False,
+            'last_model_version': 0,
+            'active_model_version': 0,
+            'last_trained_at': None,
+        }
+    _ensure_training_state_row()
+    try:
+        data = supabase.table(TRAINING_STATE_TABLE).select('*').eq('id', 1).single().execute().data
+        return data or {
+            'id': 1,
+            'retrain_requested': False,
+            'training_in_progress': False,
+            'last_model_version': 0,
+            'active_model_version': 0,
+            'last_trained_at': None,
+        }
+    except Exception as e:
+        print(f"[!] Failed to read training_state: {e}")
+        return {
+            'id': 1,
+            'retrain_requested': False,
+            'training_in_progress': False,
+            'last_model_version': 0,
+            'active_model_version': 0,
+            'last_trained_at': None,
+        }
+
+
+def _tree_model_path_for_version(v: int) -> Path:
+    if not v:
+        # base model
+        return Path('models/tree_model.pt')
+    return Path(f'models/model_v{v}.pt')
+
+
+def get_active_tree_model_path() -> Path:
+    state = _get_training_state()
+    active_v = int(state.get('active_model_version') or 0)
+    last_v = int(state.get('last_model_version') or 0)
+
+    # Prefer active model if present and file exists
+    p_active = _tree_model_path_for_version(active_v)
+    if p_active.exists():
+        return p_active
+
+    p_last = _tree_model_path_for_version(last_v)
+    if p_last.exists():
+        return p_last
+
+    # fallback
+    return Path('models/tree_model.pt')
+
+
+_TREE_MODEL_PATH: Path | None = None
+
+def reload_tree_model(force: bool = False):
+    global tree_model, _TREE_MODEL_PATH
+    p = get_active_tree_model_path()
+    if (not force) and (_TREE_MODEL_PATH is not None) and (p == _TREE_MODEL_PATH):
+        return
+    try:
+        tree_model = YOLO(str(p))
+        _TREE_MODEL_PATH = p
+        print(f"[√] Using tree model: {p}")
+    except Exception as e:
+        print(f"[!] Failed to load tree model '{p}': {e}. Falling back to base model.")
+        tree_model = YOLO('models/tree_model.pt')
+        _TREE_MODEL_PATH = Path('models/tree_model.pt')
+
+
+# Load models
+reload_tree_model(force=True)
 stick_model = YOLO("models/stick_model.pt")
 
 print("[*] Loading classifier...")
@@ -606,44 +637,6 @@ class TrustedExample(BaseModel):
 
 
 app = FastAPI(title="ArborScan API v2.0")
-
-
-# =============================================
-# TRAINING CONTROL ENDPOINTS (NEW)
-# =============================================
-
-@app.post("/request_retrain")
-def request_retrain():
-    """
-    Вызывается из приложения. Ставит retrain_requested=True, если обучение не идёт.
-    Ничего не обучает в этом процессе.
-    """
-    if supabase is None:
-        raise HTTPException(status_code=500, detail="Supabase not configured on server")
-
-    state = _get_training_state()
-    if not state:
-        raise HTTPException(status_code=500, detail="training_state unavailable")
-
-    if state.get("training_in_progress"):
-        return {"status": "busy", "message": "Training already in progress"}
-
-    _update_training_state({
-        "retrain_requested": True,
-        "updated_at": datetime.utcnow().isoformat(),
-    })
-    return {"status": "ok", "message": "Retraining requested"}
-
-
-@app.get("/training_status")
-def training_status():
-    """
-    Для UI: приложение может опрашивать и показывать статус/версию.
-    """
-    if supabase is None:
-        raise HTTPException(status_code=500, detail="Supabase not configured on server")
-    state = _get_training_state()
-    return state or {}
 
 
 @app.post("/analyze-tree")
@@ -1174,7 +1167,6 @@ def send_feedback(feedback: FeedbackRequest):
         "analysis_id": analysis_id,
         "trust_score": trust,
     }
-
 @app.get("/admin/verified-list")
 def admin_verified_list():
     """
@@ -1214,7 +1206,6 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
-
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
@@ -1264,6 +1255,51 @@ def admin_get_analysis(analysis_id: str):
         "stick_pred": stick_pred,
         "meta": meta,
     }
+
+
+
+# =============================================
+# TRAINING CONTROL (Admin)
+# =============================================
+
+@app.get("/admin/training-status")
+def admin_training_status():
+    """Возвращает состояние обучения и версии моделей из таблицы training_state."""
+    return _get_training_state()
+
+@app.post("/admin/request-retrain")
+def admin_request_retrain():
+    """Выставляет retrain_requested=True (если таблица доступна)."""
+    _set_training_state(retrain_requested=True)
+    return {"status": "ok", **_get_training_state()}
+
+@app.post("/admin/set-active-model")
+def admin_set_active_model(payload: dict):
+    """Переключение активной версии модели. Body: {"version": int}."""
+    if "version" not in payload:
+        raise HTTPException(status_code=400, detail="Missing 'version' in body")
+    try:
+        v = int(payload["version"])
+    except Exception:
+        raise HTTPException(status_code=400, detail="'version' must be int")
+
+    # Validate that file exists in container for non-zero versions
+    model_path = Path("models/tree_model.pt") if v == 0 else Path(f"models/model_v{v}.pt")
+    if not model_path.exists():
+        raise HTTPException(status_code=400, detail=f"Model file not found: {model_path}")
+
+    _set_training_state(active_model_version=v)
+
+    # Hot-reload model in memory
+    global tree_model
+    try:
+        tree_model = YOLO(str(model_path))
+        print(f"[√] Active tree model switched to v{v}: {model_path}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
+
+    return {"status": "ok", "active_model_version": v, **_get_training_state()}
+
 
 # =============================================
 # DATASET COLLECTION ENDPOINT (for training from app)
