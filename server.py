@@ -7,6 +7,8 @@ import time
 import cv2
 import numpy as np
 import requests
+import threading
+
 from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
