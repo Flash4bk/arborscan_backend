@@ -3,6 +3,7 @@ import io
 import base64
 import json
 import shutil
+import time
 import cv2
 import numpy as np
 import requests
@@ -16,7 +17,6 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
-from supabase import create_client
 
 # -------------------------------------
 # CONFIG
@@ -28,19 +28,6 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
-
-# Supabase client (DB)
-supabase = None
-if SUPABASE_URL and SUPABASE_SERVICE_KEY:
-    try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    except Exception as e:
-        print(f"[!] Failed to init Supabase client: {e}")
-        supabase = None
-
-# Training state table
-TRAINING_STATE_TABLE = os.getenv('TRAINING_STATE_TABLE', 'training_state')
-
 
 # Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
@@ -55,9 +42,82 @@ SUPABASE_BUCKET_RAW = "arborscan-raw"
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
+# Включать ли вставку в Postgres-очередь. По умолчанию выключено,
+# чтобы отсутствие таблицы не ломало пайплайн обучения.
+SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
+
+# ---------------------------------------------------------
+# Supabase PostgREST helpers (training_state)
+# ---------------------------------------------------------
+
+def _sb_headers(json_ct: bool = True) -> dict:
+    h = {
+        "apikey": SUPABASE_SERVICE_KEY or "",
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}" if SUPABASE_SERVICE_KEY else "",
+    }
+    if json_ct:
+        h["Content-Type"] = "application/json"
+    return h
+
+
+def training_state_get() -> dict:
+    if not SUPABASE_DB_BASE:
+        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
+    url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1&select=*"
+    resp = requests.get(url, headers=_sb_headers(json_ct=False), timeout=30)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"training_state_get error {resp.status_code}: {resp.text}")
+    rows = resp.json()
+    if not rows:
+        return {}
+    return rows[0]
+
+
+def training_state_ensure_row():
+    # Ensure row id=1 exists
+    state = training_state_get()
+    if state:
+        return
+    url = f"{SUPABASE_DB_BASE}/training_state"
+    payload = {
+        "id": 1,
+        "retrain_requested": False,
+        "training_in_progress": False,
+        "last_model_version": 0,
+        "active_model_version": 0,
+    }
+    resp = requests.post(
+        url,
+        headers={**_sb_headers(), "Prefer": "return=representation"},
+        data=json.dumps(payload),
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"training_state_ensure_row error {resp.status_code}: {resp.text}")
+
+
+def training_state_update(fields: dict) -> dict:
+    if not SUPABASE_DB_BASE:
+        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
+    url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1"
+    resp = requests.patch(
+        url,
+        headers={**_sb_headers(), "Prefer": "return=representation"},
+        data=json.dumps(fields),
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"training_state_update error {resp.status_code}: {resp.text}")
+    rows = resp.json()
+    return rows[0] if rows else fields
+
 
 # Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
-WEATHER_API_KEY = os.getenv("dc825ffd002731568ec7766eafb54bc9", None)
+WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
+                 or os.getenv("OPENWEATHER_API_KEY")
+                 or os.getenv("OPENWEATHERMAP_API_KEY")
+                 or os.getenv("dc825ffd002731568ec7766eafb54bc9")
+                 or None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
@@ -101,111 +161,7 @@ REAL_STICK_M = 1.0
 # -------------------------------------
 
 print("[*] Loading YOLO models...")
-
-# -----------------------------
-# Training state / model versioning
-# -----------------------------
-
-def _ensure_training_state_row():
-    """Ensure training_state row id=1 exists."""
-    if supabase is None:
-        return
-    try:
-        data = supabase.table(TRAINING_STATE_TABLE).select('*').eq('id', 1).single().execute().data
-        if data:
-            return
-    except Exception:
-        pass
-    try:
-        supabase.table(TRAINING_STATE_TABLE).upsert({
-            'id': 1,
-            'retrain_requested': False,
-            'training_in_progress': False,
-            'last_model_version': 0,
-            'active_model_version': 0,
-            'last_trained_at': None,
-        }).execute()
-    except Exception as e:
-        print(f"[!] Failed to ensure training_state row: {e}")
-
-
-def _get_training_state() -> dict:
-    if supabase is None:
-        return {
-            'id': 1,
-            'retrain_requested': False,
-            'training_in_progress': False,
-            'last_model_version': 0,
-            'active_model_version': 0,
-            'last_trained_at': None,
-        }
-    _ensure_training_state_row()
-    try:
-        data = supabase.table(TRAINING_STATE_TABLE).select('*').eq('id', 1).single().execute().data
-        return data or {
-            'id': 1,
-            'retrain_requested': False,
-            'training_in_progress': False,
-            'last_model_version': 0,
-            'active_model_version': 0,
-            'last_trained_at': None,
-        }
-    except Exception as e:
-        print(f"[!] Failed to read training_state: {e}")
-        return {
-            'id': 1,
-            'retrain_requested': False,
-            'training_in_progress': False,
-            'last_model_version': 0,
-            'active_model_version': 0,
-            'last_trained_at': None,
-        }
-
-
-def _tree_model_path_for_version(v: int) -> Path:
-    if not v:
-        # base model
-        return Path('models/tree_model.pt')
-    return Path(f'models/model_v{v}.pt')
-
-
-def get_active_tree_model_path() -> Path:
-    state = _get_training_state()
-    active_v = int(state.get('active_model_version') or 0)
-    last_v = int(state.get('last_model_version') or 0)
-
-    # Prefer active model if present and file exists
-    p_active = _tree_model_path_for_version(active_v)
-    if p_active.exists():
-        return p_active
-
-    p_last = _tree_model_path_for_version(last_v)
-    if p_last.exists():
-        return p_last
-
-    # fallback
-    return Path('models/tree_model.pt')
-
-
-_TREE_MODEL_PATH: Path | None = None
-
-def reload_tree_model(force: bool = False):
-    global tree_model, _TREE_MODEL_PATH
-    p = get_active_tree_model_path()
-    if (not force) and (_TREE_MODEL_PATH is not None) and (p == _TREE_MODEL_PATH):
-        return
-    try:
-        tree_model = YOLO(str(p))
-        _TREE_MODEL_PATH = p
-        print(f"[√] Using tree model: {p}")
-    except Exception as e:
-        print(f"[!] Failed to load tree model '{p}': {e}. Falling back to base model.")
-        tree_model = YOLO('models/tree_model.pt')
-        _TREE_MODEL_PATH = Path('models/tree_model.pt')
-
-
-# Load models
-reload_tree_model(force=True)
+tree_model = None  # loaded dynamically from Supabase models bucket via active_model_version
 stick_model = YOLO("models/stick_model.pt")
 
 print("[*] Loading classifier...")
@@ -294,6 +250,85 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 
 
 
+
+# ---------------------------------------------------------
+# Model hot-swap (tree model) using training_state.active_model_version
+# Models are stored in Supabase Storage bucket: "models" as model_v{N}.pt
+# ---------------------------------------------------------
+
+TREE_MODEL: Optional[YOLO] = None
+TREE_MODEL_VERSION: Optional[int] = None
+MODEL_LOCK = threading.Lock()
+_MODEL_LAST_CHECK_TS = 0.0
+_MODEL_CHECK_INTERVAL_SEC = float(os.getenv("MODEL_CHECK_INTERVAL_SEC", "2.0"))
+
+def _local_model_path(version: int) -> str:
+    cache_dir = os.getenv("MODEL_CACHE_DIR", "/tmp/models")
+    Path(cache_dir).mkdir(parents=True, exist_ok=True)
+    return str(Path(cache_dir) / f"model_v{version}.pt")
+
+def _download_model_if_needed(version: int) -> str:
+    filename = f"model_v{version}.pt"
+    local_path = _local_model_path(version)
+    if os.path.exists(local_path):
+        return local_path
+    data = supabase_download_bytes("models", filename)
+    with open(local_path, "wb") as f:
+        f.write(data)
+    return local_path
+
+def _get_active_model_version() -> int:
+    state = training_state_get()
+    v = state.get("active_model_version")
+    if v is None:
+        # default to 0 if not set
+        return 0
+    return int(v)
+
+def reload_tree_model(force: bool = False):
+    global TREE_MODEL, TREE_MODEL_VERSION, _MODEL_LAST_CHECK_TS
+
+    now = time.time()
+    if not force and (now - _MODEL_LAST_CHECK_TS) < _MODEL_CHECK_INTERVAL_SEC:
+        return
+    _MODEL_LAST_CHECK_TS = now
+
+    v = _get_active_model_version()
+    if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v:
+        return
+
+    # version 0: fallback to bundled local model if exists
+    if v == 0:
+        local_fallback = "models/tree_model.pt"
+        if os.path.exists(local_fallback):
+            print(f"[*] Using bundled tree model: {local_fallback}")
+            TREE_MODEL = YOLO(local_fallback)
+            TREE_MODEL_VERSION = 0
+            return
+        # else try download v0 if present
+        try:
+            path = _download_model_if_needed(0)
+            print(f"[*] Using downloaded tree model v0: {path}")
+            TREE_MODEL = YOLO(path)
+            TREE_MODEL_VERSION = 0
+            return
+        except Exception as e:
+            raise RuntimeError(f"No tree model available (v0). {e}")
+
+    path = _download_model_if_needed(v)
+    print(f"[*] Switching tree model to v{v}: {path}")
+    TREE_MODEL = YOLO(path)
+    TREE_MODEL_VERSION = v
+
+def get_tree_model() -> YOLO:
+    with MODEL_LOCK:
+        reload_tree_model(force=False)
+        if TREE_MODEL is None:
+            reload_tree_model(force=True)
+        if TREE_MODEL is None:
+            raise RuntimeError("TREE_MODEL is not loaded")
+        return TREE_MODEL
+
 def supabase_db_insert(table: str, row: dict):
     """
     Вставка записи в Supabase Postgres через REST (PostgREST).
@@ -329,24 +364,45 @@ def _strip_data_url(b64: str) -> str:
     return "".join(b64.split())  # remove whitespace/newlines
 
 def decode_base64_bytes(b64: str) -> bytes:
-    """Decode base64 string into bytes. Supports data-URL prefix.
-    Also supports 'double base64' (base64 of a base64 string) that sometimes happens in clients."""
+    """Decode base64 string into bytes.
+
+    Supports:
+      - data-URL prefix (data:image/png;base64,...)
+      - urlsafe base64 ('-' and '_' instead of '+' and '/')
+      - missing padding '='
+      - "double base64" (base64 of a base64 string) that sometimes happens in clients
+    """
     if b64 is None:
         return b""
-    b64_clean = _strip_data_url(b64)
 
-    # First attempt: regular base64 -> bytes
+    b64_clean = _strip_data_url(str(b64)).strip()
+
+    # Normalize urlsafe alphabet and padding
+    b64_clean = b64_clean.replace("-", "+").replace("_", "/")
+    pad = len(b64_clean) % 4
+    if pad:
+        b64_clean += "=" * (4 - pad)
+
+    # First pass
     raw = base64.b64decode(b64_clean, validate=False)
 
     # If it looks like ASCII base64 text (double-encoded), try decode again
     try:
         as_text = raw.decode("utf-8").strip()
         if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
-            # second pass
-            raw2 = base64.b64decode(_strip_data_url(as_text), validate=False)
-            # If second pass yields a PNG signature, prefer it
+            as_text = _strip_data_url(as_text).strip().replace("-", "+").replace("_", "/")
+            pad2 = len(as_text) % 4
+            if pad2:
+                as_text += "=" * (4 - pad2)
+            raw2 = base64.b64decode(as_text, validate=False)
+            # If second pass yields a PNG/JPEG signature, prefer it
             if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff":
                 return raw2
+    except Exception:
+        pass
+
+        return raw
+
     except Exception:
         pass
 
@@ -354,20 +410,37 @@ def decode_base64_bytes(b64: str) -> bytes:
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
     """Return VALID PNG bytes for a mask.
-    Accepts base64 that should represent a PNG. If decoded payload is not a valid image,
-    raises ValueError.
-    Output is binarized (0/255) grayscale PNG."""
+
+    Supported inputs for `mask_b64`:
+    1) base64(PNG/JPEG bytes)
+    2) base64(JSON) where JSON contains `mask_png_base64` (base64 PNG bytes)
+
+    Output is binarized (0/255) grayscale PNG.
+    """
     raw = decode_base64_bytes(mask_b64)
+
+    # If the client sent base64(JSON), extract embedded PNG base64.
+    try:
+        if raw[:1] in (b"{", b"["):
+            obj = json.loads(raw.decode("utf-8"))
+            if isinstance(obj, dict) and obj.get("mask_png_base64"):
+                raw = decode_base64_bytes(str(obj["mask_png_base64"]))
+    except Exception:
+        pass
+
     np_buf = np.frombuffer(raw, np.uint8)
     mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
     if mask is None:
         raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
+
     # Binarize for segmentation ground truth
     _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
     ok, out = cv2.imencode(".png", mask_bin)
     if not ok:
         raise ValueError("Failed to encode mask as PNG")
     return out.tobytes()
+
+
 
 # =============================================
 # EXIF → GPS
@@ -638,6 +711,16 @@ class TrustedExample(BaseModel):
 
 app = FastAPI(title="ArborScan API v2.0")
 
+@app.on_event("startup")
+def _startup_load_models():
+    try:
+        training_state_ensure_row()
+        with MODEL_LOCK:
+            reload_tree_model(force=True)
+    except Exception as e:
+        print(f"[!] Startup model load failed: {e}")
+
+
 
 @app.post("/analyze-tree")
 async def analyze_tree(file: UploadFile = File(...)):
@@ -653,7 +736,8 @@ async def analyze_tree(file: UploadFile = File(...)):
     # -----------------------------
     # YOLO TREE
     # -----------------------------
-    tree_res = tree_model(img)[0]
+    tree_model_local = get_tree_model()
+    tree_res = tree_model_local(img)[0]
     if tree_res.masks is None:
         return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
 
@@ -1033,10 +1117,18 @@ def send_feedback(feedback: FeedbackRequest):
 
         # user_mask.png (segmentation ground truth)
         # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
+                # Маска пользователя (обводка) — опционально.
+        # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
         meta["has_user_mask"] = False
-        if feedback.user_mask_base64:
+        mask_b64 = feedback.user_mask_base64
+        if mask_b64 is not None:
+            mask_b64_str = str(mask_b64).strip().lower()
+        else:
+            mask_b64_str = ""
+
+        if mask_b64_str and mask_b64_str not in ("null", "undefined"):
             try:
-                mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
+                mask_png_bytes = ensure_png_mask_bytes(str(mask_b64))
                 supabase_upload_bytes(
                     SUPABASE_BUCKET_INPUTS,
                     f"{analysis_id}/user_mask.png",
@@ -1044,7 +1136,12 @@ def send_feedback(feedback: FeedbackRequest):
                 )
                 meta["has_user_mask"] = True
             except Exception as e:
-                print(f"[!] Failed to decode/normalize/upload user mask for {analysis_id}: {e}")
+                # Не валим feedback целиком; просто предупреждаем, что маску не удалось распарсить.
+                print(f"[!] User mask provided but could not be decoded for {analysis_id}: {e}")
+        else:
+            # Маски нет — нормальный кейс.
+            pass
+
 
         # tree_pred.json
         tree_pred_path = tmp_dir / "tree_pred.json"
@@ -1137,25 +1234,38 @@ def send_feedback(feedback: FeedbackRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
 
+def request_retrain_if_needed():
+    # считаем сколько масок ещё не использовано
+    count = count_untrained_masks()
+
+    if count >= 10:
+        training_state_update({"retrain_requested": True})
+
     # -----------------------------
     # Запись в очередь доверенных примеров (Supabase DB)
     # -----------------------------
-    try:
-        queue_row = {
-            "analysis_id": analysis_id,
-            "trust_score": trust,
-            "species": meta.get("species"),
-            "has_user_mask": meta.get("has_user_mask", False),
-            "tree_ok": meta.get("tree_ok"),
-            "stick_ok": meta.get("stick_ok"),
-            "params_ok": meta.get("params_ok"),
-            "species_ok": meta.get("species_ok"),
-        }
-        supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
-    except Exception as e:
-        # Не падаем для пользователя, просто логируем
-        print(f"[!] Failed to insert feedback into DB queue for {analysis_id}: {e}")
-
+    # -----------------------------
+    # 7) (Опционально) очередь доверенных примеров (Supabase Postgres)
+    # -----------------------------
+    if SUPABASE_ENABLE_QUEUE:
+        try:
+            queue_row = {
+                "analysis_id": analysis_id,
+                "trust_score": trust,
+                "species": meta.get("species"),
+                "has_user_mask": meta.get("has_user_mask", False),
+                "tree_ok": meta.get("tree_ok"),
+                "stick_ok": meta.get("stick_ok"),
+                "params_ok": meta.get("params_ok"),
+                "species_ok": meta.get("species_ok"),
+            }
+            supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
+        except Exception as e:
+            # Не падаем для пользователя; отсутствие таблицы / ошибки очереди не должны блокировать обучение.
+            print(f"[!] Queue insert skipped for {analysis_id}: {e}")
+    else:
+        # Очередь выключена — нормально для пайплайна обучения через Storage.
+        pass
     # Чистим /tmp
     try:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -1256,51 +1366,6 @@ def admin_get_analysis(analysis_id: str):
         "meta": meta,
     }
 
-
-
-# =============================================
-# TRAINING CONTROL (Admin)
-# =============================================
-
-@app.get("/admin/training-status")
-def admin_training_status():
-    """Возвращает состояние обучения и версии моделей из таблицы training_state."""
-    return _get_training_state()
-
-@app.post("/admin/request-retrain")
-def admin_request_retrain():
-    """Выставляет retrain_requested=True (если таблица доступна)."""
-    _set_training_state(retrain_requested=True)
-    return {"status": "ok", **_get_training_state()}
-
-@app.post("/admin/set-active-model")
-def admin_set_active_model(payload: dict):
-    """Переключение активной версии модели. Body: {"version": int}."""
-    if "version" not in payload:
-        raise HTTPException(status_code=400, detail="Missing 'version' in body")
-    try:
-        v = int(payload["version"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="'version' must be int")
-
-    # Validate that file exists in container for non-zero versions
-    model_path = Path("models/tree_model.pt") if v == 0 else Path(f"models/model_v{v}.pt")
-    if not model_path.exists():
-        raise HTTPException(status_code=400, detail=f"Model file not found: {model_path}")
-
-    _set_training_state(active_model_version=v)
-
-    # Hot-reload model in memory
-    global tree_model
-    try:
-        tree_model = YOLO(str(model_path))
-        print(f"[√] Active tree model switched to v{v}: {model_path}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
-
-    return {"status": "ok", "active_model_version": v, **_get_training_state()}
-
-
 # =============================================
 # DATASET COLLECTION ENDPOINT (for training from app)
 # =============================================
@@ -1321,6 +1386,55 @@ class UserMaskPayload(BaseModel):
     mask_base64: str
     meta: dict | None = None
 
+
+
+# ---------------------------------------------------------
+# Admin training control + model version switch (used by app)
+# ---------------------------------------------------------
+
+@app.get("/admin/training-status")
+def admin_training_status():
+    training_state_ensure_row()
+    state = training_state_get()
+    # ensure defaults
+    if "active_model_version" not in state or state["active_model_version"] is None:
+        state["active_model_version"] = 0
+    if "last_model_version" not in state or state["last_model_version"] is None:
+        state["last_model_version"] = 0
+    if "training_in_progress" not in state or state["training_in_progress"] is None:
+        state["training_in_progress"] = False
+    if "retrain_requested" not in state or state["retrain_requested"] is None:
+        state["retrain_requested"] = False
+    return state
+
+class _SetActiveModelBody(BaseModel):
+    version: int
+
+@app.post("/admin/set-active-model")
+def admin_set_active_model(body: _SetActiveModelBody):
+    training_state_ensure_row()
+    v = int(body.version)
+
+    # verify model exists in Supabase Storage bucket 'models'
+    filename = f"model_v{v}.pt"
+    try:
+        _ = supabase_download_bytes("models", filename)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Model file not found in Supabase Storage: {filename}. {e}")
+
+    training_state_update({"active_model_version": v})
+
+    # hot reload immediately (no server restart)
+    with MODEL_LOCK:
+        reload_tree_model(force=True)
+
+    return {"status": "ok", "active_model_version": v}
+
+@app.post("/admin/request-retrain")
+def admin_request_retrain():
+    training_state_ensure_row()
+    training_state_update({"retrain_requested": True})
+    return {"status": "ok", "retrain_requested": True}
 
 @app.post("/dataset/user-mask")
 def save_user_mask(payload: UserMaskPayload):
@@ -1364,3 +1478,11 @@ def save_user_mask(payload: UserMaskPayload):
             "meta": meta_path
         }
     }
+
+
+def get_latest_model_path():
+    state = training_state_get()
+    v = int(state.get("last_model_version", 0))
+    if v == 0:
+        return "models/base.pt"
+    return f"models/model_v{v}.pt"
