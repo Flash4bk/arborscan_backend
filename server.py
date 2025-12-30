@@ -852,7 +852,6 @@ async def analyze_tree(file: UploadFile = File(...)):
         "soil": soil,
         "risk": risk,
         "tree_model_version": model_version,
-        "model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
         "schema_version": SCHEMA_VERSION,
         "api_version": API_VERSION,
@@ -996,7 +995,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         "trunk_diameter_m": trunk_m,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
-        "tree_model_version": model_version,
+        "model_version": model_version,
     }
     # добавляем оригинальное изображение
     try:
