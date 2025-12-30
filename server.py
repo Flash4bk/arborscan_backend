@@ -324,14 +324,13 @@ def reload_tree_model(force: bool = False):
     TREE_MODEL = YOLO(path)
     TREE_MODEL_VERSION = v
 
-def get_tree_model() -> YOLO:
+def get_tree_model():
     with MODEL_LOCK:
-        reload_tree_model(force=False)
-        if TREE_MODEL is None:
-            reload_tree_model(force=True)
-        if TREE_MODEL is None:
+        reload_tree_model()
+        if TREE_MODEL is None or TREE_MODEL_VERSION is None:
             raise RuntimeError("TREE_MODEL is not loaded")
-        return TREE_MODEL
+        return TREE_MODEL, TREE_MODEL_VERSION
+
 
 def supabase_db_insert(table: str, row: dict):
     """
@@ -740,7 +739,7 @@ async def analyze_tree(file: UploadFile = File(...)):
     # -----------------------------
     # YOLO TREE
     # -----------------------------
-    tree_model_local = get_tree_model()
+    tree_model_local, model_version = get_tree_model()
     tree_res = tree_model_local(img)[0]
     if tree_res.masks is None:
         return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
@@ -997,6 +996,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         "trunk_diameter_m": trunk_m,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
+        "model_version": model_version,
     }
     # добавляем оригинальное изображение
     try:
