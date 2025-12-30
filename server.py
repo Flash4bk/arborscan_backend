@@ -851,8 +851,8 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
-        "model_versions": MODEL_VERSIONS,
-        "model_versions": MODEL_VERSIONS,
+        "active_model_version": model_version,
+        "available_model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
         "schema_version": SCHEMA_VERSION,
         "api_version": API_VERSION,
@@ -1001,9 +1001,9 @@ async def analyze_tree(file: UploadFile = File(...)):
     # добавляем оригинальное изображение
     try:
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
-    except:
+    except Exception:
         response["original_image_base64"] = None
-        return JSONResponse(response)
+
 
 
     if gps:
