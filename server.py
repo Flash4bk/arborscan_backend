@@ -91,7 +91,7 @@ def _training_state_local_write(state: dict) -> None:
 # Supabase PostgREST helpers (training_state)
 # ---------------------------------------------------------
 
-def _sb_headers(json_ct: bool = True) -> dict:
+def _sb_headers(json_ct: bool = True, **_ignored) -> dict:
     h = {
         "apikey": SUPABASE_SERVICE_KEY or "",
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}" if SUPABASE_SERVICE_KEY else "",
@@ -252,7 +252,50 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 # Models are stored in Supabase Storage bucket: "models" as model_v{N}.pt
 # ---------------------------------------------------------
 
-TREE_MODEL: Optional[YOLO] = None
+\1
+
+# Stick detection model (for scale estimation)
+STICK_MODEL: Optional[YOLO] = None
+
+def _resolve_stick_model_path() -> str:
+    # Allow overriding via env; otherwise try common filenames used in this project.
+    env_path = os.getenv("STICK_MODEL_PATH")
+    if env_path:
+        return env_path
+    candidates = [
+        "/tmp/models/stick.pt",
+        "/tmp/models/stick_model.pt",
+        "/tmp/models/model_stick.pt",
+        "/tmp/models/yolo_stick.pt",
+        "models/stick.pt",
+        "models/stick_model.pt",
+    ]
+    for p in candidates:
+        try:
+            if os.path.exists(p):
+                return p
+        except Exception:
+            pass
+    # Fallback to first candidate (will raise a clear error if missing).
+    return candidates[0]
+
+def get_stick_model() -> Optional[YOLO]:
+    global STICK_MODEL
+    if STICK_MODEL is not None:
+        return STICK_MODEL
+    with MODEL_LOCK:
+        if STICK_MODEL is not None:
+            return STICK_MODEL
+        try:
+            stick_path = _resolve_stick_model_path()
+            print(f"[*] Loading stick model: {stick_path}")
+            STICK_MODEL = YOLO(stick_path)
+            return STICK_MODEL
+        except Exception as e:
+            print(f"[!] Stick model load failed: {e}")
+            STICK_MODEL = None
+            return None
+
 TREE_MODEL_VERSION: Optional[int] = None
 MODEL_LOCK = threading.Lock()
 _MODEL_LAST_CHECK_TS = 0.0
@@ -751,9 +794,12 @@ async def analyze_tree(file: UploadFile = File(...)):
     # -----------------------------
     # YOLO STICK
     # -----------------------------
-    stick_res = stick_model(img)[0]
+    stick_model_local = get_stick_model()
+    stick_res = None
+    if stick_model_local is not None:
+        stick_res = stick_model_local(img)[0]
     scale = None
-    if len(stick_res.boxes) > 0:
+    if stick_res is not None and len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
         x1s, y1s, x2s, y2s = best.xyxy[0].cpu().numpy().astype(int)
         stick_h = y2s - y1s
@@ -880,7 +926,7 @@ async def analyze_tree(file: UploadFile = File(...)):
         "scale_px_to_m": scale,
     }
     try:
-        if len(stick_res.boxes) > 0:
+        if stick_res is not None and len(stick_res.boxes) > 0:
             best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
             x1b, y1b, x2b, y2b = best.xyxy[0].cpu().numpy().astype(int)
             stick_pred["box_xyxy"] = [int(x1b), int(y1b), int(x2b), int(y2b)]
