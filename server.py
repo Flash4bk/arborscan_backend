@@ -128,7 +128,8 @@ def training_state_get() -> dict:
 
     # No row yet -> return default (and let ensure_row create it later).
     return _training_state_default()
-def training_state_ensure_row() -> dict:
+def training_state_ensure_row()         _ensure_classifier_loaded()
+-> dict:
     # Always return a usable state; never crash admin endpoints.
     state = training_state_get()
 
@@ -261,6 +262,99 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 
 # Stick detection model (for scale estimation)
 STICK_MODEL: Optional[YOLO] = None
+
+
+# ------------------------------
+# Classifier (tree species) + transforms
+# ------------------------------
+CLASSIFIER_MODEL = None  # torch.nn.Module or TorchScript
+TRANSFORMER = None       # torchvision transforms pipeline
+CLASS_NAMES_RU = None    # list[str]
+
+def _load_class_names_ru() -> list:
+    """Load class names (ru) from env or local json if available."""
+    import json as _json
+    # env JSON like ["Сосна","Берёза",...]
+    env_json = os.getenv("CLASS_NAMES_RU_JSON", "").strip()
+    if env_json:
+        try:
+            data = _json.loads(env_json)
+            if isinstance(data, list) and data:
+                return data
+        except Exception:
+            pass
+    # local file in repo or mounted models
+    candidates = [
+        os.getenv("CLASS_NAMES_RU_PATH", "").strip(),
+        "models/class_names_ru.json",
+        "/tmp/models/class_names_ru.json",
+    ]
+    for fp in candidates:
+        if not fp:
+            continue
+        try:
+            if os.path.exists(fp):
+                with open(fp, "r", encoding="utf-8") as f:
+                    data = _json.load(f)
+                if isinstance(data, list) and data:
+                    return data
+        except Exception:
+            continue
+    # safe fallback
+    return ["Неизвестно"]
+
+def _ensure_classifier_loaded() -> None:
+    """Best-effort: if classifier weights are missing, keep service running."""
+    global CLASSIFIER_MODEL, TRANSFORMER, CLASS_NAMES_RU
+    if TRANSFORMER is None:
+        # ImageNet-like preprocessing
+        TRANSFORMER = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225]),
+        ])
+    if CLASS_NAMES_RU is None:
+        CLASS_NAMES_RU = _load_class_names_ru()
+
+    if CLASSIFIER_MODEL is not None:
+        return
+
+    # Try a few common paths (repo / mounted / tmp)
+    candidates = [
+        os.getenv("CLASSIFIER_PATH", "").strip(),
+        "models/classifier.pt",
+        "models/species_classifier.pt",
+        "/tmp/models/classifier.pt",
+        "/tmp/models/species_classifier.pt",
+    ]
+    candidates = [c for c in candidates if c]
+    for model_path in candidates:
+        try:
+            if not os.path.exists(model_path):
+                continue
+            print(f"[*] Loading classifier model: {model_path}")
+            # TorchScript first
+            try:
+                m = torch.jit.load(model_path, map_location="cpu")
+                m.eval()
+                CLASSIFIER_MODEL = m
+                return
+            except Exception:
+                pass
+            # torch.load fallback (state dict or full module)
+            m = torch.load(model_path, map_location="cpu")
+            # if it's a state dict, we cannot reconstruct without architecture; ignore
+            if hasattr(m, "eval") and callable(getattr(m, "eval")):
+                m.eval()
+                CLASSIFIER_MODEL = m
+                return
+        except Exception as e:
+            print(f"[!] Classifier load failed for {model_path}: {e}")
+            continue
+
+    print("[!] Classifier model not found; species will default to 'Неизвестно'.")
+
 
 def _resolve_stick_model_path() -> str:
     # Allow overriding via env; otherwise try common filenames used in this project.
@@ -842,11 +936,23 @@ async def analyze_tree(file: UploadFile = File(...)):
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
     crop = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
     pil_crop = Image.fromarray(crop)
-    tens = transformer(pil_crop).unsqueeze(0)
-    with torch.no_grad():
-        pred = classifier(tens)
-        cls_id = int(torch.argmax(pred))
-    species_name = CLASS_NAMES_RU[cls_id]
+    # CLASSIFY TREE SPECIES (best-effort)
+species_name = "Неизвестно"
+try:
+    _ensure_classifier_loaded()
+    if CLASSIFIER_MODEL is not None and TRANSFORMER is not None:
+        tens = TRANSFORMER(pil_crop).unsqueeze(0)
+        with torch.no_grad():
+            out = CLASSIFIER_MODEL(tens)
+            # TorchScript may return tuple/list
+            if isinstance(out, (tuple, list)) and len(out) > 0:
+                out = out[0]
+            pred_idx = int(torch.argmax(out, dim=1).item())
+        if isinstance(CLASS_NAMES_RU, list) and 0 <= pred_idx < len(CLASS_NAMES_RU):
+            species_name = CLASS_NAMES_RU[pred_idx]
+except Exception as _e:
+    # do not fail the request because of classifier
+    species_name = "Неизвестно"
 
     # -----------------------------
     # ANNOTATED IMAGE
