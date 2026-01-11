@@ -281,7 +281,70 @@ class _StatusRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  
+  Widget _buildEventsCard() {
+    if (_events.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("События обучения пока отсутствуют."),
+        ),
+      );
+    }
+
+    String fmtTs(String? iso) {
+      if (iso == null) return "";
+      try {
+        final dt = DateTime.parse(iso).toLocal();
+        return "${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year} "
+            "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
+      } catch (_) {
+        return iso;
+      }
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Последние события",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            ..._events.take(15).map((e) {
+              final ts = fmtTs(e["ts"] as String?);
+              final type = (e["type"] ?? "").toString();
+              final msg = (e["message"] ?? "").toString();
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "[$type] $msg",
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      ts,
+                      style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 

@@ -44,4 +44,17 @@ class AdminService {
       throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
     }
   }
+
+
+  /// Fetch in-memory training/admin events (simple training log)
+  static Future<List<Map<String, dynamic>>> fetchTrainingEvents({int limit = 50}) async {
+    final uri = Uri.parse("$_baseUrl/admin/training-events?limit=$limit");
+    final resp = await http.get(uri);
+    if (resp.statusCode != 200) {
+      throw Exception("Failed to fetch training events: ${resp.statusCode}");
+    }
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    final events = (data["events"] as List?) ?? [];
+    return events.map((e) => (e as Map).cast<String, dynamic>()).toList();
+  }
 }
