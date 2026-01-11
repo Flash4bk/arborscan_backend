@@ -51,6 +51,12 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 # чтобы отсутствие таблицы не ломало пайплайн обучения.
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
+# -----------------------------
+# Measurement constants
+# -----------------------------
+# Real-world reference stick length in meters (used for scale).
+REAL_STICK_M = float(os.getenv("REAL_STICK_M", "1.0"))
+
 # ---------------------------------------------------------
 
 # -----------------------------
