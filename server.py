@@ -1,10 +1,10 @@
-from __future__ import annotations
 import os
 import io
 import base64
 import json
 import shutil
 import time
+import threading
 import cv2
 import numpy as np
 import requests
@@ -18,9 +18,6 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
-import threading
-
 
 # -------------------------------------
 # CONFIG
@@ -28,8 +25,7 @@ import threading
 
 # Supabase config: URL и SERVICE KEY задаём через переменные окружения на Railway
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or SUPABASE_SERVICE_KEY
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
@@ -51,53 +47,11 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 # чтобы отсутствие таблицы не ломало пайплайн обучения.
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
-# -----------------------------
-# Measurement constants
-# -----------------------------
-# Real-world reference stick length in meters (used for scale).
-REAL_STICK_M = float(os.getenv("REAL_STICK_M", "1.0"))
-
 # ---------------------------------------------------------
-
-# -----------------------------
-# Training state: Supabase (optional) with local fallback
-# -----------------------------
-TRAINING_STATE_LOCAL_PATH = os.getenv('TRAINING_STATE_LOCAL_PATH', '/tmp/training_state.json')
-
-def _training_state_default() -> dict:
-    # Minimal default used when Supabase is not configured or unreachable.
-    return {
-        'id': 1,
-        'training_in_progress': False,
-        'active_model_version': 1,
-        'last_model_version': 1,
-        'last_trained_at': None,
-    }
-
-def _training_state_local_get() -> dict:
-    try:
-        p = Path(TRAINING_STATE_LOCAL_PATH)
-        if p.exists():
-            data = json.loads(p.read_text(encoding='utf-8'))
-            if isinstance(data, dict):
-                base = _training_state_default()
-                base.update(data)
-                return base
-    except Exception as e:
-        print(f"[!] Failed to read local training_state: {e}")
-    return _training_state_default()
-
-def _training_state_local_write(state: dict) -> None:
-    try:
-        p = Path(TRAINING_STATE_LOCAL_PATH)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
-    except Exception as e:
-        print(f"[!] Failed to write local training_state: {e}")
 # Supabase PostgREST helpers (training_state)
 # ---------------------------------------------------------
 
-def _sb_headers(json_ct: bool = True, **_ignored) -> dict:
+def _sb_headers(json_ct: bool = True) -> dict:
     h = {
         "apikey": SUPABASE_SERVICE_KEY or "",
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}" if SUPABASE_SERVICE_KEY else "",
@@ -108,86 +62,130 @@ def _sb_headers(json_ct: bool = True, **_ignored) -> dict:
 
 
 def training_state_get() -> dict:
-    # Prefer Supabase if configured; otherwise use local fallback.
-    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_ROLE_KEY:
-        return _training_state_local_get()
+    if not SUPABASE_DB_BASE:
+        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
+    url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1&select=*"
+    resp = requests.get(url, headers=_sb_headers(json_ct=False), timeout=30)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"training_state_get error {resp.status_code}: {resp.text}")
+    rows = resp.json()
+    if not rows:
+        return {}
+    return rows[0]
 
+
+def training_state_ensure_row():
+    # Ensure row id=1 exists
+    state = training_state_get()
+    if state:
+        return
     url = f"{SUPABASE_DB_BASE}/training_state"
-    params = {"id": "eq.1", "select": "*"}
-    try:
-        resp = requests.get(url, headers=_sb_headers(json_ct=False), params=params, timeout=30)
-        if resp.status_code == 200:
-            arr = resp.json()
-            if isinstance(arr, list) and len(arr) > 0 and isinstance(arr[0], dict):
-                base = _training_state_default()
-                base.update(arr[0])
-                return base
-    except Exception as e:
-        print(f"[!] training_state_get: Supabase unavailable ({e}); using local state")
-        return _training_state_local_get()
+    payload = {
+        "id": 1,
+        "retrain_requested": False,
+        "training_in_progress": False,
+        "last_model_version": 0,
+        "active_model_version": 0,
+    }
+    resp = requests.post(
+        url,
+        headers={**_sb_headers(), "Prefer": "return=representation"},
+        data=json.dumps(payload),
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"training_state_ensure_row error {resp.status_code}: {resp.text}")
 
-    # No row yet -> return default (and let ensure_row create it later).
-    return _training_state_default()
-def training_state_ensure_row()         _ensure_classifier_loaded()
--> dict:
-    # Always return a usable state; never crash admin endpoints.
-    state = training_state_get()
 
-    # If Supabase isn't configured, persist locally and return.
-    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_ROLE_KEY:
-        _training_state_local_write(state)
-        return state
-
-    # Ensure row exists in Supabase (best-effort).
-    try:
-        url = f"{SUPABASE_DB_BASE}/training_state"
-        payload = {
-            "id": 1,
-            "training_in_progress": bool(state.get("training_in_progress", False)),
-            "active_model_version": int(state.get("active_model_version", 1) or 1),
-            "last_model_version": int(state.get("last_model_version", 1) or 1),
-            "last_trained_at": state.get("last_trained_at"),
-        }
-        # Upsert to guarantee the row exists.
-        resp = requests.post(url, headers=_sb_headers(prefer_return_rep=True), json=payload, timeout=30)
-        if resp.status_code in (200, 201):
-            arr = resp.json()
-            if isinstance(arr, list) and arr and isinstance(arr[0], dict):
-                base = _training_state_default()
-                base.update(arr[0])
-                return base
-    except Exception as e:
-        print(f"[!] training_state_ensure_row: Supabase unavailable ({e}); falling back to local state")
-        _training_state_local_write(state)
-        return state
-
-    return state
-def training_state_update(patch: dict) -> dict:
-    # Update training state in Supabase if possible; otherwise update local fallback.
-    state = training_state_get()
-    if isinstance(patch, dict):
-        state.update(patch)
-
-    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_ROLE_KEY:
-        _training_state_local_write(state)
-        return state
-
+def training_state_update(fields: dict) -> dict:
+    if not SUPABASE_DB_BASE:
+        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
     url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1"
-    try:
-        resp = requests.patch(url, headers=_sb_headers(prefer_return_rep=True), json=patch, timeout=30)
-        if resp.status_code == 200:
-            arr = resp.json()
-            if isinstance(arr, list) and arr and isinstance(arr[0], dict):
-                base = _training_state_default()
-                base.update(arr[0])
-                return base
-    except Exception as e:
-        print(f"[!] training_state_update: Supabase unavailable ({e}); writing local state")
-        _training_state_local_write(state)
-        return state
+    resp = requests.patch(
+        url,
+        headers={**_sb_headers(), "Prefer": "return=representation"},
+        data=json.dumps(fields),
+        timeout=30,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"training_state_update error {resp.status_code}: {resp.text}")
+    rows = resp.json()
+    return rows[0] if rows else fields
 
-    _training_state_local_write(state)
-    return state
+
+# Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
+WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
+                 or os.getenv("OPENWEATHER_API_KEY")
+                 or os.getenv("OPENWEATHERMAP_API_KEY")
+                 or os.getenv("dc825ffd002731568ec7766eafb54bc9")
+                 or None)
+WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+
+SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
+
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
+NOMINATIM_USER_AGENT = os.getenv(
+    "NOMINATIM_USER_AGENT",
+    "arborscan-backend/1.0 (contact: example@mail.com)"
+)
+
+ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
+
+
+# -------------------------------------
+# MODEL VERSIONS
+# -------------------------------------
+
+MODEL_VERSIONS = {
+    "tree_yolo": "tree_yolov8_seg_v1.2.0",
+    "stick_yolo": "stick_yolov8_det_v1.0.3",
+    "classifier": "resnet18_species_v0.9.1",
+}
+BUILD_INFO = {
+    # желательно прокидывать из CI / Railway
+    "git_commit": os.getenv("GIT_COMMIT", "unknown"),
+    "build_time": os.getenv("BUILD_TIME")
+}
+SCHEMA_VERSION = "1.0.0"
+API_VERSION = "2.0.0"
+VERIFIED_TRUST_THRESHOLD = 0.0
+
+# -------------------------------------
+# CLASSES / CONSTANTS
+# -------------------------------------
+
+CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
+REAL_STICK_M = 1.0
+
+# -------------------------------------
+# LOADING MODELS
+# -------------------------------------
+
+print("[*] Loading YOLO models...")
+tree_model = None  # loaded dynamically from Supabase models bucket via active_model_version
+stick_model = YOLO("models/stick_model.pt")
+
+print("[*] Loading classifier...")
+classifier = models.resnet18(weights=None)
+classifier.fc = torch.nn.Linear(classifier.fc.in_features, 5)
+classifier.load_state_dict(torch.load("models/classifier.pth", map_location="cpu"))
+classifier.eval()
+
+transformer = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+])
+
+print("[*] Models loaded.")
+
+# =============================================
+# SUPABASE UTILS (Storage + DB)
+# =============================================
+
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     """
     Загрузка бинарных данных в Supabase Storage через REST API.
@@ -259,142 +257,7 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 # Models are stored in Supabase Storage bucket: "models" as model_v{N}.pt
 # ---------------------------------------------------------
 
-
-# Stick detection model (for scale estimation)
-STICK_MODEL: Optional[YOLO] = None
-
-
-# ------------------------------
-# Classifier (tree species) + transforms
-# ------------------------------
-CLASSIFIER_MODEL = None  # torch.nn.Module or TorchScript
-TRANSFORMER = None       # torchvision transforms pipeline
-CLASS_NAMES_RU = None    # list[str]
-
-def _load_class_names_ru() -> list:
-    """Load class names (ru) from env or local json if available."""
-    import json as _json
-    # env JSON like ["Сосна","Берёза",...]
-    env_json = os.getenv("CLASS_NAMES_RU_JSON", "").strip()
-    if env_json:
-        try:
-            data = _json.loads(env_json)
-            if isinstance(data, list) and data:
-                return data
-        except Exception:
-            pass
-    # local file in repo or mounted models
-    candidates = [
-        os.getenv("CLASS_NAMES_RU_PATH", "").strip(),
-        "models/class_names_ru.json",
-        "/tmp/models/class_names_ru.json",
-    ]
-    for fp in candidates:
-        if not fp:
-            continue
-        try:
-            if os.path.exists(fp):
-                with open(fp, "r", encoding="utf-8") as f:
-                    data = _json.load(f)
-                if isinstance(data, list) and data:
-                    return data
-        except Exception:
-            continue
-    # safe fallback
-    return ["Неизвестно"]
-
-def _ensure_classifier_loaded() -> None:
-    """Best-effort: if classifier weights are missing, keep service running."""
-    global CLASSIFIER_MODEL, TRANSFORMER, CLASS_NAMES_RU
-    if TRANSFORMER is None:
-        # ImageNet-like preprocessing
-        TRANSFORMER = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
-    if CLASS_NAMES_RU is None:
-        CLASS_NAMES_RU = _load_class_names_ru()
-
-    if CLASSIFIER_MODEL is not None:
-        return
-
-    # Try a few common paths (repo / mounted / tmp)
-    candidates = [
-        os.getenv("CLASSIFIER_PATH", "").strip(),
-        "models/classifier.pt",
-        "models/species_classifier.pt",
-        "/tmp/models/classifier.pt",
-        "/tmp/models/species_classifier.pt",
-    ]
-    candidates = [c for c in candidates if c]
-    for model_path in candidates:
-        try:
-            if not os.path.exists(model_path):
-                continue
-            print(f"[*] Loading classifier model: {model_path}")
-            # TorchScript first
-            try:
-                m = torch.jit.load(model_path, map_location="cpu")
-                m.eval()
-                CLASSIFIER_MODEL = m
-                return
-            except Exception:
-                pass
-            # torch.load fallback (state dict or full module)
-            m = torch.load(model_path, map_location="cpu")
-            # if it's a state dict, we cannot reconstruct without architecture; ignore
-            if hasattr(m, "eval") and callable(getattr(m, "eval")):
-                m.eval()
-                CLASSIFIER_MODEL = m
-                return
-        except Exception as e:
-            print(f"[!] Classifier load failed for {model_path}: {e}")
-            continue
-
-    print("[!] Classifier model not found; species will default to 'Неизвестно'.")
-
-
-def _resolve_stick_model_path() -> str:
-    # Allow overriding via env; otherwise try common filenames used in this project.
-    env_path = os.getenv("STICK_MODEL_PATH")
-    if env_path:
-        return env_path
-    candidates = [
-        "/tmp/models/stick.pt",
-        "/tmp/models/stick_model.pt",
-        "/tmp/models/model_stick.pt",
-        "/tmp/models/yolo_stick.pt",
-        "models/stick.pt",
-        "models/stick_model.pt",
-    ]
-    for p in candidates:
-        try:
-            if os.path.exists(p):
-                return p
-        except Exception:
-            pass
-    # Fallback to first candidate (will raise a clear error if missing).
-    return candidates[0]
-
-def get_stick_model() -> Optional[YOLO]:
-    global STICK_MODEL
-    if STICK_MODEL is not None:
-        return STICK_MODEL
-    with MODEL_LOCK:
-        if STICK_MODEL is not None:
-            return STICK_MODEL
-        try:
-            stick_path = _resolve_stick_model_path()
-            print(f"[*] Loading stick model: {stick_path}")
-            STICK_MODEL = YOLO(stick_path)
-            return STICK_MODEL
-        except Exception as e:
-            print(f"[!] Stick model load failed: {e}")
-            STICK_MODEL = None
-            return None
-
+TREE_MODEL: Optional[YOLO] = None
 TREE_MODEL_VERSION: Optional[int] = None
 MODEL_LOCK = threading.Lock()
 _MODEL_LAST_CHECK_TS = 0.0
@@ -893,12 +756,9 @@ async def analyze_tree(file: UploadFile = File(...)):
     # -----------------------------
     # YOLO STICK
     # -----------------------------
-    stick_model_local = get_stick_model()
-    stick_res = None
-    if stick_model_local is not None:
-        stick_res = stick_model_local(img)[0]
+    stick_res = stick_model(img)[0]
     scale = None
-    if stick_res is not None and len(stick_res.boxes) > 0:
+    if len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
         x1s, y1s, x2s, y2s = best.xyxy[0].cpu().numpy().astype(int)
         stick_h = y2s - y1s
@@ -936,23 +796,11 @@ async def analyze_tree(file: UploadFile = File(...)):
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
     crop = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
     pil_crop = Image.fromarray(crop)
-    # CLASSIFY TREE SPECIES (best-effort)
-species_name = "Неизвестно"
-try:
-    _ensure_classifier_loaded()
-    if CLASSIFIER_MODEL is not None and TRANSFORMER is not None:
-        tens = TRANSFORMER(pil_crop).unsqueeze(0)
-        with torch.no_grad():
-            out = CLASSIFIER_MODEL(tens)
-            # TorchScript may return tuple/list
-            if isinstance(out, (tuple, list)) and len(out) > 0:
-                out = out[0]
-            pred_idx = int(torch.argmax(out, dim=1).item())
-        if isinstance(CLASS_NAMES_RU, list) and 0 <= pred_idx < len(CLASS_NAMES_RU):
-            species_name = CLASS_NAMES_RU[pred_idx]
-except Exception as _e:
-    # do not fail the request because of classifier
-    species_name = "Неизвестно"
+    tens = transformer(pil_crop).unsqueeze(0)
+    with torch.no_grad():
+        pred = classifier(tens)
+        cls_id = int(torch.argmax(pred))
+    species_name = CLASS_NAMES_RU[cls_id]
 
     # -----------------------------
     # ANNOTATED IMAGE
@@ -1037,7 +885,7 @@ except Exception as _e:
         "scale_px_to_m": scale,
     }
     try:
-        if stick_res is not None and len(stick_res.boxes) > 0:
+        if len(stick_res.boxes) > 0:
             best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
             x1b, y1b, x2b, y2b = best.xyxy[0].cpu().numpy().astype(int)
             stick_pred["box_xyxy"] = [int(x1b), int(y1b), int(x2b), int(y2b)]
