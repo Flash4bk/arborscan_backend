@@ -252,7 +252,6 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 # Models are stored in Supabase Storage bucket: "models" as model_v{N}.pt
 # ---------------------------------------------------------
 
-\1
 
 # Stick detection model (for scale estimation)
 STICK_MODEL: Optional[YOLO] = None
