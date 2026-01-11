@@ -1,38 +1,73 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'admin_analysis_item.dart';
 
+/// Minimal admin API client for ArborScan.
+///
+/// Note: We intentionally removed "verified analyses" logic.
+/// Admin panel is now focused on operations tools: model versions & retraining.
 class AdminService {
-  static const String baseUrl =
-      'https://arborscanbackend-production.up.railway.app';
+  static const String _baseUrl = 'https://arborscanbackend-production.up.railway.app';
 
-  /// Список verified анализов (короткие данные)
-  static Future<List<AdminAnalysisItem>> fetchVerifiedAnalyses() async {
-    final uri = Uri.parse('$baseUrl/admin/verified-list');
+  static Uri _u(String path) => Uri.parse('$_baseUrl$path');
 
-    final res = await http.get(uri);
-    if (res.statusCode != 200) {
-      throw Exception('Failed to load verified list');
+  /// GET /admin/training-status
+  /// Expected keys (as in backend): training_in_progress, last_model_version, active_model_version
+  static Future<Map<String, dynamic>> getTrainingStatus() async {
+    final resp = await http.get(_u('/admin/training-status'));
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
     }
-
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    final items = data['items'] as List<dynamic>;
-
-    return items
-        .map((e) => AdminAnalysisItem.fromJson(e))
-        .toList();
+    final data = jsonDecode(resp.body);
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('Unexpected response type');
   }
 
-  /// Полные детали одного verified анализа
-  static Future<Map<String, dynamic>> fetchVerifiedAnalysis(
-      String analysisId) async {
-    final uri = Uri.parse('$baseUrl/admin/analysis/$analysisId');
-
-    final res = await http.get(uri);
-    if (res.statusCode != 200) {
-      throw Exception('Failed to load analysis details');
+  /// GET /admin/models
+  /// Optional endpoint: returns list of available model versions.
+  static Future<List<int>> fetchModelVersions() async {
+    final resp = await http.get(_u('/admin/models'));
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
     }
+    final data = jsonDecode(resp.body);
+    // Accept either: {"models":[{"version":1}, ...]} or {"versions":[1,2]} or [1,2]
+    if (data is List) {
+      return data.map((e) => (e as num).toInt()).toList();
+    }
+    if (data is Map) {
+      final models = data['models'];
+      if (models is List) {
+        final versions = <int>[];
+        for (final m in models) {
+          if (m is Map && m['version'] != null) versions.add((m['version'] as num).toInt());
+        }
+        return versions;
+      }
+      final versions = data['versions'];
+      if (versions is List) {
+        return versions.map((e) => (e as num).toInt()).toList();
+      }
+    }
+    return const <int>[];
+  }
 
-    return jsonDecode(res.body) as Map<String, dynamic>;
+  /// POST /admin/set-active-model  Body: {"version": int}
+  static Future<void> setActiveModel(int version) async {
+    final resp = await http.post(
+      _u('/admin/set-active-model'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'version': version}),
+    );
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
+    }
+  }
+
+  /// POST /admin/request-retrain
+  static Future<void> requestRetrain() async {
+    final resp = await http.post(_u('/admin/request-retrain'));
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
+    }
   }
 }

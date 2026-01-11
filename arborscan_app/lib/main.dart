@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'admin_gate.dart';
-
+import 'admin_panel_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -10,8 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 
 import 'feedback_page.dart';
-import 'trusted_examples_page.dart';
-
 void main() {
   runApp(const ArborScanApp());
 }
@@ -927,6 +925,16 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
+  Future<void> _openAdminPanel() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const AdminPanelPage(),
+      ),
+    );
+  }
+
+
+
   Future<void> _openHistory() async {
     final cleared = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -939,14 +947,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
     if (cleared == true) {
       await _clearHistory();
     }
-  }
-
-  Future<void> _openTrustedExamples() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const TrustedExamplesPage(),
-      ),
-    );
   }
 
   @override
@@ -962,12 +962,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
             tooltip: 'Настройки',
             onPressed: _openSettings,
           ),
-          IconButton(
-            icon: const Icon(Icons.storage_outlined),
-            tooltip: 'Доверенные примеры',
-            onPressed: _openTrustedExamples,
-          ),
-          IconButton(
+IconButton(
             icon: const Icon(Icons.history),
             tooltip: 'История',
             onPressed: _history.isEmpty ? null : _openHistory,
@@ -1000,6 +995,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
                   AdminGate(
                     isAdmin: _isAdmin,
                     onOpenFeedback: _openFeedback,
+                    onOpenAdminPanel: _openAdminPanel,
                   ),
 
                   const SizedBox(height: 16),
@@ -1203,6 +1199,95 @@ class _MetricTile extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ============================
+///   Admin Panel (инструменты)
+/// ============================
+class _AdminPanelSheet extends StatefulWidget {
+  const _AdminPanelSheet();
+
+  @override
+  State<_AdminPanelSheet> createState() => _AdminPanelSheetState();
+}
+
+class _AdminPanelSheetState extends State<_AdminPanelSheet> {
+  int _selectedModelVersion = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Admin Panel',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Инструменты администратора (переключение моделей, retrain и т.д.).',
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+
+          const Text('Активная версия модели (заглушка):'),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _selectedModelVersion,
+            items: const [
+              DropdownMenuItem(value: 1, child: Text('Model v1')),
+              DropdownMenuItem(value: 2, child: Text('Model v2')),
+              DropdownMenuItem(value: 3, child: Text('Model v3')),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => _selectedModelVersion = v);
+              // TODO: вызвать AdminService.setActiveModelVersion(v)
+            },
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () {
+              // TODO: вызвать AdminService.requestRetrain()
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Retrain: TODO (подключим к backend следующим шагом)'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.play_circle_outline),
+            label: const Text('Запустить переобучение (TODO)'),
+          ),
+
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Закрыть'),
             ),
           ),
         ],

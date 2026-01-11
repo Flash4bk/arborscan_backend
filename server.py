@@ -7,8 +7,6 @@ import time
 import cv2
 import numpy as np
 import requests
-import threading
-
 from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
@@ -19,8 +17,6 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
-
 
 # -------------------------------------
 # CONFIG
@@ -51,6 +47,42 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
 # ---------------------------------------------------------
+
+# -----------------------------
+# Training state: Supabase (optional) with local fallback
+# -----------------------------
+TRAINING_STATE_LOCAL_PATH = os.getenv('TRAINING_STATE_LOCAL_PATH', '/tmp/training_state.json')
+
+def _training_state_default() -> dict:
+    # Minimal default used when Supabase is not configured or unreachable.
+    return {
+        'id': 1,
+        'training_in_progress': False,
+        'active_model_version': 1,
+        'last_model_version': 1,
+        'last_trained_at': None,
+    }
+
+def _training_state_local_get() -> dict:
+    try:
+        p = Path(TRAINING_STATE_LOCAL_PATH)
+        if p.exists():
+            data = json.loads(p.read_text(encoding='utf-8'))
+            if isinstance(data, dict):
+                base = _training_state_default()
+                base.update(data)
+                return base
+    except Exception as e:
+        print(f"[!] Failed to read local training_state: {e}")
+    return _training_state_default()
+
+def _training_state_local_write(state: dict) -> None:
+    try:
+        p = Path(TRAINING_STATE_LOCAL_PATH)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding='utf-8')
+    except Exception as e:
+        print(f"[!] Failed to write local training_state: {e}")
 # Supabase PostgREST helpers (training_state)
 # ---------------------------------------------------------
 
@@ -65,130 +97,85 @@ def _sb_headers(json_ct: bool = True) -> dict:
 
 
 def training_state_get() -> dict:
-    if not SUPABASE_DB_BASE:
-        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
-    url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1&select=*"
-    resp = requests.get(url, headers=_sb_headers(json_ct=False), timeout=30)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"training_state_get error {resp.status_code}: {resp.text}")
-    rows = resp.json()
-    if not rows:
-        return {}
-    return rows[0]
+    # Prefer Supabase if configured; otherwise use local fallback.
+    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_ROLE_KEY:
+        return _training_state_local_get()
 
-
-def training_state_ensure_row():
-    # Ensure row id=1 exists
-    state = training_state_get()
-    if state:
-        return
     url = f"{SUPABASE_DB_BASE}/training_state"
-    payload = {
-        "id": 1,
-        "retrain_requested": False,
-        "training_in_progress": False,
-        "last_model_version": 0,
-        "active_model_version": 0,
-    }
-    resp = requests.post(
-        url,
-        headers={**_sb_headers(), "Prefer": "return=representation"},
-        data=json.dumps(payload),
-        timeout=30,
-    )
-    if resp.status_code >= 400:
-        raise RuntimeError(f"training_state_ensure_row error {resp.status_code}: {resp.text}")
+    params = {"id": "eq.1", "select": "*"}
+    try:
+        resp = requests.get(url, headers=_sb_headers(json_ct=False), params=params, timeout=30)
+        if resp.status_code == 200:
+            arr = resp.json()
+            if isinstance(arr, list) and len(arr) > 0 and isinstance(arr[0], dict):
+                base = _training_state_default()
+                base.update(arr[0])
+                return base
+    except Exception as e:
+        print(f"[!] training_state_get: Supabase unavailable ({e}); using local state")
+        return _training_state_local_get()
 
+    # No row yet -> return default (and let ensure_row create it later).
+    return _training_state_default()
+def training_state_ensure_row() -> dict:
+    # Always return a usable state; never crash admin endpoints.
+    state = training_state_get()
 
-def training_state_update(fields: dict) -> dict:
-    if not SUPABASE_DB_BASE:
-        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
+    # If Supabase isn't configured, persist locally and return.
+    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_ROLE_KEY:
+        _training_state_local_write(state)
+        return state
+
+    # Ensure row exists in Supabase (best-effort).
+    try:
+        url = f"{SUPABASE_DB_BASE}/training_state"
+        payload = {
+            "id": 1,
+            "training_in_progress": bool(state.get("training_in_progress", False)),
+            "active_model_version": int(state.get("active_model_version", 1) or 1),
+            "last_model_version": int(state.get("last_model_version", 1) or 1),
+            "last_trained_at": state.get("last_trained_at"),
+        }
+        # Upsert to guarantee the row exists.
+        resp = requests.post(url, headers=_sb_headers(prefer_return_rep=True), json=payload, timeout=30)
+        if resp.status_code in (200, 201):
+            arr = resp.json()
+            if isinstance(arr, list) and arr and isinstance(arr[0], dict):
+                base = _training_state_default()
+                base.update(arr[0])
+                return base
+    except Exception as e:
+        print(f"[!] training_state_ensure_row: Supabase unavailable ({e}); falling back to local state")
+        _training_state_local_write(state)
+        return state
+
+    return state
+def training_state_update(patch: dict) -> dict:
+    # Update training state in Supabase if possible; otherwise update local fallback.
+    state = training_state_get()
+    if isinstance(patch, dict):
+        state.update(patch)
+
+    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_ROLE_KEY:
+        _training_state_local_write(state)
+        return state
+
     url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1"
-    resp = requests.patch(
-        url,
-        headers={**_sb_headers(), "Prefer": "return=representation"},
-        data=json.dumps(fields),
-        timeout=30,
-    )
-    if resp.status_code >= 400:
-        raise RuntimeError(f"training_state_update error {resp.status_code}: {resp.text}")
-    rows = resp.json()
-    return rows[0] if rows else fields
+    try:
+        resp = requests.patch(url, headers=_sb_headers(prefer_return_rep=True), json=patch, timeout=30)
+        if resp.status_code == 200:
+            arr = resp.json()
+            if isinstance(arr, list) and arr and isinstance(arr[0], dict):
+                base = _training_state_default()
+                base.update(arr[0])
+                return base
+    except Exception as e:
+        print(f"[!] training_state_update: Supabase unavailable ({e}); writing local state")
+        _training_state_local_write(state)
+        return state
 
-
-# Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
-WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
-                 or os.getenv("OPENWEATHER_API_KEY")
-                 or os.getenv("OPENWEATHERMAP_API_KEY")
-                 or os.getenv("dc825ffd002731568ec7766eafb54bc9")
-                 or None)
-WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
-
-SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
-
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
-NOMINATIM_USER_AGENT = os.getenv(
-    "NOMINATIM_USER_AGENT",
-    "arborscan-backend/1.0 (contact: example@mail.com)"
-)
-
-ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
-
-
-# -------------------------------------
-# MODEL VERSIONS
-# -------------------------------------
-
-MODEL_VERSIONS = {
-    "tree_yolo": "tree_yolov8_seg_v1.2.0",
-    "stick_yolo": "stick_yolov8_det_v1.0.3",
-    "classifier": "resnet18_species_v0.9.1",
-}
-BUILD_INFO = {
-    # желательно прокидывать из CI / Railway
-    "git_commit": os.getenv("GIT_COMMIT", "unknown"),
-    "build_time": os.getenv("BUILD_TIME")
-}
-SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.0.0"
-VERIFIED_TRUST_THRESHOLD = 0.0
-
-# -------------------------------------
-# CLASSES / CONSTANTS
-# -------------------------------------
-
-CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
-REAL_STICK_M = 1.0
-
-# -------------------------------------
-# LOADING MODELS
-# -------------------------------------
-
-print("[*] Loading YOLO models...")
-tree_model = None  # loaded dynamically from Supabase models bucket via active_model_version
-stick_model = YOLO("models/stick_model.pt")
-
-print("[*] Loading classifier...")
-classifier = models.resnet18(weights=None)
-classifier.fc = torch.nn.Linear(classifier.fc.in_features, 5)
-classifier.load_state_dict(torch.load("models/classifier.pth", map_location="cpu"))
-classifier.eval()
-
-transformer = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
-    )
-])
-
-print("[*] Models loaded.")
-
-# =============================================
-# SUPABASE UTILS (Storage + DB)
-# =============================================
-
+    _training_state_local_write(state)
+    return state
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     """
     Загрузка бинарных данных в Supabase Storage через REST API.
@@ -324,13 +311,14 @@ def reload_tree_model(force: bool = False):
     TREE_MODEL = YOLO(path)
     TREE_MODEL_VERSION = v
 
-def get_tree_model():
+def get_tree_model() -> YOLO:
     with MODEL_LOCK:
-        reload_tree_model()
-        if TREE_MODEL is None or TREE_MODEL_VERSION is None:
+        reload_tree_model(force=False)
+        if TREE_MODEL is None:
+            reload_tree_model(force=True)
+        if TREE_MODEL is None:
             raise RuntimeError("TREE_MODEL is not loaded")
-        return TREE_MODEL, TREE_MODEL_VERSION
-
+        return TREE_MODEL
 
 def supabase_db_insert(table: str, row: dict):
     """
@@ -739,7 +727,7 @@ async def analyze_tree(file: UploadFile = File(...)):
     # -----------------------------
     # YOLO TREE
     # -----------------------------
-    tree_model_local, model_version = get_tree_model()
+    tree_model_local = get_tree_model()
     tree_res = tree_model_local(img)[0]
     if tree_res.masks is None:
         return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
@@ -851,7 +839,8 @@ async def analyze_tree(file: UploadFile = File(...)):
         "weather": weather,
         "soil": soil,
         "risk": risk,
-        "tree_model_version": model_version,
+        "model_versions": MODEL_VERSIONS,
+        "model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
         "schema_version": SCHEMA_VERSION,
         "api_version": API_VERSION,
@@ -995,14 +984,13 @@ async def analyze_tree(file: UploadFile = File(...)):
         "trunk_diameter_m": trunk_m,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
-        "model_version": model_version,
     }
     # добавляем оригинальное изображение
     try:
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
-    except Exception:
+    except:
         response["original_image_base64"] = None
-
+        return JSONResponse(response)
 
 
     if gps:
