@@ -1,60 +1,86 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-/// Админ API клиент.
-/// ВАЖНО: здесь НЕТ verified-analyses (мы их убрали из UI).
-class AdminService {
-  static const String baseUrl = 'https://arborscanbackend-production.up.railway.app';
+/// Единая точка backend
+const String _baseUrl = 'https://arborscanbackend-production.up.railway.app';
 
-  static Uri _u(String path) => Uri.parse('$baseUrl$path');
+class TrainingEvent {
+  final String type;
+  final String message;
+  final DateTime timestamp;
 
-  /// Возвращает статус обучения и активную/последнюю версию модели.
-  /// Ожидаемый ответ сервера:
-  /// {
-  ///   "training_in_progress": bool,
-  ///   "active_model_version": int,
-  ///   "last_model_version": int
-  /// }
-  static Future<Map<String, dynamic>> getTrainingStatus() async {
-    final resp = await http.get(_u('/admin/training-status'));
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
-    }
-    final data = jsonDecode(resp.body);
-    if (data is Map<String, dynamic>) return data;
-    throw Exception('Unexpected response: ${resp.body}');
-  }
+  TrainingEvent({
+    required this.type,
+    required this.message,
+    required this.timestamp,
+  });
 
-  /// Делает указанную версию модели активной.
-  static Future<void> setActiveModel(int version) async {
-    final resp = await http.post(
-      _u('/admin/set-active-model'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'version': version}),
+  factory TrainingEvent.fromJson(Map<String, dynamic> json) {
+    return TrainingEvent(
+      type: (json['type'] ?? 'info').toString(),
+      message: (json['message'] ?? '').toString(),
+      timestamp: DateTime.tryParse((json['timestamp'] ?? '').toString()) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
-    }
   }
+}
 
-  /// Запросить обучение (retrain worker).
-  static Future<void> requestRetrain() async {
-    final resp = await http.post(_u('/admin/request-retrain'));
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
-    }
+class TrainingStatus {
+  final bool training;
+  final String? activeModel;
+  final String? lastTrained;
+
+  TrainingStatus({
+    required this.training,
+    this.activeModel,
+    this.lastTrained,
+  });
+
+  factory TrainingStatus.fromJson(Map<String, dynamic> json) {
+    return TrainingStatus(
+      training: json['training'] == true,
+      activeModel: json['active_model']?.toString(),
+      lastTrained: json['last_trained']?.toString(),
+    );
   }
+}
 
-
-  /// Fetch in-memory training/admin events (simple training log)
-  static Future<List<Map<String, dynamic>>> fetchTrainingEvents({int limit = 50}) async {
-    final uri = Uri.parse("$_baseUrl/admin/training-events?limit=$limit");
+class AdminService {
+  static Future<TrainingStatus> getTrainingStatus() async {
+    final uri = Uri.parse('$_baseUrl/admin/training-status');
     final resp = await http.get(uri);
+
     if (resp.statusCode != 200) {
-      throw Exception("Failed to fetch training events: ${resp.statusCode}");
+      throw Exception('HTTP ${resp.statusCode}: training-status');
     }
+
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
-    final events = (data["events"] as List?) ?? [];
-    return events.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    return TrainingStatus.fromJson(data);
+  }
+
+  static Future<List<TrainingEvent>> getTrainingEvents({int limit = 20}) async {
+    final uri = Uri.parse('$_baseUrl/admin/training-events?limit=$limit');
+    final resp = await http.get(uri);
+
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}: training-events');
+    }
+
+    final list = jsonDecode(resp.body);
+    if (list is! List) return [];
+
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(TrainingEvent.fromJson)
+        .toList();
+  }
+
+  static Future<void> requestTraining() async {
+    final uri = Uri.parse('$_baseUrl/admin/request-training');
+    final resp = await http.post(uri);
+
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}: request-training');
+    }
   }
 }

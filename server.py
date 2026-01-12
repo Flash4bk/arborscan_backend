@@ -98,6 +98,42 @@ def training_state_ensure_row():
         raise RuntimeError(f"training_state_ensure_row error {resp.status_code}: {resp.text}")
 
 
+
+
+# ============================
+#   TRAINING EVENTS (ADMIN UI)
+# ============================
+# In-memory ring buffer of recent admin/training events to show in the app.
+# This is intentionally lightweight; if Supabase is unavailable, the UI can still show local events.
+TRAINING_EVENTS_MAX = int(os.getenv("TRAINING_EVENTS_MAX", "200"))
+_training_events_lock = threading.Lock()
+_training_events: list[dict] = []
+
+def _log_training_event(level: str, message: str, **meta) -> None:
+    """Append a structured event for the Admin Panel 'Training events' feed."""
+    ev = {
+        "ts": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "level": level,
+        "message": message,
+        "meta": meta or None,
+    }
+    # Also print to stdout for Railway logs
+    try:
+        print(f"[TRAINING_EVENT] {ev['ts']} {level.upper()}: {message} {meta if meta else ''}".strip())
+    except Exception:
+        pass
+
+    with _training_events_lock:
+        _training_events.append(ev)
+        if len(_training_events) > TRAINING_EVENTS_MAX:
+            del _training_events[: max(0, len(_training_events) - TRAINING_EVENTS_MAX)]
+
+def _get_training_events(limit: int = 15) -> list[dict]:
+    with _training_events_lock:
+        items = _training_events[-max(1, limit):]
+    # newest first
+    return list(reversed(items))
+
 def training_state_update(fields: dict) -> dict:
     if not SUPABASE_DB_BASE:
         raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
@@ -296,6 +332,7 @@ def reload_tree_model(force: bool = False):
     _MODEL_LAST_CHECK_TS = now
 
     v = _get_active_model_version()
+    _log_training_event("info", "Switching active model", model_version=v)
     if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v:
         return
 
@@ -1412,9 +1449,21 @@ def admin_training_status():
 class _SetActiveModelBody(BaseModel):
     version: int
 
+
+@app.get("/admin/training-events")
+def admin_training_events(limit: int = 15):
+    """Return recent training/admin events for the Admin Panel feed."""
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 15
+    limit = max(1, min(200, limit))
+    return {"events": _get_training_events(limit)}
+
 @app.post("/admin/set-active-model")
 def admin_set_active_model(body: _SetActiveModelBody):
     training_state_ensure_row()
+    _log_training_event("info", "Admin requested active model switch", model_version=model_version)
     v = int(body.version)
 
     # verify model exists in Supabase Storage bucket 'models'
@@ -1435,6 +1484,7 @@ def admin_set_active_model(body: _SetActiveModelBody):
 @app.post("/admin/request-retrain")
 def admin_request_retrain():
     training_state_ensure_row()
+    _log_training_event("info", "Admin requested retraining")
     training_state_update({"retrain_requested": True})
     return {"status": "ok", "retrain_requested": True}
 
