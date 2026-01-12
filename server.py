@@ -18,6 +18,7 @@ from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime
+from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
 
 # -------------------------------------
@@ -97,42 +98,6 @@ def training_state_ensure_row():
     if resp.status_code >= 400:
         raise RuntimeError(f"training_state_ensure_row error {resp.status_code}: {resp.text}")
 
-
-
-
-# ============================
-#   TRAINING EVENTS (ADMIN UI)
-# ============================
-# In-memory ring buffer of recent admin/training events to show in the app.
-# This is intentionally lightweight; if Supabase is unavailable, the UI can still show local events.
-TRAINING_EVENTS_MAX = int(os.getenv("TRAINING_EVENTS_MAX", "200"))
-_training_events_lock = threading.Lock()
-_training_events: list[dict] = []
-
-def _log_training_event(level: str, message: str, **meta) -> None:
-    """Append a structured event for the Admin Panel 'Training events' feed."""
-    ev = {
-        "ts": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        "level": level,
-        "message": message,
-        "meta": meta or None,
-    }
-    # Also print to stdout for Railway logs
-    try:
-        print(f"[TRAINING_EVENT] {ev['ts']} {level.upper()}: {message} {meta if meta else ''}".strip())
-    except Exception:
-        pass
-
-    with _training_events_lock:
-        _training_events.append(ev)
-        if len(_training_events) > TRAINING_EVENTS_MAX:
-            del _training_events[: max(0, len(_training_events) - TRAINING_EVENTS_MAX)]
-
-def _get_training_events(limit: int = 15) -> list[dict]:
-    with _training_events_lock:
-        items = _training_events[-max(1, limit):]
-    # newest first
-    return list(reversed(items))
 
 def training_state_update(fields: dict) -> dict:
     if not SUPABASE_DB_BASE:
@@ -323,6 +288,46 @@ def _get_active_model_version() -> int:
         return 0
     return int(v)
 
+def list_available_model_versions() -> list[dict]:
+    """Return model versions for the Admin Panel dropdown.
+
+    We infer available versions from:
+      - AVAILABLE_MODEL_VERSIONS env var (comma-separated ints)
+      - local cached files in /tmp/models (model_v*.pt)
+      - bundled files in ./models (model_v*.pt)
+    Always includes the current active version.
+    """
+    versions: set[int] = set()
+
+    env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
+    if env_hint:
+        for part in env_hint.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                versions.add(int(part))
+            except ValueError:
+                pass
+
+    for p in Path("/tmp/models").glob("model_v*.pt"):
+        mm = re.search(r"model_v(\d+)\.pt$", p.name)
+        if mm:
+            versions.add(int(mm.group(1)))
+
+    if Path("models").exists():
+        for p in Path("models").glob("model_v*.pt"):
+            mm = re.search(r"model_v(\d+)\.pt$", p.name)
+            if mm:
+                versions.add(int(mm.group(1)))
+
+    active = _get_active_model_version()
+    versions.add(active)
+
+    return [{"version": v, "is_active": v == active} for v in sorted(versions)]
+
+
+
 def reload_tree_model(force: bool = False):
     global TREE_MODEL, TREE_MODEL_VERSION, _MODEL_LAST_CHECK_TS
 
@@ -332,7 +337,6 @@ def reload_tree_model(force: bool = False):
     _MODEL_LAST_CHECK_TS = now
 
     v = _get_active_model_version()
-    _log_training_event("info", "Switching active model", model_version=v)
     if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v:
         return
 
@@ -749,6 +753,26 @@ class TrustedExample(BaseModel):
 
 
 app = FastAPI(title="ArborScan API v2.0")
+
+# --- Training events (in-memory) ---
+# Stored in a small ring buffer so the Admin Panel can show a live-ish log.
+TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
+
+def log_training_event(level: str, message: str, data: dict | None = None) -> None:
+    try:
+        evt = {
+            "ts": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+            "level": level.upper(),
+            "message": message,
+            "data": data or {},
+        }
+        TRAINING_EVENTS.append(evt)
+        # keep a visible server log line too
+        print(f"[TRAINING_EVENT] {evt['ts']} {evt['level']}: {evt['message']} {evt['data']}")
+    except Exception:
+        # Never break app because of logging
+        pass
+
 
 @app.on_event("startup")
 def _startup_load_models():
@@ -1449,21 +1473,9 @@ def admin_training_status():
 class _SetActiveModelBody(BaseModel):
     version: int
 
-
-@app.get("/admin/training-events")
-def admin_training_events(limit: int = 15):
-    """Return recent training/admin events for the Admin Panel feed."""
-    try:
-        limit = int(limit)
-    except Exception:
-        limit = 15
-    limit = max(1, min(200, limit))
-    return {"events": _get_training_events(limit)}
-
 @app.post("/admin/set-active-model")
 def admin_set_active_model(body: _SetActiveModelBody):
     training_state_ensure_row()
-    _log_training_event("info", "Admin requested active model switch", model_version=model_version)
     v = int(body.version)
 
     # verify model exists in Supabase Storage bucket 'models'
@@ -1483,8 +1495,8 @@ def admin_set_active_model(body: _SetActiveModelBody):
 
 @app.post("/admin/request-retrain")
 def admin_request_retrain():
+    log_training_event("INFO", "Admin requested retraining")
     training_state_ensure_row()
-    _log_training_event("info", "Admin requested retraining")
     training_state_update({"retrain_requested": True})
     return {"status": "ok", "retrain_requested": True}
 
@@ -1530,6 +1542,21 @@ def save_user_mask(payload: UserMaskPayload):
             "meta": meta_path
         }
     }
+
+
+@app.get("/admin/models")
+def admin_models():
+    """List available model versions and which one is active."""
+    return {"models": list_available_model_versions(), "active_model_version": _get_active_model_version()}
+
+@app.get("/admin/training-events")
+def admin_training_events(limit: int = 15):
+    """Return last training/admin events for UI."""
+    limit = max(1, min(int(limit), 200))
+    items = list(TRAINING_EVENTS)[-limit:]
+    # newest first for UI convenience
+    return {"events": list(reversed(items))}
+
 
 
 def get_latest_model_path():

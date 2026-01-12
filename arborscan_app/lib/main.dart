@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'admin_gate.dart';
 import 'admin_panel_page.dart';
+import 'admin_list_page.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -11,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 
 import 'feedback_page.dart';
-
 void main() {
   runApp(const ArborScanApp());
 }
@@ -90,7 +90,6 @@ class AnalysisResult {
 /// ============================
 class ArborScanApp extends StatelessWidget {
   const ArborScanApp({super.key});
-
 
   @override
   Widget build(BuildContext context) {
@@ -928,6 +927,16 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
+  Future<void> _openAdminPanel() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdminPanelPage(baseUrl: _baseUrl),
+      ),
+    );
+  }
+
+
+
   Future<void> _openHistory() async {
     final cleared = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -942,15 +951,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
-Future<void> _openAdminPanel() async {
-  await Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => const AdminPanelPage(),
-    ),
-  );
-}
-
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -963,7 +963,8 @@ Future<void> _openAdminPanel() async {
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Настройки',
             onPressed: _openSettings,
-          ),          IconButton(
+          ),
+IconButton(
             icon: const Icon(Icons.history),
             tooltip: 'История',
             onPressed: _history.isEmpty ? null : _openHistory,
