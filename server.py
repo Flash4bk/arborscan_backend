@@ -13,7 +13,7 @@ from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException , Body
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
@@ -1475,9 +1475,12 @@ class _SetActiveModelBody(BaseModel):
     version: int
 
 @app.post("/admin/set-active-model")
-def admin_set_active_model(body: _SetActiveModelBody):
+async def admin_set_active_model(payload: dict = Body(...)):
     training_state_ensure_row()
-    v = int(body.version)
+    raw_v = payload.get('version') or payload.get('model_version') or payload.get('active_model_version')
+    if raw_v is None:
+        raise HTTPException(status_code=422, detail="Missing 'version' in request body")
+    v = int(raw_v)
 
     # verify model exists in Supabase Storage bucket 'models'
     filename = f"model_v{v}.pt"
