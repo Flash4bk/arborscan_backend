@@ -2,6 +2,7 @@ import os
 import io
 import base64
 import json
+import re
 import shutil
 import time
 import threading
