@@ -1,129 +1,182 @@
-
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-
-/// Simple DTOs used by Admin Panel UI
-class ModelInfo {
-  final String version;
-  final bool isActive;
-
-  const ModelInfo({required this.version, required this.isActive});
-
-  factory ModelInfo.fromJson(Map<String, dynamic> json) {
-    return ModelInfo(
-      version: (json['version'] ?? '').toString(),
-      isActive: (json['is_active'] ?? json['isActive'] ?? false) == true,
-    );
-  }
-}
 
 class TrainingStatus {
   final bool isTraining;
-  final String? activeModel;
-  final String? lastTrainedModel;
-  final String? message;
+  final int? activeModelVersion;
+  final int? lastTrainedVersion;
+
+  // Compatibility aliases for older/newer UI code.
+  bool get training => isTraining;
+  int? get activeModel => activeModelVersion;
+  int? get lastTrained => lastTrainedVersion;
+  int? get lastTrainedModelVersion => lastTrainedVersion;
 
   const TrainingStatus({
     required this.isTraining,
-    this.activeModel,
-    this.lastTrainedModel,
-    this.message,
+    required this.activeModelVersion,
+    required this.lastTrainedVersion,
   });
 
   factory TrainingStatus.fromJson(Map<String, dynamic> json) {
+    int? asInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v.toString());
+    }
+
     return TrainingStatus(
-      isTraining: (json['is_training'] ?? json['isTraining'] ?? false) == true,
-      activeModel: json['active_model']?.toString(),
-      lastTrainedModel: json['last_trained_model']?.toString(),
-      message: json['message']?.toString(),
+      isTraining: (json['is_training'] ?? json['training'] ?? false) == true,
+      activeModelVersion: asInt(json['active_model_version'] ?? json['active_model']),
+      lastTrainedVersion: asInt(json['last_trained_version'] ?? json['last_trained']),
     );
   }
 }
 
 class TrainingEvent {
-  final DateTime ts;
+  final String ts;
   final String level;
   final String message;
+  final Map<String, dynamic> meta;
 
   const TrainingEvent({
     required this.ts,
     required this.level,
     required this.message,
+    required this.meta,
   });
 
   factory TrainingEvent.fromJson(Map<String, dynamic> json) {
-    final rawTs = (json['ts'] ?? '').toString();
-    DateTime parsed;
-    try {
-      parsed = DateTime.parse(rawTs).toLocal();
-    } catch (_) {
-      parsed = DateTime.now();
-    }
     return TrainingEvent(
-      ts: parsed,
-      level: (json['level'] ?? 'info').toString(),
+      ts: (json['ts'] ?? json['time'] ?? '').toString(),
+      level: (json['level'] ?? 'INFO').toString(),
       message: (json['message'] ?? '').toString(),
+      meta: (json['meta'] is Map<String, dynamic>)
+          ? (json['meta'] as Map<String, dynamic>)
+          : <String, dynamic>{},
     );
   }
 }
 
+class ModelsResponse {
+  final List<int> models;
+  final int? activeModelVersion;
+
+  const ModelsResponse({required this.models, required this.activeModelVersion});
+
+  factory ModelsResponse.fromJson(Map<String, dynamic> json) {
+    final raw = json['models'];
+    final List<int> versions = [];
+    int? activeFromItems;
+    if (raw is List) {
+      for (final v in raw) {
+        // Backend may return either:
+        // - [1,2,3]
+        // - [{"version":1,"is_active":true}, ...]
+        if (v is num) {
+          versions.add(v.toInt());
+          continue;
+        }
+        if (v is Map) {
+          final verVal = v['version'] ?? v['model_version'] ?? v['id'];
+          final ver = verVal == null ? null : int.tryParse(verVal.toString());
+          if (ver != null) {
+            versions.add(ver);
+            final isActive = v['is_active'] ?? v['isActive'] ?? v['active'];
+            if (isActive == true) activeFromItems = ver;
+          }
+          continue;
+        }
+        final parsed = int.tryParse(v.toString());
+        if (parsed != null) versions.add(parsed);
+      }
+    }
+    versions.sort();
+    final unique = <int>{};
+    final deduped = <int>[];
+    for (final v in versions) {
+      if (unique.add(v)) deduped.add(v);
+    }
+
+    int? active;
+    final av = json['active_model_version'] ?? json['active_model'];
+    if (av != null) {
+      active = int.tryParse(av.toString());
+    } else {
+      active = activeFromItems;
+    }
+
+    return ModelsResponse(models: deduped, activeModelVersion: active);
+  }
+}
+
 class AdminService {
-  // Keep in sync with main.dart baseUrl
   final String baseUrl;
 
   const AdminService({required this.baseUrl});
 
-  Uri _u(String path, [Map<String, String>? q]) {
-    return Uri.parse('$baseUrl$path').replace(queryParameters: q);
-  }
-
-  Future<List<ModelInfo>> fetchModels()  async {
-    final resp = await http.get(_u('/admin/models'));
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: models');
-    }
-    final data = jsonDecode(resp.body) as Map<String, dynamic>;
-    final list = (data['models'] as List?) ?? [];
-    return list.map((e) => ModelInfo.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-  }
-
-  Future<TrainingStatus> fetchTrainingStatus() async {
-    final resp = await http.get(_u('/admin/training-status'));
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: training-status');
-    }
-    return TrainingStatus.fromJson(jsonDecode(resp.body) as Map<String, dynamic>);
-  }
-
-  Future<void> setActiveModel(String version) async {
-    final resp = await http.post(
-      _u('/admin/set-active-model'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'model_version': version}),
+  Uri _u(String path, [Map<String, dynamic>? q]) {
+    final p = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$baseUrl$p').replace(
+      queryParameters: q?.map((k, v) => MapEntry(k, v.toString())),
     );
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: set-active-model');
+  }
+
+  Future<TrainingStatus> getTrainingStatus() async {
+    final r = await http
+        .get(_u('/admin/training-status'))
+        .timeout(const Duration(seconds: 30));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: training-status');
+    }
+    return TrainingStatus.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+  }
+
+  Future<List<TrainingEvent>> getTrainingEvents({int limit = 15}) async {
+    final r = await http
+        .get(_u('/admin/training-events', {'limit': limit}))
+        .timeout(const Duration(seconds: 30));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: training-events');
+    }
+    final decoded = jsonDecode(r.body);
+    final eventsRaw = (decoded is Map<String, dynamic>) ? decoded['events'] : null;
+    final List<TrainingEvent> events = [];
+    if (eventsRaw is List) {
+      for (final e in eventsRaw) {
+        if (e is Map<String, dynamic>) events.add(TrainingEvent.fromJson(e));
+      }
+    }
+    return events;
+  }
+
+  Future<ModelsResponse> getModels() async {
+    final r = await http.get(_u('/admin/models')).timeout(const Duration(seconds: 30));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: models');
+    }
+    return ModelsResponse.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+  }
+
+  Future<void> setActiveModel(int modelVersion) async {
+    final r = await http
+        .post(
+          _u('/admin/set-active-model'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'model_version': modelVersion}),
+        )
+        .timeout(const Duration(seconds: 30));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: set-active-model');
     }
   }
 
-  Future<void> requestRetrain() async {
-    final resp = await http.post(_u('/admin/request-retrain'));
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: request-retrain');
+  Future<void> requestTraining() async {
+    final r = await http.post(_u('/admin/request-retrain')).timeout(const Duration(seconds: 30));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: request-retrain');
     }
-  }
-
-  Future<List<TrainingEvent>> fetchTrainingEvents({int limit = 15}) async {
-    final resp = await http.get(_u('/admin/training-events', {'limit': '$limit'}));
-    if (resp.statusCode == 404) {
-      // Endpoint not deployed on backend (yet)
-      return const <TrainingEvent>[];
-    }
-    if (resp.statusCode != 200) {
-      throw Exception('HTTP ${resp.statusCode}: training-events');
-    }
-    final data = jsonDecode(resp.body) as Map<String, dynamic>;
-    final list = (data['events'] as List?) ?? [];
-    return list.map((e) => TrainingEvent.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
 }
