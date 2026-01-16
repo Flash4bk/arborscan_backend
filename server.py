@@ -1116,9 +1116,31 @@ def send_feedback(payload: dict = Body(...)):
     correct_species = payload.get('correct_species') or payload.get('correctSpecies')
     correct_tree_mask = payload.get('correct_tree_mask') or payload.get('correctTreeMask')
     correct_stick_mask = payload.get('correct_stick_mask') or payload.get('correctStickMask')
-    corrected_height_m = payload.get('corrected_height_m') or payload.get('correctedHeightM')
-    corrected_crown_width_m = payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM')
-    corrected_trunk_diameter_m = payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM')
+
+    def _f(val):
+        """Best-effort float parsing for user-corrected numeric fields."""
+        if val is None:
+            return None
+        if isinstance(val, (int, float)):
+            return float(val)
+        if isinstance(val, str):
+            s = val.strip().replace(',', '.')
+            if not s or s.lower() in ('null', 'none', 'nan'):
+                return None
+            try:
+                return float(s)
+            except Exception:
+                return None
+        return None
+
+    corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
+    corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
+    corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
+    corrected_scale_px_to_m = _f(
+        payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
+        payload.get('scale_px_to_m') or payload.get('scalePxToM') or
+        payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
+    )
     user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
