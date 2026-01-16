@@ -1081,21 +1081,55 @@ async def analyze_tree(file: UploadFile = File(...)):
 
 
 @app.post("/feedback")
-def send_feedback(feedback: FeedbackRequest):
+def send_feedback(payload: dict = Body(...)):
     """
     Получаем подтверждение/исправление от пользователя и,
     если всё ок, сохраняем пример в Supabase для будущего обучения моделей
     + кладём запись в очередь доверенных примеров (Supabase DB).
     """
+    # Accept both snake_case and camelCase from Flutter; avoid 422 on minor schema drift.
+    analysis_id = payload.get('analysis_id') or payload.get('analysisId')
+    if not analysis_id:
+        raise HTTPException(status_code=422, detail='analysis_id is required')
+
+    def _b(val, default=True):
+        if val is None:
+            return default
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        if isinstance(val, str):
+            v = val.strip().lower()
+            if v in ('1','true','yes','y','ok'):
+                return True
+            if v in ('0','false','no','n'):
+                return False
+        return default
+
+    use_for_training = _b(payload.get('use_for_training', payload.get('useForTraining')), default=True)
+    tree_ok = _b(payload.get('tree_ok', payload.get('treeOk')), default=True)
+    stick_ok = _b(payload.get('stick_ok', payload.get('stickOk')), default=True)
+    params_ok = _b(payload.get('params_ok', payload.get('paramsOk')), default=True)
+    species_ok = _b(payload.get('species_ok', payload.get('speciesOk')), default=True)
+
+    correct_species = payload.get('correct_species') or payload.get('correctSpecies')
+    correct_tree_mask = payload.get('correct_tree_mask') or payload.get('correctTreeMask')
+    correct_stick_mask = payload.get('correct_stick_mask') or payload.get('correctStickMask')
+    corrected_height_m = payload.get('corrected_height_m') or payload.get('correctedHeightM')
+    corrected_crown_width_m = payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM')
+    corrected_trunk_diameter_m = payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM')
+    user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
+
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
 
-    tmp_dir = Path("/tmp") / feedback.analysis_id
+    tmp_dir = Path("/tmp") / analysis_id
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
     # Если пользователь не хочет использовать пример в обучении
-    if not feedback.use_for_training:
+    if not use_for_training:
         try:
             shutil.rmtree(tmp_dir, ignore_errors=True)
         except Exception:
@@ -1113,35 +1147,35 @@ def send_feedback(feedback: FeedbackRequest):
         raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
 
     # Обновляем meta фидбеком
-    meta["tree_ok"] = feedback.tree_ok
-    meta["stick_ok"] = feedback.stick_ok
-    meta["params_ok"] = feedback.params_ok
-    meta["species_ok"] = feedback.species_ok
-    meta["correct_species"] = feedback.correct_species
+    meta["tree_ok"] = tree_ok
+    meta["stick_ok"] = stick_ok
+    meta["params_ok"] = params_ok
+    meta["species_ok"] = species_ok
+    meta["correct_species"] = correct_species
 
     # Исправленный вид дерева
-    if (not feedback.species_ok) and feedback.correct_species:
-        meta["species"] = feedback.correct_species
+    if (not species_ok) and correct_species:
+        meta["species"] = correct_species
 
     # Исправленные численные параметры (если пришли от клиента)
-    if feedback.correct_height_m is not None:
-        meta["height_m"] = feedback.correct_height_m
-    if feedback.correct_crown_width_m is not None:
-        meta["crown_width_m"] = feedback.correct_crown_width_m
-    if feedback.correct_trunk_diameter_m is not None:
-        meta["trunk_diameter_m"] = feedback.correct_trunk_diameter_m
-    if feedback.correct_scale_px_to_m is not None:
-        meta["scale_px_to_m"] = feedback.correct_scale_px_to_m
+    if corrected_height_m is not None:
+        meta["height_m"] = corrected_height_m
+    if corrected_crown_width_m is not None:
+        meta["crown_width_m"] = corrected_crown_width_m
+    if corrected_trunk_diameter_m is not None:
+        meta["trunk_diameter_m"] = corrected_trunk_diameter_m
+    if corrected_scale_px_to_m is not None:
+        meta["scale_px_to_m"] = corrected_scale_px_to_m
 
     # Trust score
     trust = 0.0
-    if feedback.tree_ok:
+    if tree_ok:
         trust += 0.3
-    if feedback.stick_ok:
+    if stick_ok:
         trust += 0.2
-    if feedback.params_ok:
+    if params_ok:
         trust += 0.2
-    if feedback.species_ok or feedback.correct_species:
+    if species_ok or correct_species:
         trust += 0.3
     meta["trust_score"] = trust
 
@@ -1150,12 +1184,12 @@ def send_feedback(feedback: FeedbackRequest):
     # ---------------------------------------------
 
     is_verified = (
-    feedback.use_for_training and
+    use_for_training and
     trust >= VERIFIED_TRUST_THRESHOLD
     )
 
 
-    analysis_id = feedback.analysis_id
+    analysis_id = analysis_id
 
     # -----------------------------
     # UPLOAD TO SUPABASE STORAGE
@@ -1184,7 +1218,7 @@ def send_feedback(feedback: FeedbackRequest):
                 # Маска пользователя (обводка) — опционально.
         # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
         meta["has_user_mask"] = False
-        mask_b64 = feedback.user_mask_base64
+        mask_b64 = user_mask_base64
         if mask_b64 is not None:
             mask_b64_str = str(mask_b64).strip().lower()
         else:
@@ -1252,9 +1286,9 @@ def send_feedback(feedback: FeedbackRequest):
 
                 
                 # user mask (если есть) — нормализуем в валидный PNG
-                if feedback.user_mask_base64:
+                if user_mask_base64:
                     try:
-                        mask_png_bytes = ensure_png_mask_bytes(feedback.user_mask_base64)
+                        mask_png_bytes = ensure_png_mask_bytes(user_mask_base64)
                         supabase_upload_bytes(
                             SUPABASE_BUCKET_VERIFIED,
                             f"{analysis_id}/user_mask.png",
@@ -1279,7 +1313,7 @@ def send_feedback(feedback: FeedbackRequest):
                 meta_verified = meta.copy()
                 meta_verified["verified"] = True
                 meta_verified["verified_at"] = datetime.utcnow().isoformat()
-                meta_verified["verifier_role"] = "admin" if not feedback.use_for_training else "user"
+                meta_verified["verifier_role"] = "admin" if not use_for_training else "user"
 
                 supabase_upload_json(
                     SUPABASE_BUCKET_VERIFIED,

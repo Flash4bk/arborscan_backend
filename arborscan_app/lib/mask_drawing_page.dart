@@ -35,6 +35,11 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   bool _finishing = false;
   Size? _drawSize;
 
+  void _setFinishing(bool v) {
+    if (!mounted) return;
+    setState(() => _finishing = v);
+  }
+
   final Set<int> _activePointers = <int>{};
   int? _primaryPointer;
   bool _inPinch = false;
@@ -45,6 +50,36 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   bool _popScheduled = false;
   bool _showingPreview = false;
+
+  /// Safe wrapper around Navigator.pop to avoid Flutter assertion
+  /// `!_debugLocked` when a pop is triggered while the Navigator is
+  /// processing another pop/push.
+  void _safePop<T>(BuildContext ctx, [T? result]) {
+    if (_popScheduled) return;
+    _popScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _popScheduled = false;
+      if (!mounted) return;
+      final nav = Navigator.of(ctx);
+      if (!nav.canPop()) return;
+      try {
+        nav.pop(result);
+      } catch (_) {
+        // Если Navigator всё ещё залочен, пробуем ещё раз на следующем кадре.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final nav2 = Navigator.of(ctx);
+          if (nav2.canPop()) {
+            try {
+              nav2.pop(result);
+            } catch (_) {
+              // no-op
+            }
+          }
+        });
+      }
+    });
+  }
 
   static const double _tapSlopPx = 8.0;
   static const double _closeHitSlopPx = 18.0;
@@ -238,70 +273,77 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   }
 
   Future<void> _showPreviewDialog() async {
-    final previewBytes = await _createPreviewImage();
+    Uint8List? previewBytes;
+    try {
+      previewBytes = await _createPreviewImage();
+    } catch (_) {
+      previewBytes = null;
+    }
+
+    // Если превью не удалось, не блокируем пользователя: сохраняем без диалога.
     if (previewBytes == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось создать превью')),
+        const SnackBar(content: Text('Не удалось создать превью. Сохраняю маску без просмотра.')),
       );
-      setState(() => _finishing = false);
+      await _saveMaskAndExit();
       return;
     }
 
-    final shouldConfirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Превью маски'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.memory(previewBytes),
-                const SizedBox(height: 16),
-                const Text(
-                  'Проверьте выделение дерева.\nЗелёный цвет - маска ИИ, синий - ваша маска.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      icon: const Icon(Icons.edit, size: 18),
-                      label: const Text('Исправить'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
+    bool? shouldConfirm;
+    try {
+      shouldConfirm = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          return AlertDialog(
+            title: const Text('Превью маски'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.memory(previewBytes!),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Проверьте выделение дерева.\nЗелёный цвет — маска ИИ, синий — ваша маска.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => _safePop<bool>(ctx, false),
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text('Исправить'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                       ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Подтвердить'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                      ElevatedButton.icon(
+                        onPressed: () => _safePop<bool>(ctx, true),
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Подтвердить'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    } finally {
+      // Если диалог закрыли не подтверждением, возвращаем управление пользователю.
+      if (mounted && shouldConfirm != true) {
+        _setFinishing(false);
+      }
+    }
 
-    // ОЧЕНЬ ВАЖНО: сбрасываем флаг независимо от результата
     if (!mounted) return;
-    
+
     if (shouldConfirm == true) {
-      // Пользователь подтвердил - продолжаем сохранение
       await _saveMaskAndExit();
-    } else {
-      // Пользователь выбрал "Исправить" - просто сбрасываем флаг
-      setState(() => _finishing = false);
     }
   }
 
@@ -356,16 +398,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
         "closed": _closed,
       };
 
-      if (_popScheduled) return;
-      _popScheduled = true;
-      
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() => _finishing = false);
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop(result);
-        }
-      });
+      if (!mounted) return;
+      setState(() => _finishing = false);
+      _safePop<Map<String, dynamic>>(context, result);
     } catch (e) {
       if (mounted) {
         setState(() => _finishing = false);
@@ -394,13 +429,20 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       return;
     }
 
-    setState(() => _finishing = true);
-    
-    // Добавляем небольшую задержку для плавности
-    await Future.delayed(const Duration(milliseconds: 100));
-    
-    // Показываем диалог с превью
-    await _showPreviewDialog();
+    _setFinishing(true);
+
+    try {
+      // Небольшая задержка, чтобы UI успел отрисовать overlay "Подготовка...".
+      await Future.delayed(const Duration(milliseconds: 80));
+      await _showPreviewDialog();
+    } catch (e) {
+      // Важно: не оставлять экран в состоянии "залипшего" _finishing.
+      _setFinishing(false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось подготовить маску: $e')),
+      );
+    }
   }
 
   void _resetTapState() {
@@ -421,13 +463,33 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
     return WillPopScope(
       onWillPop: () async {
-        if (_finishing) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Дождитесь завершения обработки')),
-          );
-          return false;
+        if (!_finishing) return true;
+
+        // Чтобы не получить «залипание» UI при ошибке в завершении,
+        // разрешаем пользователю отменить «обработку».
+        final cancel = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Завершение выполняется'),
+            content: const Text('Подождать или отменить и выйти?'),
+            actions: [
+              TextButton(
+                onPressed: () => _safePop<bool>(ctx, false),
+                child: const Text('Подождать'),
+              ),
+              TextButton(
+                onPressed: () => _safePop<bool>(ctx, true),
+                child: const Text('Отменить'),
+              ),
+            ],
+          ),
+        );
+
+        if (cancel == true) {
+          _setFinishing(false);
+          return true;
         }
-        return true;
+        return false;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -447,7 +509,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                         content: Image.memory(previewBytes),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
+                            onPressed: () => _safePop(ctx),
                             child: const Text('Закрыть'),
                           ),
                         ],
