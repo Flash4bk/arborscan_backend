@@ -387,8 +387,13 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
         return;
       }
 
+      final maskB64 = base64Encode(bytes.buffer.asUint8List());
+
+      // В приложении исторически использовались разные ключи результата.
+      // Чтобы не ломать старую логику (например, FeedbackPage), возвращаем оба.
       final result = {
-        "mask_png_base64": base64Encode(bytes.buffer.asUint8List()),
+        "mask_b64": maskB64,
+        "mask_png_base64": maskB64,
         "points": _points
             .map((p) => {
                   "x": p.dx / _drawSize!.width,

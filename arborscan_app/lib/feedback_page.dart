@@ -181,7 +181,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     if (res != null && res is Map) {
                       setState(() {
                         _treeOk = false;
-                        _userMaskBase64 = res['mask_b64'];
+                        _userMaskBase64 = (res['mask_b64'] ?? res['mask_png_base64']) as String?;
                       });
                     }
                   }
