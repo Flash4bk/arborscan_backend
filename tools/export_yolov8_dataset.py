@@ -156,7 +156,7 @@ def main():
     # IMPORTANT:
     # Use RELATIVE 'path: .' to avoid Windows paths getting baked in.
     # Ultralytics resolves train/val relative to this yaml's directory.
-    yaml = """path: .
+    yaml = f"""path: {OUT_DIR.as_posix()}
 train: images/train
 val: images/val
 
