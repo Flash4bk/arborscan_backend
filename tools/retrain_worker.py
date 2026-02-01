@@ -193,7 +193,7 @@ def run_export_script(tools_dir: Path) -> None:
         raise RuntimeError(f"export script not found: {script}")
 
     log("[*] Exporting dataset via export_yolov8_dataset.py ...")
-    subprocess.run([sys.executable, str(script)], check=True)
+    subprocess.run([sys.executable, str(script)], check=True, cwd=str(tools_dir))
 
 
 def find_latest_train_dir(runs_segment_dir: Path, name: str) -> Path:

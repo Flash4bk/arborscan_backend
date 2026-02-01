@@ -3,6 +3,7 @@ import json
 import random
 import shutil
 from pathlib import Path
+
 import requests
 import cv2
 import numpy as np
@@ -17,10 +18,12 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 print("SUPABASE_URL =", SUPABASE_URL)
 print("SUPABASE_SERVICE_KEY exists =", bool(SUPABASE_SERVICE_KEY))
 
-
 BUCKET = "arborscan-verified"
 
-OUT_DIR = Path("dataset_yolov8")
+# Always place dataset next to this script (portable, OS-independent)
+TOOLS_DIR = Path(__file__).resolve().parent
+OUT_DIR = TOOLS_DIR / "dataset_yolov8"
+
 TRAIN_SPLIT = 0.8
 
 CLASSES = {
@@ -29,23 +32,25 @@ CLASSES = {
 }
 
 # ==============================
-# SUPABASE HELPERS
+# SUPABASE HELPERS (REST)
 # ==============================
 
 def list_objects(prefix=""):
     url = f"{SUPABASE_URL}/storage/v1/object/list/{BUCKET}"
     headers = {"Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
     payload = {"prefix": prefix}
-    r = requests.post(url, headers=headers, json=payload)
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
     r.raise_for_status()
     return r.json()
+
 
 def download(path):
     url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{path}"
     headers = {"Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
-    r = requests.get(url, headers=headers)
+    r = requests.get(url, headers=headers, timeout=60)
     r.raise_for_status()
     return r.content
+
 
 # ==============================
 # YOLO HELPERS
@@ -58,11 +63,15 @@ def norm_poly(points, img_w, img_h):
         out.append(y / img_h)
     return out
 
+
 # ==============================
 # MAIN
 # ==============================
 
 def main():
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY")
+
     print("[*] Listing verified samples...")
     objects = list_objects()
     ids = sorted({o["name"].split("/")[0] for o in objects})
@@ -83,7 +92,6 @@ def main():
         split_idx = int(len(ids) * TRAIN_SPLIT)
         train_ids = set(ids[:split_idx])
 
-
     for aid in ids:
         split = "train" if aid in train_ids else "val"
 
@@ -100,11 +108,13 @@ def main():
         # =====================================================
         # TREE — FROM USER MASK (SEGMENTATION)
         # =====================================================
-
         try:
             mask_bytes = download(f"{aid}/user_mask.png")
             mask_np = np.frombuffer(mask_bytes, np.uint8)
             mask = cv2.imdecode(mask_np, cv2.IMREAD_GRAYSCALE)
+
+            if mask is None:
+                raise ValueError("mask decode returned None")
 
             _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
 
@@ -113,7 +123,7 @@ def main():
             )
 
             if contours:
-                # берём самый большой контур (дерево)
+                # largest contour
                 cnt = max(contours, key=cv2.contourArea)
                 cnt = cnt.squeeze()
 
@@ -125,9 +135,8 @@ def main():
             print(f"[!] No valid user mask for {aid}: {e}")
 
         # =====================================================
-        # STICK — BBOX (как было)
+        # STICK — BBOX (as before)
         # =====================================================
-
         try:
             stick_pred = json.loads(download(f"{aid}/stick_pred.json"))
             if stick_pred.get("box_xyxy"):
@@ -141,22 +150,24 @@ def main():
             pass
 
         label_path = OUT_DIR / "labels" / split / f"{aid}.txt"
-        label_path.write_text("\n".join(labels))
+        label_path.write_text("\n".join(labels), encoding="utf-8")
 
     # ---- data.yaml
-    yaml = f"""
-path: {OUT_DIR.resolve()}
+    # IMPORTANT:
+    # Use RELATIVE 'path: .' to avoid Windows paths getting baked in.
+    # Ultralytics resolves train/val relative to this yaml's directory.
+    yaml = """path: .
 train: images/train
 val: images/val
 
 names:
+  0: tree
+  1: stick
 """
-    for i, name in CLASSES.items():
-        yaml += f"  {i}: {name}\n"
-
-    (OUT_DIR / "data.yaml").write_text(yaml.strip())
+    (OUT_DIR / "data.yaml").write_text(yaml, encoding="utf-8")
 
     print("[✓] YOLOv8 dataset exported:", OUT_DIR)
+
 
 if __name__ == "__main__":
     main()
