@@ -1,11 +1,11 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import 'admin_service.dart';
-import 'app_theme.dart';
 
+/// Экран «Датасет для обучения» — показывает подтверждённые примеры
+/// и даёт возможность исключать/включать их в дообучение.
 class TrainingDatasetPage extends StatefulWidget {
   final AdminService service;
 
@@ -19,24 +19,15 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
   bool _loading = true;
   String? _error;
 
-  List<VerifiedItem> _all = const [];
-  List<VerifiedItem> _filtered = const [];
+  List<VerifiedItem> _items = const [];
 
-  final TextEditingController _searchCtrl = TextEditingController();
-  bool _showExcluded = true;
-  bool _onlyIncluded = false;
+  // кеш деталей, чтобы не грузить одно и то же много раз
+  final Map<String, VerifiedAnalysis> _detailsCache = {};
 
   @override
   void initState() {
     super.initState();
     _load();
-    _searchCtrl.addListener(_applyFilters);
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -46,18 +37,12 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
     });
 
     try {
-      final items = await widget.service.getVerifiedList();
-      // newest first if backend includes verifiedAt; otherwise keep as-is
-      items.sort((a, b) => (b.verifiedAt ?? '').compareTo(a.verifiedAt ?? ''));
-
-      if (!mounted) return;
+      final list = await widget.service.getVerifiedList();
       setState(() {
-        _all = items;
+        _items = list;
         _loading = false;
       });
-      _applyFilters();
     } catch (e) {
-      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -65,77 +50,58 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
     }
   }
 
-  void _applyFilters() {
-    final q = _searchCtrl.text.trim().toLowerCase();
-    var out = List<VerifiedItem>.of(_all);
+  int get _includedCount => _items.where((e) => !e.excludeFromTraining).length;
+  int get _excludedCount => _items.where((e) => e.excludeFromTraining).length;
 
-    if (!_showExcluded) {
-      out = out.where((e) => !e.excludeFromTraining).toList();
-    }
-    if (_onlyIncluded) {
-      out = out.where((e) => !e.excludeFromTraining).toList();
-    }
-
-    if (q.isNotEmpty) {
-      out = out.where((e) {
-        final hay = [
-          e.analysisId,
-          e.species ?? '',
-          e.riskCategory ?? '',
-        ].join(' ').toLowerCase();
-        return hay.contains(q);
-      }).toList();
-    }
-
-    setState(() => _filtered = out);
+  Future<VerifiedAnalysis> _getDetails(String analysisId) async {
+    final cached = _detailsCache[analysisId];
+    if (cached != null) return cached;
+    final d = await widget.service.getVerifiedAnalysis(analysisId);
+    _detailsCache[analysisId] = d;
+    return d;
   }
 
-  Future<void> _toggleInclude(VerifiedItem item, bool include) async {
+  Future<void> _toggleInclude(VerifiedItem it) async {
+    final newInclude = it.excludeFromTraining; // если был excluded -> включаем
+
+    // optimistic
+    setState(() {
+      _items = _items
+          .map((x) => x.analysisId == it.analysisId
+              ? VerifiedItem(
+                  analysisId: x.analysisId,
+                  verified: x.verified,
+                  excludeFromTraining: !newInclude,
+                  species: x.species,
+                  riskCategory: x.riskCategory,
+                  trustScore: x.trustScore,
+                  verifiedAt: x.verifiedAt,
+                )
+              : x)
+          .toList();
+    });
+
     try {
-      await widget.service.setTrainingInclude(item.analysisId, include: include);
-      // Optimistic update
-      final idx = _all.indexWhere((e) => e.analysisId == item.analysisId);
-      if (idx != -1) {
-        final updated = VerifiedItem(
-          analysisId: item.analysisId,
-          verified: item.verified,
-          excludeFromTraining: !include,
-          species: item.species,
-          riskCategory: item.riskCategory,
-          trustScore: item.trustScore,
-          verifiedAt: item.verifiedAt,
-        );
-        final newAll = List<VerifiedItem>.of(_all);
-        newAll[idx] = updated;
-        setState(() => _all = newAll);
-        _applyFilters();
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(include ? 'Добавлено в обучение' : 'Исключено из обучения')),
-        );
-      }
+      await widget.service.setTrainingInclude(it.analysisId, include: newInclude);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
+      // rollback
+      setState(() {
+        _items = _items
+            .map((x) => x.analysisId == it.analysisId
+                ? VerifiedItem(
+                    analysisId: x.analysisId,
+                    verified: x.verified,
+                    excludeFromTraining: it.excludeFromTraining,
+                    species: x.species,
+                    riskCategory: x.riskCategory,
+                    trustScore: x.trustScore,
+                    verifiedAt: x.verifiedAt,
+                  )
+                : x)
+            .toList();
+        _error = e.toString();
+      });
     }
-  }
-
-  Future<void> _openPreview(String analysisId) async {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (_) {
-        return _PreviewSheet(service: widget.service, analysisId: analysisId);
-      },
-    );
   }
 
   @override
@@ -145,395 +111,368 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
         title: const Text('Датасет для обучения'),
         actions: [
           IconButton(
-            tooltip: 'Обновить',
-            icon: const Icon(Icons.refresh),
             onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _ErrorState(message: _error!, onRetry: _load)
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: _searchCtrl,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.search),
-                              labelText: 'Поиск (вид / риск / id)',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              FilterChip(
-                                label: const Text('Показывать исключённые'),
-                                selected: _showExcluded,
-                                onSelected: (v) {
-                                  setState(() => _showExcluded = v);
-                                  _applyFilters();
-                                },
-                              ),
-                              const SizedBox(width: 10),
-                              FilterChip(
-                                label: const Text('Только в обучении'),
-                                selected: _onlyIncluded,
-                                onSelected: (v) {
-                                  setState(() => _onlyIncluded = v);
-                                  _applyFilters();
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Всего: ${_all.length} • Показано: ${_filtered.length}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(color: AppTheme.muted),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: _filtered.isEmpty
-                          ? ListView(
-                              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-                              children: [
-                                Ui.paddedCard(
-                                  context,
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Icon(Icons.inbox_outlined),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          'Нет примеров под текущие фильтры.\n\n'
-                                          'Подтверди примеры (trusted/examples) — и они появятся здесь.',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(color: AppTheme.muted),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-                              itemCount: _filtered.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 12),
-                              itemBuilder: (context, i) {
-                                final item = _filtered[i];
-                                final include = !item.excludeFromTraining;
-
-                                return Card(
-                                  child: InkWell(
-                                    onTap: () => _openPreview(item.analysisId),
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  item.species?.isNotEmpty == true
-                                                      ? item.species!
-                                                      : 'Неизвестно',
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(fontWeight: FontWeight.w800),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Ui.badge(
-                                                text: include ? 'В обучении' : 'Исключено',
-                                                color: include ? AppTheme.success : AppTheme.muted,
-                                                icon: include ? Icons.check_circle : Icons.block,
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Wrap(
-                                            spacing: 8,
-                                            runSpacing: 8,
-                                            children: [
-                                              if (item.riskCategory?.isNotEmpty == true)
-                                                Ui.badge(
-                                                  text: item.riskCategory!,
-                                                  color: AppTheme.warning,
-                                                  icon: Icons.shield,
-                                                ),
-                                              Ui.badge(
-                                                text: 'ID: ${item.analysisId.substring(0, item.analysisId.length > 10 ? 10 : item.analysisId.length)}',
-                                                color: AppTheme.primary,
-                                                icon: Icons.tag,
-                                              ),
-                                              if (item.trustScore != null)
-                                                Ui.badge(
-                                                  text: 'Trust: ${item.trustScore!.toStringAsFixed(2)}',
-                                                  color: AppTheme.primary,
-                                                  icon: Icons.verified,
-                                                ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  'Тап — предпросмотр примера',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .bodySmall
-                                                      ?.copyWith(color: AppTheme.muted),
-                                                ),
-                                              ),
-                                              Switch(
-                                                value: include,
-                                                onChanged: (v) => _toggleInclude(item, v),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (_error != null) ...[
+                    _ErrorBanner(message: _error!),
+                    const SizedBox(height: 12),
                   ],
-                ),
+
+                  _SummaryCard(
+                    total: _items.length,
+                    included: _includedCount,
+                    excluded: _excludedCount,
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (_items.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 40),
+                      child: Center(
+                        child: Text(
+                          'Пока нет подтверждённых примеров.\nСначала сделай анализ → нарисуй маску → отправь фидбек → подтверди.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    )
+                  else
+                    ..._items.map((it) => _DatasetItemCard(
+                          item: it,
+                          loadDetails: _getDetails,
+                          onToggleInclude: () => _toggleInclude(it),
+                        )),
+                ],
+              ),
+            ),
     );
   }
 }
 
-class _ErrorState extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
+class _SummaryCard extends StatelessWidget {
+  final int total;
+  final int included;
+  final int excluded;
 
-  const _ErrorState({required this.message, required this.onRetry});
+  const _SummaryCard({required this.total, required this.included, required this.excluded});
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Ui.paddedCard(
-          context,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.error_outline, color: AppTheme.danger),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: AppTheme.danger),
-                ),
-              ),
-            ],
-          ),
+    final tt = Theme.of(context).textTheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Итого в Supabase (verified): $total', style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                _Chip(label: 'В дообучение: $included', icon: Icons.check_circle_outline),
+                _Chip(label: 'Исключено: $excluded', icon: Icons.block),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Если пример «Исключён», он останется в verified, но воркер retrain_worker.py пропустит его при сборке датасета.',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: onRetry,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Повторить'),
+      ),
+    );
+  }
+}
+
+class _DatasetItemCard extends StatefulWidget {
+  final VerifiedItem item;
+  final Future<VerifiedAnalysis> Function(String analysisId) loadDetails;
+  final VoidCallback onToggleInclude;
+
+  const _DatasetItemCard({
+    required this.item,
+    required this.loadDetails,
+    required this.onToggleInclude,
+  });
+
+  @override
+  State<_DatasetItemCard> createState() => _DatasetItemCardState();
+}
+
+class _DatasetItemCardState extends State<_DatasetItemCard> {
+  bool _expanded = false;
+  bool _loading = false;
+  VerifiedAnalysis? _details;
+  String? _err;
+
+  Future<void> _toggleExpand() async {
+    setState(() {
+      _expanded = !_expanded;
+      _err = null;
+    });
+    if (!_expanded) return;
+    if (_details != null) return;
+
+    setState(() => _loading = true);
+    try {
+      final d = await widget.loadDetails(widget.item.analysisId);
+      if (!mounted) return;
+      setState(() {
+        _details = d;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _err = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final it = widget.item;
+    final excluded = it.excludeFromTraining;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        it.species ?? 'Без вида',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'ID: ${it.analysisId}',
+                        style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _Badge(
+                  text: excluded ? 'Исключён' : 'В дообучение',
+                  icon: excluded ? Icons.block : Icons.check_circle_outline,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                if (it.riskCategory != null) _Chip(label: 'Риск: ${it.riskCategory}', icon: Icons.warning_amber_rounded),
+                if (it.trustScore != null) _Chip(label: 'Trust: ${it.trustScore}', icon: Icons.verified_user_outlined),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onToggleInclude,
+                    icon: Icon(excluded ? Icons.add_circle_outline : Icons.remove_circle_outline),
+                    label: Text(excluded ? 'Вернуть в обучение' : 'Исключить'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _toggleExpand,
+                    icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                    label: Text(_expanded ? 'Свернуть' : 'Просмотр'),
+                  ),
+                ),
+              ],
+            ),
+
+            if (_expanded) ...[
+              const SizedBox(height: 12),
+              if (_loading) const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator())),
+              if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: _ErrorBanner(message: _err!)),
+              if (_details != null) _DetailsBlock(details: _details!),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailsBlock extends StatelessWidget {
+  final VerifiedAnalysis details;
+
+  const _DetailsBlock({required this.details});
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = details.meta;
+    final risk = (meta['risk'] is Map) ? (meta['risk'] as Map) : const {};
+    final trust = meta['trust_score'];
+    final height = meta['height_m'] ?? meta['height'] ?? meta['heightMeters'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _TwoImages(
+          left: details.inputImage,
+          right: details.annotatedImage,
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          children: [
+            if (height != null) _Chip(label: 'Высота: $height', icon: Icons.height),
+            if (risk['category'] != null) _Chip(label: 'Категория: ${risk['category']}', icon: Icons.shield_outlined),
+            if (trust != null) _Chip(label: 'Trust: $trust', icon: Icons.verified_outlined),
+          ],
         ),
       ],
     );
   }
 }
 
-class _PreviewSheet extends StatefulWidget {
-  final AdminService service;
-  final String analysisId;
+class _TwoImages extends StatelessWidget {
+  final Uint8List left;
+  final Uint8List right;
 
-  const _PreviewSheet({required this.service, required this.analysisId});
-
-  @override
-  State<_PreviewSheet> createState() => _PreviewSheetState();
-}
-
-class _PreviewSheetState extends State<_PreviewSheet> {
-  bool _loading = true;
-  String? _error;
-  VerifiedAnalysis? _data;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final d = await widget.service.getVerifiedAnalysis(widget.analysisId);
-      if (!mounted) return;
-      setState(() {
-        _data = d;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
-
-  Uint8List? _b64(String s) {
-    try {
-      return base64Decode(s);
-    } catch (_) {
-      return null;
-    }
-  }
+  const _TwoImages({required this.left, required this.right});
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: _loading
-            ? const SizedBox(height: 240, child: Center(child: CircularProgressIndicator()))
-            : _error != null
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ошибка: $_error',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: AppTheme.danger),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: _load,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Повторить'),
-                      ),
-                    ],
-                  )
-                : _buildContent(context),
-      ),
+    return Row(
+      children: [
+        Expanded(child: _ImageTile(bytes: left, label: 'Оригинал')),
+        const SizedBox(width: 10),
+        Expanded(child: _ImageTile(bytes: right, label: 'Аннотация')),
+      ],
     );
   }
+}
 
-  Widget _buildContent(BuildContext context) {
-    final d = _data!;
-    final inBytes = _b64(d.inputBase64);
-    final annBytes = _b64(d.annotatedBase64);
+class _ImageTile extends StatelessWidget {
+  final Uint8List bytes;
+  final String label;
 
-    String? species;
-    String? risk;
-    try {
-      species = d.meta['species']?.toString();
-      final r = d.meta['risk'];
-      if (r is Map) risk = r['category']?.toString();
-    } catch (_) {}
+  const _ImageTile({required this.bytes, required this.label});
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Ui.badge(text: 'ID', color: AppTheme.primary, icon: Icons.tag),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  d.analysisId,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+          AspectRatio(
+            aspectRatio: 1,
+            child: Image.memory(bytes, fit: BoxFit.cover),
+          ),
+          Positioned(
+            left: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.55),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              if (species?.isNotEmpty == true)
-                Ui.badge(text: species!, color: AppTheme.success, icon: Icons.park),
-              if (risk?.isNotEmpty == true)
-                Ui.badge(text: risk!, color: AppTheme.warning, icon: Icons.shield),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text('Входное фото', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          _imageBlock(inBytes),
-          const SizedBox(height: 14),
-          Text('Разметка / Annotated', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          _imageBlock(annBytes),
-          const SizedBox(height: 14),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close),
-            label: const Text('Закрыть'),
+              child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _imageBlock(Uint8List? bytes) {
-    if (bytes == null) {
-      return Container(
-        height: 160,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.border),
-        ),
-        child: const Icon(Icons.image_not_supported),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Image.memory(
-        bytes,
-        height: 180,
-        width: double.infinity,
-        fit: BoxFit.cover,
+class _Badge extends StatelessWidget {
+  final String text;
+  final IconData icon;
+
+  const _Badge({required this.text, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 6),
+          Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _Chip({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      avatar: Icon(icon, size: 18),
+      label: Text(label),
+      visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+        ],
       ),
     );
   }

@@ -33,21 +33,32 @@ TRAIN_SPLIT = float(os.getenv("YOLO_TRAIN_SPLIT", "0.8"))
 NAMES = {0: "tree"}
 
 
+def _base_url() -> str:
+    # Supabase Storage expects base URL without trailing '/'
+    if not SUPABASE_URL:
+        return ""
+    return SUPABASE_URL.rstrip("/")
+
+
 def _headers():
-    return {"Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
+    # For Storage REST API, it's safer to send both Authorization and apikey.
+    return {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
+    }
 
 
 def list_objects(prefix=""):
     # Storage REST list
-    url = f"{SUPABASE_URL}/storage/v1/object/list/{BUCKET}"
+    url = f"{_base_url()}/storage/v1/object/list/{BUCKET}"
     r = requests.post(url, headers=_headers(), json={"prefix": prefix}, timeout=60)
     r.raise_for_status()
     return r.json()
 
 
 def download(path: str) -> bytes:
-    # Storage REST download (requires service key)
-    url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{path}"
+    # Storage REST download (private buckets): /object/authenticated
+    url = f"{_base_url()}/storage/v1/object/authenticated/{BUCKET}/{path}"
     r = requests.get(url, headers=_headers(), timeout=60)
     r.raise_for_status()
     return r.content

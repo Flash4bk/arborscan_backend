@@ -180,6 +180,15 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                           'Запуск обучения берёт подтверждённые примеры из Supabase и формирует новую версию модели.',
                         ),
                         const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _requestTraining,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Запросить обучение'),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                         OutlinedButton.icon(
                           onPressed: () {
                             Navigator.of(context).push(
@@ -191,15 +200,6 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                           icon: const Icon(Icons.dataset_outlined),
                           label: const Text('Датасет для обучения'),
                           style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _requestTraining,
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Запросить обучение'),
-                          style: ElevatedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),
                           ),
                         ),
@@ -227,19 +227,15 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 12),
+            Text(title, style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
             child,
           ],
         ),
@@ -248,7 +244,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _ErrorBanner extends StatelessWidget {
+class _ErrorBanner extends StatelessWidget { extends StatelessWidget {
   final String message;
 
   const _ErrorBanner({required this.message});
@@ -258,13 +254,13 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.error.withOpacity(0.10),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withOpacity(0.25)),
+        border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.25)),
       ),
       child: Text(
         message,
-        style: const TextStyle(color: Colors.red),
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
       ),
     );
   }

@@ -180,36 +180,34 @@ class AdminService {
     }
   }
 
-  // ============================
-  // Verified dataset management
-  // ============================
+  // =====================
+  // Training dataset (verified samples)
+  // =====================
 
   Future<List<VerifiedItem>> getVerifiedList() async {
-    final r = await http.get(_u('/admin/verified-list')).timeout(const Duration(seconds: 60));
+    final r = await http.get(_u('/admin/verified-list')).timeout(const Duration(seconds: 45));
     if (r.statusCode != 200) {
       throw Exception('HTTP ${r.statusCode}: verified-list');
     }
-    final decoded = jsonDecode(r.body);
-    final raw = (decoded is Map<String, dynamic>) ? decoded['items'] : null;
-    final out = <VerifiedItem>[];
+    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
+    final raw = decoded['items'];
+    final List<VerifiedItem> out = [];
     if (raw is List) {
-      for (final e in raw) {
-        if (e is Map<String, dynamic>) out.add(VerifiedItem.fromJson(e));
+      for (final it in raw) {
+        if (it is Map<String, dynamic>) out.add(VerifiedItem.fromJson(it));
       }
     }
     return out;
   }
 
   Future<VerifiedAnalysis> getVerifiedAnalysis(String analysisId) async {
-    final r = await http.get(_u('/admin/analysis/$analysisId')).timeout(const Duration(seconds: 60));
+    final r = await http.get(_u('/admin/analysis/$analysisId')).timeout(const Duration(seconds: 90));
     if (r.statusCode != 200) {
       throw Exception('HTTP ${r.statusCode}: analysis/$analysisId');
     }
     return VerifiedAnalysis.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
   }
 
-  /// include=true  -> будет участвовать в обучении
-  /// include=false -> будет исключён (exclude_from_training=true)
   Future<void> setTrainingInclude(String analysisId, {required bool include}) async {
     final r = await http
         .post(
@@ -217,7 +215,7 @@ class AdminService {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'include': include}),
         )
-        .timeout(const Duration(seconds: 60));
+        .timeout(const Duration(seconds: 30));
     if (r.statusCode != 200) {
       throw Exception('HTTP ${r.statusCode}: set-training');
     }
@@ -226,68 +224,65 @@ class AdminService {
 
 class VerifiedItem {
   final String analysisId;
+  final bool verified;
+  final bool excludeFromTraining;
   final String? species;
   final String? riskCategory;
-  final double? trustScore;
-  final bool verified;
+  final num? trustScore;
   final String? verifiedAt;
-  final bool excludeFromTraining;
 
   const VerifiedItem({
     required this.analysisId,
     required this.verified,
     required this.excludeFromTraining,
-    this.species,
-    this.riskCategory,
-    this.trustScore,
-    this.verifiedAt,
+    required this.species,
+    required this.riskCategory,
+    required this.trustScore,
+    required this.verifiedAt,
   });
 
   factory VerifiedItem.fromJson(Map<String, dynamic> json) {
-    double? asDouble(dynamic v) {
-      if (v == null) return null;
-      if (v is num) return v.toDouble();
-      return double.tryParse(v.toString());
-    }
-
     return VerifiedItem(
       analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
-      species: json['species']?.toString(),
-      riskCategory: (json['risk_category'] ?? json['riskCategory'])?.toString(),
-      trustScore: asDouble(json['trust_score'] ?? json['trustScore']),
       verified: (json['verified'] ?? true) == true,
+      excludeFromTraining: (json['exclude_from_training'] ?? json['excludeFromTraining'] ?? false) == true,
+      species: json['species']?.toString(),
+      riskCategory: json['risk_category']?.toString() ?? json['riskCategory']?.toString(),
+      trustScore: json['trust_score'] as num?,
       verifiedAt: json['verified_at']?.toString(),
-      excludeFromTraining: (json['exclude_from_training'] ?? false) == true,
     );
   }
 }
 
 class VerifiedAnalysis {
   final String analysisId;
-  final String inputBase64;
-  final String annotatedBase64;
+  final Uint8List inputImage;
+  final Uint8List annotatedImage;
+  final Map<String, dynamic> meta;
   final Map<String, dynamic> treePred;
   final Map<String, dynamic> stickPred;
-  final Map<String, dynamic> meta;
 
   const VerifiedAnalysis({
     required this.analysisId,
-    required this.inputBase64,
-    required this.annotatedBase64,
+    required this.inputImage,
+    required this.annotatedImage,
+    required this.meta,
     required this.treePred,
     required this.stickPred,
-    required this.meta,
   });
 
   factory VerifiedAnalysis.fromJson(Map<String, dynamic> json) {
-    final images = (json['images'] is Map<String, dynamic>) ? (json['images'] as Map<String, dynamic>) : <String, dynamic>{};
+    final images = (json['images'] is Map) ? (json['images'] as Map) : const {};
+    final inputB64 = (images['input_base64'] ?? '').toString();
+    final annotatedB64 = (images['annotated_base64'] ?? '').toString();
+
     return VerifiedAnalysis(
-      analysisId: (json['analysis_id'] ?? '').toString(),
-      inputBase64: (images['input_base64'] ?? '').toString(),
-      annotatedBase64: (images['annotated_base64'] ?? '').toString(),
+      analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
+      inputImage: base64Decode(inputB64),
+      annotatedImage: base64Decode(annotatedB64),
+      meta: (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : <String, dynamic>{},
       treePred: (json['tree_pred'] is Map<String, dynamic>) ? (json['tree_pred'] as Map<String, dynamic>) : <String, dynamic>{},
       stickPred: (json['stick_pred'] is Map<String, dynamic>) ? (json['stick_pred'] as Map<String, dynamic>) : <String, dynamic>{},
-      meta: (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : <String, dynamic>{},
     );
   }
 }
