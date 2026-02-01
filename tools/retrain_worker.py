@@ -159,6 +159,9 @@ def discover_verified_samples(
             continue
         if meta.get("used_for_training", False):
             continue
+        # Ручное исключение из дообучения (управляется из приложения)
+        if meta.get("exclude_from_training", False):
+            continue
 
         results.append((aid, meta))
         if max_samples is not None and len(results) >= max_samples:

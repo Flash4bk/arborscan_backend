@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'admin_service.dart';
+import 'training_dataset_page.dart';
 
 class AdminPanelPage extends StatefulWidget {
   final String baseUrl;
@@ -177,6 +178,21 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                       children: [
                         const Text(
                           'Запуск обучения берёт подтверждённые примеры из Supabase и формирует новую версию модели.',
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TrainingDatasetPage(service: _service),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.dataset_outlined),
+                          label: const Text('Датасет для обучения'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton.icon(

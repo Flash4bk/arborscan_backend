@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import 'app_theme.dart';
 import 'mask_drawing_page.dart';
 import 'stick_page.dart';
-import 'package:http/http.dart' as http;
 
 class FeedbackPage extends StatefulWidget {
   final String analysisId;
@@ -32,34 +34,16 @@ class FeedbackPage extends StatefulWidget {
 }
 
 class _FeedbackPageState extends State<FeedbackPage> {
-  // Статусы того, были ли внесены правки
   bool _treeOk = true;
   bool _stickOk = true;
   bool _useForTraining = true;
   bool _isSending = false;
 
-  void _popWithResult(Map<String, dynamic> result) {
-    if (!mounted) return;
-    // Чтобы не ловить navigator "_debugLocked" при pop во время build.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final nav = Navigator.of(context);
-      if (nav.canPop()) {
-        nav.pop(result);
-      }
-    });
-  }
-
-  // Некоторые экраны открывают FeedbackPage как `push<Map<String, dynamic>>()`.
-  // Поэтому этот экран должен возвращать Map, а не bool.
-
-  // Данные для редактирования
   late String _selectedSpecies;
   late TextEditingController _heightController;
   late TextEditingController _crownController;
   late TextEditingController _trunkController;
-  
-  // Данные после правок в других экранах
+
   String? _userMaskBase64;
   double? _userScale;
 
@@ -83,10 +67,78 @@ class _FeedbackPageState extends State<FeedbackPage> {
     super.dispose();
   }
 
-  // --- ЛОГИКА ОТПРАВКИ ---
+  bool _checkParamsOk() {
+    final h = double.tryParse(_heightController.text);
+    final c = double.tryParse(_crownController.text);
+    final t = double.tryParse(_trunkController.text);
+
+    final okH = (h == null && widget.heightM == null) ||
+        (h != null && widget.heightM != null && (h - widget.heightM!).abs() < 1e-6);
+    final okC = (c == null && widget.crownWidthM == null) ||
+        (c != null && widget.crownWidthM != null && (c - widget.crownWidthM!).abs() < 1e-6);
+    final okT = (t == null && widget.trunkDiameterM == null) ||
+        (t != null && widget.trunkDiameterM != null && (t - widget.trunkDiameterM!).abs() < 1e-6);
+
+    final okS = (_userScale == null && widget.scalePxToM == null) ||
+        (_userScale != null &&
+            widget.scalePxToM != null &&
+            (_userScale! - widget.scalePxToM!).abs() < 1e-9);
+
+    return okH && okC && okT && okS;
+  }
+
+  Future<void> _openMaskEditor() async {
+    if (_isSending) return;
+
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MaskDrawingPage(
+          originalImageBase64: widget.originalImageBase64,
+          aiMaskBase64: widget.annotatedImageBase64,
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final mask = (result['mask_b64'] ?? result['mask_png_base64']) as String?;
+    if (mask != null && mask.isNotEmpty) {
+      setState(() {
+        _userMaskBase64 = mask;
+        _treeOk = false;
+      });
+    }
+  }
+
+  Future<void> _openStickEditor() async {
+    if (_isSending) return;
+
+    // StickPage требует currentScalePxToM (double, required).
+    final current = _userScale ?? widget.scalePxToM ?? 0.0;
+
+    final scale = await Navigator.push<double>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StickPage(
+          originalImageBase64: widget.originalImageBase64,
+          currentScalePxToM: current,
+        ),
+      ),
+    );
+
+    if (scale == null) return;
+
+    setState(() {
+      _userScale = scale;
+      _stickOk = false;
+    });
+  }
+
   Future<void> _sendFeedback() async {
+    if (_isSending) return;
     setState(() => _isSending = true);
-    
+
     final body = {
       "analysis_id": widget.analysisId,
       "tree_ok": _treeOk,
@@ -105,196 +157,256 @@ class _FeedbackPageState extends State<FeedbackPage> {
     };
 
     try {
-      // Здесь должен быть твой URL из config
       final response = await http.post(
         Uri.parse('https://arborscanbackend-production.up.railway.app/feedback'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );
 
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Данные успешно подтверждены'), backgroundColor: Colors.green),
-          );
-          _popWithResult({
-            "ok": true,
-            "analysisId": widget.analysisId,
-            "useForTraining": _useForTraining,
-            "treeOk": _treeOk,
-            "stickOk": _stickOk,
-          });
-        }
-      } else {
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-    } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+          const SnackBar(content: Text("Данные успешно подтверждены")),
+        );
+        Navigator.of(context).maybePop({"ok": true});
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Ошибка отправки: ${response.statusCode}")),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Ошибка сети: $e")),
+      );
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
   }
 
-  bool _checkParamsOk() {
-    return _heightController.text == widget.heightM?.toStringAsFixed(2) &&
-           _crownController.text == widget.crownWidthM?.toStringAsFixed(2) &&
-           _trunkController.text == widget.trunkDiameterM?.toStringAsFixed(2);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final paramsOk = _checkParamsOk();
+    final speciesOk = _selectedSpecies == widget.species;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Подтверждение'),
         actions: [
-          _isSending 
-            ? const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2)))
-            : IconButton(
-                icon: const Icon(Icons.done_all, color: Colors.green, size: 28),
-                onPressed: _sendFeedback,
-              ),
+          if (_isSending)
+            const Padding(
+              padding: EdgeInsets.all(14),
+              child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            IconButton(
+              tooltip: 'Отправить',
+              icon: const Icon(Icons.done_all),
+              onPressed: _sendFeedback,
+            ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _header("Проверка инструментов"),
-            Row(
+        children: [
+          Ui.paddedCard(
+            context,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _actionTile(
-                  "Маска", 
-                  Icons.gesture, 
-                  _treeOk, 
-                  () async {
-                    final res = await Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => MaskDrawingPage(
-                        originalImageBase64: widget.originalImageBase64,
-                        aiMaskBase64: widget.annotatedImageBase64,
-                      ),
-                    ));
-                    if (res != null && res is Map) {
-                      setState(() {
-                        _treeOk = false;
-                        _userMaskBase64 = (res['mask_b64'] ?? res['mask_png_base64']) as String?;
-                      });
-                    }
-                  }
-                ),
+                const Icon(Icons.verified_outlined),
                 const SizedBox(width: 12),
-                _actionTile(
-                  "Масштаб", 
-                  Icons.straighten, 
-                  _stickOk, 
-                  () async {
-                    final res = await Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => StickPage(
-                        originalImageBase64: widget.originalImageBase64,
-                        currentScalePxToM: _userScale ?? 0.0,
-                      ),
-                    ));
-                    if (res != null && res is double) {
-                      setState(() {
-                        _stickOk = false;
-                        _userScale = res;
-                      });
-                    }
-                  }
+                Expanded(
+                  child: Text(
+                    'Проверьте результат анализа и, при необходимости, внесите корректировки. '
+                    'После отправки данные могут быть использованы для улучшения модели.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.muted),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            _header("Вид дерева"),
-            Wrap(
-              spacing: 8,
-              children: _popularSpecies.map((s) => ChoiceChip(
-                label: Text(s),
-                selected: _selectedSpecies == s,
-                onSelected: (val) => setState(() => _selectedSpecies = s),
-              )).toList(),
+          ),
+
+          Ui.sectionTitle(context, 'Инструменты'),
+          Ui.paddedCard(
+            context,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _ActionCard(
+                    title: 'Маска',
+                    icon: Icons.auto_fix_high,
+                    statusOk: _treeOk,
+                    onTap: _openMaskEditor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ActionCard(
+                    title: 'Масштаб',
+                    icon: Icons.straighten,
+                    statusOk: _stickOk,
+                    onTap: _openStickEditor,
+                  ),
+                ),
+              ],
             ),
+          ),
+
+          Ui.sectionTitle(context, 'Вид дерева'),
+          Ui.paddedCard(
+            context,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Ui.badge(
+                      text: speciesOk ? 'Ок' : 'Изменено',
+                      color: speciesOk ? AppTheme.success : AppTheme.warning,
+                      icon: speciesOk ? Icons.check_circle : Icons.edit,
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Исходно: ${widget.species}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  value: _selectedSpecies,
+                  isExpanded: true,
+                  items: _popularSpecies
+                      .map((s) => DropdownMenuItem<String>(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _selectedSpecies = v ?? _selectedSpecies),
+                  decoration: const InputDecoration(labelText: 'Вид'),
+                ),
+              ],
+            ),
+          ),
+
+          Ui.sectionTitle(context, 'Параметры'),
+          Ui.paddedCard(
+            context,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Ui.badge(
+                      text: paramsOk ? 'Ок' : 'Изменено',
+                      color: paramsOk ? AppTheme.success : AppTheme.warning,
+                      icon: paramsOk ? Icons.check_circle : Icons.tune,
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Масштаб: ${_userScale?.toStringAsFixed(6) ?? '—'}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _numField(controller: _heightController, label: 'Высота, м'),
+                const SizedBox(height: 10),
+                _numField(controller: _crownController, label: 'Ширина кроны, м'),
+                const SizedBox(height: 10),
+                _numField(controller: _trunkController, label: 'Диаметр ствола, м'),
+              ],
+            ),
+          ),
+
+          Ui.sectionTitle(context, 'Датасет для обучения'),
+          Ui.paddedCard(
+            context,
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Использовать для обучения'),
+              subtitle: Text(
+                'Если выключить, данные будут сохранены, но не попадут в обучающий набор.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+              ),
+              value: _useForTraining,
+              onChanged: _isSending ? null : (v) => setState(() => _useForTraining = v),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          ElevatedButton.icon(
+            onPressed: _isSending ? null : _sendFeedback,
+            icon: const Icon(Icons.done_all),
+            label: const Text('Подтвердить и отправить'),
+            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: _isSending ? null : () => Navigator.of(context).maybePop(),
+            child: const Text('Отмена'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _numField({required TextEditingController controller, required String label}) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: false),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: '—',
+      ),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool statusOk;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.title,
+    required this.icon,
+    required this.statusOk,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = statusOk ? AppTheme.success : AppTheme.warning;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.25)),
+          color: color.withOpacity(0.07),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color),
             const SizedBox(height: 8),
-            TextField(
-              decoration: const InputDecoration(
-                hintText: "Если нет в списке, введите вручную",
-                prefixIcon: Icon(Icons.edit_outlined),
-              ),
-              onChanged: (v) => setState(() => _selectedSpecies = v),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 24),
-            _header("Физические параметры"),
-            _inputField("Высота (м)", _heightController, Icons.height),
-            _inputField("Ширина кроны (м)", _crownController, Icons.park_outlined),
-            _inputField("Диаметр ствола (м)", _trunkController, Icons.radio_button_unchecked),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: SwitchListTile(
-                title: const Text("В датасет для обучения"),
-                subtitle: const Text("Помогает AI лучше распознавать деревья"),
-                value: _useForTraining,
-                onChanged: (v) => setState(() => _useForTraining = v),
-              ),
+            const SizedBox(height: 4),
+            Text(
+              statusOk ? 'Ок' : 'Изменено',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
-            const SizedBox(height: 40),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _header(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-    );
-  }
-
-  Widget _actionTile(String title, IconData icon, bool isOk, VoidCallback onTap) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            border: Border.all(color: isOk ? Colors.green.withOpacity(0.3) : Colors.orange),
-            borderRadius: BorderRadius.circular(12),
-            color: isOk ? Colors.green.withOpacity(0.02) : Colors.orange.withOpacity(0.05),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: isOk ? Colors.green : Colors.orange),
-              const SizedBox(height: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(isOk ? "Ок" : "Изменено", style: TextStyle(fontSize: 11, color: isOk ? Colors.green : Colors.orange)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _inputField(String label, TextEditingController controller, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, size: 20),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         ),
       ),
     );

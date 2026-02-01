@@ -179,4 +179,115 @@ class AdminService {
       throw Exception('HTTP ${r.statusCode}: request-retrain');
     }
   }
+
+  // ============================
+  // Verified dataset management
+  // ============================
+
+  Future<List<VerifiedItem>> getVerifiedList() async {
+    final r = await http.get(_u('/admin/verified-list')).timeout(const Duration(seconds: 60));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: verified-list');
+    }
+    final decoded = jsonDecode(r.body);
+    final raw = (decoded is Map<String, dynamic>) ? decoded['items'] : null;
+    final out = <VerifiedItem>[];
+    if (raw is List) {
+      for (final e in raw) {
+        if (e is Map<String, dynamic>) out.add(VerifiedItem.fromJson(e));
+      }
+    }
+    return out;
+  }
+
+  Future<VerifiedAnalysis> getVerifiedAnalysis(String analysisId) async {
+    final r = await http.get(_u('/admin/analysis/$analysisId')).timeout(const Duration(seconds: 60));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: analysis/$analysisId');
+    }
+    return VerifiedAnalysis.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+  }
+
+  /// include=true  -> будет участвовать в обучении
+  /// include=false -> будет исключён (exclude_from_training=true)
+  Future<void> setTrainingInclude(String analysisId, {required bool include}) async {
+    final r = await http
+        .post(
+          _u('/admin/verified/$analysisId/set-training'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'include': include}),
+        )
+        .timeout(const Duration(seconds: 60));
+    if (r.statusCode != 200) {
+      throw Exception('HTTP ${r.statusCode}: set-training');
+    }
+  }
+}
+
+class VerifiedItem {
+  final String analysisId;
+  final String? species;
+  final String? riskCategory;
+  final double? trustScore;
+  final bool verified;
+  final String? verifiedAt;
+  final bool excludeFromTraining;
+
+  const VerifiedItem({
+    required this.analysisId,
+    required this.verified,
+    required this.excludeFromTraining,
+    this.species,
+    this.riskCategory,
+    this.trustScore,
+    this.verifiedAt,
+  });
+
+  factory VerifiedItem.fromJson(Map<String, dynamic> json) {
+    double? asDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString());
+    }
+
+    return VerifiedItem(
+      analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
+      species: json['species']?.toString(),
+      riskCategory: (json['risk_category'] ?? json['riskCategory'])?.toString(),
+      trustScore: asDouble(json['trust_score'] ?? json['trustScore']),
+      verified: (json['verified'] ?? true) == true,
+      verifiedAt: json['verified_at']?.toString(),
+      excludeFromTraining: (json['exclude_from_training'] ?? false) == true,
+    );
+  }
+}
+
+class VerifiedAnalysis {
+  final String analysisId;
+  final String inputBase64;
+  final String annotatedBase64;
+  final Map<String, dynamic> treePred;
+  final Map<String, dynamic> stickPred;
+  final Map<String, dynamic> meta;
+
+  const VerifiedAnalysis({
+    required this.analysisId,
+    required this.inputBase64,
+    required this.annotatedBase64,
+    required this.treePred,
+    required this.stickPred,
+    required this.meta,
+  });
+
+  factory VerifiedAnalysis.fromJson(Map<String, dynamic> json) {
+    final images = (json['images'] is Map<String, dynamic>) ? (json['images'] as Map<String, dynamic>) : <String, dynamic>{};
+    return VerifiedAnalysis(
+      analysisId: (json['analysis_id'] ?? '').toString(),
+      inputBase64: (images['input_base64'] ?? '').toString(),
+      annotatedBase64: (images['annotated_base64'] ?? '').toString(),
+      treePred: (json['tree_pred'] is Map<String, dynamic>) ? (json['tree_pred'] as Map<String, dynamic>) : <String, dynamic>{},
+      stickPred: (json['stick_pred'] is Map<String, dynamic>) ? (json['stick_pred'] as Map<String, dynamic>) : <String, dynamic>{},
+      meta: (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : <String, dynamic>{},
+    );
+  }
 }
