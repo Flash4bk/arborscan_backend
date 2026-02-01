@@ -244,7 +244,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _ErrorBanner extends StatelessWidget { extends StatelessWidget {
+class _ErrorBanner extends StatelessWidget {
   final String message;
 
   const _ErrorBanner({required this.message});
