@@ -34,6 +34,8 @@ class FeedbackPage extends StatefulWidget {
 }
 
 class _FeedbackPageState extends State<FeedbackPage> {
+  static const String _apiBase = 'https://arborscanbackend-production.up.railway.app';
+
   bool _treeOk = true;
   bool _stickOk = true;
   bool _useForTraining = true;
@@ -46,6 +48,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
   String? _userMaskBase64;
   double? _userScale;
+  double? _baseScale;
 
   final List<String> _popularSpecies = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"];
 
@@ -57,6 +60,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
     _crownController = TextEditingController(text: widget.crownWidthM?.toStringAsFixed(2) ?? '');
     _trunkController = TextEditingController(text: widget.trunkDiameterM?.toStringAsFixed(2) ?? '');
     _userScale = widget.scalePxToM;
+    _baseScale = widget.scalePxToM;
   }
 
   @override
@@ -87,7 +91,28 @@ class _FeedbackPageState extends State<FeedbackPage> {
     return okH && okC && okT && okS;
   }
 
-  Future<void> _openMaskEditor() async {
+  
+  void _rescaleParams({required double oldScale, required double newScale}) {
+    // scale_px_to_m = meters per pixel. Physical sizes are proportional to this scale.
+    if (oldScale <= 0 || newScale <= 0) return;
+    final ratio = newScale / oldScale;
+    if (ratio.isNaN || ratio.isInfinite || (ratio - 1.0).abs() < 1e-12) return;
+
+    void bump(TextEditingController c) {
+      final raw = c.text.trim();
+      if (raw.isEmpty) return;
+      final v = double.tryParse(raw.replaceAll(',', '.'));
+      if (v == null) return;
+      final nv = v * ratio;
+      c.text = nv.toStringAsFixed(2);
+    }
+
+    bump(_heightController);
+    bump(_crownController);
+    bump(_trunkController);
+  }
+
+Future<void> _openMaskEditor() async {
     if (_isSending) return;
 
     final result = await Navigator.push<Map<String, dynamic>>(
@@ -129,10 +154,32 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
     if (scale == null) return;
 
+    final oldScale = current;
+    final newScale = scale;
+
     setState(() {
-      _userScale = scale;
+      // Автоматически пересчитываем метрики, если пользователь изменил масштаб палки.
+      _rescaleParams(oldScale: oldScale, newScale: newScale);
+      _userScale = newScale;
       _stickOk = false;
     });
+  }
+
+
+  Future<http.Response> _postFeedback(Map<String, dynamic> body) async {
+    Future<http.Response> postTo(String path) {
+      return http.post(
+        Uri.parse('$_apiBase$path'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+    }
+
+    var res = await postTo('/feedback');
+    if (res.statusCode == 404) {
+      res = await postTo('/api/feedback');
+    }
+    return res;
   }
 
   Future<void> _sendFeedback() async {
@@ -157,11 +204,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
     };
 
     try {
-      final response = await http.post(
-        Uri.parse('https://arborscanbackend-production.up.railway.app/feedback'),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      );
+      final response = await _postFeedback(body);
 
       if (!mounted) return;
 

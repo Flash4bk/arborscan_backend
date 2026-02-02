@@ -1081,6 +1081,7 @@ async def analyze_tree(file: UploadFile = File(...)):
 
 
 @app.post("/feedback")
+@app.post("/api/feedback")
 def send_feedback(payload: dict = Body(...)):
     """
     Получаем подтверждение/исправление от пользователя и,
