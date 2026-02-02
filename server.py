@@ -755,6 +755,15 @@ class TrustedExample(BaseModel):
 
 app = FastAPI(title="ArborScan API v2.0")
 
+@app.on_event("startup")
+async def _log_routes_on_startup():
+    try:
+        fb = [r.path for r in app.router.routes if getattr(r, "path", "").endswith("feedback") or "feedback" in getattr(r, "path", "")]
+        print(f"[*] Registered feedback routes: {sorted(set(fb))}")
+    except Exception as e:
+        print(f"[!] Failed to list routes: {e}")
+
+
 # --- Training events (in-memory) ---
 # Stored in a small ring buffer so the Admin Panel can show a live-ish log.
 TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
