@@ -255,6 +255,43 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 
 
 
+def ensure_analysis_cache(analysis_id: str) -> Path:
+    """Ensure local cache directory for analysis exists.
+    If missing (e.g., request routed to another replica), try to reconstruct it
+    by downloading artifacts from the RAW bucket where /analyze-tree stores them.
+    """
+    tmp_dir = Path("/tmp") / analysis_id
+    if tmp_dir.exists():
+        return tmp_dir
+
+    # Try to restore from Supabase RAW bucket (written by /analyze-tree)
+    try:
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        to_fetch = {
+            "input.jpg": tmp_dir / "input.jpg",
+            "annotated.jpg": tmp_dir / "annotated.jpg",
+            "meta_auto.json": tmp_dir / "meta_auto.json",
+            "tree_pred.json": tmp_dir / "tree_pred.json",
+            "stick_pred.json": tmp_dir / "stick_pred.json",
+        }
+        for remote_name, local_path in to_fetch.items():
+            remote_path = f"{analysis_id}/{remote_name}"
+            try:
+                data = supabase_download_bytes(SUPABASE_BUCKET_RAW, remote_path)
+            except Exception:
+                # Some files (e.g., annotated.jpg) can be absent, keep going
+                continue
+            local_path.write_bytes(data)
+
+        # Validate minimal set
+        if not (tmp_dir / "meta_auto.json").exists() or not (tmp_dir / "tree_pred.json").exists():
+            # Incomplete restore -> remove and report missing
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        return tmp_dir
+    except Exception:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return tmp_dir
+
 # ---------------------------------------------------------
 # Model hot-swap (tree model) using training_state.active_model_version
 # Models are stored in Supabase Storage bucket: "models" as model_v{N}.pt
@@ -755,6 +792,15 @@ class TrustedExample(BaseModel):
 
 app = FastAPI(title="ArborScan API v2.0")
 
+@app.on_event("startup")
+async def _log_routes_on_startup():
+    try:
+        fb = [r.path for r in app.router.routes if getattr(r, "path", "").endswith("feedback") or "feedback" in getattr(r, "path", "")]
+        print(f"[*] Registered feedback routes: {sorted(set(fb))}")
+    except Exception as e:
+        print(f"[!] Failed to list routes: {e}")
+
+
 # --- Training events (in-memory) ---
 # Stored in a small ring buffer so the Admin Panel can show a live-ish log.
 TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
@@ -1081,6 +1127,7 @@ async def analyze_tree(file: UploadFile = File(...)):
 
 
 @app.post("/feedback")
+@app.post("/api/feedback")
 def send_feedback(payload: dict = Body(...)):
     """
     Получаем подтверждение/исправление от пользователя и,
@@ -1116,15 +1163,38 @@ def send_feedback(payload: dict = Body(...)):
     correct_species = payload.get('correct_species') or payload.get('correctSpecies')
     correct_tree_mask = payload.get('correct_tree_mask') or payload.get('correctTreeMask')
     correct_stick_mask = payload.get('correct_stick_mask') or payload.get('correctStickMask')
-    corrected_height_m = payload.get('corrected_height_m') or payload.get('correctedHeightM')
-    corrected_crown_width_m = payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM')
-    corrected_trunk_diameter_m = payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM')
+
+    def _f(val):
+        """Best-effort float parsing for user-corrected numeric fields."""
+        if val is None:
+            return None
+        if isinstance(val, (int, float)):
+            return float(val)
+        if isinstance(val, str):
+            s = val.strip().replace(',', '.')
+            if not s or s.lower() in ('null', 'none', 'nan'):
+                return None
+            try:
+                return float(s)
+            except Exception:
+                return None
+        return None
+
+    corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
+    corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
+    corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
+    corrected_scale_px_to_m = _f(
+        payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
+        payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
+        payload.get('scale_px_to_m') or payload.get('scalePxToM') or
+        payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
+    )
     user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
 
-    tmp_dir = Path("/tmp") / analysis_id
+    tmp_dir = ensure_analysis_cache(analysis_id)
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
@@ -1405,7 +1475,6 @@ def admin_verified_list():
                 "trust_score": meta.get("trust_score"),
                 "verified": meta.get("verified", True),
                 "verified_at": meta.get("verified_at"),
-                "exclude_from_training": meta.get("exclude_from_training", False),
             })
         except Exception:
             # если meta не найден или битый — просто пропускаем
@@ -1464,48 +1533,6 @@ def admin_get_analysis(analysis_id: str):
         "stick_pred": stick_pred,
         "meta": meta,
     }
-
-
-@app.post("/admin/verified/{analysis_id}/set-training")
-def admin_set_training_include(analysis_id: str, payload: dict = Body(...)):
-    """
-    Включить/исключить verified пример из дообучения.
-
-    Мы НЕ удаляем объект из Storage, а меняем флаг в meta_verified.json:
-      - include: true  -> exclude_from_training = False
-      - include: false -> exclude_from_training = True
-    """
-    include = payload.get("include", True)
-    include = bool(include)
-
-    try:
-        meta_bytes = supabase_download_bytes(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/meta_verified.json",
-        )
-        meta = json.loads(meta_bytes)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=f"meta_verified.json not found: {e}")
-
-    meta["exclude_from_training"] = (not include)
-    meta["updated_at"] = datetime.utcnow().isoformat()
-
-    try:
-        supabase_upload_json(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/meta_verified.json",
-            meta,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to update meta_verified.json: {e}")
-
-    return {
-        "status": "ok",
-        "analysis_id": analysis_id,
-        "include": include,
-        "exclude_from_training": (not include),
-    }
-
 
 # =============================================
 # DATASET COLLECTION ENDPOINT (for training from app)
