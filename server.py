@@ -1133,24 +1133,14 @@ def send_feedback(payload: dict = Body(...)):
                 return None
         return None
 
-    corrected_height_m = _f(
-        payload.get('corrected_height_m') or payload.get('correctedHeightM') or
-        payload.get('height_m_corrected') or payload.get('heightMCorrected')
-    )
-    corrected_crown_width_m = _f(
-        payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM') or
-        payload.get('crown_width_m_corrected') or payload.get('crownWidthMCorrected')
-    )
-    corrected_trunk_diameter_m = _f(
-        payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM') or
-        payload.get('trunk_diameter_m_corrected') or payload.get('trunkDiameterMCorrected')
-    )
+    corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
+    corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
+    corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
     corrected_scale_px_to_m = _f(
         payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
         payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
         payload.get('scale_px_to_m') or payload.get('scalePxToM') or
         payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
-    )
     )
     user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
 
