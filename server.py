@@ -1459,6 +1459,52 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
+# -----------------------------
+# Admin: include/exclude sample from training
+# -----------------------------
+class SetTrainingRequest(BaseModel):
+    include_in_training: Optional[bool] = None
+    exclude_from_training: Optional[bool] = None
+
+@app.post("/admin/verified/{analysis_id}/set-training")
+def admin_set_training_flag(analysis_id: str, body: SetTrainingRequest = Body(...)):
+    """Toggle whether a verified sample should be used for training.
+
+    Stores flag in arborscan-verified/<analysis_id>/meta_verified.json as `exclude_from_training`.
+    Worker (`retrain_worker.py`) already respects this field.
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=500, detail="Supabase is not configured")
+
+    # Determine desired exclude flag
+    if body.exclude_from_training is not None:
+        exclude = bool(body.exclude_from_training)
+    elif body.include_in_training is not None:
+        exclude = not bool(body.include_in_training)
+    else:
+        raise HTTPException(status_code=400, detail="include_in_training or exclude_from_training required")
+
+    meta_key = f"{analysis_id}/meta_verified.json"
+
+    # Load existing meta (if any)
+    meta: Dict[str, Any] = {}
+    try:
+        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_key)
+        if raw:
+            meta = json.loads(raw.decode("utf-8"))
+    except Exception:
+        meta = {}
+
+    meta["exclude_from_training"] = exclude
+    meta["updated_at"] = datetime.utcnow().isoformat() + "Z"
+
+    try:
+        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_key, meta, content_type="application/json")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update meta_verified.json: {e}")
+
+    return {"analysis_id": analysis_id, "exclude_from_training": exclude}
+
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
