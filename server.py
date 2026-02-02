@@ -13,7 +13,7 @@ from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException , Body
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
@@ -1463,118 +1463,56 @@ def admin_verified_list():
 # Admin: include/exclude sample from training
 # -----------------------------
 class SetTrainingRequest(BaseModel):
-    """Backward-compatible schema (kept for docs).
-
-    The mobile app evolved over time and may send different key names. The handler below
-    accepts *any* JSON object and also supports query params.
-    """
-
     include_in_training: Optional[bool] = None
     exclude_from_training: Optional[bool] = None
 
-
 @app.post("/admin/verified/{analysis_id}/set-training")
-def admin_set_training_flag(
-    analysis_id: str,
-    body: Optional[Dict[str, Any]] = Body(default=None),
-    include_in_training: Optional[bool] = Query(default=None),
-    exclude_from_training: Optional[bool] = Query(default=None),
-):
-    """Include/exclude a verified sample from future training.
-
-    Persists the decision in arborscan-verified/<analysis_id>/meta_verified.json under
-    `exclude_from_training` (bool). The retrain worker already respects this field.
-
-    Accepted inputs (any of these will work):
-    - JSON: {"exclude_from_training": true}
-    - JSON: {"include_in_training": false}
-    - JSON: {"use_for_training": false} / {"used_for_training": false}
-    - JSON: {"exclude": true} / {"include": true} / {"enabled": false}
-    - Query: ?exclude_from_training=true  or  ?include_in_training=false
-    - Empty body: toggles current value
+def admin_set_training_flag(analysis_id: str, req: SetTrainingRequest):
     """
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise HTTPException(status_code=500, detail="Supabase is not configured")
+    Включить/исключить сэмпл из обучения (для admin UI).
 
-    def _pick_bool(d: Dict[str, Any], keys: List[str]) -> Optional[bool]:
-        for k in keys:
-            if k in d and d[k] is not None:
-                v = d[k]
-                if isinstance(v, bool):
-                    return v
-                if isinstance(v, (int, float)):
-                    return bool(v)
-                if isinstance(v, str):
-                    s = v.strip().lower()
-                    if s in {"true", "1", "yes", "y", "on"}:
-                        return True
-                    if s in {"false", "0", "no", "n", "off"}:
-                        return False
-        return None
+    ВАЖНО: старые записи могли не иметь meta_verified.json. В этом случае
+    создаём метаданные "на лету" и сохраняем.
+    """
+    meta_key_candidates = [
+        f"{analysis_id}/meta_verified.json",
+        f"{analysis_id}/meta.json",
+        f"{analysis_id}/analysis.json",
+    ]
 
-    # Load existing meta (if any) early (needed for toggle-default)
-    meta_key = f"{analysis_id}/meta_verified.json"
-    meta: Dict[str, Any] = {}
-    try:
-        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_key)
-        if raw:
-            meta = json.loads(raw.decode("utf-8"))
-    except Exception:
-        meta = {}
-
-    # Determine desired exclude flag (query params take precedence)
-    exclude: Optional[bool] = None
-    if exclude_from_training is not None:
-        exclude = bool(exclude_from_training)
-    elif include_in_training is not None:
-        exclude = not bool(include_in_training)
-    else:
-        payload = body if isinstance(body, dict) else {}
-        ex = _pick_bool(
-            payload,
-            [
-                "exclude_from_training",
-                "exclude",
-                "excluded",
-                "exclude_training",
-                "disable_training",
-                "disabled",
-            ],
-        )
-        inc = _pick_bool(
-            payload,
-            [
-                "include_in_training",
-                "include",
-                "included",
-                "use_for_training",
-                "used_for_training",
-                "enable_training",
-                "enabled",
-            ],
-        )
-        if ex is not None:
-            exclude = bool(ex)
-        elif inc is not None:
-            exclude = not bool(inc)
-        else:
-            # If app sends something like {"value": false} treat as include flag
-            val = _pick_bool(payload, ["value", "flag", "train", "training"])
-            if val is not None:
-                exclude = not bool(val)
-            else:
-                # Toggle when no explicit value provided
-                exclude = not bool(meta.get("exclude_from_training", False))
-
-    meta["exclude_from_training"] = exclude
-    meta["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    def _try_load_meta() -> tuple[dict, str]:
+        last_err = None
+        for key in meta_key_candidates:
+            try:
+                raw = supabase_download_bytes(VERIFIED_BUCKET, key)
+                meta = json.loads(raw.decode("utf-8"))
+                if isinstance(meta, dict):
+                    return meta, key
+            except Exception as e:
+                last_err = e
+                # если это "not found" — пробуем следующий ключ
+                if "404" in str(e) or "Not Found" in str(e) or "not found" in str(e).lower():
+                    continue
+        # ничего не нашли — создаём базовое
+        base = {"analysis_id": analysis_id}
+        return base, meta_key_candidates[0]
 
     try:
-        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_key, meta, content_type="application/json")
+        meta, meta_key = _try_load_meta()
+        meta["include_in_training"] = bool(req.include_in_training)
+
+        # для совместимости с возможными старыми полями
+        meta["used_for_training"] = bool(meta.get("used_for_training", False))
+        meta["updated_at"] = datetime.utcnow().isoformat() + "Z"
+
+        supabase_upload_json(VERIFIED_BUCKET, meta_key, meta)
+
+        return {"ok": True, "analysis_id": analysis_id, "include_in_training": meta["include_in_training"], "meta_key": meta_key}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update meta_verified.json: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update training flag: {e}")
 
-    return {"analysis_id": analysis_id, "exclude_from_training": exclude}
 
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
