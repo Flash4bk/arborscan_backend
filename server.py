@@ -1116,9 +1116,42 @@ def send_feedback(payload: dict = Body(...)):
     correct_species = payload.get('correct_species') or payload.get('correctSpecies')
     correct_tree_mask = payload.get('correct_tree_mask') or payload.get('correctTreeMask')
     correct_stick_mask = payload.get('correct_stick_mask') or payload.get('correctStickMask')
-    corrected_height_m = payload.get('corrected_height_m') or payload.get('correctedHeightM')
-    corrected_crown_width_m = payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM')
-    corrected_trunk_diameter_m = payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM')
+
+    def _f(val):
+        """Best-effort float parsing for user-corrected numeric fields."""
+        if val is None:
+            return None
+        if isinstance(val, (int, float)):
+            return float(val)
+        if isinstance(val, str):
+            s = val.strip().replace(',', '.')
+            if not s or s.lower() in ('null', 'none', 'nan'):
+                return None
+            try:
+                return float(s)
+            except Exception:
+                return None
+        return None
+
+    corrected_height_m = _f(
+        payload.get('corrected_height_m') or payload.get('correctedHeightM') or
+        payload.get('height_m_corrected') or payload.get('heightMCorrected')
+    )
+    corrected_crown_width_m = _f(
+        payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM') or
+        payload.get('crown_width_m_corrected') or payload.get('crownWidthMCorrected')
+    )
+    corrected_trunk_diameter_m = _f(
+        payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM') or
+        payload.get('trunk_diameter_m_corrected') or payload.get('trunkDiameterMCorrected')
+    )
+    corrected_scale_px_to_m = _f(
+        payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
+        payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
+        payload.get('scale_px_to_m') or payload.get('scalePxToM') or
+        payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
+    )
+    )
     user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
@@ -1405,7 +1438,6 @@ def admin_verified_list():
                 "trust_score": meta.get("trust_score"),
                 "verified": meta.get("verified", True),
                 "verified_at": meta.get("verified_at"),
-                "exclude_from_training": meta.get("exclude_from_training", False),
             })
         except Exception:
             # если meta не найден или битый — просто пропускаем
@@ -1464,48 +1496,6 @@ def admin_get_analysis(analysis_id: str):
         "stick_pred": stick_pred,
         "meta": meta,
     }
-
-
-@app.post("/admin/verified/{analysis_id}/set-training")
-def admin_set_training_include(analysis_id: str, payload: dict = Body(...)):
-    """
-    Включить/исключить verified пример из дообучения.
-
-    Мы НЕ удаляем объект из Storage, а меняем флаг в meta_verified.json:
-      - include: true  -> exclude_from_training = False
-      - include: false -> exclude_from_training = True
-    """
-    include = payload.get("include", True)
-    include = bool(include)
-
-    try:
-        meta_bytes = supabase_download_bytes(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/meta_verified.json",
-        )
-        meta = json.loads(meta_bytes)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=f"meta_verified.json not found: {e}")
-
-    meta["exclude_from_training"] = (not include)
-    meta["updated_at"] = datetime.utcnow().isoformat()
-
-    try:
-        supabase_upload_json(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/meta_verified.json",
-            meta,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"failed to update meta_verified.json: {e}")
-
-    return {
-        "status": "ok",
-        "analysis_id": analysis_id,
-        "include": include,
-        "exclude_from_training": (not include),
-    }
-
 
 # =============================================
 # DATASET COLLECTION ENDPOINT (for training from app)

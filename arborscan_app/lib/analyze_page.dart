@@ -791,10 +791,17 @@ class _ArborScanPageState extends State<ArborScanPage> {
     String analysisId,
   ) async {
     final body = {
+      // old keys (backward compatible)
       "height_m_corrected": feedback["height_m_corrected"],
       "crown_width_m_corrected": feedback["crown_width_m_corrected"],
       "trunk_diameter_m_corrected": feedback["trunk_diameter_m_corrected"],
       "scale_px_to_m_corrected": feedback["scale_px_to_m_corrected"],
+
+      // preferred keys (backend parses these first)
+      "corrected_height_m": feedback["height_m_corrected"],
+      "corrected_crown_width_m": feedback["crown_width_m_corrected"],
+      "corrected_trunk_diameter_m": feedback["trunk_diameter_m_corrected"],
+      "corrected_scale_px_to_m": feedback["scale_px_to_m_corrected"],
 
       // кто подтверждает (для meta_verified)
       "verifier_role": _isAdmin ? "admin" : "user",
