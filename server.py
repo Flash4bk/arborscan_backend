@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
+import traceback
 
 # -------------------------------------
 # CONFIG
@@ -254,43 +255,6 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 
 
 
-
-def ensure_analysis_cache(analysis_id: str) -> Path:
-    """Ensure local cache directory for analysis exists.
-    If missing (e.g., request routed to another replica), try to reconstruct it
-    by downloading artifacts from the RAW bucket where /analyze-tree stores them.
-    """
-    tmp_dir = Path("/tmp") / analysis_id
-    if tmp_dir.exists():
-        return tmp_dir
-
-    # Try to restore from Supabase RAW bucket (written by /analyze-tree)
-    try:
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        to_fetch = {
-            "input.jpg": tmp_dir / "input.jpg",
-            "annotated.jpg": tmp_dir / "annotated.jpg",
-            "meta_auto.json": tmp_dir / "meta_auto.json",
-            "tree_pred.json": tmp_dir / "tree_pred.json",
-            "stick_pred.json": tmp_dir / "stick_pred.json",
-        }
-        for remote_name, local_path in to_fetch.items():
-            remote_path = f"{analysis_id}/{remote_name}"
-            try:
-                data = supabase_download_bytes(SUPABASE_BUCKET_RAW, remote_path)
-            except Exception:
-                # Some files (e.g., annotated.jpg) can be absent, keep going
-                continue
-            local_path.write_bytes(data)
-
-        # Validate minimal set
-        if not (tmp_dir / "meta_auto.json").exists() or not (tmp_dir / "tree_pred.json").exists():
-            # Incomplete restore -> remove and report missing
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-        return tmp_dir
-    except Exception:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        return tmp_dir
 
 # ---------------------------------------------------------
 # Model hot-swap (tree model) using training_state.active_model_version
@@ -1128,323 +1092,107 @@ async def analyze_tree(file: UploadFile = File(...)):
 
 @app.post("/feedback")
 @app.post("/api/feedback")
-def send_feedback(payload: dict = Body(...)):
-    """
-    Получаем подтверждение/исправление от пользователя и,
-    если всё ок, сохраняем пример в Supabase для будущего обучения моделей
-    + кладём запись в очередь доверенных примеров (Supabase DB).
-    """
-    # Accept both snake_case and camelCase from Flutter; avoid 422 on minor schema drift.
-    analysis_id = payload.get('analysis_id') or payload.get('analysisId')
+def send_feedback(payload: FeedbackRequest):
+    """Receive user feedback/corrections for an analysis and store them into Supabase."""
+    analysis_id = (payload.analysis_id or "").strip()
     if not analysis_id:
-        raise HTTPException(status_code=422, detail='analysis_id is required')
+        raise HTTPException(status_code=400, detail="analysis_id обязателен")
 
-    def _b(val, default=True):
-        if val is None:
-            return default
-        if isinstance(val, bool):
-            return val
-        if isinstance(val, (int, float)):
-            return bool(val)
-        if isinstance(val, str):
-            v = val.strip().lower()
-            if v in ('1','true','yes','y','ok'):
-                return True
-            if v in ('0','false','no','n'):
-                return False
-        return default
-
-    use_for_training = _b(payload.get('use_for_training', payload.get('useForTraining')), default=True)
-    tree_ok = _b(payload.get('tree_ok', payload.get('treeOk')), default=True)
-    stick_ok = _b(payload.get('stick_ok', payload.get('stickOk')), default=True)
-    params_ok = _b(payload.get('params_ok', payload.get('paramsOk')), default=True)
-    species_ok = _b(payload.get('species_ok', payload.get('speciesOk')), default=True)
-
-    correct_species = payload.get('correct_species') or payload.get('correctSpecies')
-    correct_tree_mask = payload.get('correct_tree_mask') or payload.get('correctTreeMask')
-    correct_stick_mask = payload.get('correct_stick_mask') or payload.get('correctStickMask')
-
-    def _f(val):
-        """Best-effort float parsing for user-corrected numeric fields."""
-        if val is None:
-            return None
-        if isinstance(val, (int, float)):
-            return float(val)
-        if isinstance(val, str):
-            s = val.strip().replace(',', '.')
-            if not s or s.lower() in ('null', 'none', 'nan'):
-                return None
-            try:
-                return float(s)
-            except Exception:
-                return None
-        return None
-
-    corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
-    corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
-    corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
-    corrected_scale_px_to_m = _f(
-        payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
-        payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
-        payload.get('scale_px_to_m') or payload.get('scalePxToM') or
-        payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
-    )
-    user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
-
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
-
-    tmp_dir = ensure_analysis_cache(analysis_id)
+    tmp_dir = Path("/tmp") / analysis_id
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
-    # Если пользователь не хочет использовать пример в обучении
-    if not use_for_training:
+    try:
+        meta_path = tmp_dir / "meta_auto.json"
+        if not meta_path.exists():
+            raise HTTPException(status_code=404, detail="meta_auto.json не найден (analysis_id устарел)")
+
+        with meta_path.open("r", encoding="utf-8") as f:
+            meta_auto = json.load(f)
+
+        # Trust/confidence from analysis
+        trust = float(meta_auto.get("trust", 0.0))
         try:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+            if float(meta_auto.get("confidence", 0.0)) > 0:
+                trust = float(meta_auto.get("confidence", trust))
         except Exception:
             pass
-        return {"status": "ignored", "reason": "user_disabled_training"}
 
-    meta_path = tmp_dir / "meta.json"
-    if not meta_path.exists():
-        raise HTTPException(status_code=500, detail="meta.json не найден для указанного analysis_id")
+        # Helper: accept data URL or plain base64
+        def _b64_to_bytes(s: str) -> bytes:
+            if not s:
+                return b""
+            s = s.strip()
+            if "," in s and s.lower().startswith("data:"):
+                s = s.split(",", 1)[1]
+            return base64.b64decode(s)
 
-    # Загружаем исходное meta
-    try:
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
+        user_mask_bytes = b""
+        if payload.user_mask_base64:
+            user_mask_bytes = _b64_to_bytes(payload.user_mask_base64)
 
-    # Обновляем meta фидбеком
-    meta["tree_ok"] = tree_ok
-    meta["stick_ok"] = stick_ok
-    meta["params_ok"] = params_ok
-    meta["species_ok"] = species_ok
-    meta["correct_species"] = correct_species
-
-    # Исправленный вид дерева
-    if (not species_ok) and correct_species:
-        meta["species"] = correct_species
-
-    # Исправленные численные параметры (если пришли от клиента)
-    if corrected_height_m is not None:
-        meta["height_m"] = corrected_height_m
-    if corrected_crown_width_m is not None:
-        meta["crown_width_m"] = corrected_crown_width_m
-    if corrected_trunk_diameter_m is not None:
-        meta["trunk_diameter_m"] = corrected_trunk_diameter_m
-    if corrected_scale_px_to_m is not None:
-        meta["scale_px_to_m"] = corrected_scale_px_to_m
-
-    # Trust score
-    trust = 0.0
-    if tree_ok:
-        trust += 0.3
-    if stick_ok:
-        trust += 0.2
-    if params_ok:
-        trust += 0.2
-    if species_ok or correct_species:
-        trust += 0.3
-    meta["trust_score"] = trust
-
-    # ---------------------------------------------
-    # VERIFIED PIPELINE
-    # ---------------------------------------------
-
-    is_verified = (
-    use_for_training and
-    trust >= VERIFIED_TRUST_THRESHOLD
-    )
-
-
-    analysis_id = analysis_id
-
-    # -----------------------------
-    # UPLOAD TO SUPABASE STORAGE
-    # -----------------------------
-    try:
-        # input.jpg
-        input_path = tmp_dir / "input.jpg"
-        if input_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{analysis_id}/input.jpg",
-                input_path.read_bytes(),
-            )
-
-        # annotated.jpg
-        annotated_path = tmp_dir / "annotated.jpg"
-        if annotated_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{analysis_id}/annotated.jpg",
-                annotated_path.read_bytes(),
-            )
-
-        # user_mask.png (segmentation ground truth)
-        # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
-                # Маска пользователя (обводка) — опционально.
-        # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
-        meta["has_user_mask"] = False
-        mask_b64 = user_mask_base64
-        if mask_b64 is not None:
-            mask_b64_str = str(mask_b64).strip().lower()
-        else:
-            mask_b64_str = ""
-
-        if mask_b64_str and mask_b64_str not in ("null", "undefined"):
+        corrected_scale_px_to_m = None
+        if payload.corrected_scale_px_to_m is not None:
             try:
-                mask_png_bytes = ensure_png_mask_bytes(str(mask_b64))
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_INPUTS,
-                    f"{analysis_id}/user_mask.png",
-                    mask_png_bytes,
-                )
-                meta["has_user_mask"] = True
-            except Exception as e:
-                # Не валим feedback целиком; просто предупреждаем, что маску не удалось распарсить.
-                print(f"[!] User mask provided but could not be decoded for {analysis_id}: {e}")
-        else:
-            # Маски нет — нормальный кейс.
-            pass
+                corrected_scale_px_to_m = float(payload.corrected_scale_px_to_m)
+            except Exception:
+                corrected_scale_px_to_m = None
 
+        verified_id = str(uuid.uuid4())
+        record = {
+            "id": verified_id,
+            "analysis_id": analysis_id,
+            "created_at": datetime.utcnow().isoformat() + "Z",
+            "trust": trust,
+            "used_for_training": False,
 
-        # tree_pred.json
-        tree_pred_path = tmp_dir / "tree_pred.json"
-        if tree_pred_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_PRED,
-                f"{analysis_id}/tree_pred.json",
-                tree_pred_path.read_bytes(),
+            # user feedback flags
+            "tree_ok": payload.tree_ok,
+            "stick_ok": payload.stick_ok,
+            "correct_scale_px_to_m": corrected_scale_px_to_m,
+            "correct_tree_length_m": payload.correct_tree_length_m,
+            "correct_stick_length_m": payload.correct_stick_length_m,
+            "correct_species": payload.correct_species,
+            "correct_health": payload.correct_health,
+            "notes": payload.notes,
+
+            # minimal meta
+            "meta": {
+                "model_version": meta_auto.get("model_version"),
+                "device": meta_auto.get("device"),
+            },
+        }
+
+        res = supabase_post_json("/rest/v1/arborscan_verified", record)
+        if res.status_code not in (200, 201):
+            raise RuntimeError(f"Supabase insert failed: {res.status_code} {res.text}")
+
+        if user_mask_bytes:
+            ok = supabase_upload_bytes(
+                "arborscan-verified",
+                f"{verified_id}/user_mask.png",
+                user_mask_bytes,
+                content_type="image/png",
             )
+            if not ok:
+                raise RuntimeError("Failed to upload user_mask.png")
 
-        # stick_pred.json
-        stick_pred_path = tmp_dir / "stick_pred.json"
-        if stick_pred_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_PRED,
-                f"{analysis_id}/stick_pred.json",
-                stick_pred_path.read_bytes(),
-            )
-
-        # meta.json (обновлённый)
-        supabase_upload_json(
-            SUPABASE_BUCKET_META,
-            f"{analysis_id}.json",
-            meta,
-        )
-
-        if is_verified:
-            try:
-                # input
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/input.jpg",
-                    (tmp_dir / "input.jpg").read_bytes(),
-                )
-
-                # annotated
-                annotated_path = tmp_dir / "annotated.jpg"
-                if annotated_path.exists():
-                    supabase_upload_bytes(
-                        SUPABASE_BUCKET_VERIFIED,
-                        f"{analysis_id}/annotated.jpg",
-                        annotated_path.read_bytes(),
-                    )
-
-                
-                # user mask (если есть) — нормализуем в валидный PNG
-                if user_mask_base64:
-                    try:
-                        mask_png_bytes = ensure_png_mask_bytes(user_mask_base64)
-                        supabase_upload_bytes(
-                            SUPABASE_BUCKET_VERIFIED,
-                            f"{analysis_id}/user_mask.png",
-                            mask_png_bytes,
-                        )
-                    except Exception as e:
-                        print(f"[!] Failed to upload VERIFIED user mask for {analysis_id}: {e}")
-
-                # predictions
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/tree_pred.json",
-                    (tmp_dir / "tree_pred.json").read_bytes(),
-                )
-
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/stick_pred.json",
-                    (tmp_dir / "stick_pred.json").read_bytes(),
-                )
-
-                meta_verified = meta.copy()
-                meta_verified["verified"] = True
-                meta_verified["verified_at"] = datetime.utcnow().isoformat()
-                meta_verified["verifier_role"] = "admin" if not use_for_training else "user"
-
-                supabase_upload_json(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/meta_verified.json",
-                    meta_verified,
-                )
-               
-                
-
-            except Exception as e:
-                print(f"[!] Failed to upload VERIFIED sample {analysis_id}: {e}")
-
-
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
-
-def request_retrain_if_needed():
-    # считаем сколько масок ещё не использовано
-    count = count_untrained_masks()
-
-    if count >= 10:
-        training_state_update({"retrain_requested": True})
-
-    # -----------------------------
-    # Запись в очередь доверенных примеров (Supabase DB)
-    # -----------------------------
-    # -----------------------------
-    # 7) (Опционально) очередь доверенных примеров (Supabase Postgres)
-    # -----------------------------
-    if SUPABASE_ENABLE_QUEUE:
+        # Auto-retrain trigger (non-blocking)
         try:
-            queue_row = {
-                "analysis_id": analysis_id,
-                "trust_score": trust,
-                "species": meta.get("species"),
-                "has_user_mask": meta.get("has_user_mask", False),
-                "tree_ok": meta.get("tree_ok"),
-                "stick_ok": meta.get("stick_ok"),
-                "params_ok": meta.get("params_ok"),
-                "species_ok": meta.get("species_ok"),
-            }
-            supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
-        except Exception as e:
-            # Не падаем для пользователя; отсутствие таблицы / ошибки очереди не должны блокировать обучение.
-            print(f"[!] Queue insert skipped for {analysis_id}: {e}")
-    else:
-        # Очередь выключена — нормально для пайплайна обучения через Storage.
-        pass
-    # Чистим /tmp
-    try:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-    except Exception as e:
-        print(f"[!] Failed to remove tmp dir for {analysis_id}: {e}")
+            threshold = int(os.getenv("RETRAIN_THRESHOLD", "10"))
+            untrained = count_untrained_masks()
+            if untrained >= threshold:
+                request_retrain(reason=f"auto: untrained={untrained}>=threshold={threshold}")
+        except Exception:
+            traceback.print_exc()
 
-    return {
-        "status": "ok",
-        "analysis_id": analysis_id,
-        "trust_score": trust,
-    }
+        return {"status": "ok", "verified_id": verified_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"feedback failed: {e}")
 @app.get("/admin/verified-list")
 def admin_verified_list():
     """
