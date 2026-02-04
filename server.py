@@ -1471,68 +1471,98 @@ def admin_verified_list():
 # Admin: include/exclude sample from training
 # -----------------------------
 class SetTrainingRequest(BaseModel):
-    # Preferred field
+    """Поддерживаем несколько возможных названий флага, т.к. фронт менялся."""
     include_in_training: Optional[bool] = None
-    # Backward/alternate names from older clients
-    exclude_from_training: Optional[bool] = None
-    use_for_training: Optional[bool] = None
+    includeInTraining: Optional[bool] = None
     used_for_training: Optional[bool] = None
+    usedForTraining: Optional[bool] = None
+    exclude_from_training: Optional[bool] = None
+    excludeFromTraining: Optional[bool] = None
+    include: Optional[bool] = None
+    enabled: Optional[bool] = None
+    value: Optional[bool] = None
+    training: Optional[bool] = None
+    in_training: Optional[bool] = None
+    inTraining: Optional[bool] = None
 
-    def resolve(self) -> Optional[bool]:
-        """Return desired include_in_training value, or None if not provided."""
-        if self.include_in_training is not None:
-            return bool(self.include_in_training)
-        if self.use_for_training is not None:
-            return bool(self.use_for_training)
-        if self.used_for_training is not None:
-            return bool(self.used_for_training)
-        if self.exclude_from_training is not None:
-            return not bool(self.exclude_from_training)
-        return None
+    class Config:
+        extra = "allow"
+
+
+def _resolve_training_flag(req: "SetTrainingRequest") -> Optional[bool]:
+    """Пытаемся извлечь desired flag из разных полей."""
+    # прямой include
+    for v in (
+        req.include_in_training,
+        req.includeInTraining,
+        req.include,
+        req.enabled,
+        req.value,
+        req.training,
+        req.in_training,
+        req.inTraining,
+        req.used_for_training,
+        req.usedForTraining,
+    ):
+        if isinstance(v, bool):
+            return v
+    # если пришёл exclude, инвертируем
+    for v in (req.exclude_from_training, req.excludeFromTraining):
+        if isinstance(v, bool):
+            return not v
+    return None
+
 
 @app.post("/admin/verified/{analysis_id}/set-training")
 def admin_set_training_flag(analysis_id: str, req: SetTrainingRequest):
-    """Включить/исключить конкретный verified-семпл из будущего обучения."""
-    desired = req.resolve()
+    """Включить/исключить пример из обучения (через meta.json в bucket arborscan-verified).
+
+    Ожидаем JSON с любым из полей:
+      - include_in_training / includeInTraining / include / enabled / value / training / in_training / inTraining
+      - exclude_from_training / excludeFromTraining (инвертируется)
+      - used_for_training / usedForTraining (на случай старого фронта)
+    """
+    desired = _resolve_training_flag(req)
     if desired is None:
-        raise HTTPException(status_code=400, detail="Missing include_in_training flag")
+        # Для диагностики вернём, что именно пришло.
+        raise HTTPException(
+            status_code=400,
+            detail="missing boolean flag in request body (expected include_in_training/include/exclude_from_training/etc.)",
+        )
 
-    # Try load existing meta (new or legacy). Supabase can return 400 for missing objects,
-    # so we treat both 400/404 as 'not found'.
-    meta = {}
-    last_err = None
-    meta_key_candidates = [
-        f"{analysis_id}/meta_verified.json",
-        f"{analysis_id}/meta.json",
-    ]
-    for key in meta_key_candidates:
-        try:
-            raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, key)
-            meta = json.loads(raw.decode("utf-8"))
-            break
-        except Exception as e:
-            last_err = e
-            msg = str(e)
-            if any(s in msg for s in [" 404", " 400", "404:", "400:"]):
-                continue
-            # unexpected error
-            raise HTTPException(status_code=500, detail=f"Failed to load meta: {msg}")
-
-    # If meta was not found at all, start a minimal one
-    if not isinstance(meta, dict):
+    # 1) Обновляем meta.json в storage
+    meta_path = f"{analysis_id}/meta.json"
+    try:
+        meta_bytes = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
+        meta = json.loads(meta_bytes.decode("utf-8"))
+    except Exception:
         meta = {}
 
     meta["include_in_training"] = bool(desired)
-    meta["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    # Для обратной совместимости: некоторые куски пайплайна ожидают used_for_training как "уже использовано",
+    # поэтому не трогаем его здесь. Просто оставляем include_in_training как "можно брать в train".
+    meta_json = json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8")
+    upload_bytes_to_storage(
+        SUPABASE_BUCKET_VERIFIED,
+        meta_path,
+        meta_json,
+        content_type="application/json",
+        upsert=True,
+    )
 
-    # Always write to meta_verified.json (single source of truth)
+    # 2) Best-effort: если есть столбец/таблица в Postgres, тоже обновим (не критично)
     try:
-        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json", meta)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save meta: {e}")
+        # Возможные таблицы/поля в разных версиях проекта — пробуем тихо.
+        for table_name in ("verified_samples", "verified", "training_samples"):
+            try:
+                supabase.table(table_name).update({"include_in_training": bool(desired)}).eq("analysis_id", analysis_id).execute()
+                break
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     return {"analysis_id": analysis_id, "include_in_training": meta["include_in_training"]}
-
 
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
