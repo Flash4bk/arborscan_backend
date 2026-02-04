@@ -753,15 +753,6 @@ class TrustedExample(BaseModel):
 
 
 
-
-class AdminSetTrainingRequest(BaseModel):
-    # accept several keys for backward/forward compatibility with the Flutter admin UI
-    use_for_training: bool | None = None
-    enabled: bool | None = None
-    include: bool | None = None
-    value: bool | None = None
-
-
 app = FastAPI(title="ArborScan API v2.0")
 
 @app.on_event("startup")
@@ -1456,41 +1447,6 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
-@app.post("/admin/verified/{analysis_id}/set-training")
-@app.post("/admin/verified/{analysis_id}/set-training/")
-def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
-    """
-    Toggle whether a verified sample should be used for training.
-    The admin UI uses this to include/exclude items from the training dataset export.
-    """
-    # pick the first provided flag from a set of accepted keys
-    flag = None
-    for v in (req.use_for_training, req.enabled, req.include, req.value):
-        if v is not None:
-            flag = bool(v)
-            break
-    if flag is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
-        )
-
-    meta_path = f"{analysis_id}/meta.json"
-    try:
-        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
-        meta = json.loads(raw.decode("utf-8")) if raw else {}
-    except Exception:
-        meta = {}
-
-    meta["analysis_id"] = analysis_id
-    meta["use_for_training"] = flag
-    meta["exclude_from_training"] = (not flag)
-
-    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
-
-    return {"analysis_id": analysis_id, "use_for_training": flag}
-
-
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
@@ -1505,6 +1461,40 @@ def admin_get_analysis(analysis_id: str):
             SUPABASE_BUCKET_VERIFIED,
             f"{analysis_id}/annotated.jpg",
         )
+
+        # Optional: user-corrected mask. If present, we render a preview
+        # (input image + semi-transparent overlay of the user mask) so the
+        # admin UI can preview what the user drew (not the AI annotated output).
+        user_mask_bytes = None
+        user_annotated_bytes = None
+        try:
+            user_mask_bytes = supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/user_mask.png",
+            )
+        except Exception:
+            user_mask_bytes = None
+
+        if user_mask_bytes:
+            try:
+                base_img = Image.open(io.BytesIO(input_img)).convert("RGBA")
+                mask_img = Image.open(io.BytesIO(user_mask_bytes)).convert("L")
+
+                # Ensure sizes match (defensive: client/server may resize)
+                if mask_img.size != base_img.size:
+                    mask_img = mask_img.resize(base_img.size, Image.NEAREST)
+
+                # Build a blue RGBA overlay using the mask as alpha
+                alpha = mask_img.point(lambda p: 140 if p > 0 else 0)
+                overlay = Image.new("RGBA", base_img.size, (0, 120, 255, 0))
+                overlay.putalpha(alpha)
+
+                composed = Image.alpha_composite(base_img, overlay).convert("RGB")
+                out = io.BytesIO()
+                composed.save(out, format="JPEG", quality=90)
+                user_annotated_bytes = out.getvalue()
+            except Exception:
+                user_annotated_bytes = None
         tree_pred = json.loads(
             supabase_download_bytes(
                 SUPABASE_BUCKET_VERIFIED,
@@ -1535,6 +1525,9 @@ def admin_get_analysis(analysis_id: str):
         "images": {
             "input_base64": base64.b64encode(input_img).decode("utf-8"),
             "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
+            # Optional extras for admin dataset preview
+            "user_mask_base64": base64.b64encode(user_mask_bytes).decode("utf-8") if user_mask_bytes else None,
+            "user_annotated_base64": base64.b64encode(user_annotated_bytes).decode("utf-8") if user_annotated_bytes else None,
         },
         "tree_pred": tree_pred,
         "stick_pred": stick_pred,

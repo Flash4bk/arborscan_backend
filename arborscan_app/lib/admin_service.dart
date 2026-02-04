@@ -259,6 +259,9 @@ class VerifiedAnalysis {
   final String analysisId;
   final Uint8List inputImage;
   final Uint8List annotatedImage;
+  // Optional user-provided mask and/or an overlay rendered from it.
+  final Uint8List? userMaskImage;
+  final Uint8List? userAnnotatedImage;
   final Map<String, dynamic> meta;
   final Map<String, dynamic> treePred;
   final Map<String, dynamic> stickPred;
@@ -267,6 +270,8 @@ class VerifiedAnalysis {
     required this.analysisId,
     required this.inputImage,
     required this.annotatedImage,
+    this.userMaskImage,
+    this.userAnnotatedImage,
     required this.meta,
     required this.treePred,
     required this.stickPred,
@@ -276,11 +281,15 @@ class VerifiedAnalysis {
     final images = (json['images'] is Map) ? (json['images'] as Map) : const {};
     final inputB64 = (images['input_base64'] ?? '').toString();
     final annotatedB64 = (images['annotated_base64'] ?? '').toString();
+    final userMaskB64 = (images['user_mask_base64'] ?? '').toString();
+    final userAnnotatedB64 = (images['user_annotated_base64'] ?? '').toString();
 
     return VerifiedAnalysis(
       analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
       inputImage: base64Decode(inputB64),
       annotatedImage: base64Decode(annotatedB64),
+      userMaskImage: userMaskB64.isEmpty ? null : base64Decode(userMaskB64),
+      userAnnotatedImage: userAnnotatedB64.isEmpty ? null : base64Decode(userAnnotatedB64),
       meta: (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : <String, dynamic>{},
       treePred: (json['tree_pred'] is Map<String, dynamic>) ? (json['tree_pred'] as Map<String, dynamic>) : <String, dynamic>{},
       stickPred: (json['stick_pred'] is Map<String, dynamic>) ? (json['stick_pred'] as Map<String, dynamic>) : <String, dynamic>{},
