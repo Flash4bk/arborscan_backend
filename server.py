@@ -220,6 +220,15 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
 
+
+
+def upload_bytes_to_storage(bucket: str, path: str, data: bytes, *, content_type: str = "application/octet-stream", upsert: bool = True):
+    """Backward-compatible helper used by some admin endpoints.
+
+    Uses Supabase Storage upload with file_options and optional upsert.
+    """
+    return supabase_upload_bytes(bucket, path, data, content_type=content_type, upsert=upsert)
+
 def supabase_list_objects(bucket: str, prefix: str = ""):
     """
     Вернуть список объектов в Supabase Storage (метаданные).
@@ -1489,31 +1498,47 @@ class SetTrainingRequest(BaseModel):
         extra = "allow"
 
 
-def _resolve_training_flag(req: "SetTrainingRequest") -> Optional[bool]:
-    """Пытаемся извлечь desired flag из разных полей."""
-    # прямой include
-    for v in (
-        req.include_in_training,
-        req.includeInTraining,
-        req.include,
-        req.enabled,
-        req.value,
-        req.training,
-        req.in_training,
-        req.inTraining,
-        req.used_for_training,
-        req.usedForTraining,
-    ):
+def _resolve_training_flag(req: SetTrainingRequest) -> Optional[bool]:
+    """Returns desired include_for_training flag from any supported field.
+
+    Accepts booleans, 0/1 ints, and common string forms ('true'/'false', '1'/'0').
+    """
+
+    def _coerce_bool(v):
+        if v is None:
+            return None
         if isinstance(v, bool):
             return v
-    # если пришёл exclude, инвертируем
-    for v in (req.exclude_from_training, req.excludeFromTraining):
-        if isinstance(v, bool):
-            return not v
+        if isinstance(v, (int, float)) and v in (0, 1):
+            return bool(v)
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in ("true", "1", "yes", "y", "on"):
+                return True
+            if s in ("false", "0", "no", "n", "off"):
+                return False
+        return None
+
+    # Prefer explicit "include" semantics.
+    for v in (req.include_for_training, req.include, req.enabled, req.train):
+        b = _coerce_bool(v)
+        if b is not None:
+            return b
+
+    # Then accept "used_for_training" synonyms (same direction).
+    for v in (req.used_for_training, req.usedForTraining, req.use_for_training, req.useForTraining):
+        b = _coerce_bool(v)
+        if b is not None:
+            return b
+
+    # Finally accept "exclude" semantics (invert).
+    for v in (req.exclude_from_training, req.exclude, req.disabled, req.no_train):
+        b = _coerce_bool(v)
+        if b is not None:
+            return not b
+
     return None
 
-
-@app.post("/admin/verified/{analysis_id}/set-training")
 def admin_set_training_flag(analysis_id: str, req: SetTrainingRequest):
     """Включить/исключить пример из обучения (через meta.json в bucket arborscan-verified).
 
