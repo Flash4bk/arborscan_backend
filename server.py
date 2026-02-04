@@ -22,7 +22,6 @@ from datetime import datetime
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
 
-print(f"[BOOT] Loaded backend module: {__file__}")
 # -------------------------------------
 # CONFIG
 # -------------------------------------
@@ -198,36 +197,19 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
-    base_headers = {
+    headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
         "Content-Type": "application/octet-stream",
+        "x-upsert": "true",
     }
-
-    # 1) Try with upsert (works on Supabase Storage)
-    headers = {**base_headers, "x-upsert": "true"}
     resp = requests.post(url, headers=headers, data=data, timeout=30)
-
-    # 2) Some deployments can reject the upsert header – retry without it
-    if resp.status_code >= 400 and "upsert" in (resp.text or "").lower():
-        resp = requests.post(url, headers=base_headers, data=data, timeout=30)
-
     if resp.status_code >= 400:
         raise RuntimeError(f"Supabase upload error {resp.status_code}: {resp.text}")
-
 
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
-
-
-
-def upload_bytes_to_storage(bucket: str, path: str, data: bytes, *, content_type: str = "application/octet-stream", upsert: bool = True):
-    """Backward-compatible helper used by some admin endpoints.
-
-    Uses Supabase Storage upload with file_options and optional upsert.
-    """
-    return supabase_upload_bytes(bucket, path, data, content_type=content_type, upsert=upsert)
 
 def supabase_list_objects(bucket: str, prefix: str = ""):
     """
@@ -771,16 +753,16 @@ class TrustedExample(BaseModel):
 
 
 
+
+class AdminSetTrainingRequest(BaseModel):
+    # accept several keys for backward/forward compatibility with the Flutter admin UI
+    use_for_training: bool | None = None
+    enabled: bool | None = None
+    include: bool | None = None
+    value: bool | None = None
+
+
 app = FastAPI(title="ArborScan API v2.0")
-
-@app.on_event('startup')
-async def _log_registered_routes():
-    try:
-        paths = sorted({getattr(r, 'path', str(r)) for r in app.router.routes})
-        print('[BOOT] Registered routes:', paths)
-    except Exception as e:
-        print('[BOOT] Failed to list routes:', e)
-
 
 @app.on_event("startup")
 async def _log_routes_on_startup():
@@ -1116,8 +1098,6 @@ async def analyze_tree(file: UploadFile = File(...)):
     return JSONResponse(response)
 
 
-@app.post("/feedback/")
-@app.post("/api/feedback/")
 @app.post("/feedback")
 @app.post("/api/feedback")
 def send_feedback(payload: dict = Body(...)):
@@ -1476,118 +1456,40 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
-# -----------------------------
-# Admin: include/exclude sample from training
-# -----------------------------
-class SetTrainingRequest(BaseModel):
-    """Поддерживаем несколько возможных названий флага, т.к. фронт менялся."""
-    include_in_training: Optional[bool] = None
-    includeInTraining: Optional[bool] = None
-    used_for_training: Optional[bool] = None
-    usedForTraining: Optional[bool] = None
-    exclude_from_training: Optional[bool] = None
-    excludeFromTraining: Optional[bool] = None
-    include: Optional[bool] = None
-    enabled: Optional[bool] = None
-    value: Optional[bool] = None
-    training: Optional[bool] = None
-    in_training: Optional[bool] = None
-    inTraining: Optional[bool] = None
-
-    class Config:
-        extra = "allow"
-
-
-def _resolve_training_flag(req: SetTrainingRequest) -> Optional[bool]:
-    """Returns desired include_for_training flag from any supported field.
-
-    Accepts booleans, 0/1 ints, and common string forms ('true'/'false', '1'/'0').
+@app.post("/admin/verified/{analysis_id}/set-training")
+@app.post("/admin/verified/{analysis_id}/set-training/")
+def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     """
-
-    def _coerce_bool(v):
-        if v is None:
-            return None
-        if isinstance(v, bool):
-            return v
-        if isinstance(v, (int, float)) and v in (0, 1):
-            return bool(v)
-        if isinstance(v, str):
-            s = v.strip().lower()
-            if s in ("true", "1", "yes", "y", "on"):
-                return True
-            if s in ("false", "0", "no", "n", "off"):
-                return False
-        return None
-
-    # Prefer explicit "include" semantics.
-    for v in (req.include_for_training, req.include, req.enabled, req.train):
-        b = _coerce_bool(v)
-        if b is not None:
-            return b
-
-    # Then accept "used_for_training" synonyms (same direction).
-    for v in (req.used_for_training, req.usedForTraining, req.use_for_training, req.useForTraining):
-        b = _coerce_bool(v)
-        if b is not None:
-            return b
-
-    # Finally accept "exclude" semantics (invert).
-    for v in (req.exclude_from_training, req.exclude, req.disabled, req.no_train):
-        b = _coerce_bool(v)
-        if b is not None:
-            return not b
-
-    return None
-
-def admin_set_training_flag(analysis_id: str, req: SetTrainingRequest):
-    """Включить/исключить пример из обучения (через meta.json в bucket arborscan-verified).
-
-    Ожидаем JSON с любым из полей:
-      - include_in_training / includeInTraining / include / enabled / value / training / in_training / inTraining
-      - exclude_from_training / excludeFromTraining (инвертируется)
-      - used_for_training / usedForTraining (на случай старого фронта)
+    Toggle whether a verified sample should be used for training.
+    The admin UI uses this to include/exclude items from the training dataset export.
     """
-    desired = _resolve_training_flag(req)
-    if desired is None:
-        # Для диагностики вернём, что именно пришло.
+    # pick the first provided flag from a set of accepted keys
+    flag = None
+    for v in (req.use_for_training, req.enabled, req.include, req.value):
+        if v is not None:
+            flag = bool(v)
+            break
+    if flag is None:
         raise HTTPException(
             status_code=400,
-            detail="missing boolean flag in request body (expected include_in_training/include/exclude_from_training/etc.)",
+            detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
         )
 
-    # 1) Обновляем meta.json в storage
     meta_path = f"{analysis_id}/meta.json"
     try:
-        meta_bytes = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
-        meta = json.loads(meta_bytes.decode("utf-8"))
+        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
+        meta = json.loads(raw.decode("utf-8")) if raw else {}
     except Exception:
         meta = {}
 
-    meta["include_in_training"] = bool(desired)
-    # Для обратной совместимости: некоторые куски пайплайна ожидают used_for_training как "уже использовано",
-    # поэтому не трогаем его здесь. Просто оставляем include_in_training как "можно брать в train".
-    meta_json = json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8")
-    upload_bytes_to_storage(
-        SUPABASE_BUCKET_VERIFIED,
-        meta_path,
-        meta_json,
-        content_type="application/json",
-        upsert=True,
-    )
+    meta["analysis_id"] = analysis_id
+    meta["use_for_training"] = flag
+    meta["exclude_from_training"] = (not flag)
 
-    # 2) Best-effort: если есть столбец/таблица в Postgres, тоже обновим (не критично)
-    try:
-        # Возможные таблицы/поля в разных версиях проекта — пробуем тихо.
-        for table_name in ("verified_samples", "verified", "training_samples"):
-            try:
-                supabase.table(table_name).update({"include_in_training": bool(desired)}).eq("analysis_id", analysis_id).execute()
-                break
-            except Exception:
-                pass
-    except Exception:
-        pass
+    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
 
-    return {"analysis_id": analysis_id, "include_in_training": meta["include_in_training"]}
+    return {"analysis_id": analysis_id, "use_for_training": flag}
+
 
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
