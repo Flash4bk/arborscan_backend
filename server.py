@@ -1703,4 +1703,3 @@ def get_latest_model_path():
     if v == 0:
         return "models/base.pt"
     return f"models/model_v{v}.pt"
-    assert
