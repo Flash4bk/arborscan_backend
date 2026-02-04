@@ -198,14 +198,22 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
-    headers = {
+    base_headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
         "Content-Type": "application/octet-stream",
-        "x-upsert": "true",
     }
+
+    # 1) Try with upsert (works on Supabase Storage)
+    headers = {**base_headers, "x-upsert": "true"}
     resp = requests.post(url, headers=headers, data=data, timeout=30)
+
+    # 2) Some deployments can reject the upsert header – retry without it
+    if resp.status_code >= 400 and "upsert" in (resp.text or "").lower():
+        resp = requests.post(url, headers=base_headers, data=data, timeout=30)
+
     if resp.status_code >= 400:
         raise RuntimeError(f"Supabase upload error {resp.status_code}: {resp.text}")
+
 
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
@@ -1463,55 +1471,67 @@ def admin_verified_list():
 # Admin: include/exclude sample from training
 # -----------------------------
 class SetTrainingRequest(BaseModel):
+    # Preferred field
     include_in_training: Optional[bool] = None
+    # Backward/alternate names from older clients
     exclude_from_training: Optional[bool] = None
+    use_for_training: Optional[bool] = None
+    used_for_training: Optional[bool] = None
+
+    def resolve(self) -> Optional[bool]:
+        """Return desired include_in_training value, or None if not provided."""
+        if self.include_in_training is not None:
+            return bool(self.include_in_training)
+        if self.use_for_training is not None:
+            return bool(self.use_for_training)
+        if self.used_for_training is not None:
+            return bool(self.used_for_training)
+        if self.exclude_from_training is not None:
+            return not bool(self.exclude_from_training)
+        return None
 
 @app.post("/admin/verified/{analysis_id}/set-training")
 def admin_set_training_flag(analysis_id: str, req: SetTrainingRequest):
-    """
-    Включить/исключить сэмпл из обучения (для admin UI).
+    """Включить/исключить конкретный verified-семпл из будущего обучения."""
+    desired = req.resolve()
+    if desired is None:
+        raise HTTPException(status_code=400, detail="Missing include_in_training flag")
 
-    ВАЖНО: старые записи могли не иметь meta_verified.json. В этом случае
-    создаём метаданные "на лету" и сохраняем.
-    """
+    # Try load existing meta (new or legacy). Supabase can return 400 for missing objects,
+    # so we treat both 400/404 as 'not found'.
+    meta = {}
+    last_err = None
     meta_key_candidates = [
         f"{analysis_id}/meta_verified.json",
         f"{analysis_id}/meta.json",
-        f"{analysis_id}/analysis.json",
     ]
+    for key in meta_key_candidates:
+        try:
+            raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, key)
+            meta = json.loads(raw.decode("utf-8"))
+            break
+        except Exception as e:
+            last_err = e
+            msg = str(e)
+            if any(s in msg for s in [" 404", " 400", "404:", "400:"]):
+                continue
+            # unexpected error
+            raise HTTPException(status_code=500, detail=f"Failed to load meta: {msg}")
 
-    def _try_load_meta() -> tuple[dict, str]:
-        last_err = None
-        for key in meta_key_candidates:
-            try:
-                raw = supabase_download_bytes(VERIFIED_BUCKET, key)
-                meta = json.loads(raw.decode("utf-8"))
-                if isinstance(meta, dict):
-                    return meta, key
-            except Exception as e:
-                last_err = e
-                # если это "not found" — пробуем следующий ключ
-                if "404" in str(e) or "Not Found" in str(e) or "not found" in str(e).lower():
-                    continue
-        # ничего не нашли — создаём базовое
-        base = {"analysis_id": analysis_id}
-        return base, meta_key_candidates[0]
+    # If meta was not found at all, start a minimal one
+    if not isinstance(meta, dict):
+        meta = {}
 
+    meta["include_in_training"] = bool(desired)
+    meta["updated_at"] = datetime.utcnow().isoformat() + "Z"
+
+    # Always write to meta_verified.json (single source of truth)
     try:
-        meta, meta_key = _try_load_meta()
-        meta["include_in_training"] = bool(req.include_in_training)
-
-        # для совместимости с возможными старыми полями
-        meta["used_for_training"] = bool(meta.get("used_for_training", False))
-        meta["updated_at"] = datetime.utcnow().isoformat() + "Z"
-
-        supabase_upload_json(VERIFIED_BUCKET, meta_key, meta)
-
-        return {"ok": True, "analysis_id": analysis_id, "include_in_training": meta["include_in_training"], "meta_key": meta_key}
-    except HTTPException:
-        raise
+        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json", meta)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update training flag: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save meta: {e}")
+
+    return {"analysis_id": analysis_id, "include_in_training": meta["include_in_training"]}
 
 
 @app.get("/admin/analysis/{analysis_id}")
