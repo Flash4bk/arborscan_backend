@@ -257,7 +257,9 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 
 # ---------------------------------------------------------
 # Model hot-swap (tree model) using training_state.active_model_version
-# Models are stored in Supabase Storage bucket: "models" as model_v{N}.pt
+# Models are stored in Supabase Storage bucket as model_v{N}.pt
+# NOTE: retrain_worker uploads to bucket "arborscan-models" (default). Older deployments used "models".
+# We support both to avoid breaking compatibility.
 # ---------------------------------------------------------
 
 TREE_MODEL: Optional[YOLO] = None
@@ -266,20 +268,34 @@ MODEL_LOCK = threading.Lock()
 _MODEL_LAST_CHECK_TS = 0.0
 _MODEL_CHECK_INTERVAL_SEC = float(os.getenv("MODEL_CHECK_INTERVAL_SEC", "2.0"))
 
+# Primary bucket for new models (matches retrain_worker). Can be overridden via env.
+MODEL_BUCKET = os.getenv("MODEL_BUCKET", "arborscan-models").strip() or "arborscan-models"
+# Backward-compatible fallback bucket (older name).
+MODEL_BUCKET_FALLBACK = os.getenv("MODEL_BUCKET_FALLBACK", "models").strip() or "models"
+
 def _local_model_path(version: int) -> str:
     cache_dir = os.getenv("MODEL_CACHE_DIR", "/tmp/models")
     Path(cache_dir).mkdir(parents=True, exist_ok=True)
     return str(Path(cache_dir) / f"model_v{version}.pt")
 
 def _download_model_if_needed(version: int) -> str:
+    """Ensure model_v{version}.pt is present locally and return its path."""
     filename = f"model_v{version}.pt"
     local_path = _local_model_path(version)
     if os.path.exists(local_path):
         return local_path
-    data = supabase_download_bytes("models", filename)
-    with open(local_path, "wb") as f:
-        f.write(data)
-    return local_path
+
+    last_err: Optional[Exception] = None
+    for bucket in (MODEL_BUCKET, MODEL_BUCKET_FALLBACK):
+        try:
+            data = supabase_download_bytes(bucket, filename)
+            with open(local_path, "wb") as f:
+                f.write(data)
+            return local_path
+        except Exception as e:
+            last_err = e
+            continue
+    raise RuntimeError(f"Failed to download {filename} from buckets '{MODEL_BUCKET}' or '{MODEL_BUCKET_FALLBACK}': {last_err}")
 
 def _get_active_model_version() -> int:
     state = training_state_get()
@@ -289,10 +305,27 @@ def _get_active_model_version() -> int:
         return 0
     return int(v)
 
+def _list_versions_from_storage(bucket: str) -> set[int]:
+    """List available model versions by enumerating objects in a Supabase Storage bucket."""
+    versions: set[int] = set()
+    try:
+        # supabase_list_objects returns list[dict] from Storage list endpoint.
+        objs = supabase_list_objects(bucket=bucket, prefix="")
+        for obj in objs or []:
+            name = (obj or {}).get("name") or ""
+            mm = re.search(r"model_v(\d+)\.pt$", name)
+            if mm:
+                versions.add(int(mm.group(1)))
+    except Exception:
+        # Don't fail the whole endpoint if storage listing is unavailable.
+        pass
+    return versions
+
 def list_available_model_versions() -> list[dict]:
     """Return model versions for the Admin Panel dropdown.
 
     We infer available versions from:
+      - Supabase Storage buckets (MODEL_BUCKET + fallback)
       - AVAILABLE_MODEL_VERSIONS env var (comma-separated ints)
       - local cached files in /tmp/models (model_v*.pt)
       - bundled files in ./models (model_v*.pt)
@@ -300,6 +333,12 @@ def list_available_model_versions() -> list[dict]:
     """
     versions: set[int] = set()
 
+    # 1) Storage buckets (authoritative in production)
+    versions |= _list_versions_from_storage(MODEL_BUCKET)
+    if MODEL_BUCKET_FALLBACK and MODEL_BUCKET_FALLBACK != MODEL_BUCKET:
+        versions |= _list_versions_from_storage(MODEL_BUCKET_FALLBACK)
+
+    # 2) Env hint (manual override)
     env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
     if env_hint:
         for part in env_hint.split(","):
@@ -311,6 +350,7 @@ def list_available_model_versions() -> list[dict]:
             except ValueError:
                 pass
 
+    # 3) Local cache and bundled models
     for p in Path("/tmp/models").glob("model_v*.pt"):
         mm = re.search(r"model_v(\d+)\.pt$", p.name)
         if mm:
@@ -326,7 +366,6 @@ def list_available_model_versions() -> list[dict]:
     versions.add(active)
 
     return [{"version": v, "is_active": v == active} for v in sorted(versions)]
-
 
 
 def reload_tree_model(force: bool = False):
@@ -751,15 +790,6 @@ class TrustedExample(BaseModel):
     use_for_training: bool | None = None
     needs_manual_review: bool | None = None
 
-
-
-
-class AdminSetTrainingRequest(BaseModel):
-    # accept several keys for backward/forward compatibility with the Flutter admin UI
-    use_for_training: bool | None = None
-    enabled: bool | None = None
-    include: bool | None = None
-    value: bool | None = None
 
 
 app = FastAPI(title="ArborScan API v2.0")
@@ -1456,41 +1486,6 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
-@app.post("/admin/verified/{analysis_id}/set-training")
-@app.post("/admin/verified/{analysis_id}/set-training/")
-def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
-    """
-    Toggle whether a verified sample should be used for training.
-    The admin UI uses this to include/exclude items from the training dataset export.
-    """
-    # pick the first provided flag from a set of accepted keys
-    flag = None
-    for v in (req.use_for_training, req.enabled, req.include, req.value):
-        if v is not None:
-            flag = bool(v)
-            break
-    if flag is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
-        )
-
-    meta_path = f"{analysis_id}/meta_verified.json"
-    try:
-        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
-        meta = json.loads(raw.decode("utf-8")) if raw else {}
-    except Exception:
-        meta = {}
-
-    meta["analysis_id"] = analysis_id
-    meta["use_for_training"] = flag
-    meta["exclude_from_training"] = (not flag)
-
-    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
-
-    return {"analysis_id": analysis_id, "use_for_training": flag}
-
-
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
@@ -1524,16 +1519,6 @@ def admin_get_analysis(analysis_id: str):
             )
         )
 
-        # optional user-corrected mask (PNG with alpha)
-        user_mask_img = None
-        try:
-            user_mask_img = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/user_mask.png",
-            )
-        except Exception:
-            user_mask_img = None
-
     except Exception as e:
         raise HTTPException(
             status_code=404,
@@ -1545,7 +1530,6 @@ def admin_get_analysis(analysis_id: str):
         "images": {
             "input_base64": base64.b64encode(input_img).decode("utf-8"),
             "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
-            "user_mask_base64": (base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None),
         },
         "tree_pred": tree_pred,
         "stick_pred": stick_pred,

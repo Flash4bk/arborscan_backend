@@ -302,7 +302,16 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.memory(previewBytes!),
+                  // Важно: на некоторых устройствах Image.memory может пытаться занять
+                  // «нативную» ширину и вызывать RIGHT OVERFLOWED BY N PIXELS в AlertDialog.
+                  // Принудительно укладываем превью по ширине диалога.
+                  SizedBox(
+                    width: double.infinity,
+                    child: Image.memory(
+                      previewBytes!,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Проверьте выделение дерева.\nЗелёный цвет — маска ИИ, синий — ваша маска.',
@@ -310,8 +319,12 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                     style: TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  // На узких экранах Row может переполняться (жёлто-чёрный индикатор overflow).
+                  // Wrap позволяет кнопкам переноситься на новую строку.
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
                       ElevatedButton.icon(
                         onPressed: () => _safePop<bool>(ctx, false),
