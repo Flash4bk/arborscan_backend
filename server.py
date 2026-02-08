@@ -1461,15 +1461,6 @@ def admin_get_analysis(analysis_id: str):
             SUPABASE_BUCKET_VERIFIED,
             f"{analysis_id}/annotated.jpg",
         )
-
-# optional user-corrected mask (PNG) saved from app; may be absent for older samples
-try:
-    user_mask_png = supabase_download_bytes(
-        SUPABASE_BUCKET_VERIFIED,
-        f"{analysis_id}/user_mask.png",
-    )
-except Exception:
-    user_mask_png = None
         tree_pred = json.loads(
             supabase_download_bytes(
                 SUPABASE_BUCKET_VERIFIED,
@@ -1489,6 +1480,16 @@ except Exception:
             )
         )
 
+        # Optional: user-corrected mask (may not exist for all items)
+        user_mask_img = None
+        try:
+            user_mask_img = supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/user_mask.png",
+            )
+        except Exception:
+            user_mask_img = None
+
     except Exception as e:
         raise HTTPException(
             status_code=404,
@@ -1500,7 +1501,7 @@ except Exception:
         "images": {
             "input_base64": base64.b64encode(input_img).decode("utf-8"),
             "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
-            "user_mask_png_base64": (base64.b64encode(user_mask_png).decode("utf-8") if user_mask_png else None),
+            **({"user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8")} if user_mask_img else {}),
         },
         "tree_pred": tree_pred,
         "stick_pred": stick_pred,
