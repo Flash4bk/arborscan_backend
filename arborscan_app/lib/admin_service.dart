@@ -185,8 +185,8 @@ class AdminService {
   // Training dataset (verified samples)
   // =====================
 
-  Future<List<VerifiedItem>> getVerifiedList() async {
-    final r = await http.get(_u('/admin/verified-list')).timeout(const Duration(seconds: 45));
+  Future<List<VerifiedItem>> getVerifiedList({bool includeArchived = false}) async {
+    final r = await http.get(_u('/admin/verified-list?include_archived=' + (includeArchived ? 'true' : 'false'))).timeout(const Duration(seconds: 45));
     if (r.statusCode != 200) {
       throw Exception('HTTP ${r.statusCode}: verified-list');
     }
@@ -226,7 +226,14 @@ class AdminService {
 class VerifiedItem {
   final String analysisId;
   final bool verified;
-  final bool excludeFromTraining;
+  bool excludeFromTraining;
+
+  final bool usedForTraining;
+  final String? usedForTrainingAt;
+  final int? trainedInVersion;
+
+  final bool hasUserMask;
+
   final String? species;
   final String? riskCategory;
   final num? trustScore;
@@ -236,6 +243,10 @@ class VerifiedItem {
     required this.analysisId,
     required this.verified,
     required this.excludeFromTraining,
+    required this.usedForTraining,
+    required this.usedForTrainingAt,
+    required this.trainedInVersion,
+    required this.hasUserMask,
     required this.species,
     required this.riskCategory,
     required this.trustScore,
@@ -244,22 +255,24 @@ class VerifiedItem {
 
   factory VerifiedItem.fromJson(Map<String, dynamic> json) {
     return VerifiedItem(
-      analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
-      verified: (json['verified'] ?? true) == true,
-      excludeFromTraining: (json['exclude_from_training'] ?? json['excludeFromTraining'] ?? false) == true,
-      species: json['species']?.toString(),
-      riskCategory: json['risk_category']?.toString() ?? json['riskCategory']?.toString(),
+      analysisId: json['analysis_id'] as String,
+      verified: true,
+      excludeFromTraining: (json['exclude_from_training'] as bool?) ?? false,
+      usedForTraining: (json['used_for_training'] as bool?) ?? false,
+      usedForTrainingAt: json['used_for_training_at'] as String?,
+      trainedInVersion: (json['trained_in_version'] as num?)?.toInt(),
+      hasUserMask: (json['has_user_mask'] as bool?) ?? false,
+      species: json['species'] as String?,
+      riskCategory: json['risk_category'] as String?,
       trustScore: json['trust_score'] as num?,
-      verifiedAt: json['verified_at']?.toString(),
+      verifiedAt: json['verified_at'] as String?,
     );
   }
 }
-
 class VerifiedAnalysis {
   final String analysisId;
   final Uint8List inputImage;
   final Uint8List annotatedImage;
-  final Uint8List? userMaskImage;
   final Map<String, dynamic> meta;
   final Map<String, dynamic> treePred;
   final Map<String, dynamic> stickPred;
@@ -268,7 +281,6 @@ class VerifiedAnalysis {
     required this.analysisId,
     required this.inputImage,
     required this.annotatedImage,
-    this.userMaskImage,
     required this.meta,
     required this.treePred,
     required this.stickPred,

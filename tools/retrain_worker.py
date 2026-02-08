@@ -324,29 +324,47 @@ def save_new_model(best_pt: Path, models_dir: Path, new_version: int) -> Path:
     return dst
 
 
-def mark_samples_used_for_training(
-    supabase,
-    bucket: str,
-    samples: List[Tuple[str, dict]],
-    new_version: int,
-) -> None:
+def mark_samples_used_for_training(sample_analysis_ids: list[str], trained_version: int | None = None) -> None:
+    """Mark samples as used_for_training and (by default) exclude them from the next training run.
+
+    This implements a simple "dataset rollover": after a successful training, the samples used in that
+    training are archived in-place via metadata so the next run only uses new samples unless the user
+    explicitly re-includes old ones.
     """
-    Обновляет meta_verified.json в Storage:
-      used_for_training: true
-      used_for_training_at: <utc iso>
-      used_in_model_version: new_version
-    """
-    now = utc_now_iso()
-    for aid, meta in samples:
-        meta["used_for_training"] = True
-        meta["used_for_training_at"] = now
-        meta["used_in_model_version"] = new_version
+    ts = datetime.now(timezone.utc).isoformat()
+    for analysis_id in sample_analysis_ids:
+        meta_path = f"{analysis_id}/meta_verified.json"
         try:
-            storage_upload_json(supabase, bucket, f"{aid}/meta_verified.json", meta)
+            meta = storage_download_json(SUPABASE_BUCKET_VERIFIED, meta_path)
+        except Exception:
+            # legacy fallback
+            try:
+                meta = storage_download_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json")
+            except Exception:
+                meta = None
+
+        if not isinstance(meta, dict):
+            print(f"[!] Failed to load meta for {analysis_id} (skip)")
+            continue
+
+        meta["used_for_training"] = True
+        meta["used_for_training_at"] = ts
+        if trained_version is not None:
+            meta["trained_in_version"] = int(trained_version)
+
+        # Archive behavior: exclude from next training by default
+        meta.setdefault("exclude_from_training", True)
+
+        try:
+            storage_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
         except Exception as e:
-            log(f"[!] Failed to mark used_for_training for {aid}: {e}")
+            print(f"[!] Failed to mark used_for_training for {analysis_id}: {e}")
 
-
+        # Keep legacy meta.json in sync if present (best-effort)
+        try:
+            storage_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json", meta)
+        except Exception:
+            pass
 def try_insert_model_version_row(supabase, new_version: int, model_path: str) -> None:
     """
     У тебя в Supabase уже есть таблица model_versions.
@@ -487,7 +505,7 @@ def main():
                 log(f"[!] Failed to upload model to bucket: {e}")
 
             # 5) Помечаем примеры как использованные для обучения
-            mark_samples_used_for_training(supabase, args.bucket, samples, new_version)
+            mark_samples_used_for_training(samples, new_version)
 
             # 6) Обновляем training_state
             safe_release_training_lock(supabase, success=True, last_model_version=new_version)

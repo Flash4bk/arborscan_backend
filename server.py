@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -38,6 +38,7 @@ SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
 SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
+SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
 # NEW: bucket для сохранения всех загрузок (raw dataset)
 SUPABASE_BUCKET_RAW = "arborscan-raw"
@@ -257,9 +258,7 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
 
 # ---------------------------------------------------------
 # Model hot-swap (tree model) using training_state.active_model_version
-# Models are stored in Supabase Storage bucket as model_v{N}.pt
-# NOTE: retrain_worker uploads to bucket "arborscan-models" (default). Older deployments used "models".
-# We support both to avoid breaking compatibility.
+# Models are stored in Supabase Storage bucket: "models" as model_v{N}.pt
 # ---------------------------------------------------------
 
 TREE_MODEL: Optional[YOLO] = None
@@ -268,34 +267,20 @@ MODEL_LOCK = threading.Lock()
 _MODEL_LAST_CHECK_TS = 0.0
 _MODEL_CHECK_INTERVAL_SEC = float(os.getenv("MODEL_CHECK_INTERVAL_SEC", "2.0"))
 
-# Primary bucket for new models (matches retrain_worker). Can be overridden via env.
-MODEL_BUCKET = os.getenv("MODEL_BUCKET", "arborscan-models").strip() or "arborscan-models"
-# Backward-compatible fallback bucket (older name).
-MODEL_BUCKET_FALLBACK = os.getenv("MODEL_BUCKET_FALLBACK", "models").strip() or "models"
-
 def _local_model_path(version: int) -> str:
     cache_dir = os.getenv("MODEL_CACHE_DIR", "/tmp/models")
     Path(cache_dir).mkdir(parents=True, exist_ok=True)
     return str(Path(cache_dir) / f"model_v{version}.pt")
 
 def _download_model_if_needed(version: int) -> str:
-    """Ensure model_v{version}.pt is present locally and return its path."""
     filename = f"model_v{version}.pt"
     local_path = _local_model_path(version)
     if os.path.exists(local_path):
         return local_path
-
-    last_err: Optional[Exception] = None
-    for bucket in (MODEL_BUCKET, MODEL_BUCKET_FALLBACK):
-        try:
-            data = supabase_download_bytes(bucket, filename)
-            with open(local_path, "wb") as f:
-                f.write(data)
-            return local_path
-        except Exception as e:
-            last_err = e
-            continue
-    raise RuntimeError(f"Failed to download {filename} from buckets '{MODEL_BUCKET}' or '{MODEL_BUCKET_FALLBACK}': {last_err}")
+    data = supabase_download_bytes("models", filename)
+    with open(local_path, "wb") as f:
+        f.write(data)
+    return local_path
 
 def _get_active_model_version() -> int:
     state = training_state_get()
@@ -305,67 +290,30 @@ def _get_active_model_version() -> int:
         return 0
     return int(v)
 
-def _list_versions_from_storage(bucket: str) -> set[int]:
-    """List available model versions by enumerating objects in a Supabase Storage bucket."""
-    versions: set[int] = set()
-    try:
-        # supabase_list_objects returns list[dict] from Storage list endpoint.
-        objs = supabase_list_objects(bucket=bucket, prefix="")
-        for obj in objs or []:
-            name = (obj or {}).get("name") or ""
-            mm = re.search(r"model_v(\d+)\.pt$", name)
-            if mm:
-                versions.add(int(mm.group(1)))
-    except Exception:
-        # Don't fail the whole endpoint if storage listing is unavailable.
-        pass
-    return versions
-
 def list_available_model_versions() -> list[dict]:
-    """Return model versions for the Admin Panel dropdown.
-
-    We infer available versions from:
-      - Supabase Storage buckets (MODEL_BUCKET + fallback)
-      - AVAILABLE_MODEL_VERSIONS env var (comma-separated ints)
-      - local cached files in /tmp/models (model_v*.pt)
-      - bundled files in ./models (model_v*.pt)
-    Always includes the current active version.
-    """
-    versions: set[int] = set()
-
-    # 1) Storage buckets (authoritative in production)
-    versions |= _list_versions_from_storage(MODEL_BUCKET)
-    if MODEL_BUCKET_FALLBACK and MODEL_BUCKET_FALLBACK != MODEL_BUCKET:
-        versions |= _list_versions_from_storage(MODEL_BUCKET_FALLBACK)
-
-    # 2) Env hint (manual override)
-    env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
-    if env_hint:
-        for part in env_hint.split(","):
-            part = part.strip()
-            if not part:
-                continue
-            try:
-                versions.add(int(part))
-            except ValueError:
-                pass
-
-    # 3) Local cache and bundled models
-    for p in Path("/tmp/models").glob("model_v*.pt"):
-        mm = re.search(r"model_v(\d+)\.pt$", p.name)
-        if mm:
-            versions.add(int(mm.group(1)))
-
-    if Path("models").exists():
-        for p in Path("models").glob("model_v*.pt"):
-            mm = re.search(r"model_v(\d+)\.pt$", p.name)
-            if mm:
-                versions.add(int(mm.group(1)))
-
-    active = _get_active_model_version()
-    versions.add(active)
-
-    return [{"version": v, "is_active": v == active} for v in sorted(versions)]
+    """List models available in the models bucket (e.g. arborscan-models/model_v3.pt)."""
+    supabase = get_supabase_client()
+    try:
+        items = supabase_list_objects(supabase, SUPABASE_BUCKET_MODELS, "")
+    except Exception as e:
+        print(f"[!] Failed to list models bucket: {e}")
+        return []
+    out: list[dict] = []
+    for it in items:
+        name = it.get("name") or ""
+        # Expect model_v{N}.pt
+        m = re.match(r"model_v(\d+)\.pt$", name)
+        if not m:
+            continue
+        v = int(m.group(1))
+        out.append({
+            "version": v,
+            "name": name,
+            "updated_at": it.get("updated_at") or it.get("created_at"),
+            "size": it.get("metadata", {}).get("size") if isinstance(it.get("metadata"), dict) else None,
+        })
+    out.sort(key=lambda x: x["version"])
+    return out
 
 
 def reload_tree_model(force: bool = False):
@@ -790,6 +738,15 @@ class TrustedExample(BaseModel):
     use_for_training: bool | None = None
     needs_manual_review: bool | None = None
 
+
+
+
+class AdminSetTrainingRequest(BaseModel):
+    # accept several keys for backward/forward compatibility with the Flutter admin UI
+    use_for_training: bool | None = None
+    enabled: bool | None = None
+    include: bool | None = None
+    value: bool | None = None
 
 
 app = FastAPI(title="ArborScan API v2.0")
@@ -1448,44 +1405,105 @@ def request_retrain_if_needed():
         "trust_score": trust,
     }
 @app.get("/admin/verified-list")
-def admin_verified_list():
-    """
-    Возвращает список analysis_id из arborscan-verified
-    + краткую информацию из meta_verified.json
-    """
-    try:
-        objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def admin_verified_list(include_archived: bool = False):
+    """Return verified samples list. By default hides samples already used for training."""
+    supabase = get_supabase_client()
+    prefix = ""  # list top-level folders
 
-    analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
-
-    results = []
-
-    for aid in analysis_ids:
-        try:
-            meta_bytes = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{aid}/meta_verified.json",
-            )
-            meta = json.loads(meta_bytes)
-
-            results.append({
-                "analysis_id": aid,
-                "species": meta.get("species"),
-                "risk_category": meta.get("risk", {}).get("category"),
-                "trust_score": meta.get("trust_score"),
-                "verified": meta.get("verified", True),
-                "verified_at": meta.get("verified_at"),
-            })
-        except Exception:
-            # если meta не найден или битый — просто пропускаем
+    folders = supabase_list_objects(supabase, SUPABASE_BUCKET_VERIFIED, prefix)
+    items = []
+    for f in folders:
+        analysis_id = f.get("name")
+        if not analysis_id:
             continue
 
-    return {
-        "count": len(results),
-        "items": results,
-    }
+        meta_path = f"{analysis_id}/meta_verified.json"
+        meta = {}
+        try:
+            meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, meta_path)
+            meta = json.loads(meta_bytes.decode("utf-8"))
+        except Exception:
+            # Fallback to legacy meta.json if present
+            try:
+                meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json")
+                meta = json.loads(meta_bytes.decode("utf-8"))
+            except Exception:
+                continue
+
+        used = bool(meta.get("used_for_training", False))
+        if used and not include_archived:
+            continue
+
+        exclude_from_training = bool(meta.get("exclude_from_training", False))
+        verified_at = meta.get("verified_at") or meta.get("created_at") or meta.get("timestamp")
+
+        # best-effort: detect user mask artifact
+        has_user_mask = False
+        for p in ("user_mask.png", "user_mask.jpg", "mask_user.png", "mask_user.jpg"):
+            try:
+                _ = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/{p}")
+                has_user_mask = True
+                break
+            except Exception:
+                continue
+
+        items.append({
+            "analysis_id": analysis_id,
+            "species": meta.get("species"),
+            "trust_score": meta.get("trust_score"),
+            "risk_category": meta.get("risk_category"),
+            "verified_at": verified_at,
+            "exclude_from_training": exclude_from_training,
+            "used_for_training": used,
+            "used_for_training_at": meta.get("used_for_training_at"),
+            "trained_in_version": meta.get("trained_in_version"),
+            "has_user_mask": has_user_mask,
+        })
+
+    # newest first
+    def _sort_key(x):
+        return x.get("verified_at") or ""
+    items.sort(key=_sort_key, reverse=True)
+    return {"items": items}
+
+@app.post("/admin/verified/{analysis_id}/set-training")
+@app.post("/admin/verified/{analysis_id}/set-training/")
+def admin_set_training_flag(analysis_id: str, req: SetTrainingFlagRequest):
+    """Toggle whether a verified sample should be excluded from future trainings."""
+    supabase = get_supabase_client()
+    meta_path = f"{analysis_id}/meta_verified.json"
+
+    # Load meta (fallback to legacy meta.json)
+    meta = None
+    try:
+        meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, meta_path)
+        meta = json.loads(meta_bytes.decode("utf-8"))
+    except Exception:
+        try:
+            meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json")
+            meta = json.loads(meta_bytes.decode("utf-8"))
+        except Exception:
+            meta = None
+
+    if not isinstance(meta, dict):
+        raise HTTPException(status_code=404, detail="Verified item not found")
+
+    meta["exclude_from_training"] = bool(req.exclude_from_training)
+    meta["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Persist to meta_verified.json (and also keep legacy meta.json in sync if it exists)
+    payload = json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8")
+    storage_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
+
+    # Best-effort legacy sync
+    try:
+        storage_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json", meta)
+    except Exception:
+        pass
+
+    return {"ok": True, "analysis_id": analysis_id, "exclude_from_training": meta["exclude_from_training"]}
+
+
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
@@ -1581,24 +1599,38 @@ class _SetActiveModelBody(BaseModel):
     version: int
 
 @app.post("/admin/set-active-model")
-async def admin_set_active_model(payload: dict = Body(...)):
-    training_state_ensure_row()
-    raw_v = payload.get('version') or payload.get('model_version') or payload.get('active_model_version')
-    if raw_v is None:
-        raise HTTPException(status_code=422, detail="Missing 'version' in request body")
-    v = int(raw_v)
+async def admin_set_active_model(req: SetActiveModelRequest):
+    # Validate that the requested version exists in the models bucket
+    version = int(req.version)
+    if version <= 0:
+        raise HTTPException(status_code=400, detail="Invalid model version")
 
-    # verify/download model from storage (supports primary+fallback buckets)
-    if _download_model_if_needed(v) is None:
-        raise HTTPException(status_code=400, detail=f"Model v{v} not found in storage")
+    models = list_available_model_versions()
+    if not any(m.get("version") == version for m in models):
+        raise HTTPException(status_code=400, detail=f"Model v{version} not found")
 
-    training_state_update({"active_model_version": v})
+    # Download to local cache and switch
+    supabase = get_supabase_client()
+    storage_path = f"model_v{version}.pt"
+    local_path = f"/tmp/models/model_v{version}.pt"
 
-    # hot reload immediately (no server restart)
-    with MODEL_LOCK:
-        reload_tree_model(force=True)
+    try:
+        data = supabase_download_bytes(supabase, SUPABASE_BUCKET_MODELS, storage_path)
+        Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(local_path).write_bytes(data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch model: {e}")
 
-    return {"status": "ok", "active_model_version": v}
+    try:
+        switch_tree_model(local_path, version=version)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to switch model: {e}")
+
+    state = training_state_get()
+    state["active_model_version"] = version
+    training_state_set(state)
+    return {"ok": True, "active_model_version": version}
+
 
 @app.post("/admin/request-retrain")
 def admin_request_retrain():
