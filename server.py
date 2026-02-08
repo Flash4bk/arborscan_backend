@@ -1588,12 +1588,9 @@ async def admin_set_active_model(payload: dict = Body(...)):
         raise HTTPException(status_code=422, detail="Missing 'version' in request body")
     v = int(raw_v)
 
-    # verify model exists in Supabase Storage bucket 'models'
-    filename = f"model_v{v}.pt"
-    try:
-        _ = supabase_download_bytes("models", filename)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Model file not found in Supabase Storage: {filename}. {e}")
+    # verify/download model from storage (supports primary+fallback buckets)
+    if _download_model_if_needed(v) is None:
+        raise HTTPException(status_code=400, detail=f"Model v{v} not found in storage")
 
     training_state_update({"active_model_version": v})
 
