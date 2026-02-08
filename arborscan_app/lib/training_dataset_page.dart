@@ -53,7 +53,24 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
   int get _includedCount => _items.where((e) => !e.excludeFromTraining).length;
   int get _excludedCount => _items.where((e) => e.excludeFromTraining).length;
 
-  String _fmtDateTime(DateTime? dt) {
+  /// Formats timestamp shown in the training dataset list.
+  ///
+  /// Backend returns `verified_at` as ISO8601 string (or null). Some older code
+  /// paths might still pass a DateTime, so we accept both.
+  String _fmtDateTime(dynamic value) {
+    if (value == null) return '—';
+
+    DateTime? dt;
+    if (value is DateTime) {
+      dt = value;
+    } else if (value is String && value.trim().isNotEmpty) {
+      try {
+        dt = DateTime.parse(value).toLocal();
+      } catch (_) {
+        dt = null;
+      }
+    }
+
     if (dt == null) return '—';
     String two(int v) => v.toString().padLeft(2, '0');
     return '${two(dt.day)}.${two(dt.month)}.${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
