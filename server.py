@@ -1462,39 +1462,14 @@ def admin_get_analysis(analysis_id: str):
             f"{analysis_id}/annotated.jpg",
         )
 
-        # Optional: user-corrected mask. If present, we render a preview
-        # (input image + semi-transparent overlay of the user mask) so the
-        # admin UI can preview what the user drew (not the AI annotated output).
-        user_mask_bytes = None
-        user_annotated_bytes = None
-        try:
-            user_mask_bytes = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/user_mask.png",
-            )
-        except Exception:
-            user_mask_bytes = None
-
-        if user_mask_bytes:
-            try:
-                base_img = Image.open(io.BytesIO(input_img)).convert("RGBA")
-                mask_img = Image.open(io.BytesIO(user_mask_bytes)).convert("L")
-
-                # Ensure sizes match (defensive: client/server may resize)
-                if mask_img.size != base_img.size:
-                    mask_img = mask_img.resize(base_img.size, Image.NEAREST)
-
-                # Build a blue RGBA overlay using the mask as alpha
-                alpha = mask_img.point(lambda p: 140 if p > 0 else 0)
-                overlay = Image.new("RGBA", base_img.size, (0, 120, 255, 0))
-                overlay.putalpha(alpha)
-
-                composed = Image.alpha_composite(base_img, overlay).convert("RGB")
-                out = io.BytesIO()
-                composed.save(out, format="JPEG", quality=90)
-                user_annotated_bytes = out.getvalue()
-            except Exception:
-                user_annotated_bytes = None
+# optional user-corrected mask (PNG) saved from app; may be absent for older samples
+try:
+    user_mask_png = supabase_download_bytes(
+        SUPABASE_BUCKET_VERIFIED,
+        f"{analysis_id}/user_mask.png",
+    )
+except Exception:
+    user_mask_png = None
         tree_pred = json.loads(
             supabase_download_bytes(
                 SUPABASE_BUCKET_VERIFIED,
@@ -1525,9 +1500,7 @@ def admin_get_analysis(analysis_id: str):
         "images": {
             "input_base64": base64.b64encode(input_img).decode("utf-8"),
             "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
-            # Optional extras for admin dataset preview
-            "user_mask_base64": base64.b64encode(user_mask_bytes).decode("utf-8") if user_mask_bytes else None,
-            "user_annotated_base64": base64.b64encode(user_annotated_bytes).decode("utf-8") if user_annotated_bytes else None,
+            "user_mask_png_base64": (base64.b64encode(user_mask_png).decode("utf-8") if user_mask_png else None),
         },
         "tree_pred": tree_pred,
         "stick_pred": stick_pred,

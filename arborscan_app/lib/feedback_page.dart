@@ -300,10 +300,17 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       color: paramsOk ? AppTheme.success : AppTheme.warning,
                       icon: paramsOk ? Icons.check_circle : Icons.tune,
                     ),
-                    const Spacer(),
-                    Text(
-                      'Масштаб: ${_userScale?.toStringAsFixed(6) ?? '—'}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Масштаб: ${_userScale?.toStringAsFixed(6) ?? '—'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+                        ),
+                      ),
                     ),
                   ],
                 ),
