@@ -753,6 +753,15 @@ class TrustedExample(BaseModel):
 
 
 
+
+class AdminSetTrainingRequest(BaseModel):
+    # accept several keys for backward/forward compatibility with the Flutter admin UI
+    use_for_training: bool | None = None
+    enabled: bool | None = None
+    include: bool | None = None
+    value: bool | None = None
+
+
 app = FastAPI(title="ArborScan API v2.0")
 
 @app.on_event("startup")
@@ -1447,6 +1456,41 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
+@app.post("/admin/verified/{analysis_id}/set-training")
+@app.post("/admin/verified/{analysis_id}/set-training/")
+def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
+    """
+    Toggle whether a verified sample should be used for training.
+    The admin UI uses this to include/exclude items from the training dataset export.
+    """
+    # pick the first provided flag from a set of accepted keys
+    flag = None
+    for v in (req.use_for_training, req.enabled, req.include, req.value):
+        if v is not None:
+            flag = bool(v)
+            break
+    if flag is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
+        )
+
+    meta_path = f"{analysis_id}/meta_verified.json"
+    try:
+        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
+        meta = json.loads(raw.decode("utf-8")) if raw else {}
+    except Exception:
+        meta = {}
+
+    meta["analysis_id"] = analysis_id
+    meta["use_for_training"] = flag
+    meta["exclude_from_training"] = (not flag)
+
+    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
+
+    return {"analysis_id": analysis_id, "use_for_training": flag}
+
+
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
@@ -1480,7 +1524,7 @@ def admin_get_analysis(analysis_id: str):
             )
         )
 
-        # Optional: user-corrected mask (may not exist for all items)
+        # optional user-corrected mask (PNG with alpha)
         user_mask_img = None
         try:
             user_mask_img = supabase_download_bytes(
@@ -1501,7 +1545,7 @@ def admin_get_analysis(analysis_id: str):
         "images": {
             "input_base64": base64.b64encode(input_img).decode("utf-8"),
             "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
-            **({"user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8")} if user_mask_img else {}),
+            "user_mask_base64": (base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None),
         },
         "tree_pred": tree_pred,
         "stick_pred": stick_pred,

@@ -259,7 +259,6 @@ class VerifiedAnalysis {
   final String analysisId;
   final Uint8List inputImage;
   final Uint8List annotatedImage;
-  // Optional: user-corrected mask/annotation preview if backend provides it.
   final Uint8List? userMaskImage;
   final Map<String, dynamic> meta;
   final Map<String, dynamic> treePred;
@@ -279,13 +278,11 @@ class VerifiedAnalysis {
     final images = (json['images'] is Map) ? (json['images'] as Map) : const {};
     final inputB64 = (images['input_base64'] ?? '').toString();
     final annotatedB64 = (images['annotated_base64'] ?? '').toString();
-    final userMaskB64 = (images['user_mask_base64'] ?? '').toString();
 
     return VerifiedAnalysis(
       analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
       inputImage: base64Decode(inputB64),
       annotatedImage: base64Decode(annotatedB64),
-      userMaskImage: userMaskB64.isNotEmpty ? base64Decode(userMaskB64) : null,
       meta: (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : <String, dynamic>{},
       treePred: (json['tree_pred'] is Map<String, dynamic>) ? (json['tree_pred'] as Map<String, dynamic>) : <String, dynamic>{},
       stickPred: (json['stick_pred'] is Map<String, dynamic>) ? (json['stick_pred'] as Map<String, dynamic>) : <String, dynamic>{},

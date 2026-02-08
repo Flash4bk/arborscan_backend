@@ -53,29 +53,6 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
   int get _includedCount => _items.where((e) => !e.excludeFromTraining).length;
   int get _excludedCount => _items.where((e) => e.excludeFromTraining).length;
 
-  /// Formats timestamp shown in the training dataset list.
-  ///
-  /// Backend returns `verified_at` as ISO8601 string (or null). Some older code
-  /// paths might still pass a DateTime, so we accept both.
-  String _fmtDateTime(dynamic value) {
-    if (value == null) return '—';
-
-    DateTime? dt;
-    if (value is DateTime) {
-      dt = value;
-    } else if (value is String && value.trim().isNotEmpty) {
-      try {
-        dt = DateTime.parse(value).toLocal();
-      } catch (_) {
-        dt = null;
-      }
-    }
-
-    if (dt == null) return '—';
-    String two(int v) => v.toString().padLeft(2, '0');
-    return '${two(dt.day)}.${two(dt.month)}.${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
-  }
-
   Future<VerifiedAnalysis> _getDetails(String analysisId) async {
     final cached = _detailsCache[analysisId];
     if (cached != null) return cached;
@@ -172,7 +149,6 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
                   else
                     ..._items.map((it) => _DatasetItemCard(
                           item: it,
-                          addedAtText: _fmtDateTime(it.verifiedAt),
                           loadDetails: _getDetails,
                           onToggleInclude: () => _toggleInclude(it),
                         )),
@@ -223,13 +199,11 @@ class _SummaryCard extends StatelessWidget {
 
 class _DatasetItemCard extends StatefulWidget {
   final VerifiedItem item;
-  final String addedAtText;
   final Future<VerifiedAnalysis> Function(String analysisId) loadDetails;
   final VoidCallback onToggleInclude;
 
   const _DatasetItemCard({
     required this.item,
-    required this.addedAtText,
     required this.loadDetails,
     required this.onToggleInclude,
   });
@@ -294,13 +268,6 @@ class _DatasetItemCardState extends State<_DatasetItemCard> {
                       const SizedBox(height: 2),
                       Text(
                         'ID: ${it.analysisId}',
-                        style: const TextStyle(fontSize: 12, color: Colors.black54),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Добавлено: ${widget.addedAtText}',
                         style: const TextStyle(fontSize: 12, color: Colors.black54),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -376,6 +343,7 @@ class _DetailsBlock extends StatelessWidget {
         _TwoImages(
           left: details.inputImage,
           right: details.annotatedImage,
+          userMask: details.userMaskImage,
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -395,16 +363,34 @@ class _DetailsBlock extends StatelessWidget {
 class _TwoImages extends StatelessWidget {
   final Uint8List left;
   final Uint8List right;
+  final Uint8List? userMask;
 
-  const _TwoImages({required this.left, required this.right});
+  const _TwoImages({
+    required this.left,
+    required this.right,
+    this.userMask,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(child: _ImageTile(bytes: left, label: 'Оригинал')),
-        const SizedBox(width: 10),
-        Expanded(child: _ImageTile(bytes: right, label: 'Аннотация')),
+        Row(
+          children: [
+            Expanded(child: _ImageTile(bytes: left, label: 'Оригинал')),
+            const SizedBox(width: 10),
+            Expanded(child: _ImageTile(bytes: right, label: 'Аннотация (ИИ)')),
+          ],
+        ),
+        if (userMask != null) ...[
+          const SizedBox(height: 10),
+          _ImageTile(
+            bytes: left,
+            overlay: userMask,
+            label: 'Моя маска',
+            height: 180,
+          ),
+        ],
       ],
     );
   }
@@ -412,30 +398,107 @@ class _TwoImages extends StatelessWidget {
 
 class _ImageTile extends StatelessWidget {
   final Uint8List bytes;
+  final Uint8List? overlay;
   final String label;
+  final double height;
 
-  const _ImageTile({required this.bytes, required this.label});
+  const _ImageTile({
+    required this.bytes,
+    required this.label,
+    this.overlay,
+    this.height = 140,
+  });
+
+  void _open(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: InteractiveViewer(
+                minScale: 0.7,
+                maxScale: 6,
+                child: Stack(
+                  children: [
+                    Image.memory(bytes, fit: BoxFit.contain),
+                    if (overlay != null)
+                      Positioned.fill(
+                        child: Opacity(
+                          opacity: 0.7,
+                          child: Image.memory(overlay!, fit: BoxFit.contain),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _open(context),
       child: Stack(
         children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: Image.memory(bytes, fit: BoxFit.cover),
+          Container(
+            height: height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(bytes, fit: BoxFit.cover),
+                if (overlay != null)
+                  Opacity(
+                    opacity: 0.7,
+                    child: Image.memory(overlay!, fit: BoxFit.cover),
+                  ),
+              ],
+            ),
           ),
           Positioned(
             left: 8,
             top: 8,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(999),
               ),
-              child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
             ),
           ),
         ],
