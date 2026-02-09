@@ -17,7 +17,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException , Body
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
@@ -747,6 +747,44 @@ class AdminSetTrainingRequest(BaseModel):
     enabled: bool | None = None
     include: bool | None = None
     value: bool | None = None
+
+
+class SetTrainingFlagRequest(BaseModel):
+    """Body for toggling whether a verified sample is included in future training.
+
+    Different app versions used different field names. We support both:
+      - {"exclude_from_training": true/false}
+      - {"includeInTraining": true/false}
+      - {"include_in_training": true/false}
+      - legacy {"use_for_training"|"enabled"|"include"|"value": true/false}
+    """
+
+    exclude_from_training: bool | None = None
+    include_in_training: bool | None = Field(default=None, alias="includeInTraining")
+
+    # legacy fallbacks
+    use_for_training: bool | None = None
+    enabled: bool | None = None
+    include: bool | None = None
+    value: bool | None = None
+
+    class Config:
+        allow_population_by_field_name = True
+
+    def resolved_exclude_flag(self) -> bool:
+        """Return exclude_from_training, deriving from include* flags if needed."""
+        if self.exclude_from_training is not None:
+            return bool(self.exclude_from_training)
+
+        if self.include_in_training is not None:
+            return not bool(self.include_in_training)
+
+        # legacy field names
+        for v in (self.use_for_training, self.enabled, self.include, self.value):
+            if v is not None:
+                return not bool(v)
+
+        raise ValueError("No training flag provided")
 
 
 app = FastAPI(title="ArborScan API v2.0")
@@ -1488,7 +1526,12 @@ def admin_set_training_flag(analysis_id: str, req: SetTrainingFlagRequest):
     if not isinstance(meta, dict):
         raise HTTPException(status_code=404, detail="Verified item not found")
 
-    meta["exclude_from_training"] = bool(req.exclude_from_training)
+    try:
+        exclude = req.resolved_exclude_flag()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    meta["exclude_from_training"] = bool(exclude)
     meta["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     # Persist to meta_verified.json (and also keep legacy meta.json in sync if it exists)
