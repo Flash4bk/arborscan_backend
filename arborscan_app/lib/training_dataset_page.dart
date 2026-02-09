@@ -71,6 +71,8 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
               ? VerifiedItem(
                   analysisId: x.analysisId,
                   verified: x.verified,
+                  createdAt: x.createdAt,
+                  usedForTraining: x.usedForTraining,
                   excludeFromTraining: !newInclude,
                   species: x.species,
                   riskCategory: x.riskCategory,
@@ -91,6 +93,8 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
                 ? VerifiedItem(
                     analysisId: x.analysisId,
                     verified: x.verified,
+                    createdAt: x.createdAt,
+                    usedForTraining: x.usedForTraining,
                     excludeFromTraining: it.excludeFromTraining,
                     species: x.species,
                     riskCategory: x.riskCategory,

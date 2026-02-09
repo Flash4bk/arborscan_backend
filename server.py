@@ -18,7 +18,12 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel, Field
-from datetime import datetime, timezone
+try:
+    # Pydantic v2
+    from pydantic import ConfigDict
+except Exception:  # pragma: no cover
+    ConfigDict = None
+from datetime import datetime
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -38,7 +43,6 @@ SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
 SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
-SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
 # NEW: bucket для сохранения всех загрузок (raw dataset)
 SUPABASE_BUCKET_RAW = "arborscan-raw"
@@ -291,29 +295,43 @@ def _get_active_model_version() -> int:
     return int(v)
 
 def list_available_model_versions() -> list[dict]:
-    """List models available in the models bucket (e.g. arborscan-models/model_v3.pt)."""
-    supabase = get_supabase_client()
-    try:
-        items = supabase_list_objects(supabase, SUPABASE_BUCKET_MODELS, "")
-    except Exception as e:
-        print(f"[!] Failed to list models bucket: {e}")
-        return []
-    out: list[dict] = []
-    for it in items:
-        name = it.get("name") or ""
-        # Expect model_v{N}.pt
-        m = re.match(r"model_v(\d+)\.pt$", name)
-        if not m:
-            continue
-        v = int(m.group(1))
-        out.append({
-            "version": v,
-            "name": name,
-            "updated_at": it.get("updated_at") or it.get("created_at"),
-            "size": it.get("metadata", {}).get("size") if isinstance(it.get("metadata"), dict) else None,
-        })
-    out.sort(key=lambda x: x["version"])
-    return out
+    """Return model versions for the Admin Panel dropdown.
+
+    We infer available versions from:
+      - AVAILABLE_MODEL_VERSIONS env var (comma-separated ints)
+      - local cached files in /tmp/models (model_v*.pt)
+      - bundled files in ./models (model_v*.pt)
+    Always includes the current active version.
+    """
+    versions: set[int] = set()
+
+    env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
+    if env_hint:
+        for part in env_hint.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                versions.add(int(part))
+            except ValueError:
+                pass
+
+    for p in Path("/tmp/models").glob("model_v*.pt"):
+        mm = re.search(r"model_v(\d+)\.pt$", p.name)
+        if mm:
+            versions.add(int(mm.group(1)))
+
+    if Path("models").exists():
+        for p in Path("models").glob("model_v*.pt"):
+            mm = re.search(r"model_v(\d+)\.pt$", p.name)
+            if mm:
+                versions.add(int(mm.group(1)))
+
+    active = _get_active_model_version()
+    versions.add(active)
+
+    return [{"version": v, "is_active": v == active} for v in sorted(versions)]
+
 
 
 def reload_tree_model(force: bool = False):
@@ -723,6 +741,30 @@ class FeedbackRequest(BaseModel):
     # PNG маска, закодированная в base64
     user_mask_base64: str | None = None
 
+
+def _pydantic_model_config_allow_by_name() -> dict:
+    """Compatibility helper for Pydantic v1/v2."""
+    if ConfigDict is not None:
+        # v2
+        return {"model_config": ConfigDict(populate_by_name=True)}
+    # v1 fallback
+    return {"Config": type("Config", (), {"allow_population_by_field_name": True})}
+
+
+class SetTrainingFlagRequest(BaseModel):
+    # Frontend sends includeInTraining (camelCase)
+    include_in_training: bool = Field(..., alias="includeInTraining")
+
+    # pydantic v1/v2 compat
+    locals().update(_pydantic_model_config_allow_by_name())
+
+
+class SetActiveModelRequest(BaseModel):
+    # Frontend sends modelVersion (camelCase)
+    model_version: int = Field(..., alias="modelVersion")
+
+    locals().update(_pydantic_model_config_allow_by_name())
+
 class TrustedExample(BaseModel):
     analysis_id: str
     species: str | None = None
@@ -738,53 +780,6 @@ class TrustedExample(BaseModel):
     use_for_training: bool | None = None
     needs_manual_review: bool | None = None
 
-
-
-
-class AdminSetTrainingRequest(BaseModel):
-    # accept several keys for backward/forward compatibility with the Flutter admin UI
-    use_for_training: bool | None = None
-    enabled: bool | None = None
-    include: bool | None = None
-    value: bool | None = None
-
-
-class SetTrainingFlagRequest(BaseModel):
-    """Body for toggling whether a verified sample is included in future training.
-
-    Different app versions used different field names. We support both:
-      - {"exclude_from_training": true/false}
-      - {"includeInTraining": true/false}
-      - {"include_in_training": true/false}
-      - legacy {"use_for_training"|"enabled"|"include"|"value": true/false}
-    """
-
-    exclude_from_training: bool | None = None
-    include_in_training: bool | None = Field(default=None, alias="includeInTraining")
-
-    # legacy fallbacks
-    use_for_training: bool | None = None
-    enabled: bool | None = None
-    include: bool | None = None
-    value: bool | None = None
-
-    class Config:
-        allow_population_by_field_name = True
-
-    def resolved_exclude_flag(self) -> bool:
-        """Return exclude_from_training, deriving from include* flags if needed."""
-        if self.exclude_from_training is not None:
-            return bool(self.exclude_from_training)
-
-        if self.include_in_training is not None:
-            return not bool(self.include_in_training)
-
-        # legacy field names
-        for v in (self.use_for_training, self.enabled, self.include, self.value):
-            if v is not None:
-                return not bool(v)
-
-        raise ValueError("No training flag provided")
 
 
 app = FastAPI(title="ArborScan API v2.0")
@@ -1443,110 +1438,44 @@ def request_retrain_if_needed():
         "trust_score": trust,
     }
 @app.get("/admin/verified-list")
-def admin_verified_list(include_archived: bool = False):
-    """Return verified samples list. By default hides samples already used for training."""
-    supabase = get_supabase_client()
-    prefix = ""  # list top-level folders
+def admin_verified_list():
+    """
+    Возвращает список analysis_id из arborscan-verified
+    + краткую информацию из meta_verified.json
+    """
+    try:
+        objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    folders = supabase_list_objects(supabase, SUPABASE_BUCKET_VERIFIED, prefix)
-    items = []
-    for f in folders:
-        analysis_id = f.get("name")
-        if not analysis_id:
+    analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
+
+    results = []
+
+    for aid in analysis_ids:
+        try:
+            meta_bytes = supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{aid}/meta_verified.json",
+            )
+            meta = json.loads(meta_bytes)
+
+            results.append({
+                "analysis_id": aid,
+                "species": meta.get("species"),
+                "risk_category": meta.get("risk", {}).get("category"),
+                "trust_score": meta.get("trust_score"),
+                "verified": meta.get("verified", True),
+                "verified_at": meta.get("verified_at"),
+            })
+        except Exception:
+            # если meta не найден или битый — просто пропускаем
             continue
 
-        meta_path = f"{analysis_id}/meta_verified.json"
-        meta = {}
-        try:
-            meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, meta_path)
-            meta = json.loads(meta_bytes.decode("utf-8"))
-        except Exception:
-            # Fallback to legacy meta.json if present
-            try:
-                meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json")
-                meta = json.loads(meta_bytes.decode("utf-8"))
-            except Exception:
-                continue
-
-        used = bool(meta.get("used_for_training", False))
-        if used and not include_archived:
-            continue
-
-        exclude_from_training = bool(meta.get("exclude_from_training", False))
-        verified_at = meta.get("verified_at") or meta.get("created_at") or meta.get("timestamp")
-
-        # best-effort: detect user mask artifact
-        has_user_mask = False
-        for p in ("user_mask.png", "user_mask.jpg", "mask_user.png", "mask_user.jpg"):
-            try:
-                _ = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/{p}")
-                has_user_mask = True
-                break
-            except Exception:
-                continue
-
-        items.append({
-            "analysis_id": analysis_id,
-            "species": meta.get("species"),
-            "trust_score": meta.get("trust_score"),
-            "risk_category": meta.get("risk_category"),
-            "verified_at": verified_at,
-            "exclude_from_training": exclude_from_training,
-            "used_for_training": used,
-            "used_for_training_at": meta.get("used_for_training_at"),
-            "trained_in_version": meta.get("trained_in_version"),
-            "has_user_mask": has_user_mask,
-        })
-
-    # newest first
-    def _sort_key(x):
-        return x.get("verified_at") or ""
-    items.sort(key=_sort_key, reverse=True)
-    return {"items": items}
-
-@app.post("/admin/verified/{analysis_id}/set-training")
-@app.post("/admin/verified/{analysis_id}/set-training/")
-def admin_set_training_flag(analysis_id: str, req: SetTrainingFlagRequest):
-    """Toggle whether a verified sample should be excluded from future trainings."""
-    supabase = get_supabase_client()
-    meta_path = f"{analysis_id}/meta_verified.json"
-
-    # Load meta (fallback to legacy meta.json)
-    meta = None
-    try:
-        meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, meta_path)
-        meta = json.loads(meta_bytes.decode("utf-8"))
-    except Exception:
-        try:
-            meta_bytes = supabase_download_bytes(supabase, SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json")
-            meta = json.loads(meta_bytes.decode("utf-8"))
-        except Exception:
-            meta = None
-
-    if not isinstance(meta, dict):
-        raise HTTPException(status_code=404, detail="Verified item not found")
-
-    try:
-        exclude = req.resolved_exclude_flag()
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    meta["exclude_from_training"] = bool(exclude)
-    meta["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    # Persist to meta_verified.json (and also keep legacy meta.json in sync if it exists)
-    payload = json.dumps(meta, ensure_ascii=False, indent=2).encode("utf-8")
-    storage_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
-
-    # Best-effort legacy sync
-    try:
-        storage_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta.json", meta)
-    except Exception:
-        pass
-
-    return {"ok": True, "analysis_id": analysis_id, "exclude_from_training": meta["exclude_from_training"]}
-
-
+    return {
+        "count": len(results),
+        "items": results,
+    }
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
@@ -1642,38 +1571,27 @@ class _SetActiveModelBody(BaseModel):
     version: int
 
 @app.post("/admin/set-active-model")
-async def admin_set_active_model(req: SetActiveModelRequest):
-    # Validate that the requested version exists in the models bucket
-    version = int(req.version)
-    if version <= 0:
-        raise HTTPException(status_code=400, detail="Invalid model version")
+async def admin_set_active_model(payload: dict = Body(...)):
+    training_state_ensure_row()
+    raw_v = payload.get('version') or payload.get('model_version') or payload.get('active_model_version')
+    if raw_v is None:
+        raise HTTPException(status_code=422, detail="Missing 'version' in request body")
+    v = int(raw_v)
 
-    models = list_available_model_versions()
-    if not any(m.get("version") == version for m in models):
-        raise HTTPException(status_code=400, detail=f"Model v{version} not found")
-
-    # Download to local cache and switch
-    supabase = get_supabase_client()
-    storage_path = f"model_v{version}.pt"
-    local_path = f"/tmp/models/model_v{version}.pt"
-
+    # verify model exists in Supabase Storage bucket 'models'
+    filename = f"model_v{v}.pt"
     try:
-        data = supabase_download_bytes(supabase, SUPABASE_BUCKET_MODELS, storage_path)
-        Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(local_path).write_bytes(data)
+        _ = supabase_download_bytes("models", filename)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch model: {e}")
+        raise HTTPException(status_code=400, detail=f"Model file not found in Supabase Storage: {filename}. {e}")
 
-    try:
-        switch_tree_model(local_path, version=version)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to switch model: {e}")
+    training_state_update({"active_model_version": v})
 
-    state = training_state_get()
-    state["active_model_version"] = version
-    training_state_set(state)
-    return {"ok": True, "active_model_version": version}
+    # hot reload immediately (no server restart)
+    with MODEL_LOCK:
+        reload_tree_model(force=True)
 
+    return {"status": "ok", "active_model_version": v}
 
 @app.post("/admin/request-retrain")
 def admin_request_retrain():

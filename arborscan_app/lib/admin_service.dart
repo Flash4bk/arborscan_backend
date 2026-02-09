@@ -1,303 +1,252 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
+/// Simple service wrapper around the backend admin API.
+///
+/// `baseUrl` must include scheme + host (and optional port), e.g.
+///   http://192.168.1.10:8000
+class AdminService {
+  final String baseUrl;
+
+  const AdminService({required this.baseUrl});
+
+  String get _base => baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+
+  Uri _uri(String path, [Map<String, String>? query]) {
+    final p = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$_base$p').replace(queryParameters: query);
+  }
+
+  Future<Map<String, dynamic>> _getJson(String path, {Map<String, String>? query}) async {
+    final res = await http.get(_uri(path, query));
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> _postJson(String path, Map<String, dynamic> body) async {
+    final res = await http.post(
+      _uri(path),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('HTTP ${res.statusCode}: ${res.body}');
+    }
+    return res.body.isEmpty ? <String, dynamic>{} : (jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<List<dynamic>> _getJsonList(String path, {Map<String, String>? query}) async {
+    final res = await http.get(_uri(path, query));
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('HTTP ${res.statusCode}: ${res.body}');
+    }
+    final decoded = jsonDecode(res.body);
+    if (decoded is List) return decoded;
+    throw Exception('Expected JSON list, got: ${res.body}');
+  }
+
+  // --- Admin API ---
+
+  Future<TrainingStatus> getTrainingStatus() async {
+    final j = await _getJson('/admin/training-status');
+    return TrainingStatus.fromJson(j);
+  }
+
+  Future<List<TrainingEvent>> getTrainingEvents({int limit = 15}) async {
+    final l = await _getJsonList('/admin/training-events', query: {'limit': '$limit'});
+    return l.map((e) => TrainingEvent.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<ModelInfo>> listModels() async {
+    final l = await _getJsonList('/admin/models');
+    return l.map((e) => ModelInfo.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> setActiveModel(int version) async {
+    await _postJson('/admin/set-active-model', {'version': version});
+  }
+
+  Future<void> requestRetrain({bool force = false}) async {
+    await _postJson('/admin/request-retrain', {'force': force});
+  }
+
+  Future<List<VerifiedItem>> getVerifiedList() async {
+    final l = await _getJsonList('/admin/verified-list');
+    return l.map((e) => VerifiedItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<VerifiedAnalysis> getVerifiedAnalysis(String analysisId) async {
+    final j = await _getJson('/admin/analysis/$analysisId');
+    return VerifiedAnalysis.fromJson(j);
+  }
+
+  Future<void> setTrainingFlag(String analysisId, {required bool includeInTraining}) async {
+    // Backend expects exclude_from_training (true means excluded)
+    await _postJson('/admin/verified/$analysisId/set-training', {
+      'exclude_from_training': !includeInTraining,
+    });
+  }
+}
+
+// --- DTOs ---
 
 class TrainingStatus {
   final bool isTraining;
   final int? activeModelVersion;
   final int? lastTrainedVersion;
 
-  // Compatibility aliases for older/newer UI code.
-  bool get training => isTraining;
-  int? get activeModel => activeModelVersion;
-  int? get lastTrained => lastTrainedVersion;
-  int? get lastTrainedModelVersion => lastTrainedVersion;
-
   const TrainingStatus({
     required this.isTraining,
-    required this.activeModelVersion,
-    required this.lastTrainedVersion,
+    this.activeModelVersion,
+    this.lastTrainedVersion,
   });
 
-  factory TrainingStatus.fromJson(Map<String, dynamic> json) {
-    int? asInt(dynamic v) {
-      if (v == null) return null;
-      if (v is int) return v;
-      if (v is num) return v.toInt();
-      return int.tryParse(v.toString());
-    }
-
+  factory TrainingStatus.fromJson(Map<String, dynamic> j) {
     return TrainingStatus(
-      isTraining: (json['is_training'] ?? json['training'] ?? false) == true,
-      activeModelVersion: asInt(json['active_model_version'] ?? json['active_model']),
-      lastTrainedVersion: asInt(json['last_trained_version'] ?? json['last_trained']),
+      isTraining: (j['is_training'] ?? j['isTraining'] ?? false) as bool,
+      activeModelVersion: _asIntOrNull(j['active_model_version'] ?? j['activeModelVersion']),
+      lastTrainedVersion: _asIntOrNull(j['last_model_version'] ?? j['lastModelVersion'] ?? j['last_trained_version'] ?? j['lastTrainedVersion']),
     );
   }
 }
 
 class TrainingEvent {
-  final String ts;
-  final String level;
+  final String type;
   final String message;
-  final Map<String, dynamic> meta;
+  final DateTime? ts;
 
-  const TrainingEvent({
-    required this.ts,
-    required this.level,
-    required this.message,
-    required this.meta,
-  });
+  const TrainingEvent({required this.type, required this.message, this.ts});
 
-  factory TrainingEvent.fromJson(Map<String, dynamic> json) {
+  factory TrainingEvent.fromJson(Map<String, dynamic> j) {
     return TrainingEvent(
-      ts: (json['ts'] ?? json['time'] ?? '').toString(),
-      level: (json['level'] ?? 'INFO').toString(),
-      message: (json['message'] ?? '').toString(),
-      meta: (json['meta'] is Map<String, dynamic>)
-          ? (json['meta'] as Map<String, dynamic>)
-          : <String, dynamic>{},
+      type: (j['type'] ?? 'event').toString(),
+      message: (j['message'] ?? '').toString(),
+      ts: _asDateTimeOrNull(j['ts'] ?? j['timestamp'] ?? j['time']),
     );
   }
 }
 
-class ModelsResponse {
-  final List<int> models;
-  final int? activeModelVersion;
+class ModelInfo {
+  final int version;
+  final String? storageKey;
 
-  const ModelsResponse({required this.models, required this.activeModelVersion});
+  const ModelInfo({required this.version, this.storageKey});
 
-  factory ModelsResponse.fromJson(Map<String, dynamic> json) {
-    final raw = json['models'];
-    final List<int> versions = [];
-    int? activeFromItems;
-    if (raw is List) {
-      for (final v in raw) {
-        // Backend may return either:
-        // - [1,2,3]
-        // - [{"version":1,"is_active":true}, ...]
-        if (v is num) {
-          versions.add(v.toInt());
-          continue;
-        }
-        if (v is Map) {
-          final verVal = v['version'] ?? v['model_version'] ?? v['id'];
-          final ver = verVal == null ? null : int.tryParse(verVal.toString());
-          if (ver != null) {
-            versions.add(ver);
-            final isActive = v['is_active'] ?? v['isActive'] ?? v['active'];
-            if (isActive == true) activeFromItems = ver;
-          }
-          continue;
-        }
-        final parsed = int.tryParse(v.toString());
-        if (parsed != null) versions.add(parsed);
-      }
-    }
-    versions.sort();
-    final unique = <int>{};
-    final deduped = <int>[];
-    for (final v in versions) {
-      if (unique.add(v)) deduped.add(v);
-    }
-
-    int? active;
-    final av = json['active_model_version'] ?? json['active_model'];
-    if (av != null) {
-      active = int.tryParse(av.toString());
-    } else {
-      active = activeFromItems;
-    }
-
-    return ModelsResponse(models: deduped, activeModelVersion: active);
-  }
-}
-
-class AdminService {
-  final String baseUrl;
-
-  const AdminService({required this.baseUrl});
-
-  Uri _u(String path, [Map<String, dynamic>? q]) {
-    final p = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$baseUrl$p').replace(
-      queryParameters: q?.map((k, v) => MapEntry(k, v.toString())),
+  factory ModelInfo.fromJson(Map<String, dynamic> j) {
+    return ModelInfo(
+      version: _asInt(j['version'] ?? j['model_version'] ?? 0),
+      storageKey: (j['key'] ?? j['storage_key'] ?? j['path'])?.toString(),
     );
-  }
-
-  Future<TrainingStatus> getTrainingStatus() async {
-    final r = await http
-        .get(_u('/admin/training-status'))
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: training-status');
-    }
-    return TrainingStatus.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
-  }
-
-  Future<List<TrainingEvent>> getTrainingEvents({int limit = 15}) async {
-    final r = await http
-        .get(_u('/admin/training-events', {'limit': limit}))
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: training-events');
-    }
-    final decoded = jsonDecode(r.body);
-    final eventsRaw = (decoded is Map<String, dynamic>) ? decoded['events'] : null;
-    final List<TrainingEvent> events = [];
-    if (eventsRaw is List) {
-      for (final e in eventsRaw) {
-        if (e is Map<String, dynamic>) events.add(TrainingEvent.fromJson(e));
-      }
-    }
-    return events;
-  }
-
-  Future<ModelsResponse> getModels() async {
-    final r = await http.get(_u('/admin/models')).timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: models');
-    }
-    return ModelsResponse.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
-  }
-
-  Future<void> setActiveModel(int modelVersion) async {
-    final r = await http
-        .post(
-          _u('/admin/set-active-model'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'model_version': modelVersion}),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: set-active-model');
-    }
-  }
-
-  Future<void> requestTraining() async {
-    final r = await http.post(_u('/admin/request-retrain')).timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: request-retrain');
-    }
-  }
-
-  // =====================
-  // Training dataset (verified samples)
-  // =====================
-
-  Future<List<VerifiedItem>> getVerifiedList({bool includeArchived = false}) async {
-    final r = await http.get(_u('/admin/verified-list?include_archived=' + (includeArchived ? 'true' : 'false'))).timeout(const Duration(seconds: 45));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: verified-list');
-    }
-    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
-    final raw = decoded['items'];
-    final List<VerifiedItem> out = [];
-    if (raw is List) {
-      for (final it in raw) {
-        if (it is Map<String, dynamic>) out.add(VerifiedItem.fromJson(it));
-      }
-    }
-    return out;
-  }
-
-  Future<VerifiedAnalysis> getVerifiedAnalysis(String analysisId) async {
-    final r = await http.get(_u('/admin/analysis/$analysisId')).timeout(const Duration(seconds: 90));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: analysis/$analysisId');
-    }
-    return VerifiedAnalysis.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
-  }
-
-  Future<void> setTrainingInclude(String analysisId, {required bool include}) async {
-    final r = await http
-        .post(
-          _u('/admin/verified/$analysisId/set-training'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'include': include}),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: set-training');
-    }
   }
 }
 
 class VerifiedItem {
   final String analysisId;
   final bool verified;
-  bool excludeFromTraining;
-
+  /// true => excluded from training
+  final bool excludeFromTraining;
+  /// true => already consumed in a completed training run
   final bool usedForTraining;
-  final String? usedForTrainingAt;
-  final int? trainedInVersion;
+  final DateTime? createdAt;
 
-  final bool hasUserMask;
-
-  final String? species;
-  final String? riskCategory;
-  final num? trustScore;
-  final String? verifiedAt;
-
-  const VerifiedItem({
+  VerifiedItem({
     required this.analysisId,
     required this.verified,
     required this.excludeFromTraining,
     required this.usedForTraining,
-    required this.usedForTrainingAt,
-    required this.trainedInVersion,
-    required this.hasUserMask,
-    required this.species,
-    required this.riskCategory,
-    required this.trustScore,
-    required this.verifiedAt,
+    this.createdAt,
   });
 
-  factory VerifiedItem.fromJson(Map<String, dynamic> json) {
+  bool get includeInTraining => !excludeFromTraining;
+
+  factory VerifiedItem.fromJson(Map<String, dynamic> j) {
     return VerifiedItem(
-      analysisId: json['analysis_id'] as String,
-      verified: true,
-      excludeFromTraining: (json['exclude_from_training'] as bool?) ?? false,
-      usedForTraining: (json['used_for_training'] as bool?) ?? false,
-      usedForTrainingAt: json['used_for_training_at'] as String?,
-      trainedInVersion: (json['trained_in_version'] as num?)?.toInt(),
-      hasUserMask: (json['has_user_mask'] as bool?) ?? false,
-      species: json['species'] as String?,
-      riskCategory: json['risk_category'] as String?,
-      trustScore: json['trust_score'] as num?,
-      verifiedAt: json['verified_at'] as String?,
+      analysisId: (j['analysis_id'] ?? j['id'] ?? j['analysisId']).toString(),
+      verified: (j['verified'] ?? true) as bool,
+      excludeFromTraining: (j['exclude_from_training'] ?? j['excludeFromTraining'] ?? false) as bool,
+      usedForTraining: (j['used_for_training'] ?? j['usedForTraining'] ?? false) as bool,
+      createdAt: _asDateTimeOrNull(j['created_at'] ?? j['createdAt'] ?? j['added_at'] ?? j['addedAt']),
+    );
+  }
+
+  VerifiedItem copyWith({
+    bool? excludeFromTraining,
+    bool? usedForTraining,
+    DateTime? createdAt,
+  }) {
+    return VerifiedItem(
+      analysisId: analysisId,
+      verified: verified,
+      excludeFromTraining: excludeFromTraining ?? this.excludeFromTraining,
+      usedForTraining: usedForTraining ?? this.usedForTraining,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }
+
 class VerifiedAnalysis {
   final String analysisId;
-  final Uint8List inputImage;
-  final Uint8List annotatedImage;
+  final String? originalImageUrl;
+  final String? annotatedImageUrl;
+  // user corrected overlay preview if backend provides it
+  final Uint8List? userMaskImage;
   final Map<String, dynamic> meta;
-  final Map<String, dynamic> treePred;
-  final Map<String, dynamic> stickPred;
 
-  const VerifiedAnalysis({
+  VerifiedAnalysis({
     required this.analysisId,
-    required this.inputImage,
-    required this.annotatedImage,
+    this.originalImageUrl,
+    this.annotatedImageUrl,
+    this.userMaskImage,
     required this.meta,
-    required this.treePred,
-    required this.stickPred,
   });
 
-  factory VerifiedAnalysis.fromJson(Map<String, dynamic> json) {
-    final images = (json['images'] is Map) ? (json['images'] as Map) : const {};
-    final inputB64 = (images['input_base64'] ?? '').toString();
-    final annotatedB64 = (images['annotated_base64'] ?? '').toString();
-
+  factory VerifiedAnalysis.fromJson(Map<String, dynamic> j) {
+    final images = (j['images'] is Map<String, dynamic>) ? (j['images'] as Map<String, dynamic>) : <String, dynamic>{};
+    final String? userMaskB64 = (images['user_mask_base64'] ?? images['userMaskBase64'] ?? images['user_mask'])?.toString();
+    Uint8List? userMask;
+    if (userMaskB64 != null && userMaskB64.isNotEmpty) {
+      try {
+        userMask = base64Decode(userMaskB64);
+      } catch (_) {
+        userMask = null;
+      }
+    }
     return VerifiedAnalysis(
-      analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
-      inputImage: base64Decode(inputB64),
-      annotatedImage: base64Decode(annotatedB64),
-      meta: (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : <String, dynamic>{},
-      treePred: (json['tree_pred'] is Map<String, dynamic>) ? (json['tree_pred'] as Map<String, dynamic>) : <String, dynamic>{},
-      stickPred: (json['stick_pred'] is Map<String, dynamic>) ? (json['stick_pred'] as Map<String, dynamic>) : <String, dynamic>{},
+      analysisId: (j['analysis_id'] ?? j['analysisId'] ?? j['id']).toString(),
+      originalImageUrl: (images['original_url'] ?? images['originalUrl'] ?? images['original'])?.toString(),
+      annotatedImageUrl: (images['annotated_url'] ?? images['annotatedUrl'] ?? images['annotated'])?.toString(),
+      userMaskImage: userMask,
+      meta: (j['meta'] is Map<String, dynamic>) ? (j['meta'] as Map<String, dynamic>) : <String, dynamic>{},
     );
+  }
+}
+
+int _asInt(dynamic v) {
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.tryParse(v?.toString() ?? '') ?? 0;
+}
+
+int? _asIntOrNull(dynamic v) {
+  if (v == null) return null;
+  final s = v.toString();
+  final n = int.tryParse(s);
+  return n;
+}
+
+DateTime? _asDateTimeOrNull(dynamic v) {
+  if (v == null) return null;
+  if (v is DateTime) return v;
+  final s = v.toString();
+  if (s.isEmpty) return null;
+  try {
+    return DateTime.parse(s);
+  } catch (_) {
+    return null;
   }
 }
