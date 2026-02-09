@@ -17,12 +17,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException , Body
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
-from pydantic import BaseModel, Field
-try:
-    # Pydantic v2
-    from pydantic import ConfigDict
-except Exception:  # pragma: no cover
-    ConfigDict = None
+from pydantic import BaseModel
 from datetime import datetime
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
@@ -741,30 +736,6 @@ class FeedbackRequest(BaseModel):
     # PNG маска, закодированная в base64
     user_mask_base64: str | None = None
 
-
-def _pydantic_model_config_allow_by_name() -> dict:
-    """Compatibility helper for Pydantic v1/v2."""
-    if ConfigDict is not None:
-        # v2
-        return {"model_config": ConfigDict(populate_by_name=True)}
-    # v1 fallback
-    return {"Config": type("Config", (), {"allow_population_by_field_name": True})}
-
-
-class SetTrainingFlagRequest(BaseModel):
-    # Frontend sends includeInTraining (camelCase)
-    include_in_training: bool = Field(..., alias="includeInTraining")
-
-    # pydantic v1/v2 compat
-    locals().update(_pydantic_model_config_allow_by_name())
-
-
-class SetActiveModelRequest(BaseModel):
-    # Frontend sends modelVersion (camelCase)
-    model_version: int = Field(..., alias="modelVersion")
-
-    locals().update(_pydantic_model_config_allow_by_name())
-
 class TrustedExample(BaseModel):
     analysis_id: str
     species: str | None = None
@@ -780,6 +751,15 @@ class TrustedExample(BaseModel):
     use_for_training: bool | None = None
     needs_manual_review: bool | None = None
 
+
+
+
+class AdminSetTrainingRequest(BaseModel):
+    # accept several keys for backward/forward compatibility with the Flutter admin UI
+    use_for_training: bool | None = None
+    enabled: bool | None = None
+    include: bool | None = None
+    value: bool | None = None
 
 
 app = FastAPI(title="ArborScan API v2.0")
@@ -1476,6 +1456,41 @@ def admin_verified_list():
         "count": len(results),
         "items": results,
     }
+@app.post("/admin/verified/{analysis_id}/set-training")
+@app.post("/admin/verified/{analysis_id}/set-training/")
+def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
+    """
+    Toggle whether a verified sample should be used for training.
+    The admin UI uses this to include/exclude items from the training dataset export.
+    """
+    # pick the first provided flag from a set of accepted keys
+    flag = None
+    for v in (req.use_for_training, req.enabled, req.include, req.value):
+        if v is not None:
+            flag = bool(v)
+            break
+    if flag is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
+        )
+
+    meta_path = f"{analysis_id}/meta.json"
+    try:
+        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
+        meta = json.loads(raw.decode("utf-8")) if raw else {}
+    except Exception:
+        meta = {}
+
+    meta["analysis_id"] = analysis_id
+    meta["use_for_training"] = flag
+    meta["exclude_from_training"] = (not flag)
+
+    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
+
+    return {"analysis_id": analysis_id, "use_for_training": flag}
+
+
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
