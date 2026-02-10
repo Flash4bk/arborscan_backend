@@ -1204,8 +1204,55 @@ def send_feedback(payload: dict = Body(...)):
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
 
     tmp_dir = Path("/tmp") / analysis_id
+    # Railway/containers can restart at any time → /tmp is ephemeral.
+    # If the analysis cache is missing, restore it from the RAW bucket where
+    # /analyze-tree always uploads the sample.
     if not tmp_dir.exists():
-        raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
+        try:
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+
+            # input
+            (tmp_dir / "input.jpg").write_bytes(
+                supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/input.jpg")
+            )
+
+            # annotated (optional)
+            try:
+                (tmp_dir / "annotated.jpg").write_bytes(
+                    supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/annotated.jpg")
+                )
+            except Exception:
+                pass
+
+            # predictions (optional but nice to have)
+            try:
+                (tmp_dir / "tree_pred.json").write_bytes(
+                    supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/tree_pred.json")
+                )
+            except Exception:
+                pass
+            try:
+                (tmp_dir / "stick_pred.json").write_bytes(
+                    supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/stick_pred.json")
+                )
+            except Exception:
+                pass
+
+            # meta (RAW uses meta_auto.json)
+            meta_raw = supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/meta_auto.json")
+            (tmp_dir / "meta.json").write_bytes(meta_raw)
+
+            print(f"[*] Restored /tmp cache for {analysis_id} from RAW bucket")
+        except Exception as e:
+            # Cleanup partial dir to avoid confusing future requests
+            try:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=404,
+                detail=f"analysis_id не найден или истёк срок хранения (и не удалось восстановить из RAW): {e}",
+            )
 
     # Если пользователь не хочет использовать пример в обучении
     if not use_for_training:
