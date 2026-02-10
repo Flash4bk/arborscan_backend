@@ -141,19 +141,29 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
     final body = {
       "analysis_id": widget.analysisId,
+      "use_for_training": _useForTraining,
+
+      // quality flags
       "tree_ok": _treeOk,
       "stick_ok": _stickOk,
-      "species_ok": _selectedSpecies == widget.species,
       "params_ok": _checkParamsOk(),
-      "use_for_training": _useForTraining,
-      "user_mask_b64": _userMaskBase64,
-      "user_species": _selectedSpecies,
-      "user_params": {
-        "height_m": double.tryParse(_heightController.text),
-        "crown_width_m": double.tryParse(_crownController.text),
-        "trunk_diameter_m": double.tryParse(_trunkController.text),
-        "scale_px_to_m": _userScale,
-      }
+      "species_ok": _selectedSpecies == widget.species,
+
+      // corrected values (only send when user changed them)
+      "correct_species": (_selectedSpecies == widget.species) ? null : _selectedSpecies,
+      "corrected_height_m": _heightController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_heightController.text.trim().replaceAll(',', '.')),
+      "corrected_crown_width_m": _crownController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_crownController.text.trim().replaceAll(',', '.')),
+      "corrected_trunk_diameter_m": _trunkController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_trunkController.text.trim().replaceAll(',', '.')),
+      "corrected_scale_px_to_m": _userScale,
+
+      // IMPORTANT: backend expects this key (and accepts camelCase too)
+      "user_mask_base64": _userMaskBase64,
     };
 
     try {

@@ -1111,6 +1111,20 @@ def send_feedback(payload: dict = Body(...)):
     if not analysis_id:
         raise HTTPException(status_code=422, detail='analysis_id is required')
 
+
+    # --- DEBUG/DIAGNOSTICS (mask + payload keys) ---
+    try:
+        keys = sorted(list(payload.keys()))
+        mk = (
+            payload.get('user_mask_base64') or payload.get('userMaskBase64') or
+            payload.get('mask_base64') or payload.get('maskBase64') or
+            payload.get('user_mask_b64') or payload.get('userMaskB64')
+        )
+        mk_len = len(str(mk)) if mk is not None else 0
+        print(f"[*] /feedback analysis_id={analysis_id} keys={keys} mask_len={mk_len}")
+    except Exception:
+        pass
+
     def _b(val, default=True):
         if val is None:
             return default
@@ -1152,16 +1166,39 @@ def send_feedback(payload: dict = Body(...)):
                 return None
         return None
 
+    
+    # Also accept nested user_params from older/newer clients:
+    #   user_params: {height_m, crown_width_m, trunk_diameter_m, scale_px_to_m}
+    user_params = payload.get('user_params') or payload.get('userParams')
+    if isinstance(user_params, dict):
+        # If explicit corrected_* fields are missing, fall back to values inside user_params.
+        payload.setdefault('corrected_height_m', user_params.get('height_m'))
+        payload.setdefault('corrected_crown_width_m', user_params.get('crown_width_m'))
+        payload.setdefault('corrected_trunk_diameter_m', user_params.get('trunk_diameter_m'))
+        # scale can be under several keys
+        if 'corrected_scale_px_to_m' not in payload and 'correctedScalePxToM' not in payload:
+            payload.setdefault('corrected_scale_px_to_m', user_params.get('scale_px_to_m'))
+
+    # Also accept user_species / userSpecies as correct_species
+    if (payload.get('correct_species') is None and payload.get('correctSpecies') is None):
+        us = payload.get('user_species') or payload.get('userSpecies')
+        if us:
+            payload.setdefault('correct_species', us)
+
     corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
     corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
     corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
     corrected_scale_px_to_m = _f(
-        payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
-        payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
-        payload.get('scale_px_to_m') or payload.get('scalePxToM') or
-        payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
+    payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
+    payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
+    payload.get('scale_px_to_m') or payload.get('scalePxToM') or
+    payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
     )
-    user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
+    user_mask_base64 = (
+        payload.get('user_mask_base64') or payload.get('userMaskBase64') or
+        payload.get('mask_base64') or payload.get('maskBase64') or
+        payload.get('user_mask_b64') or payload.get('userMaskB64')
+    )
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
@@ -1458,10 +1495,13 @@ def admin_verified_list():
     }
 @app.post("/admin/verified/{analysis_id}/set-training")
 @app.post("/admin/verified/{analysis_id}/set-training/")
+
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     """
     Toggle whether a verified sample should be used for training.
-    The admin UI uses this to include/exclude items from the training dataset export.
+    Writes BOTH meta_verified.json and meta.json for compatibility:
+      - training worker reads meta_verified.json
+      - older admin flows may have used meta.json
     """
     # pick the first provided flag from a set of accepted keys
     flag = None
@@ -1475,21 +1515,37 @@ def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
             detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
         )
 
+    meta_verified_path = f"{analysis_id}/meta_verified.json"
     meta_path = f"{analysis_id}/meta.json"
+
+    # Load existing meta (prefer meta_verified.json)
+    meta: dict = {}
     try:
-        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
+        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_verified_path)
         meta = json.loads(raw.decode("utf-8")) if raw else {}
     except Exception:
-        meta = {}
+        try:
+            raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
+            meta = json.loads(raw.decode("utf-8")) if raw else {}
+        except Exception:
+            meta = {}
 
     meta["analysis_id"] = analysis_id
     meta["use_for_training"] = flag
     meta["exclude_from_training"] = (not flag)
 
-    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
+    # Best-effort write both files
+    try:
+        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_verified_path, meta)
+    except Exception as e:
+        print(f"[!] Failed to update {meta_verified_path}: {e}")
+
+    try:
+        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
+    except Exception as e:
+        print(f"[!] Failed to update {meta_path}: {e}")
 
     return {"analysis_id": analysis_id, "use_for_training": flag}
-
 
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
