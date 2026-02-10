@@ -1343,7 +1343,26 @@ def send_feedback(payload: dict = Body(...)):
         # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
                 # Маска пользователя (обводка) — опционально.
         # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
-        meta["has_user_mask"] = False
+        # Preserve previous has_user_mask if this analysis was already verified earlier.
+        prev_has_user_mask = False
+        try:
+            prev_meta_bytes = supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/meta_verified.json",
+            )
+            if prev_meta_bytes:
+                try:
+                    prev_meta = json.loads(prev_meta_bytes)
+                    prev_has_user_mask = bool(prev_meta.get("has_user_mask", False))
+                except Exception:
+                    prev_has_user_mask = False
+        except Exception:
+            prev_has_user_mask = False
+
+        # Маска пользователя (обводка) — опционально.
+        # Если маски нет в ЭТОМ запросе, не затираем флаг в False, если он уже был True.
+        meta["has_user_mask"] = prev_has_user_mask
+
         mask_b64 = user_mask_base64
         if mask_b64 is not None:
             mask_b64_str = str(mask_b64).strip().lower()
