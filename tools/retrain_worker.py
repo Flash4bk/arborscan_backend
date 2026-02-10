@@ -275,6 +275,66 @@ def get_base_model_path(models_dir: Path, last_version: int) -> Path:
     return models_dir / f"model_v{last_version}.pt"
 
 
+def ensure_base_model_local(bucket_models: str, models_dir: Path, last_version: int) -> Path:
+    """Ensure the base model file exists locally; download from models bucket if needed.
+
+    Expected files in bucket:
+      - model_v{N}.pt at bucket root (recommended)
+      - optionally under 'tree/' prefix (legacy)
+    For version 0 we expect:
+      - base.pt in repo OR in bucket (base.pt or yolov8n-seg.pt)
+    """
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    if last_version == 0:
+        base_path = models_dir / "base.pt"
+        if base_path.exists():
+            return base_path
+
+        # Try download base.pt or yolov8n-seg.pt from bucket
+        candidates = ["base.pt", "yolov8n-seg.pt", "yolov8n-seg.pt.pt"]
+        for c in candidates:
+            try:
+                data = storage_download_bytes(bucket_models, c)
+                base_path.write_bytes(data)
+                log(f"[✓] Downloaded base model from bucket '{bucket_models}': {c} -> {base_path}")
+                return base_path
+            except Exception:
+                continue
+
+        raise RuntimeError(
+            f"Base model not found locally ({base_path}) and not found in models bucket '{bucket_models}'. "
+            "Upload Ultralytics yolov8n-seg.pt as 'base.pt' (recommended) or 'yolov8n-seg.pt' to the models bucket, "
+            "or bake it into the image at models/base.pt."
+        )
+
+    # Versioned model
+    path = models_dir / f"model_v{last_version}.pt"
+    if path.exists():
+        return path
+
+    candidates = [
+        f"model_v{last_version}.pt",
+        f"tree/model_v{last_version}.pt",
+        f"tree/model_v{last_version}.pt".replace("model_", "model-"),  # just in case
+    ]
+    last_err = None
+    for c in candidates:
+        try:
+            data = storage_download_bytes(bucket_models, c)
+            path.write_bytes(data)
+            log(f"[✓] Downloaded base model from bucket '{bucket_models}': {c} -> {path}")
+            return path
+        except Exception as e:
+            last_err = e
+            continue
+
+    raise RuntimeError(
+        f"Base model not found: {path}. Tried downloading from bucket '{bucket_models}' with candidates: {candidates}. "
+        f"Last error: {last_err}"
+    )
+
+
 def _max_model_version_local(models_dir: Path) -> int:
     mx = 0
     if not models_dir.exists():
@@ -591,7 +651,7 @@ def main():
             bucket_last = _max_model_version_bucket(args.bucket_models)
 
             last_version = max(state_last, local_last, bucket_last)
-            base_model = get_base_model_path(models_dir, last_version)
+            base_model = ensure_base_model_local(args.bucket_models, models_dir, last_version)
             new_version = last_version + 1
 
             # Selection seed
