@@ -5,21 +5,22 @@ import time
 import shutil
 import argparse
 import subprocess
+import zipfile
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 from supabase import create_client
-
 import requests
 import re
-
+import random
 
 # -----------------------------
 # Defaults (можно переопределять аргументами CLI)
 # -----------------------------
 DEFAULT_BUCKET_VERIFIED = "arborscan-verified"
 DEFAULT_BUCKET_MODELS = "arborscan-models"
+DEFAULT_BUCKET_DATASETS = "arborscan-datasets"
 
 # ВАЖНО: для обучения "из приложения" по кнопке — по умолчанию запускаем даже на малом датасете
 DEFAULT_MIN_NEW = 0
@@ -29,9 +30,18 @@ DEFAULT_IMGSZ = 1024
 DEFAULT_BATCH = 4
 DEFAULT_INTERVAL_SEC = 60
 
+# Replay policy (anti-forgetting)
+DEFAULT_REPLAY_RATIO = float(os.getenv("REPLAY_RATIO", "0.2"))  # % from old set relative to new
+DEFAULT_MAX_REPLAY = int(os.getenv("MAX_REPLAY", "200"))
+DEFAULT_TRAIN_SPLIT = float(os.getenv("TRAIN_SPLIT", "0.8"))
+DEFAULT_MIN_MASK_AREA = float(os.getenv("MIN_MASK_AREA", "100"))
+
+# Deterministic selection (optional): set SELECTION_SEED for reproducibility across runs
+DEFAULT_SELECTION_SEED = os.getenv("SELECTION_SEED", "")
+
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def log(msg: str) -> None:
@@ -79,7 +89,6 @@ def storage_list_objects(bucket: str, prefix: str = "") -> List[dict]:
 
 def storage_download_bytes(bucket: str, path: str) -> bytes:
     """Download object bytes from a (usually private) bucket."""
-    # for private buckets: /object/authenticated
     url = f"{_base_url()}/storage/v1/object/authenticated/{bucket}/{path}"
     r = requests.get(url, headers=_storage_headers(), timeout=60)
     r.raise_for_status()
@@ -96,7 +105,7 @@ def storage_upload_bytes(bucket: str, path: str, content: bytes, content_type: s
 
 
 def storage_upload_json(bucket: str, path: str, data: dict) -> None:
-    payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
     storage_upload_bytes(bucket, path, payload, "application/json")
 
 
@@ -144,6 +153,7 @@ def safe_release_training_lock(
     *,
     success: bool,
     last_model_version: Optional[int] = None,
+    extra: Optional[dict] = None,
 ) -> None:
     patch = {
         "training_in_progress": False,
@@ -152,42 +162,70 @@ def safe_release_training_lock(
         patch["last_trained_at"] = utc_now_iso()
         if last_model_version is not None:
             patch["last_model_version"] = last_model_version
+    if extra:
+        patch.update(extra)
     update_training_state(supabase, patch)
 
 
-def discover_verified_samples(
+def _unique_analysis_ids_from_objects(objs: List[dict]) -> List[str]:
+    """
+    Supabase Storage list returns objects with names like:
+      <analysis_id>/input.jpg
+      <analysis_id>/meta_verified.json
+    We infer analysis_id by splitting at '/'.
+    """
+    ids = set()
+    for o in objs:
+        name = (o.get("name") or "").strip()
+        if not name:
+            continue
+        aid = name.split("/", 1)[0]
+        if aid:
+            ids.add(aid)
+    return sorted(ids)
+
+
+def load_meta_verified_or_meta(bucket: str, aid: str) -> Optional[dict]:
+    """
+    Prefer meta_verified.json, fallback to meta.json.
+    This makes the worker compatible with older items / admin toggles that might write meta.json only.
+    """
+    for fname in ("meta_verified.json", "meta.json"):
+        try:
+            raw = storage_download_bytes(bucket, f"{aid}/{fname}")
+            if not raw:
+                continue
+            meta = json.loads(raw.decode("utf-8"))
+            if isinstance(meta, dict):
+                return meta
+        except Exception:
+            continue
+    return None
+
+
+def discover_new_samples(
     bucket: str,
     max_samples: Optional[int] = None,
 ) -> List[Tuple[str, dict]]:
     """
-    Возвращает список (analysis_id, meta_verified.json dict) для примеров,
+    Возвращает список (analysis_id, meta) для НОВЫХ примеров,
     где:
       - has_user_mask == True
       - used_for_training == False (или отсутствует)
+      - exclude_from_training != True
     """
     results: List[Tuple[str, dict]] = []
-
-    # Верхний уровень — "папки" analysis_id
-    top = storage_list_objects(bucket, "")
-    analysis_ids = []
-    for obj in top:
-        name = obj.get("name", "")
-        # структура: <analysis_id>/...
-        if name and "/" not in name:
-            analysis_ids.append(name)
+    objs = storage_list_objects(bucket, "")
+    analysis_ids = _unique_analysis_ids_from_objects(objs)
 
     for aid in analysis_ids:
-        try:
-            meta_bytes = storage_download_bytes(bucket, f"{aid}/meta_verified.json")
-            meta = json.loads(meta_bytes)
-        except Exception:
+        meta = load_meta_verified_or_meta(bucket, aid)
+        if not meta:
             continue
-
         if not meta.get("has_user_mask", False):
             continue
         if meta.get("used_for_training", False):
             continue
-        # Ручное исключение из дообучения (управляется из приложения)
         if meta.get("exclude_from_training", False):
             continue
 
@@ -196,6 +234,31 @@ def discover_verified_samples(
             break
 
     return results
+
+
+def discover_old_samples_for_replay(bucket: str) -> List[str]:
+    """
+    Возвращает analysis_id старых примеров, которые можно брать в replay:
+      - has_user_mask == True
+      - used_for_training == True
+      - exclude_from_training != True
+    """
+    objs = storage_list_objects(bucket, "")
+    analysis_ids = _unique_analysis_ids_from_objects(objs)
+
+    replay: List[str] = []
+    for aid in analysis_ids:
+        meta = load_meta_verified_or_meta(bucket, aid)
+        if not meta:
+            continue
+        if not meta.get("has_user_mask", False):
+            continue
+        if not meta.get("used_for_training", False):
+            continue
+        if meta.get("exclude_from_training", False):
+            continue
+        replay.append(aid)
+    return replay
 
 
 def ensure_models_dir(models_dir: Path) -> None:
@@ -245,16 +308,67 @@ def upload_model_to_bucket(bucket_models: str, model_path: Path) -> None:
     log(f"[✓] Uploaded model to bucket: {bucket_models}/{dst}")
 
 
-def run_export_script(tools_dir: Path) -> None:
+def write_manifest_in(
+    *,
+    out_path: Path,
+    bucket_verified: str,
+    base_model_version: int,
+    new_model_version: int,
+    new_ids: List[str],
+    replay_ids: List[str],
+    train_ids: List[str],
+    val_ids: List[str],
+    train_split: float,
+    replay_ratio: float,
+    min_mask_area: float,
+    selection_seed: Optional[str],
+) -> None:
+    manifest: Dict[str, Any] = {
+        "dataset_version": new_model_version,
+        "created_at_utc": utc_now_iso(),
+        "bucket_verified": bucket_verified,
+        "base_model_version": base_model_version,
+        "new_model_version": new_model_version,
+        "policy": {
+            "train_split": float(train_split),
+            "replay_ratio": float(replay_ratio),
+            "min_mask_area": float(min_mask_area),
+            "selection_seed": selection_seed or None,
+        },
+        "selection": {
+            "new_ids": list(new_ids),
+            "replay_ids": list(replay_ids),
+            "train_ids": list(train_ids),
+            "val_ids": list(val_ids),
+            "dropped_ids": [],
+        },
+    }
+    out_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def run_export_script(tools_dir: Path, *, bucket_verified: str, manifest_in: Path, out_dir: Path) -> None:
     """
-    Запускает tools/export_yolov8_dataset.py в текущем окружении.
+    Запускает tools/export_yolov8_dataset.py с явным manifest_in.
     """
     script = tools_dir / "export_yolov8_dataset.py"
     if not script.exists():
         raise RuntimeError(f"export script not found: {script}")
 
-    log("[*] Exporting dataset via export_yolov8_dataset.py ...")
-    subprocess.run([sys.executable, str(script)], check=True, cwd=str(tools_dir))
+    log("[*] Exporting dataset via export_yolov8_dataset.py (manifest-based) ...")
+    cmd = [
+        sys.executable,
+        str(script),
+        "--bucket-verified",
+        bucket_verified,
+        "--manifest-in",
+        str(manifest_in),
+        "--out-dir",
+        str(out_dir),
+        "--min-mask-area",
+        str(DEFAULT_MIN_MASK_AREA),
+    ]
+    log("[*] " + " ".join(cmd))
+    subprocess.run(cmd, check=True, cwd=str(tools_dir))
 
 
 def find_latest_train_dir(runs_segment_dir: Path, name: str) -> Path:
@@ -325,13 +439,12 @@ def save_new_model(best_pt: Path, models_dir: Path, new_version: int) -> Path:
 
 
 def mark_samples_used_for_training(
-    supabase,
     bucket: str,
     samples: List[Tuple[str, dict]],
     new_version: int,
 ) -> None:
     """
-    Обновляет meta_verified.json в Storage:
+    Обновляет meta_verified.json (или meta.json если другого нет) в Storage:
       used_for_training: true
       used_for_training_at: <utc iso>
       used_in_model_version: new_version
@@ -342,21 +455,28 @@ def mark_samples_used_for_training(
         meta["used_for_training_at"] = now
         meta["used_in_model_version"] = new_version
         try:
-            storage_upload_json(supabase, bucket, f"{aid}/meta_verified.json", meta)
+            # Prefer updating meta_verified.json if it exists; else meta.json
+            # We will try meta_verified.json upload unconditionally (safe).
+            storage_upload_json(bucket, f"{aid}/meta_verified.json", meta)
         except Exception as e:
-            log(f"[!] Failed to mark used_for_training for {aid}: {e}")
+            log(f"[!] Failed to write meta_verified.json for {aid}: {e}")
+            try:
+                storage_upload_json(bucket, f"{aid}/meta.json", meta)
+            except Exception as e2:
+                log(f"[!] Failed to write meta.json for {aid}: {e2}")
 
 
-def try_insert_model_version_row(supabase, new_version: int, model_path: str) -> None:
+def try_insert_model_version_row(supabase, new_version: int, model_path: str, dataset_path: str, manifest_path: str) -> None:
     """
-    У тебя в Supabase уже есть таблица model_versions.
-    Вставка опциональная (если структура отличается — не ломаем процесс).
+    Опциональная запись в таблицу model_versions (если есть соответствующие поля).
     """
     try:
         supabase.table("model_versions").insert(
             {
                 "version": new_version,
                 "model_path": model_path,
+                "dataset_path": dataset_path,
+                "manifest_path": manifest_path,
                 "created_at": utc_now_iso(),
             }
         ).execute()
@@ -364,10 +484,22 @@ def try_insert_model_version_row(supabase, new_version: int, model_path: str) ->
         pass
 
 
+def zip_dir(src_dir: Path, zip_path: Path) -> None:
+    if zip_path.exists():
+        zip_path.unlink()
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for p in src_dir.rglob("*"):
+            if p.is_dir():
+                continue
+            z.write(p, arcname=str(p.relative_to(src_dir)))
+
+
 def main():
-    parser = argparse.ArgumentParser(description="ArborScan retrain worker")
+    parser = argparse.ArgumentParser(description="ArborScan retrain worker (manifest + dataset snapshot)")
     parser.add_argument("--bucket", default=DEFAULT_BUCKET_VERIFIED)
     parser.add_argument("--bucket-models", default=os.getenv("SUPABASE_BUCKET_MODELS", DEFAULT_BUCKET_MODELS))
+    parser.add_argument("--bucket-datasets", default=os.getenv("SUPABASE_BUCKET_DATASETS", DEFAULT_BUCKET_DATASETS))
+
     parser.add_argument("--min-new", type=int, default=DEFAULT_MIN_NEW)
     parser.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     parser.add_argument("--imgsz", type=int, default=DEFAULT_IMGSZ)
@@ -375,7 +507,13 @@ def main():
     parser.add_argument("--device", default=None, help="e.g. 0 or cpu (optional)")
     parser.add_argument("--interval", type=int, default=DEFAULT_INTERVAL_SEC)
     parser.add_argument("--once", action="store_true", help="run once then exit")
-    parser.add_argument("--max-samples", type=int, default=None, help="limit number of samples per training run")
+    parser.add_argument("--max-samples", type=int, default=None, help="limit number of NEW samples per training run")
+
+    # selection controls
+    parser.add_argument("--replay-ratio", type=float, default=DEFAULT_REPLAY_RATIO)
+    parser.add_argument("--max-replay", type=int, default=DEFAULT_MAX_REPLAY)
+    parser.add_argument("--train-split", type=float, default=DEFAULT_TRAIN_SPLIT)
+    parser.add_argument("--selection-seed", default=DEFAULT_SELECTION_SEED)
 
     args = parser.parse_args()
 
@@ -386,6 +524,8 @@ def main():
     runs_segment_dir = tools_dir / "runs" / "segment"
     dataset_dir = tools_dir / "dataset_yolov8"
     data_yaml = dataset_dir / "data.yaml"
+    manifest_in_path = tools_dir / "manifest_in.json"  # will be overwritten for each run
+    dataset_zip_path = tools_dir / "dataset.zip"
 
     ensure_models_dir(models_dir)
     runs_segment_dir.mkdir(parents=True, exist_ok=True)
@@ -416,22 +556,21 @@ def main():
             time.sleep(args.interval)
             continue
 
-        # Проверим количество доступных масок (неиспользованных)
-        samples = discover_verified_samples(
+        # NEW samples
+        new_samples = discover_new_samples(
             bucket=args.bucket,
             max_samples=args.max_samples,
         )
 
-        # Если min-new > 0 — соблюдаем порог; если 0 — обучаем сразу (кнопка из приложения)
-        if args.min_new > 0 and len(samples) < args.min_new:
-            log(f"[*] Not enough new samples: {len(samples)} < {args.min_new}. Resetting retrain_requested to FALSE.")
+        if args.min_new > 0 and len(new_samples) < args.min_new:
+            log(f"[*] Not enough new samples: {len(new_samples)} < {args.min_new}. Resetting retrain_requested to FALSE.")
             update_training_state(supabase, {"retrain_requested": False})
             if args.once:
                 sys.exit(0)
             time.sleep(args.interval)
             continue
 
-        # Захватываем "лок" (best-effort)
+        # Lock
         if not try_acquire_training_lock(supabase):
             log("[*] Could not acquire training lock (someone else?). Waiting ...")
             if args.once:
@@ -439,21 +578,13 @@ def main():
             time.sleep(args.interval)
             continue
 
-        log(f"[*] Acquired training lock. New samples to train on: {len(samples)}")
+        log(f"[*] Acquired training lock. New samples to train on: {len(new_samples)}")
 
         success = False
-        new_version = None
+        new_version: Optional[int] = None
 
         try:
-            # 1) Экспорт датасета
-            run_export_script(tools_dir)
-
-            # 2) Определяем базовую модель и НОВУЮ версию.
-            # Важно: training_state может отставать или файл уже существовать,
-            # поэтому берём максимум из:
-            #   - training_state.last_model_version
-            #   - локальные model_v*.pt
-            #   - bucket с моделями (arborscan-models)
+            # Determine base model version and NEW version (robust)
             state = get_training_state(supabase)
             state_last = int(state.get("last_model_version") or 0)
             local_last = _max_model_version_local(models_dir)
@@ -463,7 +594,82 @@ def main():
             base_model = get_base_model_path(models_dir, last_version)
             new_version = last_version + 1
 
-            # 3) Обучаем (дообучение от base_model)
+            # Selection seed
+            if args.selection_seed:
+                rnd = random.Random(str(args.selection_seed) + f":v{new_version}")
+            else:
+                rnd = random.Random()
+
+            new_ids = [aid for aid, _ in new_samples]
+
+            # Replay selection
+            replay_pool = discover_old_samples_for_replay(args.bucket)
+            # Don't replay the ones that are also in new_ids (paranoia)
+            replay_pool = [aid for aid in replay_pool if aid not in set(new_ids)]
+
+            desired_replay = int(round(len(new_ids) * float(args.replay_ratio)))
+            desired_replay = max(0, min(desired_replay, int(args.max_replay), len(replay_pool)))
+            replay_ids = rnd.sample(replay_pool, k=desired_replay) if desired_replay > 0 else []
+
+            # Merge and split deterministically
+            all_ids = list(new_ids) + list(replay_ids)
+            rnd.shuffle(all_ids)
+
+            if len(all_ids) < 2:
+                raise RuntimeError("Not enough samples (new + replay) to train (need at least 2).")
+
+            split_idx = max(1, int(len(all_ids) * float(args.train_split)))
+            split_idx = min(split_idx, len(all_ids) - 1)  # ensure at least 1 val if possible
+            train_ids = all_ids[:split_idx]
+            val_ids = all_ids[split_idx:]
+
+            # Write manifest_in (selection is now fixed & reproducible)
+            write_manifest_in(
+                out_path=manifest_in_path,
+                bucket_verified=args.bucket,
+                base_model_version=last_version,
+                new_model_version=new_version,
+                new_ids=new_ids,
+                replay_ids=replay_ids,
+                train_ids=train_ids,
+                val_ids=val_ids,
+                train_split=float(args.train_split),
+                replay_ratio=float(args.replay_ratio),
+                min_mask_area=float(DEFAULT_MIN_MASK_AREA),
+                selection_seed=args.selection_seed or None,
+            )
+            log(f"[*] Wrote manifest_in: {manifest_in_path}")
+
+            # 1) Export dataset strictly from manifest_in
+            run_export_script(
+                tools_dir,
+                bucket_verified=args.bucket,
+                manifest_in=manifest_in_path,
+                out_dir=dataset_dir,
+            )
+
+            # 1.1) Read manifest_out produced by exporter (contains dropped_ids)
+            manifest_out_path = dataset_dir / "manifest.json"
+            if not manifest_out_path.exists():
+                raise RuntimeError(f"Exporter did not produce manifest.json at {manifest_out_path}")
+            manifest_out = json.loads(manifest_out_path.read_text(encoding="utf-8"))
+            kept_train = manifest_out.get("selection", {}).get("train_ids", [])
+            kept_val = manifest_out.get("selection", {}).get("val_ids", [])
+            if len(kept_train) + len(kept_val) < 2:
+                raise RuntimeError("After dropping invalid masks, not enough samples remain to train (need at least 2).")
+
+            # 2) ZIP snapshot of the exported dataset (reproducible)
+            zip_dir(dataset_dir, dataset_zip_path)
+            log(f"[✓] Zipped dataset snapshot: {dataset_zip_path}")
+
+            # 2.1) Upload dataset snapshot to datasets bucket
+            dataset_prefix = f"dataset_v{new_version}"
+            storage_upload_bytes(args.bucket_datasets, f"{dataset_prefix}/dataset.zip", dataset_zip_path.read_bytes(), "application/zip")
+            storage_upload_bytes(args.bucket_datasets, f"{dataset_prefix}/manifest.json", manifest_out_path.read_bytes(), "application/json")
+            storage_upload_bytes(args.bucket_datasets, f"{dataset_prefix}/data.yaml", data_yaml.read_bytes(), "text/yaml")
+            log(f"[✓] Uploaded dataset snapshot to {args.bucket_datasets}/{dataset_prefix}/")
+
+            # 3) Train (fine-tune from base_model)
             run_name = f"train_v{new_version}"
             best_pt = run_yolo_train(
                 base_model=base_model,
@@ -476,24 +682,41 @@ def main():
                 run_name=run_name,
             )
 
-            # 4) Сохраняем новую модель
+            # 4) Save model locally
             new_model_path = save_new_model(best_pt, models_dir, new_version)
             log(f"[✓] Saved new model: {new_model_path}")
 
-            # 4.1) Загружаем в bucket с моделями (чтобы сервер мог переключаться)
+            # 4.1) Upload model to models bucket
             try:
                 upload_model_to_bucket(args.bucket_models, new_model_path)
             except Exception as e:
                 log(f"[!] Failed to upload model to bucket: {e}")
 
-            # 5) Помечаем примеры как использованные для обучения
-            mark_samples_used_for_training(supabase, args.bucket, samples, new_version)
+            # 5) Mark NEW samples used_for_training (ONLY new_samples, not replay)
+            mark_samples_used_for_training(args.bucket, new_samples, new_version)
 
-            # 6) Обновляем training_state
-            safe_release_training_lock(supabase, success=True, last_model_version=new_version)
+            # 6) Update training_state + include dataset snapshot pointers (optional fields)
+            dataset_zip_remote = f"{args.bucket_datasets}/{dataset_prefix}/dataset.zip"
+            manifest_remote = f"{args.bucket_datasets}/{dataset_prefix}/manifest.json"
+            safe_release_training_lock(
+                supabase,
+                success=True,
+                last_model_version=new_version,
+                extra={
+                    "last_dataset_version": new_version,
+                    "last_dataset_zip": dataset_zip_remote,
+                    "last_dataset_manifest": manifest_remote,
+                },
+            )
 
-            # 7) Опционально — model_versions
-            try_insert_model_version_row(supabase, new_version, str(new_model_path))
+            # 7) Optional model_versions row
+            try_insert_model_version_row(
+                supabase,
+                new_version,
+                model_path=f"{args.bucket_models}/{new_model_path.name}",
+                dataset_path=dataset_zip_remote,
+                manifest_path=manifest_remote,
+            )
 
             success = True
             log(f"[✓] Training completed. last_model_version = {new_version}")
