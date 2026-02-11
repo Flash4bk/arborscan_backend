@@ -147,11 +147,17 @@ def list_verified_analysis_ids(bucket_verified: str) -> List[str]:
         if not objs:
             break
         for o in objs:
-            name = o.get("name") or ""
-            if "/" in name:
-                aid = name.split("/", 1)[0]
-                if aid:
-                    ids.add(aid)
+            # Supabase Storage list() may return either:
+            #  - file paths like "<analysis_id>/meta_verified.json"
+            #  - folder entries like "<analysis_id>" (no slash)
+            name = (o.get("name") or "").strip()
+            if not name:
+                continue
+            if name.endswith("/"):
+                name = name[:-1]
+            aid = name.split("/", 1)[0]
+            if aid:
+                ids.add(aid)
         if len(objs) < 1000:
             break
         offset += 1000
