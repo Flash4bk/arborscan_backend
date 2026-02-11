@@ -22,17 +22,17 @@ DEFAULT_BUCKET_VERIFIED = os.getenv("SUPABASE_BUCKET_VERIFIED", "arborscan-verif
 DEFAULT_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 DEFAULT_BUCKET_DATASETS = os.getenv("SUPABASE_BUCKET_DATASETS", "arborscan-datasets")
 
-DEFAULT_MIN_NEW = int(os.getenv("MIN_NEW", "0"))          # allow 0 for manual "button" runs
+DEFAULT_MIN_NEW = int(os.getenv("MIN_NEW", "0"))  # allow 0 for manual runs
 DEFAULT_EPOCHS = int(os.getenv("EPOCHS", "30"))
 DEFAULT_IMGSZ = int(os.getenv("IMGSZ", "1024"))
 DEFAULT_BATCH = int(os.getenv("BATCH", "4"))
 DEFAULT_INTERVAL_SEC = int(os.getenv("INTERVAL_SEC", "60"))
 
 TRAIN_SPLIT = float(os.getenv("TRAIN_SPLIT", "0.8"))
-REPLAY_RATIO = float(os.getenv("REPLAY_RATIO", "0.2"))    # replay = ceil(new * ratio)
+REPLAY_RATIO = float(os.getenv("REPLAY_RATIO", "0.2"))  # replay = ceil(new * ratio)
 MAX_REPLAY = int(os.getenv("MAX_REPLAY", "200"))
 MIN_MASK_AREA = float(os.getenv("MIN_MASK_AREA", "100"))
-SELECTION_SEED = os.getenv("SELECTION_SEED", "")          # optional deterministic selection
+SELECTION_SEED = os.getenv("SELECTION_SEED", "")
 
 # -----------------------------
 # Utils
@@ -66,12 +66,7 @@ def make_supabase():
 # -----------------------------
 def storage_list_objects(bucket: str, prefix: str = "", limit: int = 1000, offset: int = 0) -> List[dict]:
     url = f"{_base_url()}/storage/v1/object/list/{bucket}"
-    r = requests.post(
-        url,
-        headers=_storage_headers(),
-        json={"prefix": prefix, "limit": limit, "offset": offset},
-        timeout=60,
-    )
+    r = requests.post(url, headers=_storage_headers(), json={"prefix": prefix, "limit": limit, "offset": offset}, timeout=60)
     r.raise_for_status()
     data = r.json()
     return data if isinstance(data, list) else []
@@ -97,21 +92,9 @@ def storage_upload_json(bucket: str, path: str, data: dict) -> None:
 # training_state helpers
 # -----------------------------
 def get_training_state(supabase) -> dict:
-    return (
-        supabase.table("training_state")
-        .select("*")
-        .eq("id", 1)
-        .single()
-        .execute()
-        .data
-    )
+    return supabase.table("training_state").select("*").eq("id", 1).single().execute().data
 
 def update_training_state(supabase, patch: dict) -> None:
-    """
-    Robust updater:
-    - If schema cache complains about unknown column (PGRST204),
-      remove that field and retry (so we don't fail the whole training).
-    """
     patch = dict(patch or {})
     if not patch:
         return
@@ -143,13 +126,7 @@ def try_acquire_training_lock(supabase) -> bool:
     update_training_state(supabase, {"training_in_progress": True, "retrain_requested": False})
     return True
 
-def safe_release_training_lock(
-    supabase,
-    *,
-    success: bool,
-    last_model_version: Optional[int] = None,
-    extra_patch: Optional[dict] = None,
-) -> None:
+def safe_release_training_lock(supabase, *, success: bool, last_model_version: Optional[int] = None, extra_patch: Optional[dict] = None) -> None:
     patch = {"training_in_progress": False}
     if success:
         patch["last_trained_at"] = utc_now_iso()
@@ -207,7 +184,6 @@ def discover_new_samples(bucket_verified: str, max_samples: Optional[int] = None
 def discover_replay_samples(bucket_verified: str, k: int) -> List[Tuple[str, dict]]:
     if k <= 0:
         return []
-
     pool: List[Tuple[str, dict]] = []
     for aid in list_verified_analysis_ids(bucket_verified):
         meta = read_meta_verified(bucket_verified, aid)
@@ -230,15 +206,7 @@ def discover_replay_samples(bucket_verified: str, k: int) -> List[Tuple[str, dic
     rng.shuffle(pool)
     return pool[: min(k, len(pool))]
 
-
 def diagnose_candidates(bucket_verified: str, max_examples: int = 20) -> dict:
-    """
-    Returns counts of why verified samples are not eligible as NEW.
-    Uses meta_verified.json flags:
-      - has_user_mask
-      - exclude_from_training
-      - used_for_training
-    """
     counts = {
         "total_folders": 0,
         "no_meta_verified": 0,
@@ -275,7 +243,6 @@ def diagnose_candidates(bucket_verified: str, max_examples: int = 20) -> dict:
         counts["eligible_new"] += 1
 
     return {"counts": counts, "examples": examples}
-
 
 # -----------------------------
 # Model versions: real existing + next free >= (max+1)
@@ -316,11 +283,6 @@ def get_base_model_path(models_dir: Path, base_version: int) -> Path:
     return models_dir / f"model_v{base_version}.pt"
 
 def ensure_base_model_local(*, models_dir: Path, bucket_models: str, base_version: int) -> Path:
-    """
-    Ensure base model exists locally:
-      - if base_version>0: need model_v{base_version}.pt
-      - else: need base.pt (or download fallback)
-    """
     ensure_models_dir(models_dir)
     base_path = get_base_model_path(models_dir, base_version)
     if base_path.exists():
@@ -348,21 +310,14 @@ def ensure_base_model_local(*, models_dir: Path, bucket_models: str, base_versio
     )
 
 def compute_versions(models_dir: Path, bucket_models: str) -> Tuple[int, int, set[int]]:
-    """
-    base_version = max(existing versions) (real)
-    new_version  = first free version starting from (base_version + 1) and up
-                  (so deleting last recreates it; we don't create "lower" numbers that would confuse UI)
-    """
     local_set = _existing_versions_local(models_dir)
     bucket_set = _existing_versions_bucket(bucket_models)
     existing = set(local_set) | set(bucket_set)
 
     base_version = max(existing) if existing else 0
-
     cand = base_version + 1
     while cand in existing:
         cand += 1
-
     return base_version, cand, existing
 
 # -----------------------------
@@ -415,11 +370,6 @@ def upload_dataset_snapshot(*, bucket_datasets: str, dataset_version: int, zip_p
 # Training
 # -----------------------------
 def run_yolo_train(*, base_model: Path, data_yaml: Path, epochs: int, imgsz: int, batch: int, device: Optional[str], runs_segment_dir: Path, run_name: str) -> Path:
-    if not base_model.exists():
-        raise RuntimeError(f"Base model not found: {base_model}")
-    if not data_yaml.exists():
-        raise RuntimeError(f"data.yaml not found: {data_yaml}")
-
     cmd = [
         "yolo",
         "task=segment",
@@ -453,9 +403,8 @@ def save_new_model(best_pt: Path, models_dir: Path, new_version: int) -> Path:
     return dst
 
 def upload_model_to_bucket(bucket_models: str, model_path: Path) -> None:
-    dst = model_path.name
-    storage_upload_bytes(bucket_models, dst, model_path.read_bytes(), "application/octet-stream")
-    log(f"[✓] Uploaded model to bucket: {bucket_models}/{dst}")
+    storage_upload_bytes(bucket_models, model_path.name, model_path.read_bytes(), "application/octet-stream")
+    log(f"[✓] Uploaded model to bucket: {bucket_models}/{model_path.name}")
 
 # -----------------------------
 # Mark samples used
@@ -520,10 +469,10 @@ def write_manifest_in(*, path: Path, dataset_version: int, bucket_verified: str,
     path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
 
 # -----------------------------
-# Main loop
+# Main
 # -----------------------------
 def main():
-    parser = argparse.ArgumentParser(description="ArborScan retrain worker (real-last + next-free + manifest + snapshot)")
+    parser = argparse.ArgumentParser(description="ArborScan retrain worker (real-last + next-free + manifest + snapshot + diag)")
     parser.add_argument("--bucket-verified", default=DEFAULT_BUCKET_VERIFIED)
     parser.add_argument("--bucket-models", default=DEFAULT_BUCKET_MODELS)
     parser.add_argument("--bucket-datasets", default=DEFAULT_BUCKET_DATASETS)
@@ -531,10 +480,10 @@ def main():
     parser.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     parser.add_argument("--imgsz", type=int, default=DEFAULT_IMGSZ)
     parser.add_argument("--batch", type=int, default=DEFAULT_BATCH)
-    parser.add_argument("--device", default=None, help="e.g. 0 or cpu (optional)")
+    parser.add_argument("--device", default=None)
     parser.add_argument("--interval", type=int, default=DEFAULT_INTERVAL_SEC)
-    parser.add_argument("--once", action="store_true", help="run once then exit")
-    parser.add_argument("--max-samples", type=int, default=None, help="limit number of NEW samples per training run")
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument("--max-samples", type=int, default=None)
     args = parser.parse_args()
 
     tools_dir = Path(__file__).resolve().parent
@@ -567,6 +516,7 @@ def main():
             continue
 
         new_samples = discover_new_samples(args.bucket_verified, max_samples=args.max_samples)
+
         if args.min_new > 0 and len(new_samples) < args.min_new:
             log(f"[*] Not enough new samples: {len(new_samples)} < {args.min_new}. Resetting retrain_requested to FALSE.")
             update_training_state(supabase, {"retrain_requested": False})
@@ -576,24 +526,22 @@ def main():
             continue
 
         if not try_acquire_training_lock(supabase):
-            log("[*] Could not acquire training lock (someone else?). Waiting ...")
+            log("[*] Could not acquire training lock, waiting ...")
             if args.once:
                 sys.exit(0)
             time.sleep(args.interval)
             continue
 
         log(f"[*] Acquired training lock. New samples to train on: {len(new_samples)}")
-            diag = diagnose_candidates(args.bucket_verified, max_examples=25)
-            log(f"[*] Candidate diagnostics: {diag['counts']}")
-            if diag.get("examples"):
-                log(f"[*] Example skipped: {diag['examples'][:10]}")
+        diag = diagnose_candidates(args.bucket_verified, max_examples=25)
+        log(f"[*] Candidate diagnostics: {diag['counts']}")
+        if diag.get("examples"):
+            log(f"[*] Example skipped: {diag['examples'][:10]}")
 
         success = False
-        trained_version: Optional[int] = None
 
         try:
             base_version, new_version, existing = compute_versions(models_dir, args.bucket_models)
-            trained_version = new_version
             log(f"[*] Existing versions: {sorted(existing) if existing else []}")
             log(f"[*] Base model version (real) = v{base_version}; new version will be v{new_version}")
 
@@ -649,8 +597,7 @@ def main():
 
             mark_samples_used_for_training(args.bucket_verified, new_samples, new_version)
 
-            # Keep "last_model_version" monotonic: it's the max existing after upload.
-            max_after = max(existing | {new_version}) if (existing or new_version) else new_version
+            max_after = max(existing | {new_version}) if existing else new_version
 
             safe_release_training_lock(
                 supabase,
@@ -660,19 +607,18 @@ def main():
                     "last_dataset_manifest": snapshot_paths.get("dataset_manifest"),
                     "last_dataset_zip": snapshot_paths.get("dataset_zip"),
                     "last_dataset_version": int(new_version),
-                    # optional: if column exists, store which version was trained
                     "last_trained_version": int(new_version),
                 },
             )
 
             success = True
-            log(f"[✓] Training completed. trained_version = {new_version}; last_model_version = {max_after}")
+            log(f"[✓] Training completed. trained_version=v{new_version} last_model_version=v{max_after}")
 
         except Exception as e:
             msg = str(e)
             log(f"[!] Training failed: {msg}")
 
-            # If there are not enough samples, stop retry-spam: keep retrain_requested=False and just release the lock.
+            # don't spam-crash when it's just lack of data
             if "Not enough samples" in msg:
                 try:
                     safe_release_training_lock(supabase, success=False)
