@@ -1438,10 +1438,13 @@ def request_retrain_if_needed():
         "trust_score": trust,
     }
 @app.get("/admin/verified-list")
-def admin_verified_list():
+def admin_verified_list(include_used: bool = False):
     """
-    Возвращает список analysis_id из arborscan-verified
-    + краткую информацию из meta_verified.json
+    Возвращает список analysis_id из arborscan-verified + краткую информацию из meta_verified.json.
+
+    По умолчанию скрывает примеры, которые уже использовались для обучения (used_for_training=true),
+    чтобы вкладка «Датасет для обучения» в приложении показывала только "актуальные" примеры.
+    Если нужно увидеть всё — вызови с include_used=true.
     """
     try:
         objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
@@ -1451,7 +1454,6 @@ def admin_verified_list():
     analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
 
     results = []
-
     for aid in analysis_ids:
         try:
             meta_bytes = supabase_download_bytes(
@@ -1460,6 +1462,10 @@ def admin_verified_list():
             )
             meta = json.loads(meta_bytes)
 
+            # Hide already-consumed samples by default (keep them in Supabase, just not shown in UI)
+            if (not include_used) and meta.get("used_for_training") is True:
+                continue
+
             results.append({
                 "analysis_id": aid,
                 "species": meta.get("species"),
@@ -1467,9 +1473,13 @@ def admin_verified_list():
                 "trust_score": meta.get("trust_score"),
                 "verified": meta.get("verified", True),
                 "verified_at": meta.get("verified_at"),
+                # important for TrainingDatasetPage
+                "exclude_from_training": meta.get("exclude_from_training", False) == True,
+                # optional debug fields
+                "has_user_mask": meta.get("has_user_mask", False) == True,
+                "used_for_training": meta.get("used_for_training", False) == True,
             })
         except Exception:
-            # если meta не найден или битый — просто пропускаем
             continue
 
     return {
@@ -1482,6 +1492,8 @@ def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     """
     Toggle whether a verified sample should be used for training.
     The admin UI uses this to include/exclude items from the training dataset export.
+
+    Важно: обновляем И meta.json, И meta_verified.json, т.к. export/worker берёт поля из meta_verified.json.
     """
     # pick the first provided flag from a set of accepted keys
     flag = None
@@ -1495,22 +1507,35 @@ def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
             detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
         )
 
-    meta_path = f"{analysis_id}/meta.json"
-    try:
-        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
-        meta = json.loads(raw.decode("utf-8")) if raw else {}
-    except Exception:
-        meta = {}
+    # Helper to load json safely
+    def _load_json(path: str) -> dict:
+        try:
+            raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path)
+            if not raw:
+                return {}
+            if isinstance(raw, (bytes, bytearray)):
+                return json.loads(raw.decode("utf-8"))
+            return json.loads(raw)
+        except Exception:
+            return {}
 
+    # Update meta.json (legacy)
+    meta_path = f"{analysis_id}/meta.json"
+    meta = _load_json(meta_path)
     meta["analysis_id"] = analysis_id
     meta["use_for_training"] = flag
     meta["exclude_from_training"] = (not flag)
-
     supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
 
-    return {"analysis_id": analysis_id, "use_for_training": flag}
+    # Update meta_verified.json (source of truth for training pipeline)
+    mv_path = f"{analysis_id}/meta_verified.json"
+    mv = _load_json(mv_path)
+    mv["analysis_id"] = analysis_id
+    mv["use_for_training"] = flag
+    mv["exclude_from_training"] = (not flag)
+    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, mv_path, mv)
 
-
+    return {"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": (not flag)}
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     """
