@@ -23,7 +23,7 @@ DEFAULT_BUCKET_VERIFIED = os.getenv("SUPABASE_BUCKET_VERIFIED", "arborscan-verif
 DEFAULT_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 DEFAULT_BUCKET_DATASETS = os.getenv("SUPABASE_BUCKET_DATASETS", "arborscan-datasets")
 
-DEFAULT_MIN_NEW = int(os.getenv("MIN_NEW", "0"))          # for "button training" allow 0
+DEFAULT_MIN_NEW = int(os.getenv("MIN_NEW", "0"))          # allow 0 for manual "button" runs
 DEFAULT_EPOCHS = int(os.getenv("EPOCHS", "30"))
 DEFAULT_IMGSZ = int(os.getenv("IMGSZ", "1024"))
 DEFAULT_BATCH = int(os.getenv("BATCH", "4"))
@@ -80,9 +80,9 @@ def storage_list_objects(bucket: str, prefix: str = "", limit: int = 1000, offse
     return data if isinstance(data, list) else []
 
 def storage_download_bytes(bucket: str, path: str) -> bytes:
-    # For private buckets use authenticated endpoint
+    # for private buckets: /object/authenticated
     url = f"{_base_url()}/storage/v1/object/authenticated/{bucket}/{path}"
-    r = requests.get(url, headers=_storage_headers(), timeout=120)
+    r = requests.get(url, headers=_storage_headers(), timeout=180)
     r.raise_for_status()
     return r.content
 
@@ -90,7 +90,7 @@ def storage_upload_bytes(bucket: str, path: str, content: bytes, content_type: s
     url = f"{_base_url()}/storage/v1/object/{bucket}/{path}"
     headers = dict(_storage_headers())
     headers.update({"Content-Type": content_type, "x-upsert": "true"})
-    r = requests.post(url, headers=headers, data=content, timeout=180)
+    r = requests.post(url, headers=headers, data=content, timeout=240)
     r.raise_for_status()
 
 def storage_upload_json(bucket: str, path: str, data: dict) -> None:
@@ -127,7 +127,6 @@ def update_training_state(supabase, patch: dict) -> None:
             return
         except Exception as e:
             msg = str(e)
-            # Typical supabase-py wraps JSON message inside exception string
             if "PGRST204" in msg and "Could not find the" in msg and "column" in msg:
                 m = re.search(r"Could not find the '([^']+)' column", msg)
                 if m:
@@ -141,22 +140,13 @@ def update_training_state(supabase, patch: dict) -> None:
             raise
 
 def try_acquire_training_lock(supabase) -> bool:
-    """
-    Best-effort lock:
-      - require retrain_requested == True
-      - require training_in_progress == False
-      - set training_in_progress True and retrain_requested False
-    """
     state = get_training_state(supabase)
     if state.get("training_in_progress"):
         return False
     if not state.get("retrain_requested"):
         return False
 
-    update_training_state(
-        supabase,
-        {"training_in_progress": True, "retrain_requested": False},
-    )
+    update_training_state(supabase, {"training_in_progress": True, "retrain_requested": False})
     return True
 
 def safe_release_training_lock(
@@ -177,13 +167,9 @@ def safe_release_training_lock(
 
 
 # -----------------------------
-# Sample discovery
+# Verified sample discovery
 # -----------------------------
 def list_verified_analysis_ids(bucket_verified: str) -> List[str]:
-    """
-    List unique top-level folders (analysis_id) by listing objects.
-    We collect from names like '<id>/file'. This works even if Storage doesn't show folder objects.
-    """
     ids: set[str] = set()
     offset = 0
     while True:
@@ -209,13 +195,6 @@ def read_meta_verified(bucket_verified: str, aid: str) -> Optional[dict]:
         return None
 
 def discover_new_samples(bucket_verified: str, max_samples: Optional[int] = None) -> List[Tuple[str, dict]]:
-    """
-    New samples:
-      - meta_verified.json exists
-      - has_user_mask == True
-      - used_for_training != True
-      - exclude_from_training != True
-    """
     results: List[Tuple[str, dict]] = []
     for aid in list_verified_analysis_ids(bucket_verified):
         meta = read_meta_verified(bucket_verified, aid)
@@ -233,13 +212,6 @@ def discover_new_samples(bucket_verified: str, max_samples: Optional[int] = None
     return results
 
 def discover_replay_samples(bucket_verified: str, k: int) -> List[Tuple[str, dict]]:
-    """
-    Replay samples:
-      - meta_verified.json exists
-      - has_user_mask == True
-      - used_for_training == True
-      - exclude_from_training != True
-    """
     if k <= 0:
         return []
 
@@ -270,7 +242,7 @@ def discover_replay_samples(bucket_verified: str, k: int) -> List[Tuple[str, dic
 
 
 # -----------------------------
-# Model version detection + base model ensure
+# Model versions: REAL last existing
 # -----------------------------
 def _max_model_version_local(models_dir: Path) -> int:
     mx = 0
@@ -284,56 +256,55 @@ def _max_model_version_local(models_dir: Path) -> int:
 
 def _max_model_version_bucket(bucket_models: str) -> int:
     mx = 0
-    try:
-        objs = storage_list_objects(bucket_models, prefix="", limit=1000, offset=0)
+    offset = 0
+    while True:
+        objs = storage_list_objects(bucket_models, prefix="", limit=1000, offset=offset)
+        if not objs:
+            break
         for o in objs:
             name = (o.get("name") or "").split("/")[-1]
             m = re.match(r"model_v(\d+)\.pt$", name)
             if m:
                 mx = max(mx, int(m.group(1)))
-    except Exception as e:
-        log(f"[!] Could not list models bucket for version detection: {e}")
+        if len(objs) < 1000:
+            break
+        offset += 1000
     return mx
 
 def ensure_models_dir(models_dir: Path) -> None:
     models_dir.mkdir(parents=True, exist_ok=True)
 
-def get_base_model_path(models_dir: Path, last_version: int) -> Path:
-    if last_version <= 0:
+def get_base_model_path(models_dir: Path, base_version: int) -> Path:
+    if base_version <= 0:
         return models_dir / "base.pt"
-    return models_dir / f"model_v{last_version}.pt"
+    return models_dir / f"model_v{base_version}.pt"
 
 def ensure_base_model_local(
     *,
     models_dir: Path,
     bucket_models: str,
-    last_version: int,
+    base_version: int,
 ) -> Path:
     """
     Ensure base model exists locally:
-      - if last_version>0: need model_v{last_version}.pt
+      - if base_version>0: need model_v{base_version}.pt
       - else: need base.pt (or download fallback)
     Downloads from bucket_models when missing locally.
     """
     ensure_models_dir(models_dir)
-    base_path = get_base_model_path(models_dir, last_version)
+    base_path = get_base_model_path(models_dir, base_version)
 
     if base_path.exists():
         return base_path
 
-    if last_version > 0:
-        remote_name = f"model_v{last_version}.pt"
-        try:
-            content = storage_download_bytes(bucket_models, remote_name)
-            base_path.write_bytes(content)
-            log(f"[✓] Downloaded base model from bucket '{bucket_models}': {remote_name} -> {base_path}")
-            return base_path
-        except Exception as e:
-            raise RuntimeError(
-                f"Base model not found locally ({base_path}) and failed to download {remote_name} from bucket {bucket_models}: {e}"
-            )
+    if base_version > 0:
+        remote_name = f"model_v{base_version}.pt"
+        content = storage_download_bytes(bucket_models, remote_name)
+        base_path.write_bytes(content)
+        log(f"[✓] Downloaded base model from bucket '{bucket_models}': {remote_name} -> {base_path}")
+        return base_path
 
-    # last_version == 0: try download base.pt or yolov8n-seg.pt from models bucket
+    # base_version == 0: try download base.pt or yolov8n-seg.pt from models bucket
     for candidate in ["base.pt", "yolov8n-seg.pt", "yolov8s-seg.pt", "yolov8m-seg.pt"]:
         try:
             content = storage_download_bytes(bucket_models, candidate)
@@ -347,6 +318,19 @@ def ensure_base_model_local(
         f"Base model not found: {base_path}. "
         f"Put yolov8*-seg.pt into {models_dir}/base.pt or upload base.pt (or yolov8n-seg.pt) to bucket {bucket_models}."
     )
+
+def compute_next_version_from_existing(models_dir: Path, bucket_models: str) -> Tuple[int, int]:
+    """
+    Returns (base_version, new_version), determined ONLY by real existing files.
+    - base_version = max(existing local, existing bucket)
+    - new_version = base_version + 1
+    So if model_v4 was deleted and max is 3 -> new becomes 4 again.
+    """
+    local_last = _max_model_version_local(models_dir)
+    bucket_last = _max_model_version_bucket(bucket_models)
+    base_version = max(local_last, bucket_last)
+    new_version = base_version + 1
+    return base_version, new_version
 
 
 # -----------------------------
@@ -373,12 +357,10 @@ def run_export_script(tools_dir: Path, bucket_verified: str, manifest_in_path: P
     log("[*] " + " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=str(tools_dir))
 
-
 def zip_dir(src_dir: Path, zip_path: Path) -> None:
     if zip_path.exists():
         zip_path.unlink()
     shutil.make_archive(str(zip_path.with_suffix("")), "zip", root_dir=str(src_dir))
-    # make_archive adds .zip itself
     final_zip = zip_path.with_suffix(".zip")
     if final_zip != zip_path:
         if zip_path.exists():
@@ -470,7 +452,7 @@ def upload_model_to_bucket(bucket_models: str, model_path: Path) -> None:
 
 
 # -----------------------------
-# Mark samples used (meta_verified.json)
+# Mark samples used
 # -----------------------------
 def mark_samples_used_for_training(
     bucket_verified: str,
@@ -504,28 +486,24 @@ def build_selection(
     replay_ids = [aid for aid, _ in replay_samples]
 
     all_ids = new_ids + replay_ids
+    if len(all_ids) < 2:
+        raise RuntimeError("Not enough samples (new + replay) to train (need at least 2).")
 
     if SELECTION_SEED:
         rng = random.Random(SELECTION_SEED + "|split|" + str(len(all_ids)))
     else:
         rng = random.Random()
-
     ids_shuffled = all_ids[:]
     rng.shuffle(ids_shuffled)
 
-    if len(ids_shuffled) < 2:
-        raise RuntimeError("Not enough samples (new + replay) to train (need at least 2).")
-
     split_idx = max(1, int(len(ids_shuffled) * TRAIN_SPLIT))
     split_idx = min(split_idx, len(ids_shuffled) - 1)  # at least 1 val
-    train_ids = ids_shuffled[:split_idx]
-    val_ids = ids_shuffled[split_idx:]
 
     return {
         "new_ids": new_ids,
         "replay_ids": replay_ids,
-        "train_ids": train_ids,
-        "val_ids": val_ids,
+        "train_ids": ids_shuffled[:split_idx],
+        "val_ids": ids_shuffled[split_idx:],
     }
 
 def write_manifest_in(
@@ -559,7 +537,7 @@ def write_manifest_in(
 # Main loop
 # -----------------------------
 def main():
-    parser = argparse.ArgumentParser(description="ArborScan retrain worker (manifest + snapshot)")
+    parser = argparse.ArgumentParser(description="ArborScan retrain worker (real-last-version + manifest + snapshot)")
     parser.add_argument("--bucket-verified", default=DEFAULT_BUCKET_VERIFIED)
     parser.add_argument("--bucket-models", default=DEFAULT_BUCKET_MODELS)
     parser.add_argument("--bucket-datasets", default=DEFAULT_BUCKET_DATASETS)
@@ -611,8 +589,8 @@ def main():
             time.sleep(args.interval)
             continue
 
-        # New samples
         new_samples = discover_new_samples(args.bucket_verified, max_samples=args.max_samples)
+
         if args.min_new > 0 and len(new_samples) < args.min_new:
             log(f"[*] Not enough new samples: {len(new_samples)} < {args.min_new}. Resetting retrain_requested to FALSE.")
             update_training_state(supabase, {"retrain_requested": False})
@@ -634,29 +612,24 @@ def main():
         new_version: Optional[int] = None
 
         try:
-            # Determine last version (max of state/local/bucket)
-            state = get_training_state(supabase)
-            state_last = int(state.get("last_model_version") or 0)
-            local_last = _max_model_version_local(models_dir)
-            bucket_last = _max_model_version_bucket(args.bucket_models)
+            # ✅ IMPORTANT: determine versions ONLY from real existing files (bucket/local)
+            base_version, new_version = compute_next_version_from_existing(models_dir, args.bucket_models)
+            log(f"[*] Base model version (real existing) = v{base_version}; new version will be v{new_version}")
 
-            last_version = max(state_last, local_last, bucket_last)
-            new_version = last_version + 1
-
-            # Ensure base model exists locally (download if needed)
+            # Ensure base model locally
             base_model = ensure_base_model_local(
                 models_dir=models_dir,
                 bucket_models=args.bucket_models,
-                last_version=last_version,
+                base_version=base_version,
             )
 
             # Build selection + manifest_in
             selection = build_selection(bucket_verified=args.bucket_verified, new_samples=new_samples)
             write_manifest_in(
                 path=manifest_in_path,
-                dataset_version=new_version,          # dataset version matches model version
+                dataset_version=new_version,
                 bucket_verified=args.bucket_verified,
-                base_model_version=last_version,
+                base_model_version=base_version,
                 new_model_version=new_version,
                 selection=selection,
             )
@@ -672,12 +645,11 @@ def main():
                 out_dir=dataset_dir,
             )
 
-            # Zip snapshot of dataset_dir
+            # Zip snapshot
             zip_path = tools_dir / "dataset.zip"
             zip_dir(dataset_dir, zip_path)
             log(f"[✓] Zipped dataset snapshot: {zip_path}")
 
-            # Upload snapshot to datasets bucket
             out_manifest = dataset_dir / "manifest.json"
             out_yaml = dataset_dir / "data.yaml"
             if not out_manifest.exists() or not out_yaml.exists():
@@ -704,22 +676,20 @@ def main():
                 run_name=run_name,
             )
 
-            # Save new model locally + upload to bucket
+            # Save new model + upload
             new_model_path = save_new_model(best_pt, models_dir, new_version)
             log(f"[✓] Saved new model: {new_model_path}")
-
             upload_model_to_bucket(args.bucket_models, new_model_path)
 
-            # Mark ONLY new samples as used_for_training
+            # Mark only NEW samples used
             mark_samples_used_for_training(args.bucket_verified, new_samples, new_version)
 
-            # Update training_state (ignore missing columns via update_training_state)
+            # Update training_state (won't crash if optional columns absent)
             safe_release_training_lock(
                 supabase,
                 success=True,
                 last_model_version=new_version,
                 extra_patch={
-                    # These fields are OPTIONAL. If columns don't exist, updater will skip them.
                     "last_dataset_manifest": snapshot_paths.get("dataset_manifest"),
                     "last_dataset_zip": snapshot_paths.get("dataset_zip"),
                     "last_dataset_version": int(new_version),
