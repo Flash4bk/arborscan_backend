@@ -41,7 +41,9 @@ SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 
 # NEW: bucket для сохранения всех загрузок (raw dataset)
 SUPABASE_BUCKET_RAW = "arborscan-raw"
-SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")  # где лежат model_vN.pt
+
+# Bucket for versioned segmentation models (model_vN.pt)
+SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
 # Таблица в Supabase Postgres для очереди доверенных примеров
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
@@ -240,13 +242,11 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
     """
     Скачать файл из Supabase Storage.
 
-    ВАЖНО: для приватных bucket'ов нужен endpoint /object/authenticated и заголовки
-    Authorization + apikey.
+    Для приватных bucket'ов используем authenticated endpoint.
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
-    # For private buckets use authenticated endpoint
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/authenticated/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -256,8 +256,6 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
     if resp.status_code >= 400:
         raise RuntimeError(f"Supabase download error {resp.status_code}: {resp.text}")
     return resp.content
-
-
 
 
 
@@ -298,14 +296,28 @@ def _get_active_model_version() -> int:
 def list_available_model_versions() -> list[dict]:
     """Return model versions for the Admin Panel dropdown.
 
-    We infer available versions from:
-      - AVAILABLE_MODEL_VERSIONS env var (comma-separated ints)
-      - local cached files in /tmp/models (model_v*.pt)
-      - bundled files in ./models (model_v*.pt)
-    Always includes the current active version.
+    Источник версий:
+      1) Supabase Storage bucket SUPABASE_BUCKET_MODELS (model_v*.pt) — основной источник
+      2) AVAILABLE_MODEL_VERSIONS env var (comma-separated ints) — опционально
+      3) локальный кеш /tmp/models (model_v*.pt)
+      4) bundled ./models (model_v*.pt)
+    Всегда включает текущую active_model_version.
     """
     versions: set[int] = set()
 
+    # 1) Storage listing
+    try:
+        objects = supabase_list_objects(SUPABASE_BUCKET_MODELS)
+        for obj in objects:
+            name = obj.get("name") or ""
+            base = name.split("/")[-1]
+            mm = re.search(r"model_v(\d+)\.pt$", base)
+            if mm:
+                versions.add(int(mm.group(1)))
+    except Exception:
+        pass
+
+    # 2) Optional env hint
     env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
     if env_hint:
         for part in env_hint.split(","):
@@ -317,11 +329,13 @@ def list_available_model_versions() -> list[dict]:
             except ValueError:
                 pass
 
+    # 3) Local cache
     for p in Path("/tmp/models").glob("model_v*.pt"):
         mm = re.search(r"model_v(\d+)\.pt$", p.name)
         if mm:
             versions.add(int(mm.group(1)))
 
+    # 4) Bundled models dir
     if Path("models").exists():
         for p in Path("models").glob("model_v*.pt"):
             mm = re.search(r"model_v(\d+)\.pt$", p.name)
@@ -1117,20 +1131,6 @@ def send_feedback(payload: dict = Body(...)):
     if not analysis_id:
         raise HTTPException(status_code=422, detail='analysis_id is required')
 
-
-    # --- DEBUG/DIAGNOSTICS (mask + payload keys) ---
-    try:
-        keys = sorted(list(payload.keys()))
-        mk = (
-            payload.get('user_mask_base64') or payload.get('userMaskBase64') or
-            payload.get('mask_base64') or payload.get('maskBase64') or
-            payload.get('user_mask_b64') or payload.get('userMaskB64')
-        )
-        mk_len = len(str(mk)) if mk is not None else 0
-        print(f"[*] /feedback analysis_id={analysis_id} keys={keys} mask_len={mk_len}")
-    except Exception:
-        pass
-
     def _b(val, default=True):
         if val is None:
             return default
@@ -1172,93 +1172,23 @@ def send_feedback(payload: dict = Body(...)):
                 return None
         return None
 
-    
-    # Also accept nested user_params from older/newer clients:
-    #   user_params: {height_m, crown_width_m, trunk_diameter_m, scale_px_to_m}
-    user_params = payload.get('user_params') or payload.get('userParams')
-    if isinstance(user_params, dict):
-        # If explicit corrected_* fields are missing, fall back to values inside user_params.
-        payload.setdefault('corrected_height_m', user_params.get('height_m'))
-        payload.setdefault('corrected_crown_width_m', user_params.get('crown_width_m'))
-        payload.setdefault('corrected_trunk_diameter_m', user_params.get('trunk_diameter_m'))
-        # scale can be under several keys
-        if 'corrected_scale_px_to_m' not in payload and 'correctedScalePxToM' not in payload:
-            payload.setdefault('corrected_scale_px_to_m', user_params.get('scale_px_to_m'))
-
-    # Also accept user_species / userSpecies as correct_species
-    if (payload.get('correct_species') is None and payload.get('correctSpecies') is None):
-        us = payload.get('user_species') or payload.get('userSpecies')
-        if us:
-            payload.setdefault('correct_species', us)
-
     corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
     corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
     corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
     corrected_scale_px_to_m = _f(
-    payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
-    payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
-    payload.get('scale_px_to_m') or payload.get('scalePxToM') or
-    payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
+        payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
+        payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
+        payload.get('scale_px_to_m') or payload.get('scalePxToM') or
+        payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
     )
-    user_mask_base64 = (
-        payload.get('user_mask_base64') or payload.get('userMaskBase64') or
-        payload.get('mask_base64') or payload.get('maskBase64') or
-        payload.get('user_mask_b64') or payload.get('userMaskB64')
-    )
+    user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
 
     tmp_dir = Path("/tmp") / analysis_id
-    # Railway/containers can restart at any time → /tmp is ephemeral.
-    # If the analysis cache is missing, restore it from the RAW bucket where
-    # /analyze-tree always uploads the sample.
     if not tmp_dir.exists():
-        try:
-            tmp_dir.mkdir(parents=True, exist_ok=True)
-
-            # input
-            (tmp_dir / "input.jpg").write_bytes(
-                supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/input.jpg")
-            )
-
-            # annotated (optional)
-            try:
-                (tmp_dir / "annotated.jpg").write_bytes(
-                    supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/annotated.jpg")
-                )
-            except Exception:
-                pass
-
-            # predictions (optional but nice to have)
-            try:
-                (tmp_dir / "tree_pred.json").write_bytes(
-                    supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/tree_pred.json")
-                )
-            except Exception:
-                pass
-            try:
-                (tmp_dir / "stick_pred.json").write_bytes(
-                    supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/stick_pred.json")
-                )
-            except Exception:
-                pass
-
-            # meta (RAW uses meta_auto.json)
-            meta_raw = supabase_download_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/meta_auto.json")
-            (tmp_dir / "meta.json").write_bytes(meta_raw)
-
-            print(f"[*] Restored /tmp cache for {analysis_id} from RAW bucket")
-        except Exception as e:
-            # Cleanup partial dir to avoid confusing future requests
-            try:
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-            except Exception:
-                pass
-            raise HTTPException(
-                status_code=404,
-                detail=f"analysis_id не найден или истёк срок хранения (и не удалось восстановить из RAW): {e}",
-            )
+        raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
     # Если пользователь не хочет использовать пример в обучении
     if not use_for_training:
@@ -1349,26 +1279,7 @@ def send_feedback(payload: dict = Body(...)):
         # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
                 # Маска пользователя (обводка) — опционально.
         # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
-        # Preserve previous has_user_mask if this analysis was already verified earlier.
-        prev_has_user_mask = False
-        try:
-            prev_meta_bytes = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/meta_verified.json",
-            )
-            if prev_meta_bytes:
-                try:
-                    prev_meta = json.loads(prev_meta_bytes)
-                    prev_has_user_mask = bool(prev_meta.get("has_user_mask", False))
-                except Exception:
-                    prev_has_user_mask = False
-        except Exception:
-            prev_has_user_mask = False
-
-        # Маска пользователя (обводка) — опционально.
-        # Если маски нет в ЭТОМ запросе, не затираем флаг в False, если он уже был True.
-        meta["has_user_mask"] = prev_has_user_mask
-
+        meta["has_user_mask"] = False
         mask_b64 = user_mask_base64
         if mask_b64 is not None:
             mask_b64_str = str(mask_b64).strip().lower()
@@ -1567,13 +1478,10 @@ def admin_verified_list():
     }
 @app.post("/admin/verified/{analysis_id}/set-training")
 @app.post("/admin/verified/{analysis_id}/set-training/")
-
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     """
     Toggle whether a verified sample should be used for training.
-    Writes BOTH meta_verified.json and meta.json for compatibility:
-      - training worker reads meta_verified.json
-      - older admin flows may have used meta.json
+    The admin UI uses this to include/exclude items from the training dataset export.
     """
     # pick the first provided flag from a set of accepted keys
     flag = None
@@ -1587,37 +1495,21 @@ def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
             detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
         )
 
-    meta_verified_path = f"{analysis_id}/meta_verified.json"
     meta_path = f"{analysis_id}/meta.json"
-
-    # Load existing meta (prefer meta_verified.json)
-    meta: dict = {}
     try:
-        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_verified_path)
+        raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
         meta = json.loads(raw.decode("utf-8")) if raw else {}
     except Exception:
-        try:
-            raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, meta_path)
-            meta = json.loads(raw.decode("utf-8")) if raw else {}
-        except Exception:
-            meta = {}
+        meta = {}
 
     meta["analysis_id"] = analysis_id
     meta["use_for_training"] = flag
     meta["exclude_from_training"] = (not flag)
 
-    # Best-effort write both files
-    try:
-        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_verified_path, meta)
-    except Exception as e:
-        print(f"[!] Failed to update {meta_verified_path}: {e}")
-
-    try:
-        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
-    except Exception as e:
-        print(f"[!] Failed to update {meta_path}: {e}")
+    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
 
     return {"analysis_id": analysis_id, "use_for_training": flag}
+
 
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
@@ -1735,7 +1627,7 @@ async def admin_set_active_model(payload: dict = Body(...)):
         raise HTTPException(status_code=422, detail="Missing 'version' in request body")
     v = int(raw_v)
 
-    # verify model exists in Supabase Storage bucket 'models'
+    # verify model exists in Supabase Storage bucket SUPABASE_BUCKET_MODELS
     filename = f"model_v{v}.pt"
     try:
         _ = supabase_download_bytes(SUPABASE_BUCKET_MODELS, filename)
