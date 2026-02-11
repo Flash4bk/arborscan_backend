@@ -1486,6 +1486,90 @@ def admin_verified_list(include_used: bool = False):
         "count": len(results),
         "items": results,
     }
+
+@app.get("/admin/training-candidates")
+def admin_training_candidates(limit: int = 50):
+    """
+    Диагностический эндпоинт: показывает, почему воркер видит 0 new samples.
+
+    Возвращает:
+      - eligible_new: которые попадут как NEW (has_user_mask && !exclude && !used_for_training)
+      - eligible_replay_pool: которые могут быть выбраны как REPLAY (has_user_mask && !exclude && used_for_training)
+      - skipped_counts: статистика причин отсева
+      - examples: первые N примеров с краткой причиной
+    """
+    try:
+        objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"list_objects failed: {e}")
+
+    analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
+
+    eligible_new = []
+    eligible_replay_pool = []
+    skipped_counts = {
+        "no_meta_verified": 0,
+        "no_user_mask": 0,
+        "excluded": 0,
+        "already_used": 0,
+        "other": 0,
+    }
+    examples = []
+
+    def _reason(meta):
+        if meta is None:
+            return "no_meta_verified"
+        if not meta.get("has_user_mask", False):
+            return "no_user_mask"
+        if meta.get("exclude_from_training", False):
+            return "excluded"
+        if meta.get("used_for_training", False):
+            return "already_used"
+        return "eligible_new"
+
+    for aid in analysis_ids:
+        meta = None
+        try:
+            meta_bytes = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{aid}/meta_verified.json")
+            meta = json.loads(meta_bytes)
+        except Exception:
+            meta = None
+
+        r = _reason(meta)
+        if r == "eligible_new":
+            eligible_new.append(aid)
+        elif r == "already_used":
+            if meta and meta.get("has_user_mask", False) and (not meta.get("exclude_from_training", False)):
+                eligible_replay_pool.append(aid)
+            skipped_counts["already_used"] += 1
+        elif r in skipped_counts:
+            skipped_counts[r] += 1
+        else:
+            skipped_counts["other"] += 1
+
+        if len(examples) < max(0, int(limit)):
+            examples.append({
+                "analysis_id": aid,
+                "reason": r,
+                "has_user_mask": bool(meta.get("has_user_mask")) if meta else None,
+                "exclude_from_training": bool(meta.get("exclude_from_training")) if meta else None,
+                "used_for_training": bool(meta.get("used_for_training")) if meta else None,
+                "verified_at": meta.get("verified_at") if meta else None,
+            })
+
+    return {
+        "bucket_verified": SUPABASE_BUCKET_VERIFIED,
+        "eligible_new_count": len(eligible_new),
+        "eligible_new": eligible_new[:limit],
+        "eligible_replay_pool_count": len(eligible_replay_pool),
+        "eligible_replay_pool": eligible_replay_pool[:limit],
+        "skipped_counts": skipped_counts,
+        "examples": examples,
+        "notes": {
+            "new_criteria": "has_user_mask=true AND exclude_from_training!=true AND used_for_training!=true",
+            "replay_pool_criteria": "has_user_mask=true AND exclude_from_training!=true AND used_for_training=true",
+        }
+    }
 @app.post("/admin/verified/{analysis_id}/set-training")
 @app.post("/admin/verified/{analysis_id}/set-training/")
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):

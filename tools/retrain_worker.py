@@ -230,6 +230,53 @@ def discover_replay_samples(bucket_verified: str, k: int) -> List[Tuple[str, dic
     rng.shuffle(pool)
     return pool[: min(k, len(pool))]
 
+
+def diagnose_candidates(bucket_verified: str, max_examples: int = 20) -> dict:
+    """
+    Returns counts of why verified samples are not eligible as NEW.
+    Uses meta_verified.json flags:
+      - has_user_mask
+      - exclude_from_training
+      - used_for_training
+    """
+    counts = {
+        "total_folders": 0,
+        "no_meta_verified": 0,
+        "no_user_mask": 0,
+        "excluded": 0,
+        "already_used": 0,
+        "eligible_new": 0,
+        "eligible_replay_pool": 0,
+    }
+    examples = []
+
+    for aid in list_verified_analysis_ids(bucket_verified):
+        counts["total_folders"] += 1
+        meta = read_meta_verified(bucket_verified, aid)
+        if not meta:
+            counts["no_meta_verified"] += 1
+            if len(examples) < max_examples:
+                examples.append((aid, "no_meta_verified"))
+            continue
+        if not meta.get("has_user_mask", False):
+            counts["no_user_mask"] += 1
+            if len(examples) < max_examples:
+                examples.append((aid, "no_user_mask"))
+            continue
+        if meta.get("exclude_from_training", False):
+            counts["excluded"] += 1
+            if len(examples) < max_examples:
+                examples.append((aid, "excluded"))
+            continue
+        if meta.get("used_for_training", False):
+            counts["already_used"] += 1
+            counts["eligible_replay_pool"] += 1
+            continue
+        counts["eligible_new"] += 1
+
+    return {"counts": counts, "examples": examples}
+
+
 # -----------------------------
 # Model versions: real existing + next free >= (max+1)
 # -----------------------------
@@ -536,6 +583,10 @@ def main():
             continue
 
         log(f"[*] Acquired training lock. New samples to train on: {len(new_samples)}")
+            diag = diagnose_candidates(args.bucket_verified, max_examples=25)
+            log(f"[*] Candidate diagnostics: {diag['counts']}")
+            if diag.get("examples"):
+                log(f"[*] Example skipped: {diag['examples'][:10]}")
 
         success = False
         trained_version: Optional[int] = None
@@ -618,7 +669,20 @@ def main():
             log(f"[✓] Training completed. trained_version = {new_version}; last_model_version = {max_after}")
 
         except Exception as e:
-            log(f"[!] Training failed: {e}")
+            msg = str(e)
+            log(f"[!] Training failed: {msg}")
+
+            # If there are not enough samples, stop retry-spam: keep retrain_requested=False and just release the lock.
+            if "Not enough samples" in msg:
+                try:
+                    safe_release_training_lock(supabase, success=False)
+                except Exception as e2:
+                    log(f"[!] Failed to release training lock: {e2}")
+                if args.once:
+                    sys.exit(1)
+                time.sleep(args.interval)
+                continue
+
             try:
                 safe_release_training_lock(supabase, success=False)
             except Exception as e2:
