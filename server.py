@@ -41,10 +41,8 @@ SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 
 # NEW: bucket для сохранения всех загрузок (raw dataset)
 SUPABASE_BUCKET_RAW = "arborscan-raw"
+SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")  # где лежат model_vN.pt
 
-
-# Bucket for trained tree models (model_v{N}.pt)
-SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 # Таблица в Supabase Postgres для очереди доверенных примеров
 # (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
@@ -241,15 +239,20 @@ def supabase_list_objects(bucket: str, prefix: str = ""):
 def supabase_download_bytes(bucket: str, path: str) -> bytes:
     """
     Скачать файл из Supabase Storage.
+
+    ВАЖНО: для приватных bucket'ов нужен endpoint /object/authenticated и заголовки
+    Authorization + apikey.
     """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
-    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
+    # For private buckets use authenticated endpoint
+    url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/authenticated/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "apikey": SUPABASE_SERVICE_KEY,
     }
-    resp = requests.get(url, headers=headers, timeout=30)
+    resp = requests.get(url, headers=headers, timeout=60)
     if resp.status_code >= 400:
         raise RuntimeError(f"Supabase download error {resp.status_code}: {resp.text}")
     return resp.content
@@ -1732,12 +1735,12 @@ async def admin_set_active_model(payload: dict = Body(...)):
         raise HTTPException(status_code=422, detail="Missing 'version' in request body")
     v = int(raw_v)
 
-    # verify model exists in Supabase Storage bucket SUPABASE_BUCKET_MODELS
+    # verify model exists in Supabase Storage bucket 'models'
     filename = f"model_v{v}.pt"
     try:
         _ = supabase_download_bytes(SUPABASE_BUCKET_MODELS, filename)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Model file not found in Supabase Storage bucket '{SUPABASE_BUCKET_MODELS}': {filename}. {e}")
+        raise HTTPException(status_code=400, detail=f"Model file not found in Supabase Storage: {filename}. {e}")
 
     training_state_update({"active_model_version": v})
 
