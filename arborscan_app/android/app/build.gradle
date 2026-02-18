@@ -1,0 +1,50 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace "com.example.arborscan_app"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.example.arborscan_app"
+        minSdk 24
+        targetSdk 36
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+dependencies {
+    // Sceneform (maintained fork). IMPORTANT: artifactId is "ux", NOT "sceneform-ux".
+    implementation "com.gorisse.thomas.sceneform:sceneform:1.23.0"
+    implementation "com.gorisse.thomas.sceneform:core:1.23.0"
+    implementation "com.gorisse.thomas.sceneform:ux:1.23.0"
+
+    // ARCore (keep aligned with your Sceneform stack; you can bump later if needed)
+    implementation "com.google.ar:core:1.31.0"
+
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "com.google.android.material:material:1.12.0"
+}
+
+flutter {
+    source "../.."
+}

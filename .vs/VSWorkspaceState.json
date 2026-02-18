@@ -1,0 +1,16 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\arborscan_app",
+    "\\arborscan_app\\android",
+    "\\arborscan_app\\android\\app",
+    "\\arborscan_app\\android\\app\\src",
+    "\\arborscan_app\\android\\app\\src\\main",
+    "\\arborscan_app\\android\\app\\src\\main\\kotlin",
+    "\\arborscan_app\\android\\app\\src\\main\\kotlin\\com",
+    "\\arborscan_app\\android\\app\\src\\main\\kotlin\\com\\example",
+    "\\arborscan_app\\android\\app\\src\\main\\kotlin\\com\\example\\arborscan_app"
+  ],
+  "SelectedNode": "\\server.py",
+  "PreviewInSolutionExplorer": false
+}

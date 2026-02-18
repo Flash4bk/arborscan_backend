@@ -13,6 +13,7 @@ import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'feedback_page.dart';
+import 'ar_measure_channel.dart';
 /// ============================
 ///  Модель результата анализа
 /// ============================
@@ -104,6 +105,10 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
   bool _isLoading = false;
   String? _error;
+  double? _lastArMeters;
+  double? _lastArTrunkMeters;
+  double? _lastArCrownMeters;
+
 
   // Режим администратора
   bool _isAdmin = false;
@@ -340,6 +345,46 @@ class _ArborScanPageState extends State<ArborScanPage> {
       });
     }
   }
+
+      Future<void> _openArMeasure() async {
+    try {
+      final result = await ArMeasureChannel.openArMeasure();
+      if (!mounted) return;
+
+      final height = result?.heightMeters;
+      final trunk = result?.trunkDiameterMeters;
+      final crown = result?.crownWidthMeters;
+
+      setState(() {
+        _lastArMeters = height;
+        _lastArTrunkMeters = trunk;
+        _lastArCrownMeters = crown;
+      });
+
+      if (height == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("AR измерение отменено")),
+        );
+        return;
+      }
+
+      String fmt(double? v) => v == null ? "—" : v.toStringAsFixed(2);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "AR: высота=${fmt(height)} м, диаметр=${fmt(trunk)} м, крона=${fmt(crown)} м",
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("AR ошибка: $e")),
+      );
+    }
+  }
+
 
   Future<void> _analyze() async {
     if (_imageFile == null) return;
@@ -1030,6 +1075,20 @@ IconButton(
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _openArMeasure,
+                    icon: const Icon(Icons.view_in_ar_outlined),
+                    label: Text(_lastArMeters == null
+                        ? "AR измерение (6 точек)"
+                        : "AR H/D/C: ${_lastArMeters!.toStringAsFixed(2)}/${(_lastArTrunkMeters ?? 0).toStringAsFixed(2)}/${(_lastArCrownMeters ?? 0).toStringAsFixed(2)} м"),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Align(

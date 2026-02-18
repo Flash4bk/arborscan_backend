@@ -1,0 +1,4 @@
+#Thu Feb 12 18:48:42 MSK 2026
+base.0=D\:\\arborscan_backend\\arborscan_app\\android\\app\\build\\intermediates\\dex\\release\\minifyReleaseWithR8\\classes.dex
+path.0=classes.dex
+renamed.0=classes.dex
