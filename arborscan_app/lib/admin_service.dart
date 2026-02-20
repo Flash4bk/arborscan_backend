@@ -259,7 +259,6 @@ class VerifiedAnalysis {
   final String analysisId;
   final Uint8List inputImage;
   final Uint8List annotatedImage;
-  /// User-corrected segmentation mask (PNG), if present in backend response.
   final Uint8List? userMaskImage;
   final Map<String, dynamic> meta;
   final Map<String, dynamic> treePred;

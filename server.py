@@ -13,7 +13,7 @@ from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile, HTTPException , Body, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException , Body
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
@@ -827,10 +827,18 @@ def _startup_load_models():
 @app.post("/analyze-tree")
 async def analyze_tree(
     file: UploadFile = File(...),
+    # Optional client-provided GPS (Flutter). If absent we fallback to EXIF.
+    lat: Optional[float] = Form(None),
+    lon: Optional[float] = Form(None),
+    # Optional AR measurements
     ar_height_m: Optional[float] = Form(None),
     ar_trunk_diameter_m: Optional[float] = Form(None),
     ar_crown_width_m: Optional[float] = Form(None),
     ar_points_count: Optional[int] = Form(None),
+    required_points: Optional[int] = Form(None),
+    ar_mode: Optional[str] = Form(None),
+    point_hits_count: Optional[int] = Form(None),
+    plane_hits_count: Optional[int] = Form(None),
 ):
     image_bytes = await file.read()
     np_img = np.frombuffer(image_bytes, np.uint8)
@@ -879,26 +887,38 @@ async def analyze_tree(
     y_min, y_max = ys.min(), ys.max()
     height_px = y_max - y_min
 
-    # -----------------------------
-    # OPTIONAL AR SCALE OVERRIDE
-    # -----------------------------
-    scale_source = None
-    if ar_height_m and height_px > 10:
-        # Use AR height as ground truth to derive pixel-to-meter scale
-        scale = float(ar_height_m) / float(height_px)
-        scale_source = "ar_height"
-    elif scale:
-        scale_source = "stick"
 
-    # YOLO-derived measurements (may use stick scale or AR-derived scale)
-    yolo_height_m = round(height_px * scale, 2) if scale else None
+    # -----------------------------
+    # NEW: AR OVERRIDES (hybrid / stick replacement)
+    # -----------------------------
+    scale_source = "stick" if scale else None
+    ar_block = {
+        "ar_mode": ar_mode,
+        "ar_height_m": ar_height_m,
+        "ar_trunk_diameter_m": ar_trunk_diameter_m,
+        "ar_crown_width_m": ar_crown_width_m,
+        "ar_points_count": ar_points_count,
+        "required_points": required_points,
+        "point_hits_count": point_hits_count,
+        "plane_hits_count": plane_hits_count,
+    }
+
+    # If AR height is provided, use it as the primary scale (replaces stick/reference-object)
+    if ar_height_m is not None and height_px and height_px > 0:
+        try:
+            scale = float(ar_height_m) / float(height_px)
+            scale_source = "ar_height"
+        except Exception:
+            pass
+
+    height_m = float(ar_height_m) if ar_height_m is not None else (round(height_px * scale, 2) if scale else None)
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
         row = np.where(mask[y] > 0)[0]
         if len(row) > 0:
             crown_width_px = max(crown_width_px, row.max() - row.min())
-    yolo_crown_m = round(crown_width_px * scale, 2) if scale else None
+    crown_m = float(ar_crown_width_m) if ar_crown_width_m is not None else (round(crown_width_px * scale, 2) if scale else None)
 
     trunk_vals = []
     trunk_top = y_max - int(0.2 * height_px)
@@ -907,12 +927,8 @@ async def analyze_tree(
         if len(row) > 0:
             trunk_vals.append(row.max() - row.min())
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
-    yolo_trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
+    trunk_m = float(ar_trunk_diameter_m) if ar_trunk_diameter_m is not None else (round(trunk_px * scale, 2) if scale and trunk_px else None)
 
-    # Final measurements: prefer AR values when provided, fallback to YOLO-derived values
-    height_m = round(float(ar_height_m), 2) if ar_height_m is not None else yolo_height_m
-    crown_m = round(float(ar_crown_width_m), 2) if ar_crown_width_m is not None else yolo_crown_m
-    trunk_m = round(float(ar_trunk_diameter_m), 2) if ar_trunk_diameter_m is not None else yolo_trunk_m
     # -----------------------------
     # CLASSIFIER
     # -----------------------------
@@ -940,7 +956,7 @@ async def analyze_tree(
     risk = None
 
     if ENABLE_ENV_ANALYSIS:
-        gps = extract_gps(image_bytes)
+        gps = {'lat': float(lat), 'lon': float(lon)} if (lat is not None and lon is not None) else extract_gps(image_bytes)
         if gps:
             address = reverse_geocode(gps["lat"], gps["lon"])
             weather = get_weather(gps["lat"], gps["lon"])
@@ -967,6 +983,18 @@ async def analyze_tree(
         "crown_width_m": crown_m,
         "trunk_diameter_m": trunk_m,
         "scale_px_to_m": scale,
+
+        "scale_source": scale_source,
+        "ar": ar_block,
+        "yolo_px": {"height_px": float(height_px), "trunk_px": (float(trunk_px) if trunk_px is not None else None), "crown_width_px": float(crown_width_px)},
+
+        "scale_source": scale_source,
+        "ar": ar_block,
+        "yolo_px": {
+            "height_px": float(height_px) if height_px is not None else None,
+            "trunk_px": float(trunk_px) if trunk_px is not None else None,
+            "crown_width_px": float(crown_width_px) if crown_width_px is not None else None,
+        },
         "gps": gps,
         "address": address,
         "weather": weather,
@@ -1069,6 +1097,95 @@ async def analyze_tree(
         except Exception as e:
             print(f"[!] Failed to upload stick_pred.json to RAW for {analysis_id}: {e}")
 
+
+        # -------------------------------------------------
+        # NEW: Save analysis artifacts to dedicated buckets
+        # -------------------------------------------------
+        try:
+            # inputs bucket (original photo)
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{analysis_id}/input.jpg",
+                image_bytes,
+            )
+        except Exception as e:
+            print(f"[!] Failed to upload input.jpg to {SUPABASE_BUCKET_INPUTS} for {analysis_id}: {e}")
+
+        try:
+            # predictions bucket (annotated)
+            annotated_bytes_for_pred = base64.b64decode(annotated_b64)
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_PRED,
+                f"{analysis_id}/annotated.jpg",
+                annotated_bytes_for_pred,
+            )
+        except Exception as e:
+            print(f"[!] Failed to upload annotated.jpg to {SUPABASE_BUCKET_PRED} for {analysis_id}: {e}")
+
+        try:
+            # meta bucket (single canonical json for the app)
+            supabase_upload_json(
+                SUPABASE_BUCKET_META,
+                f"{analysis_id}/meta.json",
+                meta,
+            )
+            # also store lightweight preds for debugging/training
+            supabase_upload_json(
+                SUPABASE_BUCKET_META,
+                f"{analysis_id}/tree_pred.json",
+                tree_pred,
+            )
+            supabase_upload_json(
+                SUPABASE_BUCKET_META,
+                f"{analysis_id}/stick_pred.json",
+                stick_pred,
+            )
+        except Exception as e:
+            print(f"[!] Failed to upload meta/preds to {SUPABASE_BUCKET_META} for {analysis_id}: {e}")
+
+        # -------------------------------------------------
+        # NEW: Insert a row to Postgres (for app history / expert workflow)
+        # -------------------------------------------------
+        # Table name is configurable; create it in Supabase if not exists.
+        # This insert is best-effort (won't break inference if DB is missing).
+        try:
+            predictions_table = os.getenv("SUPABASE_PREDICTIONS_TABLE", "arborscan_predictions")
+            row = {
+                "analysis_id": analysis_id,
+                "created_at": datetime.utcnow().isoformat() + "Z",
+                "species": species_name,
+                "height_m": height_m,
+                "trunk_diameter_m": trunk_m,
+                "crown_width_m": crown_m,
+                "scale_px_to_m": scale,
+                "scale_source": scale_source,
+                "gps_lat": (gps.get("lat") if gps else None),
+                "gps_lon": (gps.get("lon") if gps else None),
+                "address": address,
+                "risk": risk,
+                "weather": weather,
+                "soil": soil,
+                "ar": ar_block,
+                "yolo_px": {
+                    "height_px": float(height_px) if height_px is not None else None,
+                    "trunk_px": float(trunk_px) if trunk_px is not None else None,
+                    "crown_width_px": float(crown_width_px) if crown_width_px is not None else None,
+                },
+                "storage": {
+                    "inputs": f"{SUPABASE_BUCKET_INPUTS}:{analysis_id}/input.jpg",
+                    "predictions": f"{SUPABASE_BUCKET_PRED}:{analysis_id}/annotated.jpg",
+                    "meta": f"{SUPABASE_BUCKET_META}:{analysis_id}/meta.json",
+                    "raw": f"{SUPABASE_BUCKET_RAW}:{analysis_id}/",
+                },
+                "model_versions": MODEL_VERSIONS,
+                "build": BUILD_INFO,
+                "schema_version": SCHEMA_VERSION,
+                "api_version": API_VERSION,
+                "is_verified": False,
+            }
+            supabase_db_insert(predictions_table, row)
+        except Exception as e:
+            print(f"[!] Failed to insert predictions row for {analysis_id}: {e}")
     except Exception as e:
         print(f"[!] Failed to upload raw sample {analysis_id} to Supabase: {e}")
 
@@ -1112,31 +1229,10 @@ async def analyze_tree(
     response = {
         "analysis_id": analysis_id,
         "species": species_name,
-
-        # Final measurements (prefer AR when provided)
         "height_m": height_m,
         "crown_width_m": crown_m,
         "trunk_diameter_m": trunk_m,
-
-        # Scale used for any pixel->meter conversions in this run
         "scale_px_to_m": scale,
-        "scale_source": scale_source,
-
-        # Raw AR inputs (if provided by client)
-        "ar": {
-            "height_m": ar_height_m,
-            "trunk_diameter_m": ar_trunk_diameter_m,
-            "crown_width_m": ar_crown_width_m,
-            "points_count": ar_points_count,
-        },
-
-        # YOLO-derived measurements (computed from mask + scale)
-        "yolo": {
-            "height_m": yolo_height_m,
-            "crown_width_m": yolo_crown_m,
-            "trunk_diameter_m": yolo_trunk_m,
-        },
-
         "annotated_image_base64": annotated_b64,
     }
     # добавляем оригинальное изображение
@@ -1144,6 +1240,8 @@ async def analyze_tree(
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
     except:
         response["original_image_base64"] = None
+        return JSONResponse(response)
+
 
     if gps:
         response["gps"] = gps

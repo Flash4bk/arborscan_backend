@@ -31,6 +31,8 @@ class MainActivity : FlutterActivity() {
 
                         try {
                             val intent = Intent(this, ArMeasureActivity::class.java)
+                            val requiredPoints = (call.argument<Int>("required_points") ?: 6)
+                            intent.putExtra("required_points", requiredPoints)
                             startActivityForResult(intent, REQ_AR_MEASURE)
                         } catch (e: Exception) {
                             pendingResult = null
