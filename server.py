@@ -52,7 +52,7 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 # Включать ли вставку в Postgres-очередь. По умолчанию выключено,
 # чтобы отсутствие таблицы не ломало пайплайн обучения.
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
-
+SUPABASE_PREDICTIONS_TABLE = os.getenv("SUPABASE_PREDICTIONS_TABLE", "predictions")
 # ---------------------------------------------------------
 # Supabase PostgREST helpers (training_state)
 # ---------------------------------------------------------
