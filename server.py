@@ -1156,6 +1156,77 @@ async def analyze_tree(
     if risk:
         response["risk"] = risk
 
+
+    # -----------------------------
+    # SAVE PREDICTION ROW → Supabase Postgres (table: SUPABASE_PREDICTIONS_TABLE)
+    # -----------------------------
+    if SUPABASE_DB_BASE and SUPABASE_SERVICE_KEY:
+        # Build a "best-effort" row. If the target table has fewer columns,
+        # we will retry with a minimal subset.
+        row_full = {
+            "analysis_id": analysis_id,
+            "species": response.get("species"),
+            "species_confidence": response.get("species_confidence"),
+            "height_m": response.get("height_m"),
+            "trunk_diameter_m": response.get("trunk_diameter_m"),
+            "crown_width_m": response.get("crown_width_m"),
+            "scale_px_to_m": response.get("scale_px_to_m"),
+            "scale_source": response.get("scale_source"),
+
+            "gps_lat": (gps or {}).get("lat") if isinstance(gps, dict) else None,
+            "gps_lon": (gps or {}).get("lon") if isinstance(gps, dict) else None,
+            "address": address,
+
+            # jsonb buckets (safe to drop if columns don't exist)
+            "risk": risk,
+            "weather": weather,
+            "soil": soil,
+            "ar": response.get("ar"),
+            "yolo_px": response.get("yolo"),
+            "storage": {
+                "inputs_bucket": SUPABASE_BUCKET_INPUTS,
+                "predictions_bucket": SUPABASE_BUCKET_PRED,
+                "meta_bucket": SUPABASE_BUCKET_META,
+                "raw_bucket": SUPABASE_BUCKET_RAW,
+                "analysis_id": analysis_id,
+            },
+            "model_versions": response.get("model_versions"),
+            "build": {
+                "api_version": API_VERSION,
+            },
+            "schema_version": "v1",
+            "api_version": API_VERSION,
+            "is_verified": False,
+        }
+
+        # Remove None values to reduce chances of constraint/type errors
+        row_full = {k: v for k, v in row_full.items() if v is not None}
+
+        try:
+            supabase_db_insert(SUPABASE_PREDICTIONS_TABLE, row_full)
+            print(f"[*] Supabase DB insert ok -> {SUPABASE_PREDICTIONS_TABLE}: analysis_id={analysis_id}")
+        except Exception as e:
+            print(f"[!] Supabase DB insert failed (full row): {e}")
+
+            # Retry with a minimal set of columns (most schemas will have these)
+            row_min = {
+                "analysis_id": analysis_id,
+                "species": response.get("species"),
+                "species_confidence": response.get("species_confidence"),
+                "height_m": response.get("height_m"),
+                "trunk_diameter_m": response.get("trunk_diameter_m"),
+                "crown_width_m": response.get("crown_width_m"),
+                "scale_px_to_m": response.get("scale_px_to_m"),
+                "scale_source": response.get("scale_source"),
+            }
+            row_min = {k: v for k, v in row_min.items() if v is not None}
+
+            try:
+                supabase_db_insert(SUPABASE_PREDICTIONS_TABLE, row_min)
+                print(f"[*] Supabase DB insert ok (min row) -> {SUPABASE_PREDICTIONS_TABLE}: analysis_id={analysis_id}")
+            except Exception as e2:
+                print(f"[!] Supabase DB insert failed (min row): {e2}")
+
     return JSONResponse(response)
 
 
