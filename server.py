@@ -1165,6 +1165,67 @@ async def analyze_tree(
     if risk:
         response["risk"] = risk
 
+
+    # ---------------------------------------------------------
+    # Save prediction row to Supabase Postgres (best-effort)
+    # ---------------------------------------------------------
+    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        try:
+            gps_lat = None
+            gps_lon = None
+            if isinstance(response.get("gps"), dict):
+                gps_lat = safe_float(response["gps"].get("lat"))
+                gps_lon = safe_float(response["gps"].get("lon"))
+
+            row_full = {
+                "analysis_id": response.get("analysis_id"),
+                "species": response.get("species"),
+                "species_confidence": safe_float(response.get("species_confidence")),
+
+                "height_m": safe_float(response.get("height_m")),
+                "trunk_diameter_m": safe_float(response.get("trunk_diameter_m")),
+                "crown_width_m": safe_float(response.get("crown_width_m")),
+
+                "scale_px_to_m": safe_float(response.get("scale_px_to_m")),
+                "scale_source": response.get("scale_source"),
+
+                "gps_lat": gps_lat,
+                "gps_lon": gps_lon,
+                "address": response.get("address"),
+
+                "risk": json_sanitize(response.get("risk")),
+                "weather": json_sanitize(response.get("weather")),
+                "soil": json_sanitize(response.get("soil")),
+
+                "ar": json_sanitize(response.get("ar")),
+                "yolo_px": json_sanitize(response.get("yolo")),
+            }
+
+            table = SUPABASE_PREDICTIONS_TABLE
+            print(f"[*] DB insert into {table}: analysis_id={row_full.get('analysis_id')} scale_source={row_full.get('scale_source')}")
+            supabase_db_insert(table, row_full)
+            print("[*] DB insert ok")
+
+        except Exception as e:
+            # Retry minimal insert (schema mismatch safe)
+            try:
+                table = SUPABASE_PREDICTIONS_TABLE
+                row_min = {
+                    "analysis_id": response.get("analysis_id"),
+                    "species": response.get("species"),
+                    "height_m": safe_float(response.get("height_m")),
+                    "trunk_diameter_m": safe_float(response.get("trunk_diameter_m")),
+                    "crown_width_m": safe_float(response.get("crown_width_m")),
+                    "scale_px_to_m": safe_float(response.get("scale_px_to_m")),
+                    "scale_source": response.get("scale_source"),
+                    "ar": json_sanitize(response.get("ar")),
+                }
+                print(f"[!] DB insert full failed: {e}. Retrying minimal insert...")
+                supabase_db_insert(table, row_min)
+                print("[*] DB minimal insert ok")
+            except Exception as e2:
+                print(f"[!] DB insert skipped for {response.get('analysis_id')}: {e2}")
+
     return JSONResponse(response)
 
 
@@ -1930,66 +1991,4 @@ def json_sanitize(obj):
 
 
 # ---------------------------------------------------------
-# Save prediction row to Supabase Postgres (best-effort)
-# ---------------------------------------------------------
-if SUPABASE_URL and SUPABASE_SERVICE_KEY:
-    try:
-        gps_lat = None
-        gps_lon = None
-        if isinstance(response.get("gps"), dict):
-            gps_lat = safe_float(response["gps"].get("lat"))
-            gps_lon = safe_float(response["gps"].get("lon"))
-
-        row_full = {
-            "analysis_id": response.get("analysis_id"),
-            "species": response.get("species"),
-            "species_confidence": safe_float(response.get("species_confidence")),
-
-            "height_m": safe_float(response.get("height_m")),
-            "trunk_diameter_m": safe_float(response.get("trunk_diameter_m")),
-            "crown_width_m": safe_float(response.get("crown_width_m")),
-
-            "scale_px_to_m": safe_float(response.get("scale_px_to_m")),
-            "scale_source": response.get("scale_source"),
-
-            "gps_lat": gps_lat,
-            "gps_lon": gps_lon,
-            "address": response.get("address"),
-
-            "risk": json_sanitize(response.get("risk")),
-            "weather": json_sanitize(response.get("weather")),
-            "soil": json_sanitize(response.get("soil")),
-
-            "ar": json_sanitize(response.get("ar")),
-            "yolo_px": json_sanitize(response.get("yolo_px")),
-
-            "model_versions": json_sanitize(MODEL_VERSIONS),
-            "build": json_sanitize(BUILD_INFO),
-            "schema_version": SCHEMA_VERSION,
-            "api_version": API_VERSION,
-        }
-
-        print(f"[*] DB insert into {SUPABASE_PREDICTIONS_TABLE}: analysis_id={row_full.get('analysis_id')} scale_source={row_full.get('scale_source')}")
-        supabase_db_insert(SUPABASE_PREDICTIONS_TABLE, row_full)
-        print("[*] DB insert ok")
-
-    except Exception as e:
-        # Retry minimal insert (schema mismatch safe)
-        try:
-            row_min = {
-                "analysis_id": response.get("analysis_id"),
-                "species": response.get("species"),
-                "height_m": safe_float(response.get("height_m")),
-                "trunk_diameter_m": safe_float(response.get("trunk_diameter_m")),
-                "crown_width_m": safe_float(response.get("crown_width_m")),
-                "scale_px_to_m": safe_float(response.get("scale_px_to_m")),
-                "scale_source": response.get("scale_source"),
-                "ar": json_sanitize(response.get("ar")),
-            }
-            print(f"[!] DB insert full failed: {e}. Retrying minimal insert...")
-            supabase_db_insert(SUPABASE_PREDICTIONS_TABLE, row_min)
-            print("[*] DB minimal insert ok")
-        except Exception as e2:
-            print(f"[!] DB insert skipped for {response.get('analysis_id')}: {e2}")
-
 
