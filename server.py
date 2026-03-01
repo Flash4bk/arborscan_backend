@@ -1197,9 +1197,24 @@ async def analyze_tree(
                 "weather": json_sanitize(response.get("weather")),
                 "soil": json_sanitize(response.get("soil")),
 
+                # Method #2: store ALL AR fields only as jsonb
                 "ar": json_sanitize(response.get("ar")),
-                "yolo_px": json_sanitize(response.get("yolo")),
+
+                # YOLO pixel measures as jsonb
+                "yolo_px": json_sanitize(response.get("yolo_px")),
+
+                # Versioning / metadata (if columns exist)
+                "schema_version": response.get("schema_version") or SCHEMA_VERSION,
+                "api_version": response.get("api_version") or API_VERSION,
+                "build": json_sanitize(response.get("build")) if isinstance(response.get("build"), dict) else {"api_version": API_VERSION},
+                "model_versions": json_sanitize(response.get("model_versions")) if isinstance(response.get("model_versions"), dict) else None,
+                "storage": json_sanitize(response.get("storage")) if isinstance(response.get("storage"), dict) else None,
+                "confidence_score": safe_float(response.get("confidence_score")),
+                "is_verified": bool(response.get("is_verified")) if response.get("is_verified") is not None else None,
             }
+
+            # Drop None values to reduce schema mismatch risk
+            row_full = {k: v for k, v in row_full.items() if v is not None}
 
             table = SUPABASE_PREDICTIONS_TABLE
             print(f"[*] DB insert into {table}: analysis_id={row_full.get('analysis_id')} scale_source={row_full.get('scale_source')}")
