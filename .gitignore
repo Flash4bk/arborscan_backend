@@ -1,7 +1,25 @@
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+build/
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+**/android/app/build/
+**/android/build/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/
+ios/build/
+
+# Misc
+*.log
+*.apk
+*.aab
 *.so
-*.DS_Store
