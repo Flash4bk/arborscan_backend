@@ -5,7 +5,6 @@ import json
 import re
 import shutil
 import time
-import math
 import threading
 import cv2
 import numpy as np
@@ -14,7 +13,7 @@ from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
+from fastapi import FastAPI, UploadFile, File, Form, Body
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
@@ -43,8 +42,6 @@ SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 # NEW: bucket для сохранения всех загрузок (raw dataset)
 SUPABASE_BUCKET_RAW = "arborscan-raw"
 
-SUPABASE_PREDICTIONS_TABLE = os.getenv("SUPABASE_PREDICTIONS_TABLE", "predictions")
-
 # Bucket for versioned segmentation models (model_vN.pt)
 SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
@@ -55,7 +52,7 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 # Включать ли вставку в Postgres-очередь. По умолчанию выключено,
 # чтобы отсутствие таблицы не ломало пайплайн обучения.
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
-
+SUPABASE_PREDICTIONS_TABLE = os.getenv("SUPABASE_PREDICTIONS_TABLE", "predictions")
 # ---------------------------------------------------------
 # Supabase PostgREST helpers (training_state)
 # ---------------------------------------------------------
@@ -416,6 +413,24 @@ def supabase_db_insert(table: str, row: dict):
         raise RuntimeError(
             f"Supabase DB insert error {resp.status_code}: {resp.text}"
         )
+def supabase_db_upsert(table: str, row: dict, on_conflict: str = "analysis_id"):
+    """UPSERT (insert or update) row into Supabase Postgres via PostgREST."""
+    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase DB is not configured")
+
+    url = f"{SUPABASE_DB_BASE}/{table}?on_conflict={on_conflict}"
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    resp = requests.post(url, headers=headers, json=row, timeout=10)
+    if resp.status_code >= 400:
+        raise RuntimeError(
+            f"Supabase DB upsert error {resp.status_code}: {resp.text}"
+        )
+
 
 # =============================================
 # BASE64 / IMAGE UTILS
@@ -830,21 +845,11 @@ def _startup_load_models():
 @app.post("/analyze-tree")
 async def analyze_tree(
     file: UploadFile = File(...),
-
-    # AR (optional) — приходит из Flutter как multipart form fields
     ar_height_m: Optional[float] = Form(None),
     ar_trunk_diameter_m: Optional[float] = Form(None),
     ar_crown_width_m: Optional[float] = Form(None),
     ar_points_count: Optional[int] = Form(None),
-    required_points: Optional[int] = Form(None),
-    point_hits_count: Optional[int] = Form(None),
-    plane_hits_count: Optional[int] = Form(None),
-
-    # GPS override (optional). If not provided, try EXIF.
-    lat: Optional[float] = Form(None),
-    lon: Optional[float] = Form(None),
 ):
-
     image_bytes = await file.read()
     np_img = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
@@ -877,13 +882,13 @@ async def analyze_tree(
     # YOLO STICK
     # -----------------------------
     stick_res = stick_model(img)[0]
-    stick_scale = None
+    scale = None
     if len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
         x1s, y1s, x2s, y2s = best.xyxy[0].cpu().numpy().astype(int)
         stick_h = y2s - y1s
         if stick_h > 10:
-            stick_scale = REAL_STICK_M / stick_h
+            scale = REAL_STICK_M / stick_h
 
     # -----------------------------
     # MEASUREMENTS
@@ -893,28 +898,25 @@ async def analyze_tree(
     height_px = y_max - y_min
 
     # -----------------------------
-    # SCALE SOURCE (AR overrides stick)
+    # OPTIONAL AR SCALE OVERRIDE
     # -----------------------------
     scale_source = None
-    scale = None
-
-    # Prefer AR height for scale if provided and mask height is valid
-    ar_height_val = safe_float(ar_height_m)
-    if ar_height_val is not None and height_px > 5:
-        scale = ar_height_val / float(height_px)
+    if ar_height_m and height_px > 10:
+        # Use AR height as ground truth to derive pixel-to-meter scale
+        scale = float(ar_height_m) / float(height_px)
         scale_source = "ar_height"
-    elif stick_scale is not None:
-        scale = float(stick_scale)
+    elif scale:
         scale_source = "stick"
 
-    height_m = round(height_px * scale, 2) if scale else None
+    # YOLO-derived measurements (may use stick scale or AR-derived scale)
+    yolo_height_m = round(height_px * scale, 2) if scale else None
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
         row = np.where(mask[y] > 0)[0]
         if len(row) > 0:
             crown_width_px = max(crown_width_px, row.max() - row.min())
-    crown_m = round(crown_width_px * scale, 2) if scale else None
+    yolo_crown_m = round(crown_width_px * scale, 2) if scale else None
 
     trunk_vals = []
     trunk_top = y_max - int(0.2 * height_px)
@@ -923,8 +925,12 @@ async def analyze_tree(
         if len(row) > 0:
             trunk_vals.append(row.max() - row.min())
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
-    trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
+    yolo_trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
+    # Final measurements: prefer AR values when provided, fallback to YOLO-derived values
+    height_m = round(float(ar_height_m), 2) if ar_height_m is not None else yolo_height_m
+    crown_m = round(float(ar_crown_width_m), 2) if ar_crown_width_m is not None else yolo_crown_m
+    trunk_m = round(float(ar_trunk_diameter_m), 2) if ar_trunk_diameter_m is not None else yolo_trunk_m
     # -----------------------------
     # CLASSIFIER
     # -----------------------------
@@ -953,9 +959,6 @@ async def analyze_tree(
 
     if ENABLE_ENV_ANALYSIS:
         gps = extract_gps(image_bytes)
-        # Allow client-provided GPS override (Flutter may send lat/lon)
-        if lat is not None and lon is not None:
-            gps = {"lat": float(lat), "lon": float(lon)}
         if gps:
             address = reverse_geocode(gps["lat"], gps["lon"])
             weather = get_weather(gps["lat"], gps["lon"])
@@ -1127,31 +1130,37 @@ async def analyze_tree(
     response = {
         "analysis_id": analysis_id,
         "species": species_name,
+
+        # Final measurements (prefer AR when provided)
         "height_m": height_m,
         "crown_width_m": crown_m,
         "trunk_diameter_m": trunk_m,
+
+        # Scale used for any pixel->meter conversions in this run
         "scale_px_to_m": scale,
         "scale_source": scale_source,
-        "annotated_image_base64": annotated_b64,
+
+        # Raw AR inputs (if provided by client)
         "ar": {
-            "height_m": safe_float(ar_height_m),
-            "trunk_diameter_m": safe_float(ar_trunk_diameter_m),
-            "crown_width_m": safe_float(ar_crown_width_m),
+            "height_m": ar_height_m,
+            "trunk_diameter_m": ar_trunk_diameter_m,
+            "crown_width_m": ar_crown_width_m,
             "points_count": ar_points_count,
-            "required_points": required_points,
-            "point_hits_count": point_hits_count,
-            "plane_hits_count": plane_hits_count,
         },
-        "yolo_px": {
-            "height_px": int(height_px) if height_px is not None else None,
-            "trunk_width_px": float(trunk_px) if trunk_px is not None else None,
-            "crown_width_px": int(crown_width_px) if crown_width_px is not None else None,
+
+        # YOLO-derived measurements (computed from mask + scale)
+        "yolo": {
+            "height_m": yolo_height_m,
+            "crown_width_m": yolo_crown_m,
+            "trunk_diameter_m": yolo_trunk_m,
         },
+
+        "annotated_image_base64": annotated_b64,
     }
     # добавляем оригинальное изображение
     try:
         response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
-    except Exception:
+    except:
         response["original_image_base64"] = None
 
     if gps:
@@ -1165,12 +1174,14 @@ async def analyze_tree(
     if risk:
         response["risk"] = risk
 
-
     # ---------------------------------------------------------
-    # Save prediction row to Supabase Postgres (best-effort)
+    # Save to Supabase Postgres (UPSERT by analysis_id)
+    # Method #2: store ALL AR payload only in jsonb column `ar`
     # ---------------------------------------------------------
     if SUPABASE_URL and SUPABASE_SERVICE_KEY:
         try:
+            table = SUPABASE_PREDICTIONS_TABLE
+
             gps_lat = None
             gps_lon = None
             if isinstance(response.get("gps"), dict):
@@ -1197,32 +1208,26 @@ async def analyze_tree(
                 "weather": json_sanitize(response.get("weather")),
                 "soil": json_sanitize(response.get("soil")),
 
-                # Method #2: store ALL AR fields only as jsonb
+                # ✅ method #2: everything from AR (2/4/6 points) lives here
                 "ar": json_sanitize(response.get("ar")),
 
-                # YOLO pixel measures as jsonb
-                "yolo_px": json_sanitize(response.get("yolo_px")),
+                # store YOLO-derived metrics here (keeps schema stable)
+                "yolo_px": json_sanitize(response.get("yolo_px") or response.get("yolo")),
 
-                # Versioning / metadata (if columns exist)
-                "schema_version": response.get("schema_version") or SCHEMA_VERSION,
-                "api_version": response.get("api_version") or API_VERSION,
-                "build": json_sanitize(response.get("build")) if isinstance(response.get("build"), dict) else {"api_version": API_VERSION},
-                "model_versions": json_sanitize(response.get("model_versions")) if isinstance(response.get("model_versions"), dict) else None,
-                "storage": json_sanitize(response.get("storage")) if isinstance(response.get("storage"), dict) else None,
-                "confidence_score": safe_float(response.get("confidence_score")),
-                "is_verified": bool(response.get("is_verified")) if response.get("is_verified") is not None else None,
+                "build": {"api_version": API_VERSION},
+                "schema_version": "v1",
+                "api_version": API_VERSION,
             }
 
-            # Drop None values to reduce schema mismatch risk
+            # Drop Nones to avoid schema/type noise
             row_full = {k: v for k, v in row_full.items() if v is not None}
 
-            table = SUPABASE_PREDICTIONS_TABLE
-            print(f"[*] DB insert into {table}: analysis_id={row_full.get('analysis_id')} scale_source={row_full.get('scale_source')}")
-            supabase_db_insert(table, row_full)
-            print("[*] DB insert ok")
+            print(f"[*] DB upsert into {table}: analysis_id={row_full.get('analysis_id')} scale_source={row_full.get('scale_source')}")
+            supabase_db_upsert(table, row_full, on_conflict="analysis_id")
+            print("[*] DB upsert ok")
 
         except Exception as e:
-            # Retry minimal insert (schema mismatch safe)
+            # Retry minimal upsert so we at least store the core result
             try:
                 table = SUPABASE_PREDICTIONS_TABLE
                 row_min = {
@@ -1234,12 +1239,17 @@ async def analyze_tree(
                     "scale_px_to_m": safe_float(response.get("scale_px_to_m")),
                     "scale_source": response.get("scale_source"),
                     "ar": json_sanitize(response.get("ar")),
+                    "yolo_px": json_sanitize(response.get("yolo_px") or response.get("yolo")),
+                    "build": {"api_version": API_VERSION},
+                    "schema_version": "v1",
+                    "api_version": API_VERSION,
                 }
-                print(f"[!] DB insert full failed: {e}. Retrying minimal insert...")
-                supabase_db_insert(table, row_min)
-                print("[*] DB minimal insert ok")
+                row_min = {k: v for k, v in row_min.items() if v is not None}
+                print(f"[!] DB upsert full failed: {e}. Retrying minimal upsert...")
+                supabase_db_upsert(table, row_min, on_conflict="analysis_id")
+                print("[*] DB minimal upsert ok")
             except Exception as e2:
-                print(f"[!] DB insert skipped for {response.get('analysis_id')}: {e2}")
+                print(f"[!] DB upsert skipped for {response.get('analysis_id')}: {e2}")
 
     return JSONResponse(response)
 
@@ -1960,50 +1970,3 @@ def get_latest_model_path():
     if v == 0:
         return "models/base.pt"
     return f"models/model_v{v}.pt"
-def safe_float(x):
-    """Convert to float; return None for NaN/Inf/invalid."""
-    try:
-        if x is None:
-            return None
-        v = float(x)
-        if math.isnan(v) or math.isinf(v):
-            return None
-        return v
-    except Exception:
-        return None
-
-def json_sanitize(obj):
-    """Recursively convert numpy / non-JSON types and NaN/Inf to JSON-safe Python types."""
-    try:
-        import numpy as _np
-    except Exception:
-        _np = None
-
-    if obj is None:
-        return None
-
-    if _np is not None and isinstance(obj, (_np.generic,)):
-        return json_sanitize(obj.item())
-
-    if isinstance(obj, float):
-        if math.isnan(obj) or math.isinf(obj):
-            return None
-        return obj
-
-    if isinstance(obj, (int, str, bool)):
-        return obj
-
-    if isinstance(obj, dict):
-        return {str(k): json_sanitize(v) for k, v in obj.items()}
-
-    if isinstance(obj, (list, tuple)):
-        return [json_sanitize(v) for v in obj]
-
-    try:
-        return str(obj)
-    except Exception:
-        return None
-
-
-# ---------------------------------------------------------
-
