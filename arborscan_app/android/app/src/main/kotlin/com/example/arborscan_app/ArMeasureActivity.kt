@@ -4,6 +4,12 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
+import java.io.FileOutputStream
+import java.io.File
+import android.view.PixelCopy
+import android.os.HandlerThread
+import android.os.Handler
+import android.graphics.Bitmap
 import android.view.MotionEvent
 import android.widget.Button
 import android.widget.TextView
@@ -103,12 +109,23 @@ class ArMeasureActivity : AppCompatActivity() {
         resetBtn.setOnClickListener { resetAll() }
 
         doneBtn.setOnClickListener {
+    // Capture a snapshot of current AR view so Flutter can run full /analyze-tree (species/risk) immediately.
+    doneBtn.isEnabled = false
+    statusText.text = "Сохраняю замер и кадр…"
+
+    captureArSceneToCacheJpeg { capturePath ->
+        runOnUiThread {
             val result = buildResultJson()
+            if (capturePath != null) {
+                result.put("capture_path", capturePath)
+            }
             val intent = Intent()
             intent.putExtra("result_json", result.toString())
             setResult(Activity.RESULT_OK, intent)
             finish()
         }
+    }
+}
     }
 
     /**
@@ -344,7 +361,38 @@ class ArMeasureActivity : AppCompatActivity() {
         resetBtn.isEnabled = (n > 0)
     }
 
-    private fun buildResultJson(): JSONObject {
+    private fun captureArSceneToCacheJpeg(onDone: (String?) -> Unit) {
+    val view = arFragment.arSceneView
+    if (view.width <= 0 || view.height <= 0) {
+        onDone(null)
+        return
+    }
+
+    val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+    val thread = HandlerThread("PixelCopy")
+    thread.start()
+    val handler = Handler(thread.looper)
+
+    PixelCopy.request(view, bitmap, { copyResult ->
+        try {
+            if (copyResult == PixelCopy.SUCCESS) {
+                val outFile = File(cacheDir, "ar_capture_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(outFile).use { fos ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fos)
+                }
+                onDone(outFile.absolutePath)
+            } else {
+                onDone(null)
+            }
+        } catch (_: Throwable) {
+            onDone(null)
+        } finally {
+            thread.quitSafely()
+        }
+    }, handler)
+}
+
+private fun buildResultJson(): JSONObject {
         val obj = JSONObject()
         obj.put("points_count", points.size)
         obj.put("required_points", requiredPoints)

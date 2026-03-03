@@ -1037,10 +1037,22 @@ async def analyze_tree(
         "soil": soil,
         "risk": risk,
         "model_versions": MODEL_VERSIONS,
-        "model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
         "schema_version": SCHEMA_VERSION,
         "api_version": API_VERSION,
+        "scale_source": scale_source,
+        "ar": {
+            "height_m": safe_float(ar_height_m),
+            "trunk_diameter_m": safe_float(ar_trunk_diameter_m),
+            "crown_width_m": safe_float(ar_crown_width_m),
+            "points_count": ar_points_count,
+            "required_points": required_points,
+            "point_hits_count": point_hits_count,
+            "plane_hits_count": plane_hits_count,
+        },
+        "training_eligible": bool(ar_points_count and required_points and ar_points_count >= required_points),
+        "training_quality_score": (100.0 if (ar_points_count and required_points and ar_points_count >= required_points and scale_source == "ar_height") else (60.0 if (ar_points_count and required_points and ar_points_count >= required_points) else (30.0 if ar_points_count else 0.0))),
+
 
     }
 

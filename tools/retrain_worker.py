@@ -34,6 +34,10 @@ MAX_REPLAY = int(os.getenv("MAX_REPLAY", "200"))
 MIN_MASK_AREA = float(os.getenv("MIN_MASK_AREA", "100"))
 SELECTION_SEED = os.getenv("SELECTION_SEED", "")
 
+# If true, only include samples with complete AR (points_count >= required_points)
+REQUIRE_AR_COMPLETE = os.getenv("REQUIRE_AR_COMPLETE", "0") == "1"
+
+
 # -----------------------------
 # Utils
 # -----------------------------
@@ -61,6 +65,22 @@ def make_supabase():
     key = require_env("SUPABASE_SERVICE_KEY")
     return create_client(url, key)
 
+
+
+def ar_complete(meta: dict) -> bool:
+    if not isinstance(meta, dict):
+        return False
+    ar = meta.get("ar") if isinstance(meta.get("ar"), dict) else None
+    if not ar:
+        return False
+    pc = ar.get("points_count")
+    rp = ar.get("required_points")
+    try:
+        pc_i = int(pc) if pc is not None else None
+        rp_i = int(rp) if rp is not None else None
+    except Exception:
+        return False
+    return bool(pc_i is not None and rp_i is not None and pc_i >= rp_i)
 # -----------------------------
 # Storage REST helpers
 # -----------------------------
@@ -180,6 +200,10 @@ def discover_new_samples(bucket_verified: str, max_samples: Optional[int] = None
             continue
         if meta.get("exclude_from_training", False):
             continue
+        if REQUIRE_AR_COMPLETE and not ar_complete(meta):
+            continue
+        if REQUIRE_AR_COMPLETE and not ar_complete(meta):
+            continue
         if meta.get("used_for_training", False):
             continue
         results.append((aid, meta))
@@ -198,6 +222,8 @@ def discover_replay_samples(bucket_verified: str, k: int) -> List[Tuple[str, dic
         if not meta.get("has_user_mask", False):
             continue
         if meta.get("exclude_from_training", False):
+            continue
+        if REQUIRE_AR_COMPLETE and not ar_complete(meta):
             continue
         if not meta.get("used_for_training", False):
             continue

@@ -399,6 +399,19 @@ Future<void> _openArMeasureWith(int requiredPoints) async {
     _arRequiredPoints = result.requiredPoints ?? requiredPoints;
   });
 
+// Variant A: if native AR returned a snapshot path, use it as the image for analysis.
+if (result.capturePath != null && result.capturePath!.isNotEmpty) {
+  setState(() {
+    _imageFile = File(result.capturePath!);
+    _annotatedImageBytes = null;
+    _result = null;
+    _error = null;
+  });
+  // Auto-run analysis immediately after AR (no separate photo step).
+  await _analyze();
+}
+
+
   final h = result.heightMeters.toStringAsFixed(2);
   final d = result.trunkDiameterMeters?.toStringAsFixed(2);
   final c = result.crownWidthMeters?.toStringAsFixed(2);

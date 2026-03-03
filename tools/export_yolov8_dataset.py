@@ -3,6 +3,7 @@ import json
 import random
 import shutil
 import argparse
+import csv
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -32,6 +33,9 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 DEFAULT_BUCKET_VERIFIED = os.getenv("SUPABASE_BUCKET_VERIFIED", "arborscan-verified")
 DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "dataset_yolov8"
+
+# optional AR targets csv
+AR_TARGETS_CSV = "ar_targets.csv"
 
 # We train only tree segmentation here
 NAMES = {0: "tree"}
@@ -132,6 +136,24 @@ names:
     return data_yaml
 
 
+
+
+def _extract_ar_row(aid: str, meta: dict) -> Optional[dict]:
+    if not isinstance(meta, dict):
+        return None
+    ar = meta.get("ar") if isinstance(meta.get("ar"), dict) else None
+    if not ar:
+        return None
+    return {
+        "analysis_id": aid,
+        "scale_source": meta.get("scale_source"),
+        "ar_points_count": ar.get("points_count"),
+        "ar_required_points": ar.get("required_points"),
+        "ar_height_m": ar.get("height_m"),
+        "ar_trunk_diameter_m": ar.get("trunk_diameter_m"),
+        "ar_crown_width_m": ar.get("crown_width_m"),
+        "species": meta.get("species"),
+    }
 def _load_manifest(path: Path) -> Dict[str, Any]:
     obj = json.loads(path.read_text(encoding="utf-8"))
     if "selection" not in obj:

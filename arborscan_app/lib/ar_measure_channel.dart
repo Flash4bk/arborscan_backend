@@ -17,12 +17,16 @@ class ArMeasureResult {
   /// How many points were required by the chosen mode (2 / 4 / 6). Optional.
   final int? requiredPoints;
 
+  /// Path to AR snapshot JPEG saved in app cache (Android). May be null.
+  final String? capturePath;
+
   ArMeasureResult({
     required this.heightMeters,
     required this.pointsCount,
     this.trunkDiameterMeters,
     this.crownWidthMeters,
     this.requiredPoints,
+    this.capturePath,
   });
 
   /// Backward compatibility for old UI code.
@@ -76,6 +80,8 @@ class ArMeasureResult {
 
     final req = _asInt(json['required_points']) ?? _asInt(json['requiredPoints']);
 
+    final cap = (json['capture_path'] ?? json['capturePath'])?.toString();
+
     if (height == null) {
       throw FormatException('AR result has no height. json=$json');
     }
@@ -86,6 +92,7 @@ class ArMeasureResult {
       crownWidthMeters: crown,
       pointsCount: pts,
       requiredPoints: req,
+      capturePath: cap,
     );
   }
 }
