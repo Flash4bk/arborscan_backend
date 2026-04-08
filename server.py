@@ -148,7 +148,7 @@ ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 MODEL_VERSIONS = {
     "tree_yolo": "tree_yolov8_seg_v1.2.0",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
-    "classifier": "resnet18_species_v0.9.1",
+    "classifier": "resnet18_species_v1.0.0",
 }
 BUILD_INFO = {
     # желательно прокидывать из CI / Railway
@@ -156,14 +156,39 @@ BUILD_INFO = {
     "build_time": os.getenv("BUILD_TIME")
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.0.0"
+API_VERSION = "2.1.0"
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 # -------------------------------------
 # CLASSES / CONSTANTS
 # -------------------------------------
 
-CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
+# Порядок классов должен совпадать с train_dataset.classes:
+# ['alder', 'ash', 'aspen', 'birch', 'linden', 'maple', 'oak', 'pine', 'spruce']
+CLASS_NAMES_EN = [
+    "alder",
+    "ash",
+    "aspen",
+    "birch",
+    "linden",
+    "maple",
+    "oak",
+    "pine",
+    "spruce",
+]
+
+CLASS_NAMES_RU = [
+    "Ольха",   # alder
+    "Ясень",   # ash
+    "Осина",   # aspen
+    "Береза",  # birch
+    "Липа",    # linden
+    "Клен",    # maple
+    "Дуб",     # oak
+    "Сосна",   # pine
+    "Ель",     # spruce
+]
+
 REAL_STICK_M = 1.0
 
 # -------------------------------------
@@ -176,8 +201,14 @@ stick_model = YOLO("models/stick_model.pt")
 
 print("[*] Loading classifier...")
 classifier = models.resnet18(weights=None)
-classifier.fc = torch.nn.Linear(classifier.fc.in_features, 5)
-classifier.load_state_dict(torch.load("models/classifier.pth", map_location="cpu"))
+classifier.fc = torch.nn.Linear(classifier.fc.in_features, len(CLASS_NAMES_RU))
+
+# Приоритет: новая лучшая модель, затем legacy path
+_classifier_path = "models/tree_classifier_best.pth"
+if not os.path.exists(_classifier_path):
+    _classifier_path = "models/classifier.pth"
+
+classifier.load_state_dict(torch.load(_classifier_path, map_location="cpu"))
 classifier.eval()
 
 transformer = transforms.Compose([
@@ -635,11 +666,15 @@ def get_soil(lat, lon):
 # =============================================
 
 SPECIES_BASE = {
+    "Ольха": 0.75,
+    "Ясень": 0.65,
+    "Осина": 0.9,
     "Береза": 0.7,
+    "Липа": 0.55,
+    "Клен": 0.6,
     "Дуб": 0.5,
-    "Ель": 1.0,
     "Сосна": 0.75,
-    "Тополь": 0.95,
+    "Ель": 1.0,
 }
 
 def slenderness_score(height, diameter):
@@ -983,8 +1018,11 @@ async def analyze_tree(
     tens = transformer(pil_crop).unsqueeze(0)
     with torch.no_grad():
         pred = classifier(tens)
-        cls_id = int(torch.argmax(pred))
+        probs = torch.softmax(pred, dim=1)
+        cls_id = int(torch.argmax(probs, dim=1).item())
+        species_confidence = float(probs[0, cls_id].item())
     species_name = CLASS_NAMES_RU[cls_id]
+    species_name_en = CLASS_NAMES_EN[cls_id]
 
     # -----------------------------
     # ANNOTATED IMAGE
@@ -1027,6 +1065,10 @@ async def analyze_tree(
     meta = {
         "analysis_id": analysis_id,
         "species": species_name,
+        "species_en": species_name_en,
+        "species_confidence": species_confidence,
+        "species_en": species_name_en,
+        "species_confidence": species_confidence,
         "height_m": height_m,
         "crown_width_m": crown_m,
         "trunk_diameter_m": trunk_m,

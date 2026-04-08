@@ -32,10 +32,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
   void initState() {
     super.initState();
     _load();
-
-    _searchCtrl.addListener(() {
-      _applyFilters();
-    });
+    _searchCtrl.addListener(_applyFilters);
   }
 
   @override
@@ -62,7 +59,6 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         } catch (_) {}
       }
 
-      // newest first
       items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
       if (!mounted) return;
@@ -70,7 +66,6 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         _all = items;
         _loading = false;
       });
-
       _applyFilters();
     } catch (e) {
       if (!mounted) return;
@@ -83,16 +78,11 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
   void _applyFilters() {
     final q = _searchCtrl.text.trim().toLowerCase();
-
-    List<_HistoryItem> out = List.of(_all);
+    var out = List<_HistoryItem>.of(_all);
 
     if (q.isNotEmpty) {
       out = out.where((e) {
-        final hay = [
-          e.species,
-          e.address ?? '',
-          e.riskCategory ?? '',
-        ].join(' ').toLowerCase();
+        final hay = [e.species, e.address ?? '', e.riskCategory ?? ''].join(' ').toLowerCase();
         return hay.contains(q);
       }).toList();
     }
@@ -122,9 +112,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         ],
       ),
     );
-
     if (ok != true) return;
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_historyKey);
     await _load();
@@ -147,8 +135,6 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList(_historyKey) ?? const [];
-
-    // Remove by best-effort stable id
     final newList = <String>[];
     for (final s in list) {
       try {
@@ -158,11 +144,9 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
           newList.add(s);
         }
       } catch (_) {
-        // keep broken as-is
         newList.add(s);
       }
     }
-
     await prefs.setStringList(_historyKey, newList);
     await _load();
 
@@ -175,11 +159,10 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       context: context,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (_) {
         final bytes = item.imageBase64.isNotEmpty ? _safeB64(item.imageBase64) : null;
-
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -191,92 +174,71 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                   children: [
                     Ui.badge(
                       text: item.riskCategory?.isNotEmpty == true ? item.riskCategory! : 'Анализ',
-                      color: AppTheme.primary,
-                      icon: Icons.history,
+                      color: item.riskIndex != null ? AppTheme.warning : AppTheme.primary,
+                      icon: Icons.history_rounded,
                     ),
                     const Spacer(),
-                    Text(
-                      item.formattedTs,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
-                    ),
+                    Text(item.formattedTs, style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Text(
                   item.species.isNotEmpty ? item.species : 'Неизвестно',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 10),
-
+                const SizedBox(height: 12),
                 if (bytes != null) ...[
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.memory(
-                      bytes,
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 150,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.04),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppTheme.border),
-                        ),
-                        child: const Icon(Icons.image_not_supported),
-                      ),
-                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.memory(bytes, height: 160, width: double.infinity, fit: BoxFit.cover),
                   ),
                   const SizedBox(height: 12),
                 ],
-
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     if (item.height != null)
                       Ui.badge(text: 'H: ${item.height!.toStringAsFixed(2)} м', color: AppTheme.success, icon: Icons.height),
                     if (item.crown != null)
-                      Ui.badge(text: 'Крона: ${item.crown!.toStringAsFixed(2)} м', color: AppTheme.success, icon: Icons.nature),
+                      Ui.badge(text: 'Крона: ${item.crown!.toStringAsFixed(2)} м', color: AppTheme.success, icon: Icons.park_rounded),
                     if (item.trunk != null)
-                      Ui.badge(text: 'Ствол: ${item.trunk!.toStringAsFixed(2)} м', color: AppTheme.success, icon: Icons.circle),
+                      Ui.badge(text: 'Ствол: ${item.trunk!.toStringAsFixed(2)} м', color: AppTheme.success, icon: Icons.circle_outlined),
                     if (item.riskIndex != null)
-                      Ui.badge(text: 'Риск: ${item.riskIndex!.toStringAsFixed(2)}', color: AppTheme.warning, icon: Icons.shield),
+                      Ui.badge(text: 'Риск: ${item.riskIndex!.toStringAsFixed(2)}', color: AppTheme.warning, icon: Icons.shield_outlined),
                     Ui.badge(
                       text: (item.lat != null && item.lon != null) ? 'Есть GPS' : 'Нет GPS',
-                      color: (item.lat != null && item.lon != null) ? AppTheme.success : AppTheme.muted,
-                      icon: Icons.location_on,
+                      color: (item.lat != null && item.lon != null) ? AppTheme.primary : AppTheme.muted,
+                      icon: Icons.location_on_outlined,
                     ),
                   ],
                 ),
-
                 if (item.address != null && item.address!.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Text(item.address!, style: Theme.of(context).textTheme.bodyMedium),
+                  Text(item.address!, style: Theme.of(context).textTheme.bodySmall),
                 ],
-
-                const SizedBox(height: 14),
-
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
+                      child: AppActionButton(
+                        onTap: () {
+                          Navigator.pop(context);
                           _deleteOne(item);
                         },
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Удалить'),
+                        icon: Icons.delete_outline_rounded,
+                        title: 'Удалить',
+                        subtitle: 'Убрать из истории',
+                        compact: true,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: (item.lat == null || item.lon == null)
+                      child: AppActionButton(
+                        onTap: (item.lat == null || item.lon == null)
                             ? null
                             : () {
-                                Navigator.of(context).pop();
+                                Navigator.pop(context);
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => MapPage(
@@ -285,8 +247,11 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                                   ),
                                 );
                               },
-                        icon: const Icon(Icons.map),
-                        label: const Text('На карте'),
+                        icon: Icons.map_rounded,
+                        title: 'На карте',
+                        subtitle: 'Открыть точку',
+                        primary: true,
+                        compact: true,
                       ),
                     ),
                   ],
@@ -330,38 +295,86 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
                   child: Column(
                     children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.surface2, AppTheme.surface3],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Журнал анализов', style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Поиск, фильтрация и быстрый просмотр сохранённых результатов.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AppStatCard(
+                                    value: '${_all.length}',
+                                    label: 'всего записей',
+                                    icon: Icons.history_rounded,
+                                    color: AppTheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: AppStatCard(
+                                    value: '${_all.where((e) => e.lat != null && e.lon != null).length}',
+                                    label: 'с GPS',
+                                    icon: Icons.location_on_rounded,
+                                    color: AppTheme.warning,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _searchCtrl,
                         decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          labelText: 'Поиск (вид / адрес / риск)',
+                          prefixIcon: Icon(Icons.search_rounded),
+                          labelText: 'Поиск по виду, адресу или риску',
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _FilterChipGroup(
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _FilterChipGroup(
                               value: _filterMode,
                               onChanged: (v) {
                                 setState(() => _filterMode = v);
                                 _applyFilters();
                               },
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          FilterChip(
-                            label: const Text('Только GPS'),
-                            selected: _onlyWithGeo,
-                            onSelected: (v) {
-                              setState(() => _onlyWithGeo = v);
-                              _applyFilters();
-                            },
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            FilterChip(
+                              label: const Text('Только GPS'),
+                              selected: _onlyWithGeo,
+                              onSelected: (v) {
+                                setState(() => _onlyWithGeo = v);
+                                _applyFilters();
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -376,12 +389,12 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.inbox_outlined),
+                                  const Icon(Icons.inbox_outlined, color: AppTheme.muted),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      'Ничего не найдено по текущим фильтрам.\nПопробуй изменить поиск или режим.',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.muted),
+                                      'Ничего не найдено по текущим фильтрам. Попробуй изменить поиск или режим.',
+                                      style: Theme.of(context).textTheme.bodySmall,
                                     ),
                                   ),
                                 ],
@@ -396,73 +409,94 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                           itemBuilder: (context, i) {
                             final item = _filtered[i];
                             final bytes = item.imageBase64.isNotEmpty ? _safeB64(item.imageBase64) : null;
-
-                            return Card(
-                              child: InkWell(
-                                onTap: () => _openDetails(item),
-                                borderRadius: BorderRadius.circular(16),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Row(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          width: 64,
-                                          height: 64,
-                                          color: Colors.black.withOpacity(0.04),
-                                          child: bytes == null
-                                              ? const Icon(Icons.park_outlined)
-                                              : Image.memory(bytes, fit: BoxFit.cover),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item.species.isNotEmpty ? item.species : 'Неизвестно',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              item.formattedTs,
-                                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Wrap(
-                                              spacing: 8,
-                                              runSpacing: 8,
-                                              children: [
-                                                if (item.riskCategory?.isNotEmpty == true)
-                                                  Ui.badge(text: item.riskCategory!, color: AppTheme.warning, icon: Icons.shield),
-                                                Ui.badge(
-                                                  text: (item.lat != null && item.lon != null) ? 'GPS' : 'без GPS',
-                                                  color: (item.lat != null && item.lon != null) ? AppTheme.success : AppTheme.muted,
-                                                  icon: Icons.location_on,
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Icon(Icons.chevron_right),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                            return _HistoryPreviewCard(
+                              item: item,
+                              bytes: bytes,
+                              onTap: () => _openDetails(item),
                             );
                           },
                         ),
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _HistoryPreviewCard extends StatelessWidget {
+  final _HistoryItem item;
+  final Uint8List? bytes;
+  final VoidCallback onTap;
+
+  const _HistoryPreviewCard({
+    required this.item,
+    required this.bytes,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final riskColor = item.riskIndex != null ? AppTheme.warning : AppTheme.primary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Ui.paddedCard(
+          context,
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: 78,
+                  height: 78,
+                  color: AppTheme.surface3,
+                  child: bytes == null
+                      ? const Icon(Icons.park_outlined, color: AppTheme.primary, size: 34)
+                      : Image.memory(bytes!, fit: BoxFit.cover),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.species.isNotEmpty ? item.species : 'Неизвестно',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(item.formattedTs, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Ui.badge(
+                          text: item.riskCategory?.isNotEmpty == true ? item.riskCategory! : 'Анализ',
+                          color: riskColor,
+                          icon: Icons.shield_outlined,
+                        ),
+                        Ui.badge(
+                          text: (item.lat != null && item.lon != null) ? 'GPS' : 'без GPS',
+                          color: (item.lat != null && item.lon != null) ? AppTheme.success : AppTheme.muted,
+                          icon: Icons.location_on_outlined,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppTheme.muted),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -495,10 +529,13 @@ class _ErrorState extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: onRetry,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Повторить'),
+        AppActionButton(
+          onTap: onRetry,
+          icon: Icons.refresh_rounded,
+          title: 'Повторить',
+          subtitle: 'Перезагрузить историю',
+          primary: true,
+          compact: true,
         ),
       ],
     );
@@ -518,21 +555,9 @@ class _FilterChipGroup extends StatelessWidget {
     return Wrap(
       spacing: 8,
       children: [
-        ChoiceChip(
-          label: const Text('Все'),
-          selected: value == _FilterMode.all,
-          onSelected: (_) => onChanged(_FilterMode.all),
-        ),
-        ChoiceChip(
-          label: const Text('С риском'),
-          selected: value == _FilterMode.withRisk,
-          onSelected: (_) => onChanged(_FilterMode.withRisk),
-        ),
-        ChoiceChip(
-          label: const Text('Без риска'),
-          selected: value == _FilterMode.noRisk,
-          onSelected: (_) => onChanged(_FilterMode.noRisk),
-        ),
+        ChoiceChip(label: const Text('Все'), selected: value == _FilterMode.all, onSelected: (_) => onChanged(_FilterMode.all)),
+        ChoiceChip(label: const Text('С риском'), selected: value == _FilterMode.withRisk, onSelected: (_) => onChanged(_FilterMode.withRisk)),
+        ChoiceChip(label: const Text('Без риска'), selected: value == _FilterMode.noRisk, onSelected: (_) => onChanged(_FilterMode.noRisk)),
       ],
     );
   }
@@ -547,11 +572,9 @@ class _HistoryItem {
   final double? scale;
   final double? riskIndex;
   final String? riskCategory;
-
   final double? lat;
   final double? lon;
   final String? address;
-
   final String imageBase64;
   final DateTime timestamp;
 
@@ -572,7 +595,6 @@ class _HistoryItem {
   });
 
   String get uniqueKey {
-    // Prefer analysisId if present, otherwise timestamp+species
     if (analysisId.isNotEmpty) return analysisId;
     return '${timestamp.toIso8601String()}|$species|${lat ?? ''}|${lon ?? ''}';
   }

@@ -1,74 +1,154 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#08111F">
 
-    <!-- AR Scene -->
     <fragment
-        android:id="@+id/ar_fragment"
+        android:id="@+id/arFragment"
         android:name="com.google.ar.sceneform.ux.ArFragment"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
-    <!-- Overlay panel -->
     <LinearLayout
-        android:id="@+id/overlay"
-        android:layout_width="0dp"
+        android:id="@+id/topPanel"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="16dp"
         android:orientation="vertical"
-        android:padding="12dp"
-        android:background="#AA000000"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:padding="14dp"
+        android:background="#AA101A2B">
 
         <TextView
-            android:id="@+id/status_text"
-            android:layout_width="match_parent"
+            android:id="@+id/tvHint"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="@android:color/white"
-            android:textSize="14sp" />
+            android:text="Наведи крестик на объект"
+            android:textColor="#F6FAFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="10dp">
+            android:layout_marginTop="6dp"
+            android:text="Ожидание трекинга"
+            android:textColor="#9BAABD"
+            android:textSize="13sp" />
 
-            <Button
-                android:id="@+id/reset_btn"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Сброс" />
-
-            <View
-                android:layout_width="10dp"
-                android:layout_height="0dp" />
-
-            <Button
-                android:id="@+id/done_btn"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Сохранить" />
-
-            <Button
-                android:id="@+id/undo_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Убрать точку" />
-
-
-        </LinearLayout>
-
+        <TextView
+            android:id="@+id/tvProgress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Точек: 0/6"
+            android:textColor="#46E0A1"
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <LinearLayout
+        android:id="@+id/zoomPanel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_marginTop="118dp"
+        android:layout_marginEnd="16dp"
+        android:orientation="vertical"
+        android:background="#AA101A2B"
+        android:padding="10dp">
+
+        <ImageButton
+            android:id="@+id/btnZoomIn"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:backgroundTint="#132238"
+            android:src="@android:drawable/ic_input_add"
+            android:tint="#F6FAFF" />
+
+        <TextView
+            android:id="@+id/tvZoom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:text="ZOOM x1.0"
+            android:textColor="#9BAABD"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btnZoomOut"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:backgroundTint="#132238"
+            android:src="@android:drawable/ic_delete"
+            android:tint="#F6FAFF" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <View
+            android:id="@+id/reticle"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="center" />
+
+        <TextView
+            android:id="@+id/tvCenterHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:layout_marginTop="44dp"
+            android:text="Центр прицеливания"
+            android:textColor="#9BAABD"
+            android:textSize="12sp" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/bottomPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="16dp"
+        android:orientation="horizontal"
+        android:weightSum="3"
+        android:background="#CC101A2B"
+        android:padding="10dp">
+
+        <ImageButton
+            android:id="@+id/btnUndo"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:backgroundTint="#132238"
+            android:src="@android:drawable/ic_menu_revert"
+            android:tint="#F6FAFF" />
+
+        <ImageButton
+            android:id="@+id/btnPlace"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:backgroundTint="#46E0A1"
+            android:src="@android:drawable/ic_input_add"
+            android:tint="#000000" />
+
+        <ImageButton
+            android:id="@+id/btnDone"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:backgroundTint="#132238"
+            android:src="@android:drawable/checkbox_on_background"
+            android:tint="#F6FAFF" />
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

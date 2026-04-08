@@ -14,6 +14,7 @@ import 'package:geolocator/geolocator.dart';
 
 import 'feedback_page.dart';
 import 'ar_measure_channel.dart';
+import 'app_theme.dart';
 /// ============================
 ///  Модель результата анализа
 /// ============================
@@ -89,28 +90,6 @@ class AnalysisResult {
 /// ============================
 ///      Главный экран
 /// ============================
-enum _AssistantSeverity { info, warning, ok }
-
-class _AssistantCta {
-  final _AssistantSeverity severity;
-  final String title;
-  final String body;
-  final String primaryLabel;
-  final VoidCallback primaryAction;
-  final String? secondaryLabel;
-  final VoidCallback? secondaryAction;
-
-  const _AssistantCta({
-    required this.severity,
-    required this.title,
-    required this.body,
-    required this.primaryLabel,
-    required this.primaryAction,
-    this.secondaryLabel,
-    this.secondaryAction,
-  });
-}
-
 class ArborScanPage extends StatefulWidget {
   const ArborScanPage({super.key});
 
@@ -127,12 +106,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
   bool _isLoading = false;
   String? _error;
-  // AR measurements (hybrid support)
-  double? _arHeightM;
-  double? _arTrunkDiameterM;
-  double? _arCrownWidthM;
-  int? _arPointsCount;
-  int? _arRequiredPoints;
+  double? _lastArMeters;
+  ArMeasureResult? _lastArResult;
 
 
   // Режим администратора
@@ -353,138 +328,79 @@ class _ArborScanPageState extends State<ArborScanPage> {
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final picked = await _picker.pickImage(source: source, imageQuality: 90);
-      if (picked == null) return;
 
-      setState(() {
-        _imageFile = File(picked.path);
-        _annotatedImageBytes = null;
-        _result = null;
-        _error = null;
+Future<bool> _pickImage(ImageSource source) async {
+  try {
+    final picked = await _picker.pickImage(source: source, imageQuality: 90);
+    if (picked == null) return false;
 
-        // ВАЖНО: AR-замер относится к конкретному дереву/фото.
-        // При смене изображения сбрасываем AR, чтобы не смешивать разные деревья.
-        _arHeightM = null;
-        _arTrunkDiameterM = null;
-        _arCrownWidthM = null;
-        _arPointsCount = null;
-        _arRequiredPoints = null;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Ошибка при выборе изображения: $e';
-      });
-    }
+    setState(() {
+      _imageFile = File(picked.path);
+      _annotatedImageBytes = null;
+      _result = null;
+      _error = null;
+    });
+    return true;
+  } catch (e) {
+    setState(() {
+      _error = 'Ошибка при выборе изображения: $e';
+    });
+    return false;
   }
-
-    
-Future<void> _openArMeasureWith(int requiredPoints) async {
-  final result = await ArMeasureChannel.openArMeasure(requiredPoints: requiredPoints);
-  if (!mounted) return;
-
-  if (result == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("AR измерение отменено")),
-    );
-    return;
-  }
-
-  setState(() {
-    _arHeightM = result.heightMeters;
-    _arTrunkDiameterM = result.trunkDiameterMeters;
-    _arCrownWidthM = result.crownWidthMeters;
-    _arPointsCount = result.pointsCount;
-    _arRequiredPoints = result.requiredPoints ?? requiredPoints;
-  });
-
-// Variant A: if native AR returned a snapshot path, use it as the image for analysis.
-if (result.capturePath != null && result.capturePath!.isNotEmpty) {
-  setState(() {
-    _imageFile = File(result.capturePath!);
-    _annotatedImageBytes = null;
-    _result = null;
-    _error = null;
-  });
-  // Auto-run analysis immediately after AR (no separate photo step).
-  await _analyze();
-}
-
-
-  final h = result.heightMeters.toStringAsFixed(2);
-  final d = result.trunkDiameterMeters?.toStringAsFixed(2);
-  final c = result.crownWidthMeters?.toStringAsFixed(2);
-  final pts = result.pointsCount;
-  final req = result.requiredPoints ?? requiredPoints;
-
-  final modeLabel = (req == 2)
-      ? 'AR(высота)'
-      : (req == 4)
-          ? 'AR(высота+диаметр)'
-          : 'AR(полный)';
-
-  final msg = StringBuffer()
-    ..write('$modeLabel: H=$h м')
-    ..write(d != null ? ', D=$d м' : '')
-    ..write(c != null ? ', C=$c м' : '')
-    ..write(' (точек: $pts')
-    ..write(req != null ? '/$req' : '')
-    ..write(')');
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(msg.toString())),
-  );
 }
 
 Future<void> _openArMeasure() async {
-    try {
-      // Choose AR mode: 2/4/6 points.
-      final int? required = await showModalBottomSheet<int>(
-        context: context,
-        builder: (ctx) {
-          return SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const ListTile(
-                  title: Text('Режим AR измерения'),
-                  subtitle: Text('Выбери, сколько точек нужно поставить'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.height),
-                  title: const Text('Высота (2 точки) — заменяет палку'),
-                  onTap: () => Navigator.pop(ctx, 2),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.straighten),
-                  title: const Text('Высота + диаметр (4 точки)'),
-                  onTap: () => Navigator.pop(ctx, 4),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.park),
-                  title: const Text('Полный замер (6 точек)'),
-                  onTap: () => Navigator.pop(ctx, 6),
-                ),
-              ],
-            ),
-          );
-        },
-      );
+  try {
+    final result = await ArMeasureChannel.openArMeasure();
+    if (!mounted) return;
 
-      if (!mounted) return;
-      if (required == null) return; // user dismissed
-
-      await _openArMeasureWith(required);
-    } catch (e) {
-      if (!mounted) return;
+    if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("AR ошибка: $e")),
+        const SnackBar(content: Text("AR измерение отменено")),
       );
+      return;
     }
+
+    final height = result.heightMeters ?? result.distanceMeters;
+    final crown = result.crownWidthMeters;
+    final trunk = result.trunkDiameterMeters;
+
+    setState(() {
+      _lastArResult = result;
+      _lastArMeters = height;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "AR готово: H=${height.toStringAsFixed(2)} м"
+          "${crown != null ? ", крона=${crown.toStringAsFixed(2)} м" : ""}"
+          "${trunk != null ? ", ствол=${trunk.toStringAsFixed(2)} м" : ""}",
+        ),
+      ),
+    );
+
+    final picked = await _pickImage(ImageSource.camera);
+    if (!mounted) return;
+
+    if (!picked || _imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Фото после AR не выбрано")),
+      );
+      return;
+    }
+
+    await _analyze();
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("AR ошибка: $e")),
+    );
   }
+}
 
 Future<void> _analyze() async {
+
     if (_imageFile == null) return;
 
     setState(() {
@@ -502,29 +418,9 @@ Future<void> _analyze() async {
       final request = http.MultipartRequest('POST', uri);
       if (deviceLat != null) request.fields['lat'] = deviceLat.toString();
       if (deviceLon != null) request.fields['lon'] = deviceLon.toString();
-
-      // ---- AR hybrid fields (optional) ----
-      // If only height is measured -> ar_mode=height_only (used for scale).
-      // If full (height+trunk+crown) -> ar_mode=full.
-      if (_arHeightM != null) {
-        request.fields['ar_height_m'] = _arHeightM!.toString();
-        request.fields['ar_points_count'] = (_arPointsCount ?? 0).toString();
-        if (_arRequiredPoints != null) {
-          request.fields['required_points'] = _arRequiredPoints!.toString();
-        }
-
-        if (_arTrunkDiameterM != null) {
-          request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toString();
-        }
-        if (_arCrownWidthM != null) {
-          request.fields['ar_crown_width_m'] = _arCrownWidthM!.toString();
-        }
-
-        final bool hasFull =
-            _arTrunkDiameterM != null && _arCrownWidthM != null;
-        request.fields['ar_mode'] = hasFull ? 'full' : 'height_only';
-      }
-
+      if (_lastArResult?.heightMeters != null) request.fields['ar_height_m'] = _lastArResult!.heightMeters!.toString();
+      if (_lastArResult?.crownWidthMeters != null) request.fields['ar_crown_width_m'] = _lastArResult!.crownWidthMeters!.toString();
+      if (_lastArResult?.trunkDiameterMeters != null) request.fields['ar_trunk_diameter_m'] = _lastArResult!.trunkDiameterMeters!.toString();
       request.files.add(
         await http.MultipartFile.fromPath('file', _imageFile!.path),
       );
@@ -555,9 +451,9 @@ Future<void> _analyze() async {
       final gps = data['gps'] as Map<String, dynamic>?;
       final String? address = data['address'] as String?;
 
-      final double? height = (data['height_m'] as num?)?.toDouble();
-      final double? crown = (data['crown_width_m'] as num?)?.toDouble();
-      final double? trunk = (data['trunk_diameter_m'] as num?)?.toDouble();
+      final double? height = (data['height_m'] as num?)?.toDouble() ?? _lastArResult?.heightMeters;
+      final double? crown = (data['crown_width_m'] as num?)?.toDouble() ?? _lastArResult?.crownWidthMeters;
+      final double? trunk = (data['trunk_diameter_m'] as num?)?.toDouble() ?? _lastArResult?.trunkDiameterMeters;
       final double? scale = (data['scale_px_to_m'] as num?)?.toDouble();
 
       final double? riskIndex = (risk['index'] as num?)?.toDouble();
@@ -739,7 +635,7 @@ Future<void> _analyze() async {
             'Добавьте фото дерева\nиз камеры или галереи',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.black54,
+              color: AppTheme.muted,
             ),
           ),
         ],
@@ -797,7 +693,7 @@ Future<void> _analyze() async {
                   'Результаты появятся после анализа.\n'
                   'Загрузите фото дерева и нажмите «Анализировать».',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black54,
+                    color: AppTheme.muted,
                   ),
                 ),
               ),
@@ -935,14 +831,14 @@ Future<void> _analyze() async {
               Text(
                 'Координаты: ${gps['lat']}, ${gps['lon']}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
+                  color: AppTheme.muted,
                 ),
               )
             else
               Text(
                 'GPS-данные в фото не найдены.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
+                  color: AppTheme.muted,
                 ),
               ),
           ],
@@ -1080,197 +976,7 @@ Future<void> _analyze() async {
     }
   }
 
-  
-_AssistantCta? _computeAssistantCta() {
-  if (_isLoading) return null;
-
-  final hasImage = _imageFile != null || _annotatedImageBytes != null;
-  final hasAr = _arHeightM != null;
-
-  if (!hasImage) {
-    return _AssistantCta(
-      severity: _AssistantSeverity.info,
-      title: 'Шаг 1: добавь фото дерева',
-      body:
-          'Сделай фото или выбери из галереи. Затем можно сделать AR-замер, чтобы не использовать палку.',
-      primaryLabel: 'Камера',
-      primaryAction: () => _pickImage(ImageSource.camera),
-      secondaryLabel: 'Галерея',
-      secondaryAction: () => _pickImage(ImageSource.gallery),
-    );
-  }
-
-  if (!hasAr) {
-    return _AssistantCta(
-      severity: _AssistantSeverity.info,
-      title: 'Шаг 2: AR-высота вместо палки',
-      body:
-          'Сделай AR-высоту (2 точки) — масштаб будет из AR и палка не нужна. Фото всё равно нужно для сегментации и оценки риска.',
-      primaryLabel: 'AR высота (2 точки)',
-      primaryAction: () => _openArMeasureWith(2),
-      secondaryLabel: 'Полный AR (6 точек)',
-      secondaryAction: () => _openArMeasureWith(6),
-    );
-  }
-
-  if (_result == null) {
-    return _AssistantCta(
-      severity: _AssistantSeverity.ok,
-      title: 'Готово к анализу',
-      body: (_arRequiredPoints == 2)
-          ? 'Палка не нужна — масштаб будет взят из AR-высоты.'
-          : 'AR-замер сохранён. Фото нужно для сегментации и оценки риска.',
-      primaryLabel: 'Анализировать',
-      primaryAction: _analyze,
-      secondaryLabel: 'Сбросить AR',
-      secondaryAction: _clearArOnly,
-    );
-  }
-
-  final scaleSource = _result?['scale_source'] as String?;
-  if (scaleSource == 'ar_height') {
-    return _AssistantCta(
-      severity: _AssistantSeverity.ok,
-      title: 'Масштаб: AR-высота ✅',
-      body:
-          'Сервер применил AR-высоту как эталон масштаба. Палка не использовалась.',
-      primaryLabel: 'Новый анализ',
-      primaryAction: _resetAllForNext,
-    );
-  }
-
-  if (scaleSource == 'stick') {
-    return _AssistantCta(
-      severity: hasAr ? _AssistantSeverity.warning : _AssistantSeverity.info,
-      title: 'Масштаб: reference-object',
-      body: hasAr
-          ? 'AR был, но сервер не применил его для масштаба. Проверь, что AR сделан для этого фото.'
-          : 'Если хочешь без палки — сделай AR-высоту (2 точки) и повтори анализ.',
-      primaryLabel: hasAr ? 'Повторить анализ' : 'AR высота (2 точки)',
-      primaryAction: hasAr ? _analyze : () => _openArMeasureWith(2),
-      secondaryLabel: hasAr ? 'Сбросить AR' : null,
-      secondaryAction: hasAr ? _clearArOnly : null,
-    );
-  }
-
-  return _AssistantCta(
-    severity: _AssistantSeverity.info,
-    title: 'Готово',
-    body:
-        'Можно сделать новый анализ или выполнить AR-замер для замены палки.',
-    primaryLabel: 'Новый анализ',
-    primaryAction: _resetAllForNext,
-    secondaryLabel: 'AR высота (2 точки)',
-    secondaryAction: () => _openArMeasureWith(2),
-  );
-}
-
-void _clearArOnly() {
-  setState(() {
-    _arHeightM = null;
-    _arTrunkDiameterM = null;
-    _arCrownWidthM = null;
-    _arPointsCount = null;
-    _arRequiredPoints = null;
-  });
-}
-
-void _resetAllForNext() {
-  setState(() {
-    _imageFile = null;
-    _annotatedImageBytes = null;
-    _result = null;
-    _error = null;
-
-    _arHeightM = null;
-    _arTrunkDiameterM = null;
-    _arCrownWidthM = null;
-    _arPointsCount = null;
-    _arRequiredPoints = null;
-  });
-}
-
-Widget _buildAssistantCtaPanel() {
-  final cta = _computeAssistantCta();
-  if (cta == null) return const SizedBox.shrink();
-
-  Color bg = const Color(0xFFF3F3F3);
-  IconData icon = Icons.tips_and_updates_outlined;
-  switch (cta.severity) {
-    case _AssistantSeverity.ok:
-      bg = const Color(0xFFF0F8F2);
-      icon = Icons.check_circle_outline;
-      break;
-    case _AssistantSeverity.warning:
-      bg = const Color(0xFFFFF7E6);
-      icon = Icons.warning_amber_rounded;
-      break;
-    case _AssistantSeverity.info:
-      bg = const Color(0xFFF3F3F3);
-      icon = Icons.tips_and_updates_outlined;
-      break;
-  }
-
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.circular(18),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: Colors.black54),
-            const SizedBox(width: 8),
-            Text(
-              'Помощник',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          cta.title,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          cta.body,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.black87,
-              ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton(
-                onPressed: cta.primaryAction,
-                child: Text(cta.primaryLabel),
-              ),
-            ),
-            if (cta.secondaryLabel != null && cta.secondaryAction != null) ...[
-              const SizedBox(width: 10),
-              OutlinedButton(
-                onPressed: cta.secondaryAction,
-                child: Text(cta.secondaryLabel!),
-              ),
-            ],
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-@override
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -1298,20 +1004,76 @@ IconButton(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Анализ деревьев\nс помощью ИИ',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.surface2, AppTheme.surface3],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppTheme.border),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.18),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withOpacity(0.14),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                Icons.park_rounded,
+                                color: AppTheme.primary,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Анализ деревьев\nс помощью ИИ',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.text,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Определение породы, размеров и оценки риска падения.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: const [
+                            _InfoChip(icon: Icons.straighten, text: 'Высота и диаметр'),
+                            _InfoChip(icon: Icons.local_florist, text: 'Порода дерева'),
+                            _InfoChip(icon: Icons.shield_outlined, text: 'Оценка риска'),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Определение породы, размеров и оценки риска падения.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
                   AdminGate(
                     isAdmin: _isAdmin,
@@ -1355,70 +1117,94 @@ IconButton(
                       _result?['analysis_id'] != null)
                     const SizedBox(height: 16),
 
-                  _buildAssistantCtaPanel(),
-                  const SizedBox(height: 12),
-
                   // Кнопки выбора изображения
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _pickImage(ImageSource.camera),
-                          icon: const Icon(Icons.photo_camera_outlined),
-                          label: const Text('Камера'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
+                        child: AppActionButton(
+                          onTap: () => _pickImage(ImageSource.camera),
+                          icon: Icons.photo_camera_outlined,
+                          title: 'Камера',
+                          subtitle: 'Сделать снимок',
+                          compact: true,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _pickImage(ImageSource.gallery),
-                          icon: const Icon(Icons.photo_library_outlined),
-                          label: const Text('Галерея'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
+                        child: AppActionButton(
+                          onTap: () => _pickImage(ImageSource.gallery),
+                          icon: Icons.photo_library_outlined,
+                          title: 'Галерея',
+                          subtitle: 'Выбрать фото',
+                          compact: true,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _openArMeasure,
-                    icon: const Icon(Icons.view_in_ar_outlined),
-                    label: Text(() {
-                      if (_arHeightM == null) return 'AR измерение';
-                      final h = _arHeightM!.toStringAsFixed(2);
-                      final d = _arTrunkDiameterM?.toStringAsFixed(2);
-                      final c = _arCrownWidthM?.toStringAsFixed(2);
-                      final req = _arRequiredPoints;
-                      final mode = (req == 2)
-                          ? 'H'
-                          : (req == 4)
-                              ? 'H+D'
-                              : 'H+D+C';
-                      final parts = <String>['$mode: $hм'];
-                      if (d != null) parts.add('D $dм');
-                      if (c != null) parts.add('C $cм');
-                      return parts.join(' · ');
-                    }()),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
+                  AppActionButton(
+                    onTap: _openArMeasure,
+                    icon: Icons.view_in_ar_outlined,
+                    title: _lastArResult == null
+                        ? 'AR измерение'
+                        : 'AR: H ${(_lastArResult!.heightMeters ?? _lastArMeters ?? 0).toStringAsFixed(2)} м',
+                    subtitle: _lastArResult == null
+                        ? '6 точек → затем фото и анализ'
+                        : 'Крона: ${_lastArResult!.crownWidthMeters?.toStringAsFixed(2) ?? '—'} м • Ствол: ${_lastArResult!.trunkDiameterMeters?.toStringAsFixed(2) ?? '—'} м',
+                    compact: true,
                   ),
-                  const SizedBox(height: 12),
-                  Align(
+if (_lastArResult != null) ...[
+  const SizedBox(height: 12),
+  Ui.paddedCard(
+    context,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.straighten_rounded, color: AppTheme.primary),
+            const SizedBox(width: 10),
+            Text(
+              'Последнее AR измерение',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Ui.badge(
+              text: 'Высота: ${(_lastArResult!.heightMeters ?? 0).toStringAsFixed(2)} м',
+              color: AppTheme.primary,
+              icon: Icons.height,
+            ),
+            if (_lastArResult!.crownWidthMeters != null)
+              Ui.badge(
+                text: 'Крона: ${_lastArResult!.crownWidthMeters!.toStringAsFixed(2)} м',
+                color: AppTheme.warning,
+                icon: Icons.park_rounded,
+              ),
+            if (_lastArResult!.trunkDiameterMeters != null)
+              Ui.badge(
+                text: 'Ствол: ${_lastArResult!.trunkDiameterMeters!.toStringAsFixed(2)} м',
+                color: AppTheme.success,
+                icon: Icons.circle_outlined,
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'После завершения AR автоматически открывается камера и запускается анализ.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    ),
+  ),
+],
+const SizedBox(height: 8),
+Align(
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed:
@@ -1432,23 +1218,21 @@ IconButton(
                                     _error = null;
                                   });
                                 },
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear_rounded),
                       label: const Text('Очистить'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.muted,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
 
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed:
-                          _imageFile == null || _isLoading ? null : _analyze,
-                      icon: const Icon(Icons.play_arrow_rounded),
-                      label: const Text(
-                        'Анализировать',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
+                  AppActionButton(
+                    onTap: _imageFile == null || _isLoading ? null : _analyze,
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'Запустить анализ',
+                    subtitle: 'Определение породы, размеров и риска',
+                    primary: true,
                   ),
 
                   if (_error != null) ...[
@@ -1457,13 +1241,13 @@ IconButton(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFE1E1),
+                        color: AppTheme.danger.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         _error!,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFFB71C1C),
+                          color: AppTheme.danger,
                         ),
                       ),
                     ),
@@ -1475,7 +1259,7 @@ IconButton(
 
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.45),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1502,10 +1286,43 @@ IconButton(
       ),
     );
   }
+}
 
 
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
 
+  const _InfoChip({
+    required this.icon,
+    required this.text,
+  });
 
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppTheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.text,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Карточка маленькой метрики (высота, крона и т.п.)
@@ -1529,12 +1346,13 @@ class _MetricTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isSecondary ? const Color(0xFFF3F3F3) : const Color(0xFFF0F8F2),
+        color: isSecondary ? AppTheme.surface2 : AppTheme.surface3,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.black54),
+          Icon(icon, size: 20, color: AppTheme.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1543,7 +1361,7 @@ class _MetricTile extends StatelessWidget {
                 Text(
                   label,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black54,
+                    color: AppTheme.muted,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1703,7 +1521,7 @@ class HistoryPage extends StatelessWidget {
                 'История пуста.\nПроведите анализ, чтобы он здесь появился.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black54,
+                  color: AppTheme.muted,
                 ),
               ),
             )
