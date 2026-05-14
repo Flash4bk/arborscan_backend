@@ -14,7 +14,6 @@ import 'package:geolocator/geolocator.dart';
 
 import 'feedback_page.dart';
 import 'ar_measure_channel.dart';
-import 'app_theme.dart';
 /// ============================
 ///  Модель результата анализа
 /// ============================
@@ -107,7 +106,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
   bool _isLoading = false;
   String? _error;
   double? _lastArMeters;
-  ArMeasureResult? _lastArResult;
 
 
   // Режим администратора
@@ -328,79 +326,52 @@ class _ArborScanPageState extends State<ArborScanPage> {
     );
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(source: source, imageQuality: 90);
+      if (picked == null) return;
 
-Future<bool> _pickImage(ImageSource source) async {
-  try {
-    final picked = await _picker.pickImage(source: source, imageQuality: 90);
-    if (picked == null) return false;
-
-    setState(() {
-      _imageFile = File(picked.path);
-      _annotatedImageBytes = null;
-      _result = null;
-      _error = null;
-    });
-    return true;
-  } catch (e) {
-    setState(() {
-      _error = 'Ошибка при выборе изображения: $e';
-    });
-    return false;
-  }
-}
-
-Future<void> _openArMeasure() async {
-  try {
-    final result = await ArMeasureChannel.openArMeasure();
-    if (!mounted) return;
-
-    if (result == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("AR измерение отменено")),
-      );
-      return;
+      setState(() {
+        _imageFile = File(picked.path);
+        _annotatedImageBytes = null;
+        _result = null;
+        _error = null;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Ошибка при выборе изображения: $e';
+      });
     }
-
-    final height = result.heightMeters ?? result.distanceMeters;
-    final crown = result.crownWidthMeters;
-    final trunk = result.trunkDiameterMeters;
-
-    setState(() {
-      _lastArResult = result;
-      _lastArMeters = height;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "AR готово: H=${height.toStringAsFixed(2)} м"
-          "${crown != null ? ", крона=${crown.toStringAsFixed(2)} м" : ""}"
-          "${trunk != null ? ", ствол=${trunk.toStringAsFixed(2)} м" : ""}",
-        ),
-      ),
-    );
-
-    final picked = await _pickImage(ImageSource.camera);
-    if (!mounted) return;
-
-    if (!picked || _imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Фото после AR не выбрано")),
-      );
-      return;
-    }
-
-    await _analyze();
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("AR ошибка: $e")),
-    );
   }
-}
 
-Future<void> _analyze() async {
+    Future<void> _openArMeasure() async {
+    try {
+      final result = await ArMeasureChannel.openArMeasure();
+      final meters = result?.distanceMeters;
+      if (!mounted) return;
 
+      setState(() => _lastArMeters = meters);
+
+      if (meters == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("AR измерение отменено")),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("AR: расстояние = ${meters.toStringAsFixed(2)} м")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("AR ошибка: $e")),
+      );
+    }
+  }
+
+
+  Future<void> _analyze() async {
     if (_imageFile == null) return;
 
     setState(() {
@@ -418,9 +389,6 @@ Future<void> _analyze() async {
       final request = http.MultipartRequest('POST', uri);
       if (deviceLat != null) request.fields['lat'] = deviceLat.toString();
       if (deviceLon != null) request.fields['lon'] = deviceLon.toString();
-      if (_lastArResult?.heightMeters != null) request.fields['ar_height_m'] = _lastArResult!.heightMeters!.toString();
-      if (_lastArResult?.crownWidthMeters != null) request.fields['ar_crown_width_m'] = _lastArResult!.crownWidthMeters!.toString();
-      if (_lastArResult?.trunkDiameterMeters != null) request.fields['ar_trunk_diameter_m'] = _lastArResult!.trunkDiameterMeters!.toString();
       request.files.add(
         await http.MultipartFile.fromPath('file', _imageFile!.path),
       );
@@ -451,9 +419,9 @@ Future<void> _analyze() async {
       final gps = data['gps'] as Map<String, dynamic>?;
       final String? address = data['address'] as String?;
 
-      final double? height = (data['height_m'] as num?)?.toDouble() ?? _lastArResult?.heightMeters;
-      final double? crown = (data['crown_width_m'] as num?)?.toDouble() ?? _lastArResult?.crownWidthMeters;
-      final double? trunk = (data['trunk_diameter_m'] as num?)?.toDouble() ?? _lastArResult?.trunkDiameterMeters;
+      final double? height = (data['height_m'] as num?)?.toDouble();
+      final double? crown = (data['crown_width_m'] as num?)?.toDouble();
+      final double? trunk = (data['trunk_diameter_m'] as num?)?.toDouble();
       final double? scale = (data['scale_px_to_m'] as num?)?.toDouble();
 
       final double? riskIndex = (risk['index'] as num?)?.toDouble();
@@ -635,7 +603,7 @@ Future<void> _analyze() async {
             'Добавьте фото дерева\nиз камеры или галереи',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
+              color: Colors.black54,
             ),
           ),
         ],
@@ -693,7 +661,7 @@ Future<void> _analyze() async {
                   'Результаты появятся после анализа.\n'
                   'Загрузите фото дерева и нажмите «Анализировать».',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.muted,
+                    color: Colors.black54,
                   ),
                 ),
               ),
@@ -831,14 +799,14 @@ Future<void> _analyze() async {
               Text(
                 'Координаты: ${gps['lat']}, ${gps['lon']}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.muted,
+                  color: Colors.black54,
                 ),
               )
             else
               Text(
                 'GPS-данные в фото не найдены.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.muted,
+                  color: Colors.black54,
                 ),
               ),
           ],
@@ -1004,76 +972,20 @@ IconButton(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.surface2, AppTheme.surface3],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppTheme.border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.18),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary.withOpacity(0.14),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.park_rounded,
-                                color: AppTheme.primary,
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Анализ деревьев\nс помощью ИИ',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.text,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Определение породы, размеров и оценки риска падения.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.muted,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: const [
-                            _InfoChip(icon: Icons.straighten, text: 'Высота и диаметр'),
-                            _InfoChip(icon: Icons.local_florist, text: 'Порода дерева'),
-                            _InfoChip(icon: Icons.shield_outlined, text: 'Оценка риска'),
-                          ],
-                        ),
-                      ],
+                  Text(
+                    'Анализ деревьев\nс помощью ИИ',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Определение породы, размеров и оценки риска падения.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
                   AdminGate(
                     isAdmin: _isAdmin,
@@ -1121,90 +1033,50 @@ IconButton(
                   Row(
                     children: [
                       Expanded(
-                        child: AppActionButton(
-                          onTap: () => _pickImage(ImageSource.camera),
-                          icon: Icons.photo_camera_outlined,
-                          title: 'Камера',
-                          subtitle: 'Сделать снимок',
-                          compact: true,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickImage(ImageSource.camera),
+                          icon: const Icon(Icons.photo_camera_outlined),
+                          label: const Text('Камера'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: AppActionButton(
-                          onTap: () => _pickImage(ImageSource.gallery),
-                          icon: Icons.photo_library_outlined,
-                          title: 'Галерея',
-                          subtitle: 'Выбрать фото',
-                          compact: true,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickImage(ImageSource.gallery),
+                          icon: const Icon(Icons.photo_library_outlined),
+                          label: const Text('Галерея'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  AppActionButton(
-                    onTap: _openArMeasure,
-                    icon: Icons.view_in_ar_outlined,
-                    title: _lastArResult == null
-                        ? 'AR измерение'
-                        : 'AR: H ${(_lastArResult!.heightMeters ?? _lastArMeters ?? 0).toStringAsFixed(2)} м',
-                    subtitle: _lastArResult == null
-                        ? '6 точек → затем фото и анализ'
-                        : 'Крона: ${_lastArResult!.crownWidthMeters?.toStringAsFixed(2) ?? '—'} м • Ствол: ${_lastArResult!.trunkDiameterMeters?.toStringAsFixed(2) ?? '—'} м',
-                    compact: true,
+                  OutlinedButton.icon(
+                    onPressed: _openArMeasure,
+                    icon: const Icon(Icons.view_in_ar_outlined),
+                    label: Text(_lastArMeters == null
+                        ? "AR измерение (2 точки)"
+                        : "AR: ${_lastArMeters!.toStringAsFixed(2)} м"),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
                   ),
-if (_lastArResult != null) ...[
-  const SizedBox(height: 12),
-  Ui.paddedCard(
-    context,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.straighten_rounded, color: AppTheme.primary),
-            const SizedBox(width: 10),
-            Text(
-              'Последнее AR измерение',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            Ui.badge(
-              text: 'Высота: ${(_lastArResult!.heightMeters ?? 0).toStringAsFixed(2)} м',
-              color: AppTheme.primary,
-              icon: Icons.height,
-            ),
-            if (_lastArResult!.crownWidthMeters != null)
-              Ui.badge(
-                text: 'Крона: ${_lastArResult!.crownWidthMeters!.toStringAsFixed(2)} м',
-                color: AppTheme.warning,
-                icon: Icons.park_rounded,
-              ),
-            if (_lastArResult!.trunkDiameterMeters != null)
-              Ui.badge(
-                text: 'Ствол: ${_lastArResult!.trunkDiameterMeters!.toStringAsFixed(2)} м',
-                color: AppTheme.success,
-                icon: Icons.circle_outlined,
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'После завершения AR автоматически открывается камера и запускается анализ.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    ),
-  ),
-],
-const SizedBox(height: 8),
-Align(
+                  const SizedBox(height: 12),
+                  Align(
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
                       onPressed:
@@ -1218,21 +1090,23 @@ Align(
                                     _error = null;
                                   });
                                 },
-                      icon: const Icon(Icons.clear_rounded),
+                      icon: const Icon(Icons.clear),
                       label: const Text('Очистить'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.muted,
-                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
 
-                  AppActionButton(
-                    onTap: _imageFile == null || _isLoading ? null : _analyze,
-                    icon: Icons.auto_awesome_rounded,
-                    title: 'Запустить анализ',
-                    subtitle: 'Определение породы, размеров и риска',
-                    primary: true,
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed:
+                          _imageFile == null || _isLoading ? null : _analyze,
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: const Text(
+                        'Анализировать',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
 
                   if (_error != null) ...[
@@ -1241,13 +1115,13 @@ Align(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.danger.withOpacity(0.12),
+                        color: const Color(0xFFFFE1E1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         _error!,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.danger,
+                          color: const Color(0xFFB71C1C),
                         ),
                       ),
                     ),
@@ -1259,7 +1133,7 @@ Align(
 
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.45),
+              color: Colors.black.withOpacity(0.2),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1288,43 +1162,6 @@ Align(
   }
 }
 
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _InfoChip({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.22)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppTheme.primary),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.text,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Карточка маленькой метрики (высота, крона и т.п.)
 class _MetricTile extends StatelessWidget {
   final String label;
@@ -1346,13 +1183,12 @@ class _MetricTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isSecondary ? AppTheme.surface2 : AppTheme.surface3,
+        color: isSecondary ? const Color(0xFFF3F3F3) : const Color(0xFFF0F8F2),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppTheme.primary),
+          Icon(icon, size: 20, color: Colors.black54),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1361,7 +1197,7 @@ class _MetricTile extends StatelessWidget {
                 Text(
                   label,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: Colors.black54,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1521,7 +1357,7 @@ class HistoryPage extends StatelessWidget {
                 'История пуста.\nПроведите анализ, чтобы он здесь появился.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.muted,
+                  color: Colors.black54,
                 ),
               ),
             )
