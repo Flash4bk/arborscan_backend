@@ -106,6 +106,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
   bool _isLoading = false;
   String? _error;
   double? _lastArMeters;
+  double? _arHeightM;
+  double? _arCrownWidthM;
+  double? _arTrunkDiameterM;
 
 
   // Режим администратора
@@ -336,6 +339,10 @@ class _ArborScanPageState extends State<ArborScanPage> {
         _annotatedImageBytes = null;
         _result = null;
         _error = null;
+        _lastArMeters = null;
+        _arHeightM = null;
+        _arCrownWidthM = null;
+        _arTrunkDiameterM = null;
       });
     } catch (e) {
       setState(() {
@@ -343,29 +350,57 @@ class _ArborScanPageState extends State<ArborScanPage> {
       });
     }
   }
+  String _formatMeters(double? value) {
+    if (value == null || value <= 0) return 'не измерено';
+    return '${value.toStringAsFixed(2)} м';
+  }
 
-    Future<void> _openArMeasure() async {
+  String _arTargetLabel(String target) {
+    switch (target) {
+      case 'height':
+        return 'высота дерева';
+      case 'crown':
+        return 'ширина кроны';
+      case 'trunk':
+        return 'диаметр ствола';
+      default:
+        return 'расстояние';
+    }
+  }
+
+  Future<void> _openArMeasure(String target) async {
     try {
       final result = await ArMeasureChannel.openArMeasure();
       final meters = result?.distanceMeters;
       if (!mounted) return;
 
-      setState(() => _lastArMeters = meters);
-
       if (meters == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("AR измерение отменено")),
+          const SnackBar(content: Text('AR измерение отменено')),
         );
         return;
       }
 
+      setState(() {
+        _lastArMeters = meters;
+        if (target == 'height') {
+          _arHeightM = meters;
+        } else if (target == 'crown') {
+          _arCrownWidthM = meters;
+        } else if (target == 'trunk') {
+          _arTrunkDiameterM = meters;
+        }
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("AR: расстояние = ${meters.toStringAsFixed(2)} м")),
+        SnackBar(
+          content: Text('AR: ${_arTargetLabel(target)} = ${meters.toStringAsFixed(2)} м'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("AR ошибка: $e")),
+        SnackBar(content: Text('AR ошибка: $e')),
       );
     }
   }
@@ -389,6 +424,17 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final request = http.MultipartRequest('POST', uri);
       if (deviceLat != null) request.fields['lat'] = deviceLat.toString();
       if (deviceLon != null) request.fields['lon'] = deviceLon.toString();
+
+      // AR-измерения имеют приоритет над оценкой по фото/масштабу.
+      if (_arHeightM != null) {
+        request.fields['ar_height_m'] = _arHeightM!.toStringAsFixed(3);
+      }
+      if (_arCrownWidthM != null) {
+        request.fields['ar_crown_width_m'] = _arCrownWidthM!.toStringAsFixed(3);
+      }
+      if (_arTrunkDiameterM != null) {
+        request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
+      }
       request.files.add(
         await http.MultipartFile.fromPath('file', _imageFile!.path),
       );
@@ -579,6 +625,138 @@ class _ArborScanPageState extends State<ArborScanPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+
+  Widget _buildArMeasurementsCard() {
+    final hasAny = _arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null;
+
+    Widget valueRow(String label, double? value, IconData icon) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10243A),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF24364A)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFF37D88B)),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFFB8C4CC),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                _formatMeters(value),
+                style: const TextStyle(
+                  color: Color(0xFFF8FAFC),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget arButton({
+      required String title,
+      required String target,
+      required IconData icon,
+    }) {
+      return OutlinedButton.icon(
+        onPressed: () => _openArMeasure(target),
+        icon: Icon(icon),
+        label: Text(title),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1B2A),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFF24364A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.view_in_ar_outlined, color: Color(0xFF37D88B)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'AR-измерения',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              if (hasAny)
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _lastArMeters = null;
+                      _arHeightM = null;
+                      _arCrownWidthM = null;
+                      _arTrunkDiameterM = null;
+                    });
+                  },
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('сброс'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Измерь реальные параметры дерева двумя AR-точками. Эти значения будут отправлены на сервер и заменят пустые оценки по фото.',
+            style: TextStyle(
+              color: Color(0xFFB8C4CC),
+              fontSize: 12,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              valueRow('Высота', _arHeightM, Icons.height),
+              const SizedBox(width: 8),
+              valueRow('Крона', _arCrownWidthM, Icons.filter_hdr),
+              const SizedBox(width: 8),
+              valueRow('Ствол', _arTrunkDiameterM, Icons.circle_outlined),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              arButton(title: 'Высота', target: 'height', icon: Icons.height),
+              arButton(title: 'Крона', target: 'crown', icon: Icons.filter_hdr),
+              arButton(title: 'Ствол', target: 'trunk', icon: Icons.circle_outlined),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1062,19 +1240,7 @@ IconButton(
                     ],
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _openArMeasure,
-                    icon: const Icon(Icons.view_in_ar_outlined),
-                    label: Text(_lastArMeters == null
-                        ? "AR измерение (2 точки)"
-                        : "AR: ${_lastArMeters!.toStringAsFixed(2)} м"),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ),
+                  _buildArMeasurementsCard(),
                   const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerRight,
@@ -1088,6 +1254,10 @@ IconButton(
                                     _annotatedImageBytes = null;
                                     _result = null;
                                     _error = null;
+                                    _lastArMeters = null;
+                                    _arHeightM = null;
+                                    _arCrownWidthM = null;
+                                    _arTrunkDiameterM = null;
                                   });
                                 },
                       icon: const Icon(Icons.clear),

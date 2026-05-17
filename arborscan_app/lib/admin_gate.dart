@@ -49,14 +49,14 @@ class AdminGate extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isAdmin ? const Color(0xFFE8F3FF) : const Color(0xFFEFEFEF),
+                    color: isAdmin ? const Color(0xFFE8F3FF) : const Color(0xFF1A2B3A),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     isAdmin ? 'ADMIN' : 'LOCKED',
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: isAdmin ? const Color(0xFF0D47A1) : cs.onSurfaceVariant,
+                      color: isAdmin ? const Color(0xFF0D47A1) : const Color(0xFFB8C4CC),
                     ),
                   ),
                 ),

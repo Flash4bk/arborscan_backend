@@ -13,7 +13,7 @@ from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile, HTTPException , Body
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
@@ -825,7 +825,14 @@ def _startup_load_models():
 
 
 @app.post("/analyze-tree")
-async def analyze_tree(file: UploadFile = File(...)):
+async def analyze_tree(
+    file: UploadFile = File(...),
+    ar_height_m: Optional[float] = Form(None),
+    ar_crown_width_m: Optional[float] = Form(None),
+    ar_trunk_diameter_m: Optional[float] = Form(None),
+    lat: Optional[float] = Form(None),
+    lon: Optional[float] = Form(None),
+):
     image_bytes = await file.read()
     np_img = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
@@ -892,6 +899,38 @@ async def analyze_tree(file: UploadFile = File(...)):
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
     # -----------------------------
+    # AI + AR MEASUREMENTS MERGE
+    # -----------------------------
+    height_m_ai = height_m
+    crown_m_ai = crown_m
+    trunk_m_ai = trunk_m
+
+    has_ar_height = ar_height_m is not None and ar_height_m > 0
+    has_ar_crown = ar_crown_width_m is not None and ar_crown_width_m > 0
+    has_ar_trunk = ar_trunk_diameter_m is not None and ar_trunk_diameter_m > 0
+
+    if has_ar_height:
+        height_m = round(float(ar_height_m), 2)
+    if has_ar_crown:
+        crown_m = round(float(ar_crown_width_m), 2)
+    if has_ar_trunk:
+        trunk_m = round(float(ar_trunk_diameter_m), 2)
+
+    ar_measurements = {
+        "height_m": round(float(ar_height_m), 2) if has_ar_height else None,
+        "crown_width_m": round(float(ar_crown_width_m), 2) if has_ar_crown else None,
+        "trunk_diameter_m": round(float(ar_trunk_diameter_m), 2) if has_ar_trunk else None,
+    }
+
+    measurement_sources = {
+        "height_m": "ar" if has_ar_height else "image",
+        "crown_width_m": "ar" if has_ar_crown else "image",
+        "trunk_diameter_m": "ar" if has_ar_trunk else "image",
+    }
+
+    dimensions_source = "ИИ + AR" if any([has_ar_height, has_ar_crown, has_ar_trunk]) else "ИИ / фото"
+
+    # -----------------------------
     # CLASSIFIER
     # -----------------------------
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
@@ -918,7 +957,10 @@ async def analyze_tree(file: UploadFile = File(...)):
     risk = None
 
     if ENABLE_ENV_ANALYSIS:
-        gps = extract_gps(image_bytes)
+        if lat is not None and lon is not None:
+            gps = {"lat": float(lat), "lon": float(lon)}
+        else:
+            gps = extract_gps(image_bytes)
         if gps:
             address = reverse_geocode(gps["lat"], gps["lon"])
             weather = get_weather(gps["lat"], gps["lon"])
@@ -944,6 +986,12 @@ async def analyze_tree(file: UploadFile = File(...)):
         "height_m": height_m,
         "crown_width_m": crown_m,
         "trunk_diameter_m": trunk_m,
+        "height_m_ai": height_m_ai,
+        "crown_width_m_ai": crown_m_ai,
+        "trunk_diameter_m_ai": trunk_m_ai,
+        "ar_measurements": ar_measurements,
+        "measurement_sources": measurement_sources,
+        "dimensions_source": dimensions_source,
         "scale_px_to_m": scale,
         "gps": gps,
         "address": address,
@@ -1093,6 +1141,12 @@ async def analyze_tree(file: UploadFile = File(...)):
         "height_m": height_m,
         "crown_width_m": crown_m,
         "trunk_diameter_m": trunk_m,
+        "height_m_ai": height_m_ai,
+        "crown_width_m_ai": crown_m_ai,
+        "trunk_diameter_m_ai": trunk_m_ai,
+        "ar_measurements": ar_measurements,
+        "measurement_sources": measurement_sources,
+        "dimensions_source": dimensions_source,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
     }

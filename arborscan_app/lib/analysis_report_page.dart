@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
+
 
 Uint8List? _tryDecodeImageB64(String? b64) {
   if (b64 == null) return null;
@@ -454,18 +456,20 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    const Color tileText = AppTheme.textOnLight;
+    const Color tileMuted = AppTheme.mutedOnLight;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isSecondary ? const Color(0xFFF3F3F3) : const Color(0xFFF0F8F2),
+        color: isSecondary ? const Color(0xFFF1F5F9) : const Color(0xFFEFFBF4),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFD6E2DA)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.black54),
+          Icon(icon, color: tileMuted),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -473,15 +477,19 @@ class _MetricCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black54,
+                  style: const TextStyle(
+                    color: tileMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
+                  style: const TextStyle(
+                    color: tileText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
@@ -624,7 +632,7 @@ class _FootnoteCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.shield_outlined, color: Colors.black45),
+          const Icon(Icons.shield_outlined, color: AppTheme.mutedOnLight),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -639,8 +647,9 @@ class _FootnoteCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Оценка является аналитической подсказкой и не заменяет осмотр специалистом. При сомнениях используйте подтверждение/коррекцию и зафиксируйте дополнительные фото.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.black54,
+                  style: const TextStyle(
+                    color: AppTheme.mutedOnLight,
+                    fontSize: 12,
                   ),
                 ),
                 if (analysisId != null && analysisId.isNotEmpty) ...[
