@@ -112,6 +112,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
   double? _arCrownWidthM;
   double? _arTrunkDiameterM;
   double? _manualBetaKgS;
+  double? _manualCrownStartHeightM;
+  double? _manualCrownDensityFactor;
+  double? _manualCrownShapeFactor;
 
 
   // Режим администратора
@@ -463,6 +466,15 @@ class _ArborScanPageState extends State<ArborScanPage> {
       if (_manualBetaKgS != null && _manualBetaKgS! > 0) {
         request.fields['manual_beta_kg_s'] = _manualBetaKgS!.toStringAsFixed(3);
       }
+      if (_manualCrownStartHeightM != null && _manualCrownStartHeightM! > 0) {
+        request.fields['crown_start_height_m'] = _manualCrownStartHeightM!.toStringAsFixed(3);
+      }
+      if (_manualCrownDensityFactor != null && _manualCrownDensityFactor! > 0) {
+        request.fields['crown_density_factor'] = _manualCrownDensityFactor!.toStringAsFixed(3);
+      }
+      if (_manualCrownShapeFactor != null && _manualCrownShapeFactor! > 0) {
+        request.fields['crown_shape_factor'] = _manualCrownShapeFactor!.toStringAsFixed(3);
+      }
       request.files.add(
         await http.MultipartFile.fromPath('file', _imageFile!.path),
       );
@@ -785,6 +797,30 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
 
   Widget _buildBetaSettingsCard() {
+    Widget numberField({
+      required String label,
+      required String hint,
+      required String suffix,
+      required IconData icon,
+      required double? value,
+      required ValueChanged<double?> onChanged,
+    }) {
+      return TextField(
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: value == null ? hint : value.toStringAsFixed(2),
+          prefixIcon: Icon(icon),
+          suffixText: suffix,
+        ),
+        onChanged: (raw) {
+          final normalized = raw.trim().replaceAll(',', '.');
+          final parsed = double.tryParse(normalized);
+          onChanged(parsed != null && parsed > 0 ? parsed : null);
+        },
+      );
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -798,28 +834,32 @@ class _ArborScanPageState extends State<ArborScanPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.air_outlined, color: AppTheme.primary),
+              const Icon(Icons.analytics_outlined, color: AppTheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Коэффициент β',
+                  'Аналитический центр β',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AppTheme.text,
                         fontWeight: FontWeight.w800,
                       ),
                 ),
               ),
-              if (_manualBetaKgS != null)
-                TextButton.icon(
-                  onPressed: () => setState(() => _manualBetaKgS = null),
-                  icon: const Icon(Icons.auto_fix_high, size: 18),
-                  label: const Text('авто'),
-                ),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _manualBetaKgS = null;
+                  _manualCrownStartHeightM = null;
+                  _manualCrownDensityFactor = null;
+                  _manualCrownShapeFactor = null;
+                }),
+                icon: const Icon(Icons.auto_fix_high, size: 18),
+                label: const Text('авто'),
+              ),
             ],
           ),
           const SizedBox(height: 6),
           const Text(
-            'β используется для оценки ветровой нагрузки: F = β · v. Если значение неизвестно, сервер рассчитает β приблизительно по породе, высоте и ширине кроны.',
+            'Сервер рассчитает β, ветровую силу, центр нагрузки и момент у основания. Если есть экспертные данные — их можно ввести вручную.',
             style: TextStyle(
               color: AppTheme.muted,
               fontSize: 12,
@@ -828,28 +868,53 @@ class _ArborScanPageState extends State<ArborScanPage> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'β вручную, кг/с',
-              hintText: _manualBetaKgS == null ? 'автоматически' : _manualBetaKgS!.toStringAsFixed(2),
-              prefixIcon: const Icon(Icons.functions),
-              suffixText: 'кг/с',
-            ),
-            onChanged: (value) {
-              final normalized = value.trim().replaceAll(',', '.');
-              final parsed = double.tryParse(normalized);
-              setState(() {
-                _manualBetaKgS = parsed != null && parsed > 0 ? parsed : null;
-              });
-            },
+          numberField(
+            label: 'β вручную',
+            hint: 'автоматически',
+            suffix: 'кг/с',
+            icon: Icons.functions,
+            value: _manualBetaKgS,
+            onChanged: (v) => setState(() => _manualBetaKgS = v),
+          ),
+          const SizedBox(height: 10),
+          numberField(
+            label: 'Высота начала кроны',
+            hint: 'авто: 0.55H',
+            suffix: 'м',
+            icon: Icons.forest_outlined,
+            value: _manualCrownStartHeightM,
+            onChanged: (v) => setState(() => _manualCrownStartHeightM = v),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: numberField(
+                  label: 'Плотность кроны',
+                  hint: '1.0',
+                  suffix: '×',
+                  icon: Icons.grain,
+                  value: _manualCrownDensityFactor,
+                  onChanged: (v) => setState(() => _manualCrownDensityFactor = v),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: numberField(
+                  label: 'Форма кроны',
+                  hint: '1.0',
+                  suffix: '×',
+                  icon: Icons.filter_hdr,
+                  value: _manualCrownShapeFactor,
+                  onChanged: (v) => setState(() => _manualCrownShapeFactor = v),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
-          Text(
-            _manualBetaKgS == null
-                ? 'Сейчас: автоматическая оценка β.'
-                : 'Сейчас: β = ${_manualBetaKgS!.toStringAsFixed(2)} кг/с, введено вручную.',
-            style: const TextStyle(
+          const Text(
+            'Обычно оставляйте 1.0. Значения >1 усиливают ветровую нагрузку, <1 уменьшают её.',
+            style: TextStyle(
               color: AppTheme.muted,
               fontSize: 12,
               fontWeight: FontWeight.w700,

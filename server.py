@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
+from tree_dynamics import compute_analytic_wind_model
 
 # -------------------------------------
 # CONFIG
@@ -970,6 +971,9 @@ async def analyze_tree(
     ar_crown_width_m: Optional[float] = Form(None),
     ar_trunk_diameter_m: Optional[float] = Form(None),
     manual_beta_kg_s: Optional[float] = Form(None),
+    crown_start_height_m: Optional[float] = Form(None),
+    crown_density_factor: Optional[float] = Form(None),
+    crown_shape_factor: Optional[float] = Form(None),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
 ):
@@ -1132,6 +1136,29 @@ async def analyze_tree(
     beta_info["wind_force_n"] = wind_force_n
     beta_info["wind_force_score"] = wind_force_score_value
 
+    # -----------------------------
+    # ANALYTICAL WIND-LOAD MODEL
+    # -----------------------------
+    wind_speed_for_model = None
+    wind_gust_for_model = None
+    if weather:
+        wind_speed_for_model = weather.get("wind_speed")
+        wind_gust_for_model = weather.get("wind_gust")
+
+    analytic_wind_model = compute_analytic_wind_model(
+        species=species_name,
+        height_m=height_m,
+        crown_width_m=crown_m,
+        trunk_diameter_m=trunk_m,
+        beta_kg_s=beta_info.get("beta_kg_s"),
+        wind_speed_m_s=wind_speed_for_model,
+        wind_gust_m_s=wind_gust_for_model,
+        crown_start_height_m=crown_start_height_m,
+        crown_density_factor=crown_density_factor or 1.0,
+        crown_shape_factor=crown_shape_factor or 1.0,
+        n_elements=20,
+    )
+
     # Add β explanation to risk without breaking the existing risk model yet.
     if risk is not None:
         risk.setdefault("explanation", [])
@@ -1144,6 +1171,14 @@ async def analyze_tree(
         if wind_force_n is not None:
             risk["explanation"].append(
                 f"Оценка ветровой силы по F=β·v: {wind_force_n:.1f} Н"
+            )
+        if analytic_wind_model.get("available"):
+            out = analytic_wind_model.get("outputs", {})
+            risk["explanation"].append(
+                f"Аналитический момент у основания: {out.get('base_moment_nm')} Н·м"
+            )
+            risk["explanation"].append(
+                f"Центр ветровой нагрузки: {out.get('center_of_load_m')} м"
             )
 
     # -----------------------------
@@ -1164,6 +1199,7 @@ async def analyze_tree(
         "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source,
         "beta": beta_info,
+        "analytic_wind_model": analytic_wind_model,
         "scale_px_to_m": scale,
         "gps": gps,
         "address": address,
@@ -1171,6 +1207,7 @@ async def analyze_tree(
         "soil": soil,
         "risk": risk,
         "beta": beta_info,
+        "analytic_wind_model": analytic_wind_model,
         "model_versions": MODEL_VERSIONS,
         "model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
@@ -1321,6 +1358,7 @@ async def analyze_tree(
         "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source,
         "beta": beta_info,
+        "analytic_wind_model": analytic_wind_model,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
     }

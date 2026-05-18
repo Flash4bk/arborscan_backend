@@ -129,6 +129,7 @@ class AnalysisReportPageV2 extends StatelessWidget {
     final risk = raw?['risk'] as Map<String, dynamic>?;
     final explanation = (risk?['explanation'] as List?)?.cast<String>() ?? const [];
     final beta = (raw?['beta'] as Map?)?.cast<String, dynamic>();
+    final analyticWindModel = (raw?['analytic_wind_model'] as Map?)?.cast<String, dynamic>();
 
     final sourceMap = (raw?['measurement_sources'] as Map?)?.cast<String, dynamic>();
     final dimensionsSource = raw?['dimensions_source'] as String?;
@@ -181,6 +182,8 @@ class AnalysisReportPageV2 extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             _BetaCard(beta: beta),
+            const SizedBox(height: 10),
+            _AnalyticWindModelCard(model: analyticWindModel),
             const SizedBox(height: 16),
 
             _SectionTitle(
@@ -488,6 +491,112 @@ class _BetaCard extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+class _AnalyticWindModelCard extends StatelessWidget {
+  final Map<String, dynamic>? model;
+
+  const _AnalyticWindModelCard({required this.model});
+
+  String _fmt(dynamic value, {String suffix = ''}) {
+    if (value == null) return '—';
+    if (value is num) return '${value.toStringAsFixed(2)}$suffix';
+    final parsed = double.tryParse(value.toString());
+    if (parsed == null) return value.toString();
+    return '${parsed.toStringAsFixed(2)}$suffix';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final available = model?['available'] == true;
+    final outputs = (model?['outputs'] as Map?)?.cast<String, dynamic>() ?? {};
+    final inputs = (model?['inputs'] as Map?)?.cast<String, dynamic>() ?? {};
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface2,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            available ? Icons.science_outlined : Icons.info_outline,
+            color: available ? AppTheme.primary : AppTheme.muted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: available
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Аналитическая модель ветровой нагрузки',
+                        style: TextStyle(
+                          color: AppTheme.text,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _miniRow('Суммарная сила', _fmt(outputs['total_force_n'], suffix: ' Н')),
+                      _miniRow('Центр нагрузки', _fmt(outputs['center_of_load_m'], suffix: ' м')),
+                      _miniRow('Момент у основания', _fmt(outputs['base_moment_nm'], suffix: ' Н·м')),
+                      _miniRow('Индекс аналитики', _fmt(outputs['analytical_score'])),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Крона начинается: ${_fmt(inputs['crown_start_height_m'], suffix: ' м')} · элементов: ${inputs['n_elements'] ?? '—'}',
+                        style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    model?['reason']?.toString() ?? 'Аналитическая модель недоступна.',
+                    style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppTheme.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.text,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
