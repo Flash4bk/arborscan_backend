@@ -14,6 +14,8 @@ import 'package:geolocator/geolocator.dart';
 
 import 'feedback_page.dart';
 import 'ar_measure_channel.dart';
+import 'app_theme.dart';
+import 'analysis_report_page.dart';
 /// ============================
 ///  Модель результата анализа
 /// ============================
@@ -109,6 +111,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
   double? _arHeightM;
   double? _arCrownWidthM;
   double? _arTrunkDiameterM;
+  double? _manualBetaKgS;
 
 
   // Режим администратора
@@ -134,24 +137,51 @@ class _ArborScanPageState extends State<ArborScanPage> {
   }
 
   Future<void> _loadHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_historyKey);
-    if (list == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_historyKey);
+      if (list == null) return;
 
-    setState(() {
-      _history
-        ..clear()
-        ..addAll(list.map((e) {
+      final loaded = <AnalysisResult>[];
+      for (final e in list.take(30)) {
+        try {
           final jsonMap = jsonDecode(e) as Map<String, dynamic>;
-          return AnalysisResult.fromJson(jsonMap);
-        }));
-    });
+          // Старые версии могли хранить большие base64-картинки в истории.
+          // Больше не держим изображения в SharedPreferences, чтобы не ловить OOM.
+          jsonMap['imageBase64'] = '';
+          loaded.add(AnalysisResult.fromJson(jsonMap));
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _history
+          ..clear()
+          ..addAll(loaded);
+      });
+    } catch (e) {
+      // Если старый SharedPreferences разросся и Android не может его прочитать,
+      // не валим приложение. Пользователь очистит данные приложения один раз.
+      debugPrint('History load skipped: $e');
+    }
   }
 
   Future<void> _saveHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = _history.map((e) => jsonEncode(e.toJson())).toList();
-    await prefs.setStringList(_historyKey, encoded);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // SharedPreferences нельзя использовать как хранилище изображений.
+      // Сохраняем только лёгкие метаданные последних 30 анализов.
+      final encoded = _history.take(30).map((e) {
+        final map = e.toJson();
+        map['imageBase64'] = '';
+        return jsonEncode(map);
+      }).toList();
+
+      await prefs.setStringList(_historyKey, encoded);
+    } catch (e) {
+      debugPrint('History save skipped: $e');
+    }
   }
 
   Future<void> _clearHistory() async {
@@ -331,7 +361,12 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source, imageQuality: 90);
+      final picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 72,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
       if (picked == null) return;
 
       setState(() {
@@ -355,26 +390,12 @@ class _ArborScanPageState extends State<ArborScanPage> {
     return '${value.toStringAsFixed(2)} м';
   }
 
-  String _arTargetLabel(String target) {
-    switch (target) {
-      case 'height':
-        return 'высота дерева';
-      case 'crown':
-        return 'ширина кроны';
-      case 'trunk':
-        return 'диаметр ствола';
-      default:
-        return 'расстояние';
-    }
-  }
-
-  Future<void> _openArMeasure(String target) async {
+  Future<void> _openArMeasure() async {
     try {
       final result = await ArMeasureChannel.openArMeasure();
-      final meters = result?.distanceMeters;
       if (!mounted) return;
 
-      if (meters == null) {
+      if (result == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('AR измерение отменено')),
         );
@@ -382,19 +403,23 @@ class _ArborScanPageState extends State<ArborScanPage> {
       }
 
       setState(() {
-        _lastArMeters = meters;
-        if (target == 'height') {
-          _arHeightM = meters;
-        } else if (target == 'crown') {
-          _arCrownWidthM = meters;
-        } else if (target == 'trunk') {
-          _arTrunkDiameterM = meters;
-        }
+        _lastArMeters = result.distanceMeters;
+        _arHeightM = result.heightMeters ?? result.distanceMeters;
+        _arCrownWidthM = result.crownWidthMeters;
+        _arTrunkDiameterM = result.trunkDiameterMeters;
       });
+
+      final missing = <String>[];
+      if (_arCrownWidthM == null) missing.add('крона');
+      if (_arTrunkDiameterM == null) missing.add('ствол');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('AR: ${_arTargetLabel(target)} = ${meters.toStringAsFixed(2)} м'),
+          content: Text(
+            missing.isEmpty
+                ? 'AR-измерения сохранены'
+                : 'AR сохранил высоту. Не получены: ${missing.join(', ')}',
+          ),
         ),
       );
     } catch (e) {
@@ -434,6 +459,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
       }
       if (_arTrunkDiameterM != null) {
         request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
+      }
+      if (_manualBetaKgS != null && _manualBetaKgS! > 0) {
+        request.fields['manual_beta_kg_s'] = _manualBetaKgS!.toStringAsFixed(3);
       }
       request.files.add(
         await http.MultipartFile.fromPath('file', _imageFile!.path),
@@ -486,7 +514,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
         lat: ((gps?['lat'] as num?)?.toDouble()) ?? deviceLat,
         lon: ((gps?['lon'] as num?)?.toDouble()) ?? deviceLon,
         address: address,
-        imageBase64: annotatedB64 ?? '',
+        imageBase64: '',
         timestamp: DateTime.now(),
         analysisId: analysisId,
       );
@@ -499,8 +527,14 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
       await _saveHistory();
     } catch (e) {
+      final rawError = e.toString();
+      final friendlyError = rawError.contains('OutOfMemoryError') ||
+              rawError.contains('Failed to allocate') ||
+              rawError.contains('exceeds the limit')
+          ? 'Не хватило памяти. Обычно это происходит из-за старой истории с большими изображениями. Очистите данные приложения ArborScan один раз и повторите анализ. Новая версия больше не сохраняет изображения в SharedPreferences.'
+          : rawError;
       setState(() {
-        _error = e.toString();
+        _error = friendlyError;
       });
     } finally {
       if (mounted) {
@@ -633,24 +667,24 @@ class _ArborScanPageState extends State<ArborScanPage> {
   Widget _buildArMeasurementsCard() {
     final hasAny = _arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null;
 
-    Widget valueRow(String label, double? value, IconData icon) {
+    Widget valueTile(String label, double? value, IconData icon) {
       return Expanded(
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF10243A),
+            color: AppTheme.surface2,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF24364A)),
+            border: Border.all(color: AppTheme.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 20, color: const Color(0xFF37D88B)),
+              Icon(icon, size: 20, color: AppTheme.primary),
               const SizedBox(height: 8),
               Text(
                 label,
                 style: const TextStyle(
-                  color: Color(0xFFB8C4CC),
+                  color: AppTheme.muted,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -659,7 +693,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
               Text(
                 _formatMeters(value),
                 style: const TextStyle(
-                  color: Color(0xFFF8FAFC),
+                  color: AppTheme.text,
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                 ),
@@ -670,44 +704,27 @@ class _ArborScanPageState extends State<ArborScanPage> {
       );
     }
 
-    Widget arButton({
-      required String title,
-      required String target,
-      required IconData icon,
-    }) {
-      return OutlinedButton.icon(
-        onPressed: () => _openArMeasure(target),
-        icon: Icon(icon),
-        label: Text(title),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ),
-      );
-    }
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1B2A),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF24364A)),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.view_in_ar_outlined, color: Color(0xFF37D88B)),
+              const Icon(Icons.view_in_ar_outlined, color: AppTheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'AR-измерения',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
+                        color: AppTheme.text,
                       ),
                 ),
               ),
@@ -728,9 +745,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Измерь реальные параметры дерева двумя AR-точками. Эти значения будут отправлены на сервер и заменят пустые оценки по фото.',
+            'Поставьте 6 точек: 1 — основание дерева, 2 — верхушка, 3–4 — левый и правый край кроны, 5–6 — левый и правый край ствола.',
             style: TextStyle(
-              color: Color(0xFFB8C4CC),
+              color: AppTheme.muted,
               fontSize: 12,
               height: 1.25,
               fontWeight: FontWeight.w600,
@@ -739,22 +756,104 @@ class _ArborScanPageState extends State<ArborScanPage> {
           const SizedBox(height: 12),
           Row(
             children: [
-              valueRow('Высота', _arHeightM, Icons.height),
+              valueTile('Высота', _arHeightM, Icons.height),
               const SizedBox(width: 8),
-              valueRow('Крона', _arCrownWidthM, Icons.filter_hdr),
+              valueTile('Крона', _arCrownWidthM, Icons.filter_hdr),
               const SizedBox(width: 8),
-              valueRow('Ствол', _arTrunkDiameterM, Icons.circle_outlined),
+              valueTile('Ствол', _arTrunkDiameterM, Icons.circle_outlined),
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openArMeasure,
+              icon: const Icon(Icons.view_in_ar_outlined),
+              label: const Text('AR: измерить все параметры (6 точек)'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildBetaSettingsCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              arButton(title: 'Высота', target: 'height', icon: Icons.height),
-              arButton(title: 'Крона', target: 'crown', icon: Icons.filter_hdr),
-              arButton(title: 'Ствол', target: 'trunk', icon: Icons.circle_outlined),
+              const Icon(Icons.air_outlined, color: AppTheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Коэффициент β',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.text,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              if (_manualBetaKgS != null)
+                TextButton.icon(
+                  onPressed: () => setState(() => _manualBetaKgS = null),
+                  icon: const Icon(Icons.auto_fix_high, size: 18),
+                  label: const Text('авто'),
+                ),
             ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'β используется для оценки ветровой нагрузки: F = β · v. Если значение неизвестно, сервер рассчитает β приблизительно по породе, высоте и ширине кроны.',
+            style: TextStyle(
+              color: AppTheme.muted,
+              fontSize: 12,
+              height: 1.25,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'β вручную, кг/с',
+              hintText: _manualBetaKgS == null ? 'автоматически' : _manualBetaKgS!.toStringAsFixed(2),
+              prefixIcon: const Icon(Icons.functions),
+              suffixText: 'кг/с',
+            ),
+            onChanged: (value) {
+              final normalized = value.trim().replaceAll(',', '.');
+              final parsed = double.tryParse(normalized);
+              setState(() {
+                _manualBetaKgS = parsed != null && parsed > 0 ? parsed : null;
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _manualBetaKgS == null
+                ? 'Сейчас: автоматическая оценка β.'
+                : 'Сейчас: β = ${_manualBetaKgS!.toStringAsFixed(2)} кг/с, введено вручную.',
+            style: const TextStyle(
+              color: AppTheme.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -781,7 +880,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
             'Добавьте фото дерева\nиз камеры или галереи',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.black54,
+              color: AppTheme.muted,
             ),
           ),
         ],
@@ -832,14 +931,14 @@ class _ArborScanPageState extends State<ArborScanPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.info_outline, color: Colors.black45),
+              const Icon(Icons.info_outline, color: AppTheme.muted),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Результаты появятся после анализа.\n'
                   'Загрузите фото дерева и нажмите «Анализировать».',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.black54,
+                    color: AppTheme.muted,
                   ),
                 ),
               ),
@@ -977,17 +1076,29 @@ class _ArborScanPageState extends State<ArborScanPage> {
               Text(
                 'Координаты: ${gps['lat']}, ${gps['lon']}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
+                  color: AppTheme.muted,
                 ),
               )
             else
               Text(
                 'GPS-данные в фото не найдены.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
+                  color: AppTheme.muted,
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _openAnalysisReport() {
+    if (_result == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AnalysisReportPageV2.fromRawResult(
+          raw: _result!,
+          annotatedImageBytes: _annotatedImageBytes,
         ),
       ),
     );
@@ -1160,7 +1271,7 @@ IconButton(
                   Text(
                     'Определение породы, размеров и оценки риска падения.',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
+                      color: AppTheme.muted,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1179,6 +1290,23 @@ IconButton(
                   const SizedBox(height: 16),
 
                   _buildResultCard(),
+                  if (_result != null) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _openAnalysisReport,
+                        icon: const Icon(Icons.description_outlined),
+                        label: const Text('Открыть подробный отчёт'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
 
                   // КНОПКА ПОДТВЕРЖДЕНИЯ АНАЛИЗА — ТОЛЬКО ДЛЯ АДМИНА
@@ -1241,6 +1369,8 @@ IconButton(
                   ),
                   const SizedBox(height: 12),
                   _buildArMeasurementsCard(),
+                  const SizedBox(height: 12),
+                  _buildBetaSettingsCard(),
                   const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerRight,
@@ -1367,14 +1497,15 @@ class _MetricTile extends StatelessWidget {
                 Text(
                   label,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.black54,
+                    color: AppTheme.mutedOnLight,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textOnLight,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
@@ -1527,7 +1658,7 @@ class HistoryPage extends StatelessWidget {
                 'История пуста.\nПроведите анализ, чтобы он здесь появился.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black54,
+                  color: AppTheme.muted,
                 ),
               ),
             )

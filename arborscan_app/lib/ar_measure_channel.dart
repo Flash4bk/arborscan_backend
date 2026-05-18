@@ -2,15 +2,17 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 class ArMeasureResult {
+  /// Generic distance. For legacy Android this is usually height_m.
   final double distanceMeters;
   final double distanceCm;
   final int points;
 
+  /// Full tree measurement values returned by the native AR screen, if available.
   final double? heightMeters;
   final double? crownWidthMeters;
   final double? trunkDiameterMeters;
 
-  const ArMeasureResult({
+  ArMeasureResult({
     required this.distanceMeters,
     required this.distanceCm,
     required this.points,
@@ -19,32 +21,68 @@ class ArMeasureResult {
     this.trunkDiameterMeters,
   });
 
-  static double? _d(dynamic v) {
+  static double? _asDouble(dynamic v) {
     if (v == null) return null;
     if (v is num) return v.toDouble();
-    return double.tryParse(v.toString());
+    if (v is String) return double.tryParse(v.replaceAll(',', '.'));
+    return null;
   }
 
-  static int _i(dynamic v) {
+  static int? _asInt(dynamic v) {
+    if (v == null) return null;
     if (v is int) return v;
     if (v is num) return v.toInt();
-    return int.tryParse(v.toString()) ?? 0;
+    if (v is String) return int.tryParse(v);
+    return null;
   }
 
   factory ArMeasureResult.fromJson(Map<String, dynamic> json) {
-    final h = _d(json['height_m']);
-    final c = _d(json['crown_width_m']);
-    final t = _d(json['trunk_diameter_m']);
+    // Full 6-point AR workflow:
+    // height: base -> top
+    // crown: left crown -> right crown
+    // trunk: left trunk -> right trunk
+    final height = _asDouble(json['height_m']) ??
+        _asDouble(json['heightMeters']) ??
+        _asDouble(json['tree_height_m']) ??
+        _asDouble(json['treeHeightM']);
 
-    final meters = h ?? _d(json['distance_m']) ?? 0;
+    final crown = _asDouble(json['crown_width_m']) ??
+        _asDouble(json['crownWidthM']) ??
+        _asDouble(json['crown_width']) ??
+        _asDouble(json['crownMeters']);
+
+    final trunk = _asDouble(json['trunk_diameter_m']) ??
+        _asDouble(json['trunkDiameterM']) ??
+        _asDouble(json['diameter_m']) ??
+        _asDouble(json['trunkMeters']);
+
+    // Backward-compatible generic distance.
+    final meters = _asDouble(json['distanceMeters']) ??
+        _asDouble(json['distance_m']) ??
+        height ??
+        _asDouble(json['meters']);
+
+    final cm = _asDouble(json['distanceCm']) ??
+        _asDouble(json['distance_cm']) ??
+        _asDouble(json['height_cm']) ??
+        (meters != null ? meters * 100.0 : null);
+
+    final pts = _asInt(json['points']) ??
+        _asInt(json['points_count']) ??
+        _asInt(json['pointCount']) ??
+        0;
+
+    if (meters == null) {
+      throw FormatException('AR result has no distance/height. json=$json');
+    }
 
     return ArMeasureResult(
       distanceMeters: meters,
-      distanceCm: meters * 100,
-      points: _i(json['points_count']),
-      heightMeters: h,
-      crownWidthMeters: c,
-      trunkDiameterMeters: t,
+      distanceCm: cm ?? (meters * 100.0),
+      points: pts,
+      heightMeters: height ?? meters,
+      crownWidthMeters: crown,
+      trunkDiameterMeters: trunk,
     );
   }
 }
@@ -52,17 +90,25 @@ class ArMeasureResult {
 class ArMeasureChannel {
   static const _ch = MethodChannel('arborscan/ar_measure');
 
-  // СТАРОЕ имя метода — возвращаем для совместимости
-  static Future<ArMeasureResult?> openArMeasure() async {
-    final raw = await _ch.invokeMethod('start');
+  /// Opens native AR measurement screen.
+  /// Current Android implementation is a full 6-point tree wizard.
+  /// Returns null if user cancelled.
+  static Future<ArMeasureResult?> start() async {
+    final dynamic raw = await _ch.invokeMethod('start');
     if (raw == null) return null;
 
-    final map = raw is String ? json.decode(raw) : Map<String, dynamic>.from(raw);
+    Map<String, dynamic> map;
+    if (raw is String) {
+      if (raw.isEmpty) return null;
+      map = json.decode(raw) as Map<String, dynamic>;
+    } else if (raw is Map) {
+      map = Map<String, dynamic>.from(raw);
+    } else {
+      throw FormatException('Unexpected AR result type: ${raw.runtimeType}, value=$raw');
+    }
+
     return ArMeasureResult.fromJson(map);
   }
 
-  // Новое имя (можешь потом перейти на него)
-  static Future<ArMeasureResult?> start() async {
-    return openArMeasure();
-  }
+  static Future<ArMeasureResult?> openArMeasure() => start();
 }

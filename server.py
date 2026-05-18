@@ -13,7 +13,7 @@ from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form, Form
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
@@ -717,9 +717,152 @@ def compute_risk(species, height, crown, diameter, weather, soil):
     }
 
 
+
 # =============================================
-# DRAW MASK ONLY (для аннотации)
+# Beta coefficient estimation (wind drag scaling)
 # =============================================
+
+# β values for full-scale Scots pine from Borisevich/Kamluk/Rebko paper:
+# 25.5–90.0 kg/s. For other species, values are provisional expert ranges.
+BETA_SPECIES_PARAMS = {
+    "Сосна": {"k_area": 3.4, "min": 25.5, "max": 90.0, "base": 47.7},
+    "Ель": {"k_area": 3.8, "min": 30.0, "max": 100.0, "base": 60.0},
+    "Тополь": {"k_area": 3.6, "min": 30.0, "max": 100.0, "base": 58.0},
+    "Береза": {"k_area": 3.3, "min": 25.0, "max": 90.0, "base": 52.0},
+    "Дуб": {"k_area": 3.7, "min": 35.0, "max": 110.0, "base": 65.0},
+}
+
+def _clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
+
+def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=None, manual_beta_kg_s=None) -> dict:
+    """Estimate β in kg/s for ArborScan practical wind-risk calculation.
+
+    Method:
+      1) If user provides manual β > 0, use it and only clamp to a broad safety range.
+      2) Otherwise estimate crown frontal area:
+            H_crown ≈ 0.45 * H
+            A_crown ≈ 0.65 * H_crown * W_crown
+         Then:
+            β_raw = k_species * A_crown
+         For pine, k≈3.4 and clamp range 25.5–90 kg/s follows the paper.
+    """
+    params = BETA_SPECIES_PARAMS.get(species, BETA_SPECIES_PARAMS["Сосна"])
+
+    if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
+        value = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
+        return {
+            "beta_kg_s": value,
+            "method": "manual",
+            "source": "Введено вручную пользователем",
+            "formula": "F = β · v",
+            "input": {
+                "manual_beta_kg_s": float(manual_beta_kg_s),
+                "species": species,
+            },
+            "notes": [
+                "β использован как заданный пользователем коэффициент аэродинамической интенсивности.",
+                "Единица измерения: кг/с.",
+            ],
+        }
+
+    h = float(height_m or 0)
+    w = float(crown_width_m or 0)
+
+    if h <= 0 or w <= 0:
+        value = round(float(params["base"]), 2)
+        return {
+            "beta_kg_s": value,
+            "method": "species_default",
+            "source": "Среднее/экспертное значение по породе",
+            "formula": "F = β · v",
+            "input": {
+                "species": species,
+                "height_m": height_m,
+                "crown_width_m": crown_width_m,
+            },
+            "notes": [
+                "Недостаточно геометрических параметров для расчёта по кроне.",
+                "Использовано базовое значение β для породы.",
+            ],
+        }
+
+    crown_height_m = 0.45 * h
+    crown_frontal_area_m2 = 0.65 * crown_height_m * w
+    beta_raw = float(params["k_area"]) * crown_frontal_area_m2
+    beta = round(_clamp(beta_raw, float(params["min"]), float(params["max"])), 2)
+
+    return {
+        "beta_kg_s": beta,
+        "method": "estimated_from_geometry",
+        "source": "Оценка по AR/геометрии кроны",
+        "formula": "Hкроны≈0.45H; A≈0.65·Hкроны·Wкроны; β=clamp(k·A)",
+        "input": {
+            "species": species,
+            "height_m": h,
+            "crown_width_m": w,
+            "trunk_diameter_m": trunk_diameter_m,
+            "estimated_crown_height_m": round(crown_height_m, 2),
+            "estimated_crown_frontal_area_m2": round(crown_frontal_area_m2, 2),
+            "k_area": params["k_area"],
+            "beta_min": params["min"],
+            "beta_max": params["max"],
+            "beta_raw": round(beta_raw, 2),
+        },
+        "notes": [
+            "Это приближённый β для практического риска, а не лабораторно подобранный коэффициент.",
+            "Для сосны диапазон ограничен опубликованными значениями 25.5–90.0 кг/с.",
+        ],
+    }
+
+def beta_wind_force_score(beta_kg_s, weather) -> tuple[float, float | None]:
+    """Return normalized score and force F=β*v using wind gust/speed."""
+    if not beta_kg_s or beta_kg_s <= 0 or not weather:
+        return 0.5, None
+    v = weather.get("wind_gust") or weather.get("wind_speed") or 0
+    try:
+        v = float(v)
+    except Exception:
+        v = 0.0
+    force_n = float(beta_kg_s) * v
+
+    # Conservative practical normalization:
+    # <150 N low, 150–500 moderate, 500–1200 high, >1200 very high.
+    if force_n <= 150:
+        score = 0.25
+    elif force_n <= 500:
+        score = 0.45
+    elif force_n <= 1200:
+        score = 0.75
+    else:
+        score = 1.0
+    return score, round(force_n, 2)
+
+
+# =============================================
+# IMAGE ENCODING / DRAW MASK
+# =============================================
+
+def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
+    """Resize and encode BGR image to JPEG base64 for mobile response.
+
+    The original file is still saved to Supabase RAW storage. For API response
+    we send a compressed preview to avoid Android OutOfMemoryError.
+    """
+    h, w = img_bgr.shape[:2]
+    longest = max(h, w)
+    if longest > max_side:
+        scale = max_side / float(longest)
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
+        img_bgr = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)]
+    ok, out = cv2.imencode(".jpg", img_bgr, encode_params)
+    if not ok:
+        raise ValueError("Failed to encode image as JPEG")
+    return base64.b64encode(out.tobytes()).decode("ascii")
+
 
 def draw_mask(img_bgr, mask):
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -727,11 +870,7 @@ def draw_mask(img_bgr, mask):
         approx = cv2.approxPolyDP(cnt, 0.003 * cv2.arcLength(cnt, True), True)
         cv2.drawContours(img_bgr, [approx], -1, (0, 255, 0), 3)
 
-    rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    pil = Image.fromarray(rgb)
-    buf = io.BytesIO()
-    pil.save(buf, format="JPEG")
-    return base64.b64encode(buf.getvalue()).decode("ascii")
+    return encode_jpeg_base64(img_bgr, max_side=1280, quality=74)
 
 
 # =============================================
@@ -830,6 +969,7 @@ async def analyze_tree(
     ar_height_m: Optional[float] = Form(None),
     ar_crown_width_m: Optional[float] = Form(None),
     ar_trunk_diameter_m: Optional[float] = Form(None),
+    manual_beta_kg_s: Optional[float] = Form(None),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
 ):
@@ -976,6 +1116,37 @@ async def analyze_tree(
         )
 
     # -----------------------------
+    # BETA COEFFICIENT / WIND LOAD
+    # -----------------------------
+    beta_info = estimate_beta_kg_s(
+        species_name,
+        height_m,
+        crown_m,
+        trunk_m,
+        manual_beta_kg_s=manual_beta_kg_s,
+    )
+    wind_force_score_value, wind_force_n = beta_wind_force_score(
+        beta_info.get("beta_kg_s"),
+        weather,
+    )
+    beta_info["wind_force_n"] = wind_force_n
+    beta_info["wind_force_score"] = wind_force_score_value
+
+    # Add β explanation to risk without breaking the existing risk model yet.
+    if risk is not None:
+        risk.setdefault("explanation", [])
+        beta_value = beta_info.get("beta_kg_s")
+        risk["explanation"].append(
+            f"Коэффициент β: {beta_value:.2f} кг/с ({beta_info.get('source')})"
+            if isinstance(beta_value, (int, float))
+            else f"Коэффициент β: {beta_info.get('source')}"
+        )
+        if wind_force_n is not None:
+            risk["explanation"].append(
+                f"Оценка ветровой силы по F=β·v: {wind_force_n:.1f} Н"
+            )
+
+    # -----------------------------
     # TEMP CACHE FOR FEEDBACK
     # -----------------------------
     analysis_id = str(uuid4())
@@ -992,12 +1163,14 @@ async def analyze_tree(
         "ar_measurements": ar_measurements,
         "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source,
+        "beta": beta_info,
         "scale_px_to_m": scale,
         "gps": gps,
         "address": address,
         "weather": weather,
         "soil": soil,
         "risk": risk,
+        "beta": beta_info,
         "model_versions": MODEL_VERSIONS,
         "model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
@@ -1147,15 +1320,17 @@ async def analyze_tree(
         "ar_measurements": ar_measurements,
         "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source,
+        "beta": beta_info,
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
     }
-    # добавляем оригинальное изображение
+    # Добавляем сжатый preview оригинального изображения для экрана feedback.
+    # Полный оригинал уже сохранён в Supabase RAW; в ответе держим лёгкую версию,
+    # чтобы Flutter не падал с OutOfMemoryError на больших фото.
     try:
-        response["original_image_base64"] = base64.b64encode(image_bytes).decode("utf-8")
-    except:
+        response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
+    except Exception:
         response["original_image_base64"] = None
-        return JSONResponse(response)
 
 
     if gps:
