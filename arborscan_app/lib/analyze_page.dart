@@ -135,12 +135,13 @@ class _ArborScanPageState extends State<ArborScanPage> {
   static String get _feedbackUrl => '$_baseUrl/feedback';
 
   static const String _historyKey = 'arborscan_history';
+  static const String _authTokenKey = 'arborscan_auth_token';
   final List<AnalysisResult> _history = [];
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _loadHistory().then((_) => _syncServerHistory());
     _loadAdminFlag();
   }
 
@@ -201,6 +202,82 @@ class _ArborScanPageState extends State<ArborScanPage> {
   }
 
   /// Загрузка флага режима администратора
+  Future<void> _syncServerHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_authTokenKey) ?? '';
+      if (token.isEmpty) return;
+
+      final uri = Uri.parse('$_baseUrl/analyses/my').replace(
+        queryParameters: {
+          'token': token,
+          'limit': '100',
+        },
+      );
+
+      final res = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (res.statusCode != 200) return;
+
+      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final items = (data['items'] as List? ?? const []);
+
+      final serverHistory = <AnalysisResult>[];
+      for (final raw in items) {
+        if (raw is! Map) continue;
+        final m = raw.cast<String, dynamic>();
+        final createdRaw = m['created_at']?.toString();
+        DateTime createdAt;
+        try {
+          createdAt = createdRaw != null
+              ? DateTime.parse(createdRaw.replaceFirst('Z', ''))
+              : DateTime.now();
+        } catch (_) {
+          createdAt = DateTime.now();
+        }
+
+        serverHistory.add(
+          AnalysisResult(
+            species: m['species']?.toString() ?? 'Неизвестно',
+            height: (m['height_m'] as num?)?.toDouble(),
+            crown: (m['crown_width_m'] as num?)?.toDouble(),
+            trunk: (m['trunk_diameter_m'] as num?)?.toDouble(),
+            scale: null,
+            riskIndex: (m['risk_index'] as num?)?.toDouble(),
+            riskCategory: m['risk_category']?.toString(),
+            lat: (m['lat'] as num?)?.toDouble(),
+            lon: (m['lon'] as num?)?.toDouble(),
+            address: m['address']?.toString(),
+            imageBase64: '',
+            timestamp: createdAt,
+            analysisId: m['analysis_id']?.toString() ?? '',
+          ),
+        );
+      }
+
+      if (!mounted || serverHistory.isEmpty) return;
+
+      setState(() {
+        final byId = <String, AnalysisResult>{
+          for (final h in _history)
+            if (h.analysisId.isNotEmpty) h.analysisId: h
+        };
+        for (final s in serverHistory) {
+          if (s.analysisId.isNotEmpty) {
+            byId[s.analysisId] = s;
+          }
+        }
+        _history
+          ..clear()
+          ..addAll(byId.values.toList()
+            ..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
+      });
+
+      await _saveHistory();
+    } catch (_) {
+      // Серверная история не должна ломать основной анализ.
+    }
+  }
+
   Future<void> _loadAdminFlag() async {
     final prefs = await SharedPreferences.getInstance();
     final isAdmin = prefs.getBool(_adminFlagKey) ?? false;
@@ -452,6 +529,13 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
       final uri = Uri.parse(_apiUrl);
       final request = http.MultipartRequest('POST', uri);
+
+      final prefsForAuth = await SharedPreferences.getInstance();
+      final authToken = prefsForAuth.getString(_authTokenKey) ?? '';
+      if (authToken.isNotEmpty) {
+        request.fields['auth_token'] = authToken;
+      }
+
       if (deviceLat != null) request.fields['lat'] = deviceLat.toString();
       if (deviceLon != null) request.fields['lon'] = deviceLon.toString();
 

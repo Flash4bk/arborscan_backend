@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
@@ -49,6 +50,8 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   static const String _historyKey = 'arborscan_history';
+  static const String _authTokenKey = 'arborscan_auth_token';
+  static const String _baseUrl = 'https://arborscanbackend-production.up.railway.app';
 
   bool _loading = true;
   String? _error;
@@ -113,8 +116,20 @@ class _MapPageState extends State<MapPage> {
         }
       }
 
+      final serverItems = await _loadServerHistoryItems();
+      final byId = <String, _HistoryItem>{
+        for (final item in parsed)
+          if (item.analysisId.isNotEmpty) item.analysisId: item
+      };
+      for (final item in serverItems) {
+        if (item.analysisId.isNotEmpty) {
+          byId[item.analysisId] = item;
+        }
+      }
+      final merged = byId.isNotEmpty ? byId.values.toList() : parsed;
+
       // Keep only valid geographic coordinates.
-      final withGeo = parsed.where((e) {
+      final withGeo = merged.where((e) {
         final lat = e.lat;
         final lon = e.lon;
         if (lat == null || lon == null) return false;
@@ -147,6 +162,57 @@ class _MapPageState extends State<MapPage> {
         _error = e.toString();
         _loading = false;
       });
+    }
+  }
+
+  Future<List<_HistoryItem>> _loadServerHistoryItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_authTokenKey) ?? '';
+      if (token.isEmpty) return const [];
+
+      final uri = Uri.parse('$_baseUrl/analyses/my').replace(
+        queryParameters: {'token': token, 'limit': '200'},
+      );
+      final res = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (res.statusCode != 200) return const [];
+
+      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final items = (data['items'] as List? ?? const []);
+
+      final out = <_HistoryItem>[];
+      for (final raw in items) {
+        if (raw is! Map) continue;
+        final m = raw.cast<String, dynamic>();
+        final createdRaw = m['created_at']?.toString();
+        DateTime ts;
+        try {
+          ts = createdRaw != null
+              ? DateTime.parse(createdRaw.replaceFirst('Z', ''))
+              : DateTime.now();
+        } catch (_) {
+          ts = DateTime.now();
+        }
+
+        out.add(_HistoryItem(
+          analysisId: m['analysis_id']?.toString() ?? '',
+          species: m['species']?.toString() ?? 'Неизвестно',
+          height: (m['height_m'] as num?)?.toDouble(),
+          crown: (m['crown_width_m'] as num?)?.toDouble(),
+          trunk: (m['trunk_diameter_m'] as num?)?.toDouble(),
+          scale: null,
+          riskIndex: (m['risk_index'] as num?)?.toDouble(),
+          riskCategory: m['risk_category']?.toString(),
+          lat: (m['lat'] as num?)?.toDouble(),
+          lon: (m['lon'] as num?)?.toDouble(),
+          address: m['address']?.toString(),
+          imageBase64: '',
+          timestamp: ts,
+        ));
+      }
+      return out;
+    } catch (_) {
+      return const [];
     }
   }
 

@@ -1182,6 +1182,170 @@ async def _log_routes_on_startup():
         print(f"[!] Failed to list routes: {e}")
 
 
+def init_analyses_db():
+    """Create server-side analysis table linked to auth users."""
+    init_auth_db()
+    with _auth_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS analyses (
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                created_at TEXT NOT NULL,
+                species TEXT,
+                risk_index REAL,
+                risk_category TEXT,
+                height_m REAL,
+                crown_width_m REAL,
+                trunk_diameter_m REAL,
+                beta_kg_s REAL,
+                base_moment_nm REAL,
+                center_of_load_m REAL,
+                lat REAL,
+                lon REAL,
+                address TEXT,
+                response_json TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        conn.commit()
+
+
+def _save_analysis_record(response: dict, user: sqlite3.Row | None):
+    """Persist lightweight analysis response for personal history/map."""
+    init_analyses_db()
+    risk = response.get("risk") or {}
+    beta = response.get("beta") or {}
+    analytic = response.get("analytic_wind_model") or {}
+    analytic_out = analytic.get("outputs") or {}
+    gps = response.get("gps") or {}
+
+    with _auth_conn() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO analyses(
+                id, user_id, created_at, species, risk_index, risk_category,
+                height_m, crown_width_m, trunk_diameter_m, beta_kg_s,
+                base_moment_nm, center_of_load_m, lat, lon, address, response_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                response.get("analysis_id"),
+                user["id"] if user is not None else None,
+                _now_iso(),
+                response.get("species"),
+                risk.get("index"),
+                risk.get("category"),
+                response.get("height_m"),
+                response.get("crown_width_m"),
+                response.get("trunk_diameter_m"),
+                beta.get("beta_kg_s"),
+                analytic_out.get("base_moment_nm"),
+                analytic_out.get("center_of_load_m"),
+                gps.get("lat"),
+                gps.get("lon"),
+                response.get("address"),
+                json.dumps(response, ensure_ascii=False),
+            ),
+        )
+        conn.commit()
+
+
+def _analysis_summary(row: sqlite3.Row) -> dict:
+    return {
+        "analysis_id": row["id"],
+        "created_at": row["created_at"],
+        "species": row["species"],
+        "risk_index": row["risk_index"],
+        "risk_category": row["risk_category"],
+        "height_m": row["height_m"],
+        "crown_width_m": row["crown_width_m"],
+        "trunk_diameter_m": row["trunk_diameter_m"],
+        "beta_kg_s": row["beta_kg_s"],
+        "base_moment_nm": row["base_moment_nm"],
+        "center_of_load_m": row["center_of_load_m"],
+        "lat": row["lat"],
+        "lon": row["lon"],
+        "address": row["address"],
+    }
+
+
+@app.on_event("startup")
+async def _init_analyses_on_startup():
+    init_analyses_db()
+    print(f"[*] Analyses table ready in: {AUTH_DB_PATH.resolve()}")
+
+
+@app.get("/analyses/my")
+async def analyses_my(token: str, limit: int = 100):
+    user = _get_user_by_token(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+
+    limit = max(1, min(int(limit), 500))
+    init_analyses_db()
+    with _auth_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM analyses
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (user["id"], limit),
+        ).fetchall()
+
+    return {"ok": True, "items": [_analysis_summary(r) for r in rows]}
+
+
+@app.get("/analyses/{analysis_id}")
+async def analyses_get(analysis_id: str, token: str):
+    user = _get_user_by_token(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+
+    init_analyses_db()
+    with _auth_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM analyses WHERE id = ?",
+            (analysis_id,),
+        ).fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Анализ не найден")
+
+    if row["user_id"] != user["id"] and user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Нет доступа к этому анализу")
+
+    return {"ok": True, "analysis": json.loads(row["response_json"])}
+
+
+@app.get("/admin/analyses")
+async def admin_analyses(token: str, limit: int = 200):
+    user = _get_user_by_token(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Нужна роль администратора")
+
+    limit = max(1, min(int(limit), 1000))
+    init_analyses_db()
+    with _auth_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM analyses
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+    return {"ok": True, "items": [_analysis_summary(r) for r in rows]}
+
+
+
 # --- Training events (in-memory) ---
 # Stored in a small ring buffer so the Admin Panel can show a live-ish log.
 TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
@@ -1248,9 +1412,12 @@ async def analyze_tree(
     crown_shape_factor: Optional[float] = Form(None),
     manual_wind_speed_m_s: Optional[float] = Form(None),
     manual_wind_gust_m_s: Optional[float] = Form(None),
+    auth_token: Optional[str] = Form(None),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
 ):
+    analysis_user = _get_user_by_token(auth_token) if auth_token else None
+
     image_bytes = await file.read()
     np_img = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
@@ -1666,6 +1833,17 @@ async def analyze_tree(
         response["soil"] = soil
     if risk:
         response["risk"] = risk
+
+    if analysis_user is not None:
+        response["user"] = _user_public(analysis_user)
+        response["server_saved"] = True
+    else:
+        response["server_saved"] = False
+
+    try:
+        _save_analysis_record(response, analysis_user)
+    except Exception as e:
+        print(f"[!] Failed to save analysis {analysis_id} to SQLite: {e}")
 
     return JSONResponse(response)
 
