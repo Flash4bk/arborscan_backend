@@ -16,6 +16,7 @@ import 'feedback_page.dart';
 import 'ar_measure_channel.dart';
 import 'app_theme.dart';
 import 'analysis_report_page.dart';
+import 'location_service.dart';
 /// ============================
 ///  Модель результата анализа
 /// ============================
@@ -107,6 +108,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
   bool _isLoading = false;
   String? _error;
+  String? _gpsStatusText;
+  bool _lastGpsOk = false;
   double? _lastArMeters;
   double? _arHeightM;
   double? _arCrownWidthM;
@@ -445,10 +448,18 @@ class _ArborScanPageState extends State<ArborScanPage> {
     });
 
     try {
-      // GPS с устройства (надёжнее, чем EXIF; EXIF часто теряется)
-      final pos = await LocationService.tryGetCurrentPosition();
+      // GPS с устройства. Берём current, fallback: lastKnownPosition.
+      final locationResult = await LocationService.getCurrentPositionDetailed();
+      final pos = locationResult.position;
       final double? deviceLat = pos?.latitude;
       final double? deviceLon = pos?.longitude;
+
+      if (mounted) {
+        setState(() {
+          _lastGpsOk = pos != null;
+          _gpsStatusText = locationResult.message;
+        });
+      }
 
       final uri = Uri.parse(_apiUrl);
       final request = http.MultipartRequest('POST', uri);
@@ -539,9 +550,14 @@ class _ArborScanPageState extends State<ArborScanPage> {
         analysisId: analysisId,
       );
 
+      final resultForUi = Map<String, dynamic>.from(data);
+      if (resultForUi['gps'] == null && deviceLat != null && deviceLon != null) {
+        resultForUi['gps'] = {'lat': deviceLat, 'lon': deviceLon};
+      }
+
       setState(() {
         _annotatedImageBytes = annotatedBytes;
-        _result = data;
+        _result = resultForUi;
         _history.insert(0, historyItem);
       });
 
@@ -964,6 +980,52 @@ class _ArborScanPageState extends State<ArborScanPage> {
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildGpsStatusCard() {
+    final status = _gpsStatusText ??
+        'GPS будет получен при запуске анализа. Если координаты появятся, запись попадёт на карту.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: _lastGpsOk ? AppTheme.primary.withOpacity(0.45) : AppTheme.border,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _lastGpsOk ? Icons.location_on : Icons.location_searching,
+            color: _lastGpsOk ? AppTheme.primary : AppTheme.muted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              status,
+              style: const TextStyle(
+                color: AppTheme.muted,
+                fontSize: 12,
+                height: 1.25,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Настройки геолокации',
+            onPressed: () async {
+              await LocationService.openLocationSettings();
+            },
+            icon: const Icon(Icons.settings_outlined),
           ),
         ],
       ),
@@ -1400,6 +1462,8 @@ IconButton(
                   const SizedBox(height: 16),
 
                   _buildResultCard(),
+                  const SizedBox(height: 12),
+                  _buildGpsStatusCard(),
                   if (_result != null) ...[
                     const SizedBox(height: 12),
                     SizedBox(
@@ -1878,7 +1942,7 @@ class HistoryPage extends StatelessWidget {
 // ============================
 //  Location helper (no extra files)
 // ============================
-class LocationService {
+class _LegacyLocationServiceUnused {
   /// Возвращает Position или null, если:
   /// - геолокация выключена
   /// - нет разрешения

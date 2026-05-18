@@ -964,6 +964,29 @@ def _startup_load_models():
 
 
 
+
+
+def normalize_address_ru(address: str | None) -> str | None:
+    """Normalize common Belarusian OSM address fragments to Russian display text."""
+    if not address:
+        return address
+    replacements = {
+        "Інтэрнат": "Интернат",
+        "вуліца": "улица",
+        "вул.": "ул.",
+        "Машынабудаўнікоў": "Машиностроителей",
+        "Аўтазаводскі": "Автозаводский",
+        "раён": "район",
+        "Пасёлак": "Посёлок",
+        "Заводскі": "Заводской",
+        "Мінск": "Минск",
+        "Беларусь": "Беларусь",
+    }
+    out = address
+    for src, dst in replacements.items():
+        out = out.replace(src, dst)
+    return out
+
 @app.post("/analyze-tree")
 async def analyze_tree(
     file: UploadFile = File(...),
@@ -1108,7 +1131,7 @@ async def analyze_tree(
         else:
             gps = extract_gps(image_bytes)
         if gps:
-            address = reverse_geocode(gps["lat"], gps["lon"])
+            address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
             weather = get_weather(gps["lat"], gps["lon"])
             soil = get_soil(gps["lat"], gps["lon"])
 

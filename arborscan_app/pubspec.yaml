@@ -13,7 +13,7 @@ dependencies:
   http: ^1.2.0
   image_picker: ^1.0.7
   shared_preferences: ^2.2.2
-  url_launcher: ^6.2.5
+  url_launcher: ^6.3.2
   lottie: ^2.6.0
   google_maps_flutter: ^2.6.0
   animations: ^2.0.8
