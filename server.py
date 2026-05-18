@@ -974,6 +974,8 @@ async def analyze_tree(
     crown_start_height_m: Optional[float] = Form(None),
     crown_density_factor: Optional[float] = Form(None),
     crown_shape_factor: Optional[float] = Form(None),
+    manual_wind_speed_m_s: Optional[float] = Form(None),
+    manual_wind_gust_m_s: Optional[float] = Form(None),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
 ):
@@ -1109,6 +1111,17 @@ async def analyze_tree(
             address = reverse_geocode(gps["lat"], gps["lon"])
             weather = get_weather(gps["lat"], gps["lon"])
             soil = get_soil(gps["lat"], gps["lon"])
+
+        # Manual wind values are used when GPS/weather is unavailable
+        # or when the expert wants to test a scenario.
+        if manual_wind_speed_m_s is not None or manual_wind_gust_m_s is not None:
+            if weather is None:
+                weather = {}
+            if manual_wind_speed_m_s is not None and manual_wind_speed_m_s > 0:
+                weather["wind_speed"] = float(manual_wind_speed_m_s)
+            if manual_wind_gust_m_s is not None and manual_wind_gust_m_s > 0:
+                weather["wind_gust"] = float(manual_wind_gust_m_s)
+            weather["source"] = "manual"
 
         risk = compute_risk(
             species_name,

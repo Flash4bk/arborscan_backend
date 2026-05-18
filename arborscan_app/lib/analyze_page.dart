@@ -115,6 +115,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
   double? _manualCrownStartHeightM;
   double? _manualCrownDensityFactor;
   double? _manualCrownShapeFactor;
+  double? _manualWindSpeedMS;
+  double? _manualWindGustMS;
 
 
   // Режим администратора
@@ -474,6 +476,12 @@ class _ArborScanPageState extends State<ArborScanPage> {
       }
       if (_manualCrownShapeFactor != null && _manualCrownShapeFactor! > 0) {
         request.fields['crown_shape_factor'] = _manualCrownShapeFactor!.toStringAsFixed(3);
+      }
+      if (_manualWindSpeedMS != null && _manualWindSpeedMS! > 0) {
+        request.fields['manual_wind_speed_m_s'] = _manualWindSpeedMS!.toStringAsFixed(3);
+      }
+      if (_manualWindGustMS != null && _manualWindGustMS! > 0) {
+        request.fields['manual_wind_gust_m_s'] = _manualWindGustMS!.toStringAsFixed(3);
       }
       request.files.add(
         await http.MultipartFile.fromPath('file', _imageFile!.path),
@@ -851,6 +859,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
                   _manualCrownStartHeightM = null;
                   _manualCrownDensityFactor = null;
                   _manualCrownShapeFactor = null;
+                  _manualWindSpeedMS = null;
+                  _manualWindGustMS = null;
                 }),
                 icon: const Icon(Icons.auto_fix_high, size: 18),
                 label: const Text('авто'),
@@ -911,9 +921,44 @@ class _ArborScanPageState extends State<ArborScanPage> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: numberField(
+                  label: 'Ветер',
+                  hint: 'из GPS/погоды',
+                  suffix: 'м/с',
+                  icon: Icons.air,
+                  value: _manualWindSpeedMS,
+                  onChanged: (v) => setState(() => _manualWindSpeedMS = v),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: numberField(
+                  label: 'Порыв',
+                  hint: 'если известен',
+                  suffix: 'м/с',
+                  icon: Icons.storm_outlined,
+                  value: _manualWindGustMS,
+                  onChanged: (v) => setState(() => _manualWindGustMS = v),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           const Text(
-            'Обычно оставляйте 1.0. Значения >1 усиливают ветровую нагрузку, <1 уменьшают её.',
+            'Если GPS/погода недоступны, введите ветер вручную. Для сценарного расчёта можно задать порыв, например 15–25 м/с.',
+            style: TextStyle(
+              color: AppTheme.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Коэффициенты кроны обычно оставляйте 1.0. Значения >1 усиливают ветровую нагрузку, <1 уменьшают её.',
             style: TextStyle(
               color: AppTheme.muted,
               fontSize: 12,
