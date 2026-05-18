@@ -6,6 +6,9 @@ import re
 import shutil
 import time
 import threading
+import sqlite3
+import hashlib
+import secrets
 import cv2
 import numpy as np
 import requests
@@ -18,7 +21,7 @@ from fastapi.responses import JSONResponse
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
 from tree_dynamics import compute_analytic_wind_model
@@ -922,7 +925,253 @@ class AdminSetTrainingRequest(BaseModel):
     value: bool | None = None
 
 
+
+
+# =============================================
+# AUTH MODELS
+# =============================================
+
+class AuthRegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class AuthLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthRoleRequest(BaseModel):
+    token: str
+    role: str
+    admin_code: str | None = None
+
+
 app = FastAPI(title="ArborScan API v2.0")
+
+# =============================================
+# LOCAL AUTH STORAGE (SQLite)
+# =============================================
+
+AUTH_DB_PATH = Path(os.getenv("ARBORSCAN_AUTH_DB", "arborscan_auth.db"))
+AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
+AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
+
+
+def _auth_conn():
+    conn = sqlite3.connect(str(AUTH_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_auth_db():
+    with _auth_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                salt TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                token TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        conn.commit()
+
+
+def _now_iso() -> str:
+    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+
+def _hash_password(password: str, salt_hex: str | None = None) -> tuple[str, str]:
+    if salt_hex is None:
+        salt = secrets.token_bytes(16)
+        salt_hex = salt.hex()
+    else:
+        salt = bytes.fromhex(salt_hex)
+
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        120_000,
+    ).hex()
+    return digest, salt_hex
+
+
+def _user_public(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "email": row["email"],
+        "role": row["role"],
+        "created_at": row["created_at"],
+    }
+
+
+def _create_session(user_id: str) -> dict:
+    token = secrets.token_urlsafe(32)
+    created_at = _now_iso()
+    expires_at = (datetime.utcnow() + timedelta(days=AUTH_TOKEN_TTL_DAYS)).isoformat(timespec="seconds") + "Z"
+    with _auth_conn() as conn:
+        conn.execute(
+            "INSERT INTO auth_sessions(token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+            (token, user_id, created_at, expires_at),
+        )
+        conn.commit()
+    return {"token": token, "expires_at": expires_at}
+
+
+def _get_user_by_token(token: str) -> sqlite3.Row | None:
+    if not token:
+        return None
+    with _auth_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT users.*
+            FROM auth_sessions
+            JOIN users ON users.id = auth_sessions.user_id
+            WHERE auth_sessions.token = ?
+              AND auth_sessions.expires_at > ?
+            """,
+            (token, _now_iso()),
+        ).fetchone()
+        return row
+
+
+def _email_norm(email: str) -> str:
+    return (email or "").strip().lower()
+
+
+def _validate_auth_payload(name: str | None, email: str, password: str, need_name: bool = False):
+    if need_name and (not name or len(name.strip()) < 2):
+        raise HTTPException(status_code=400, detail="Имя должно быть не короче 2 символов")
+    if "@" not in email or "." not in email:
+        raise HTTPException(status_code=400, detail="Введите корректную почту")
+    if not password or len(password) < 4:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не короче 4 символов")
+
+
+@app.on_event("startup")
+async def _init_auth_on_startup():
+    init_auth_db()
+    print(f"[*] Auth DB ready: {AUTH_DB_PATH.resolve()}")
+
+
+@app.post("/auth/register")
+async def auth_register(payload: AuthRegisterRequest):
+    init_auth_db()
+    name = payload.name.strip()
+    email = _email_norm(payload.email)
+    password = payload.password
+    _validate_auth_payload(name, email, password, need_name=True)
+
+    password_hash, salt = _hash_password(password)
+    user_id = str(uuid4())
+    now = _now_iso()
+
+    try:
+        with _auth_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO users(id, name, email, password_hash, salt, role, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'user', ?, ?)
+                """,
+                (user_id, name, email, password_hash, salt, now, now),
+            )
+            conn.commit()
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=409, detail="Пользователь с такой почтой уже существует")
+
+    session = _create_session(user_id)
+    with _auth_conn() as conn:
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+    return {
+        "ok": True,
+        "user": _user_public(user),
+        "token": session["token"],
+        "expires_at": session["expires_at"],
+    }
+
+
+@app.post("/auth/login")
+async def auth_login(payload: AuthLoginRequest):
+    init_auth_db()
+    email = _email_norm(payload.email)
+    password = payload.password
+    _validate_auth_payload(None, email, password, need_name=False)
+
+    with _auth_conn() as conn:
+        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+
+    if user is None:
+        raise HTTPException(status_code=401, detail="Неверная почта или пароль")
+
+    expected, _ = _hash_password(password, user["salt"])
+    if not secrets.compare_digest(expected, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Неверная почта или пароль")
+
+    session = _create_session(user["id"])
+    return {
+        "ok": True,
+        "user": _user_public(user),
+        "token": session["token"],
+        "expires_at": session["expires_at"],
+    }
+
+
+@app.get("/auth/me")
+async def auth_me(token: str):
+    init_auth_db()
+    user = _get_user_by_token(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+    return {"ok": True, "user": _user_public(user)}
+
+
+@app.post("/auth/set-role")
+async def auth_set_role(payload: AuthRoleRequest):
+    init_auth_db()
+    user = _get_user_by_token(payload.token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+
+    role = (payload.role or "").strip().lower()
+    if role not in ("user", "admin"):
+        raise HTTPException(status_code=400, detail="Недопустимая роль")
+
+    if role == "admin" and payload.admin_code != AUTH_ADMIN_CODE:
+        raise HTTPException(status_code=403, detail="Неверный код администратора")
+
+    now = _now_iso()
+    with _auth_conn() as conn:
+        conn.execute(
+            "UPDATE users SET role = ?, updated_at = ? WHERE id = ?",
+            (role, now, user["id"]),
+        )
+        conn.commit()
+        updated = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
+
+    return {"ok": True, "user": _user_public(updated)}
+
+
 
 @app.on_event("startup")
 async def _log_routes_on_startup():

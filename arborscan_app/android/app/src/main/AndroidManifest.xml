@@ -7,7 +7,7 @@
     <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
 
     <application
-        android:label="arborscan_app"
+        android:label="ArborScan"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Вставь сюда ключ Google Maps Platform.
+         Нужно включить Maps SDK for Android в Google Cloud Console. -->
+    <string name="google_maps_key">AIzaSyAu2U9VU2OAPFfjqT-Z14zmNsTDKqym1x4</string>
+</resources>

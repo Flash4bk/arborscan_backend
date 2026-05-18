@@ -219,10 +219,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
     });
   }
 
-  /// Экран / bottom-sheet с настройками и вводом кода администратора
+  /// Экран / bottom-sheet с настройками роли.
   Future<void> _openSettings() async {
     final controller = TextEditingController();
-    final theme = Theme.of(context);
 
     await showModalBottomSheet(
       context: context,
@@ -231,137 +230,127 @@ class _ArborScanPageState extends State<ArborScanPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black26,
-                    borderRadius: BorderRadius.circular(999),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            Future<void> setRole(bool admin) async {
+              if (admin) {
+                final code = controller.text.trim();
+                if (code != _adminPasscode) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Неверный код администратора.')),
+                  );
+                  return;
+                }
+              }
+
+              await _setAdmin(admin);
+              if (!context.mounted) return;
+              setSheetState(() {});
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    admin
+                        ? 'Роль администратора включена.'
+                        : 'Роль пользователя включена.',
                   ),
                 ),
+              );
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
               ),
-              Text(
-                'Настройки',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      _isAdmin
-                          ? 'Режим администратора включён.\nКнопка исправления анализа доступна.'
-                          : 'Режим администратора выключен.\nПользователь может только смотреть анализ.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.black87,
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _isAdmin
-                          ? const Color(0xFFD9F5DC)
-                          : const Color(0xFFE0E0E0),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      _isAdmin ? 'ADMIN' : 'USER',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                  Text(
+                    'Настройки доступа',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isAdmin
+                        ? 'Сейчас включён режим администратора: доступны исправление анализа, обучение и админ-панель.'
+                        : 'Сейчас включён режим пользователя: доступны анализ, история, карта и отчёты.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 14),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text('Пользователь'),
+                        icon: Icon(Icons.person_outline),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Код администратора',
-                  border: OutlineInputBorder(),
-                  helperText: 'Введите код, чтобы включить режим администратора.',
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                      },
-                      child: const Text('Отмена'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () async {
-                        final code = controller.text.trim();
-                        if (code == _adminPasscode) {
-                          await _setAdmin(true);
-                          if (context.mounted) {
-                            Navigator.of(ctx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('Режим администратора включён.'),
-                              ),
-                            );
-                          }
-                        } else {
-                          ScaffoldMessenger.of(ctx).showSnackBar(
-                            const SnackBar(
-                              content: Text('Неверный код администратора.'),
-                            ),
-                          );
-                        }
-                      },
-                      child: const Text('Войти как администратор'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (_isAdmin)
-                Center(
-                  child: TextButton(
-                    onPressed: () async {
-                      await _setAdmin(false);
-                      if (context.mounted) {
-                        Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Режим администратора отключён.'),
-                          ),
-                        );
-                      }
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text('Администратор'),
+                        icon: Icon(Icons.admin_panel_settings_outlined),
+                      ),
+                    ],
+                    selected: {_isAdmin},
+                    onSelectionChanged: (v) async {
+                      final targetAdmin = v.first;
+                      if (targetAdmin) return;
+                      await setRole(false);
                     },
-                    child: const Text('Выйти из режима администратора'),
                   ),
-                ),
-            ],
-          ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: controller,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Код администратора',
+                      prefixIcon: Icon(Icons.lock_outline),
+                      helperText: 'Введите код и нажмите кнопку ниже.',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          icon: const Icon(Icons.close),
+                          label: const Text('Закрыть'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => setRole(true),
+                          icon: const Icon(Icons.admin_panel_settings),
+                          label: const Text('Войти как админ'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
