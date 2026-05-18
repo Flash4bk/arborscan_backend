@@ -24,6 +24,13 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
+
+try:
+    from google.oauth2 import id_token as google_id_token
+    from google.auth.transport import requests as google_requests
+except Exception:
+    google_id_token = None
+    google_requests = None
 from tree_dynamics import compute_analytic_wind_model
 
 # -------------------------------------
@@ -947,6 +954,12 @@ class AuthRoleRequest(BaseModel):
     role: str
     admin_code: str | None = None
 
+class AuthGoogleRequest(BaseModel):
+    id_token: str
+    email: str | None = None
+    name: str | None = None
+    photo_url: str | None = None
+
 
 app = FastAPI(title="ArborScan API v2.0")
 
@@ -957,6 +970,7 @@ app = FastAPI(title="ArborScan API v2.0")
 AUTH_DB_PATH = Path(os.getenv("ARBORSCAN_AUTH_DB", "arborscan_auth.db"))
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
 AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com")
 
 
 def _auth_conn():
@@ -992,7 +1006,18 @@ def init_auth_db():
             )
             """
         )
+                # Backward-compatible migrations for OAuth profile fields.
+        existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+        migrations = {
+            "provider": "ALTER TABLE users ADD COLUMN provider TEXT",
+            "google_sub": "ALTER TABLE users ADD COLUMN google_sub TEXT",
+            "avatar_url": "ALTER TABLE users ADD COLUMN avatar_url TEXT",
+        }
+        for col, sql in migrations.items():
+            if col not in existing_cols:
+                conn.execute(sql)
         conn.commit()
+
 
 
 def _now_iso() -> str:
@@ -1016,13 +1041,19 @@ def _hash_password(password: str, salt_hex: str | None = None) -> tuple[str, str
 
 
 def _user_public(row: sqlite3.Row) -> dict:
-    return {
+    data = {
         "id": row["id"],
         "name": row["name"],
         "email": row["email"],
         "role": row["role"],
         "created_at": row["created_at"],
     }
+    try:
+        data["provider"] = row["provider"]
+        data["avatar_url"] = row["avatar_url"]
+    except Exception:
+        pass
+    return data
 
 
 def _create_session(user_id: str) -> dict:
@@ -1127,6 +1158,91 @@ async def auth_login(payload: AuthLoginRequest):
     expected, _ = _hash_password(password, user["salt"])
     if not secrets.compare_digest(expected, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Неверная почта или пароль")
+
+    session = _create_session(user["id"])
+    return {
+        "ok": True,
+        "user": _user_public(user),
+        "token": session["token"],
+        "expires_at": session["expires_at"],
+    }
+
+
+
+@app.post("/auth/google")
+async def auth_google(payload: AuthGoogleRequest):
+    """Google Sign-In.
+
+    Flutter sends Google idToken. Backend verifies it against GOOGLE_CLIENT_ID,
+    then creates or finds a local ArborScan user and returns the normal ArborScan token.
+    """
+    init_auth_db()
+
+    if google_id_token is None or google_requests is None:
+        raise HTTPException(
+            status_code=500,
+            detail="google-auth не установлен на backend. Добавьте google-auth в requirements.txt.",
+        )
+
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="GOOGLE_CLIENT_ID не задан")
+
+    try:
+        info = google_id_token.verify_oauth2_token(
+            payload.id_token,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Google token не прошёл проверку: {e}")
+
+    sub = str(info.get("sub") or "")
+    email = _email_norm(str(info.get("email") or payload.email or ""))
+    name = str(info.get("name") or payload.name or email.split("@")[0] or "Google user").strip()
+    avatar_url = str(info.get("picture") or payload.photo_url or "")
+
+    if not sub or not email:
+        raise HTTPException(status_code=401, detail="Google не вернул sub/email")
+
+    now = _now_iso()
+
+    with _auth_conn() as conn:
+        user = conn.execute(
+            "SELECT * FROM users WHERE google_sub = ? OR email = ?",
+            (sub, email),
+        ).fetchone()
+
+        if user is None:
+            user_id = str(uuid4())
+            random_password = secrets.token_urlsafe(24)
+            password_hash, salt = _hash_password(random_password)
+            conn.execute(
+                """
+                INSERT INTO users(
+                    id, name, email, password_hash, salt, role,
+                    created_at, updated_at, provider, google_sub, avatar_url
+                )
+                VALUES (?, ?, ?, ?, ?, 'user', ?, ?, 'google', ?, ?)
+                """,
+                (user_id, name, email, password_hash, salt, now, now, sub, avatar_url),
+            )
+            conn.commit()
+            user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        else:
+            conn.execute(
+                """
+                UPDATE users
+                SET name = COALESCE(NULLIF(?, ''), name),
+                    provider = 'google',
+                    google_sub = COALESCE(NULLIF(?, ''), google_sub),
+                    avatar_url = COALESCE(NULLIF(?, ''), avatar_url),
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (name, sub, avatar_url, now, user["id"]),
+            )
+            conn.commit()
+            user = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
 
     session = _create_session(user["id"])
     return {

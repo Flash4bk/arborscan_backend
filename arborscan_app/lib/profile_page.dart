@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,6 +18,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   static const String _baseUrl =
       'https://arborscanbackend-production.up.railway.app';
+
+  static const String _googleWebClientId = '946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com';
 
   static const String _adminFlagKey = 'arborscan_is_admin';
 
@@ -36,6 +39,11 @@ class _ProfilePageState extends State<ProfilePage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _adminCodeController = TextEditingController();
+
+  late final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: _googleWebClientId,
+  );
 
   bool _loading = true;
   bool _busy = false;
@@ -333,6 +341,44 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _loginWithGoogle() async {
+    setState(() => _busy = true);
+    try {
+      await _googleSignIn.signOut(); // позволяет выбрать аккаунт заново
+      final account = await _googleSignIn.signIn();
+      if (account == null) {
+        _snack('Вход через Google отменён.');
+        return;
+      }
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        _snack('Google не вернул idToken. Проверьте OAuth Client ID.');
+        return;
+      }
+
+      final data = await _postJson('/auth/google', {
+        'id_token': idToken,
+        'email': account.email,
+        'name': account.displayName ?? account.email,
+        'photo_url': account.photoUrl,
+      });
+
+      await _applyAuthData(data);
+      if (!mounted) return;
+      setState(() {
+        _serverOnline = true;
+        _statusText = 'Вход выполнен через Google.';
+      });
+      _snack('Вы вошли через Google.');
+    } catch (e) {
+      _snack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _openDeveloperEmail() async {
     final uri = Uri(
       scheme: 'mailto',
@@ -527,6 +573,29 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
             selected: {_isRegisterMode},
             onSelectionChanged: (v) => setState(() => _isRegisterMode = v.first),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _busy ? null : _loginWithGoogle,
+              icon: const Icon(Icons.g_mobiledata, size: 28),
+              label: const Text('Войти через Google'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: Divider(color: AppTheme.border)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  'или',
+                  style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700),
+                ),
+              ),
+              Expanded(child: Divider(color: AppTheme.border)),
+            ],
           ),
           const SizedBox(height: 14),
           if (_isRegisterMode) ...[
