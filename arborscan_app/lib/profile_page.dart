@@ -57,6 +57,13 @@ class _ProfilePageState extends State<ProfilePage> {
   String _role = 'user';
   String _token = '';
   String _statusText = 'Проверка профиля...';
+  String _avatarUrl = '';
+
+  int _totalAnalyses = 0;
+  int _geoAnalyses = 0;
+  int _highRiskAnalyses = 0;
+  double? _avgRisk;
+  Map<String, dynamic>? _lastAnalysis;
 
   @override
   void initState() {
@@ -91,7 +98,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception(data['detail']?.toString() ?? 'Ошибка сервера');
+      throw Exception('HTTP ${res.statusCode}: ${data['detail']?.toString() ?? 'Ошибка сервера'}');
     }
     return data;
   }
@@ -106,9 +113,33 @@ class _ProfilePageState extends State<ProfilePage> {
 
     final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception(data['detail']?.toString() ?? 'Ошибка сервера');
+      throw Exception('HTTP ${res.statusCode}: ${data['detail']?.toString() ?? 'Ошибка сервера'}');
     }
     return data;
+  }
+
+  Future<void> _clearInvalidSession(String message) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_expiresAtKey);
+    await prefs.setBool(_loggedInKey, false);
+    await prefs.setBool(_adminFlagKey, false);
+
+    if (!mounted) return;
+    setState(() {
+      _loggedIn = false;
+      _isAdmin = false;
+      _serverOnline = false;
+      _role = 'user';
+      _token = '';
+      _avatarUrl = '';
+      _totalAnalyses = 0;
+      _geoAnalyses = 0;
+      _highRiskAnalyses = 0;
+      _avgRisk = null;
+      _lastAnalysis = null;
+      _statusText = message;
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -133,19 +164,27 @@ class _ProfilePageState extends State<ProfilePage> {
       try {
         final data = await _getJson('/auth/me', {'token': token});
         await _applyAuthData(data, tokenFromResponse: token);
+        await _loadStats();
         if (!mounted) return;
         setState(() {
           _serverOnline = true;
           _statusText = 'Сессия подтверждена сервером.';
         });
-      } catch (_) {
-        if (!mounted) return;
-        setState(() {
-          _serverOnline = false;
-          _statusText = _loggedIn
-              ? 'Сервер недоступен. Используется сохранённый профиль.'
-              : 'Войдите или зарегистрируйтесь.';
-        });
+      } catch (e) {
+        final msg = e.toString();
+        if (msg.contains('401') || msg.contains('Сессия') || msg.contains('Unauthorized')) {
+          await _clearInvalidSession(
+            'Сессия истекла или была сброшена после обновления сервера. Войдите снова.',
+          );
+        } else {
+          if (!mounted) return;
+          setState(() {
+            _serverOnline = false;
+            _statusText = _loggedIn
+                ? 'Сервер недоступен. Используется сохранённый профиль.'
+                : 'Войдите или зарегистрируйтесь.';
+          });
+        }
       }
     } else {
       setState(() {
@@ -168,6 +207,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final name = user['name']?.toString() ?? '';
     final email = user['email']?.toString() ?? '';
     final role = user['role']?.toString() ?? 'user';
+    final avatarUrl = user['avatar_url']?.toString() ?? '';
     final isAdmin = role == 'admin';
 
     final prefs = await SharedPreferences.getInstance();
@@ -187,10 +227,13 @@ class _ProfilePageState extends State<ProfilePage> {
       _token = token;
       _loggedIn = true;
       _isAdmin = isAdmin;
+      _avatarUrl = avatarUrl;
       _nameController.text = name;
       _emailController.text = email;
       _passwordController.clear();
     });
+
+    await _loadStats();
   }
 
   String? _validateEmail(String value) {
@@ -289,6 +332,12 @@ class _ProfilePageState extends State<ProfilePage> {
       _passwordController.clear();
       _adminCodeController.clear();
       _statusText = 'Вы вышли из профиля.';
+      _avatarUrl = '';
+      _totalAnalyses = 0;
+      _geoAnalyses = 0;
+      _highRiskAnalyses = 0;
+      _avgRisk = null;
+      _lastAnalysis = null;
     });
     _snack('Вы вышли из профиля.');
   }
@@ -306,6 +355,12 @@ class _ProfilePageState extends State<ProfilePage> {
       _isAdmin = false;
       _token = '';
       _statusText = 'Локальная сессия очищена.';
+      _avatarUrl = '';
+      _totalAnalyses = 0;
+      _geoAnalyses = 0;
+      _highRiskAnalyses = 0;
+      _avgRisk = null;
+      _lastAnalysis = null;
     });
     _snack('Локальная сессия очищена. Аккаунт на сервере не удалён.');
   }
@@ -344,6 +399,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loginWithGoogle() async {
     setState(() => _busy = true);
     try {
+      await _clearInvalidSession('Выполняется вход через Google...');
       await _googleSignIn.signOut(); // позволяет выбрать аккаунт заново
       final account = await _googleSignIn.signIn();
       if (account == null) {
@@ -376,6 +432,27 @@ class _ProfilePageState extends State<ProfilePage> {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _loadStats() async {
+    if (_token.isEmpty) return;
+    try {
+      final data = await _getJson('/profile/stats', {'token': _token});
+      final stats = (data['stats'] as Map?)?.cast<String, dynamic>() ?? {};
+      final user = (data['user'] as Map?)?.cast<String, dynamic>() ?? {};
+
+      if (!mounted) return;
+      setState(() {
+        _avatarUrl = user['avatar_url']?.toString() ?? _avatarUrl;
+        _totalAnalyses = (stats['total_analyses'] as num?)?.toInt() ?? 0;
+        _geoAnalyses = (stats['with_geo'] as num?)?.toInt() ?? 0;
+        _highRiskAnalyses = (stats['high_risk_count'] as num?)?.toInt() ?? 0;
+        _avgRisk = (stats['avg_risk'] as num?)?.toDouble();
+        _lastAnalysis = (stats['last_analysis'] as Map?)?.cast<String, dynamic>();
+      });
+    } catch (_) {
+      // Статистика профиля не должна ломать вход.
     }
   }
 
@@ -416,6 +493,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildDeveloperCard(context),
                     const SizedBox(height: 14),
                     _loggedIn ? _buildAccountCard(context) : _buildAuthCard(context),
+                    if (_loggedIn) ...[
+                      const SizedBox(height: 14),
+                      _buildStatsCard(context),
+                    ],
                     const SizedBox(height: 14),
                     _buildRoleCard(context),
                     const SizedBox(height: 14),
@@ -428,6 +509,35 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: const Center(child: CircularProgressIndicator()),
                   ),
               ],
+            ),
+    );
+  }
+
+  Widget _buildAvatar({double size = 58}) {
+    final hasAvatar = _avatarUrl.trim().isNotEmpty;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.12),
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.primary.withOpacity(0.30)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasAvatar
+          ? Image.network(
+              _avatarUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.account_circle,
+                color: AppTheme.primary,
+                size: 34,
+              ),
+            )
+          : const Icon(
+              Icons.account_circle,
+              color: AppTheme.primary,
+              size: 34,
             ),
     );
   }
@@ -653,7 +763,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.account_circle, color: AppTheme.primary, size: 34),
+          _buildAvatar(size: 48),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -709,6 +819,155 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsCard(BuildContext context) {
+    final avgRiskText = _avgRisk == null ? '—' : _avgRisk!.toStringAsFixed(2);
+    final last = _lastAnalysis;
+    final lastSpecies = last?['species']?.toString() ?? '—';
+    final lastRisk = (last?['risk_index'] as num?)?.toDouble();
+    final lastRiskCategory = last?['risk_category']?.toString();
+
+    return Ui.paddedCard(
+      context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.insights_outlined, color: AppTheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Мои анализы',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Обновить статистику',
+                onPressed: _loadStats,
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final twoCols = constraints.maxWidth > 430;
+              final cards = [
+                _statTile('Всего', _totalAnalyses.toString(), Icons.analytics_outlined),
+                _statTile('На карте', _geoAnalyses.toString(), Icons.location_on_outlined),
+                _statTile('Высокий риск', _highRiskAnalyses.toString(), Icons.warning_amber),
+                _statTile('Средний риск', avgRiskText, Icons.speed_outlined),
+              ];
+
+              if (twoCols) {
+                return GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 2.6,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: cards,
+                );
+              }
+
+              return Column(
+                children: [
+                  for (final c in cards) ...[
+                    c,
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.surface2,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.history, color: AppTheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: last == null
+                      ? const Text(
+                          'Пока нет серверных анализов.',
+                          style: TextStyle(
+                            color: AppTheme.muted,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Последний анализ: $lastSpecies',
+                              style: const TextStyle(
+                                color: AppTheme.text,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Риск: ${lastRisk?.toStringAsFixed(2) ?? '—'}'
+                              '${lastRiskCategory == null ? '' : ' · $lastRiskCategory'}',
+                              style: const TextStyle(
+                                color: AppTheme.muted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statTile(String title, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface2,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppTheme.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.text,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
