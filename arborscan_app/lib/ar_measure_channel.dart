@@ -90,9 +90,7 @@ class ArMeasureResult {
 class ArMeasureChannel {
   static const _ch = MethodChannel('arborscan/ar_measure');
 
-  /// Opens native AR measurement screen.
-  /// Current Android implementation is a full 6-point tree wizard.
-  /// Returns null if user cancelled.
+  
   static Future<ArMeasureResult?> start() async {
     final dynamic raw = await _ch.invokeMethod('start');
     if (raw == null) return null;
