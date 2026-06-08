@@ -16,8 +16,9 @@ from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
 from torchvision import models, transforms
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
 from fastapi.responses import JSONResponse
+from fastapi.concurrency import run_in_threadpool # Добавлено для запуска ML в фоне
 from uuid import uuid4
 from pathlib import Path
 from pydantic import BaseModel
@@ -57,11 +58,9 @@ SUPABASE_BUCKET_RAW = "arborscan-raw"
 SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
 # Таблица в Supabase Postgres для очереди доверенных примеров
-# (создаёшь её сам в Supabase SQL, напр. arborscan_feedback_queue)
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
-# Включать ли вставку в Postgres-очередь. По умолчанию выключено,
-# чтобы отсутствие таблицы не ломало пайплайн обучения.
+# Включать ли вставку в Postgres-очередь. По умолчанию выключено.
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
 # ---------------------------------------------------------
@@ -92,7 +91,6 @@ def training_state_get() -> dict:
 
 
 def training_state_ensure_row():
-    # Ensure row id=1 exists
     state = training_state_get()
     if state:
         return
@@ -130,7 +128,7 @@ def training_state_update(fields: dict) -> dict:
     return rows[0] if rows else fields
 
 
-# Старые настройки окружения (оставляю как есть, чтобы ничего не сломать)
+# Старые настройки окружения
 WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
                  or os.getenv("OPENWEATHER_API_KEY")
                  or os.getenv("OPENWEATHERMAP_API_KEY")
@@ -159,7 +157,6 @@ MODEL_VERSIONS = {
     "classifier": "resnet18_species_v0.9.1",
 }
 BUILD_INFO = {
-    # желательно прокидывать из CI / Railway
     "git_commit": os.getenv("GIT_COMMIT", "unknown"),
     "build_time": os.getenv("BUILD_TIME")
 }
@@ -179,7 +176,7 @@ REAL_STICK_M = 1.0
 # -------------------------------------
 
 print("[*] Loading YOLO models...")
-tree_model = None  # loaded dynamically from Supabase models bucket via active_model_version
+tree_model = None  
 stick_model = YOLO("models/stick_model.pt")
 
 print("[*] Loading classifier...")
@@ -204,9 +201,6 @@ print("[*] Models loaded.")
 # =============================================
 
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
-    """
-    Загрузка бинарных данных в Supabase Storage через REST API.
-    """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
@@ -226,9 +220,6 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
     supabase_upload_bytes(bucket, path, data)
 
 def supabase_list_objects(bucket: str, prefix: str = ""):
-    """
-    Вернуть список объектов в Supabase Storage (метаданные).
-    """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
@@ -250,11 +241,6 @@ def supabase_list_objects(bucket: str, prefix: str = ""):
 
 
 def supabase_download_bytes(bucket: str, path: str) -> bytes:
-    """
-    Скачать файл из Supabase Storage.
-
-    Для приватных bucket'ов используем authenticated endpoint.
-    """
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
 
@@ -268,11 +254,8 @@ def supabase_download_bytes(bucket: str, path: str) -> bytes:
         raise RuntimeError(f"Supabase download error {resp.status_code}: {resp.text}")
     return resp.content
 
-
-
 # ---------------------------------------------------------
-# Model hot-swap (tree model) using training_state.active_model_version
-# Models are stored in Supabase Storage bucket: SUPABASE_BUCKET_MODELS as model_v{N}.pt
+# Model hot-swap (tree model)
 # ---------------------------------------------------------
 
 TREE_MODEL: Optional[YOLO] = None
@@ -300,23 +283,11 @@ def _get_active_model_version() -> int:
     state = training_state_get()
     v = state.get("active_model_version")
     if v is None:
-        # default to 0 if not set
         return 0
     return int(v)
 
 def list_available_model_versions() -> list[dict]:
-    """Return model versions for the Admin Panel dropdown.
-
-    Источник версий:
-      1) Supabase Storage bucket SUPABASE_BUCKET_MODELS (model_v*.pt) — основной источник
-      2) AVAILABLE_MODEL_VERSIONS env var (comma-separated ints) — опционально
-      3) локальный кеш /tmp/models (model_v*.pt)
-      4) bundled ./models (model_v*.pt)
-    Всегда включает текущую active_model_version.
-    """
     versions: set[int] = set()
-
-    # 1) Storage listing
     try:
         objects = supabase_list_objects(SUPABASE_BUCKET_MODELS)
         for obj in objects:
@@ -328,7 +299,6 @@ def list_available_model_versions() -> list[dict]:
     except Exception:
         pass
 
-    # 2) Optional env hint
     env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
     if env_hint:
         for part in env_hint.split(","):
@@ -340,13 +310,11 @@ def list_available_model_versions() -> list[dict]:
             except ValueError:
                 pass
 
-    # 3) Local cache
     for p in Path("/tmp/models").glob("model_v*.pt"):
         mm = re.search(r"model_v(\d+)\.pt$", p.name)
         if mm:
             versions.add(int(mm.group(1)))
 
-    # 4) Bundled models dir
     if Path("models").exists():
         for p in Path("models").glob("model_v*.pt"):
             mm = re.search(r"model_v(\d+)\.pt$", p.name)
@@ -357,8 +325,6 @@ def list_available_model_versions() -> list[dict]:
     versions.add(active)
 
     return [{"version": v, "is_active": v == active} for v in sorted(versions)]
-
-
 
 def reload_tree_model(force: bool = False):
     global TREE_MODEL, TREE_MODEL_VERSION, _MODEL_LAST_CHECK_TS
@@ -372,7 +338,6 @@ def reload_tree_model(force: bool = False):
     if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v:
         return
 
-    # version 0: fallback to bundled local model if exists
     if v == 0:
         local_fallback = "models/tree_model.pt"
         if os.path.exists(local_fallback):
@@ -380,7 +345,6 @@ def reload_tree_model(force: bool = False):
             TREE_MODEL = YOLO(local_fallback)
             TREE_MODEL_VERSION = 0
             return
-        # else try download v0 if present
         try:
             path = _download_model_if_needed(0)
             print(f"[*] Using downloaded tree model v0: {path}")
@@ -405,10 +369,6 @@ def get_tree_model() -> YOLO:
         return TREE_MODEL
 
 def supabase_db_insert(table: str, row: dict):
-    """
-    Вставка записи в Supabase Postgres через REST (PostgREST).
-    Используется для очереди доверенных примеров.
-    """
     if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase DB is not configured")
 
@@ -430,38 +390,25 @@ def supabase_db_insert(table: str, row: dict):
 # =============================================
 
 def _strip_data_url(b64: str) -> str:
-    # Accept 'data:image/png;base64,...' or plain base64
     if not b64:
         return b64
     b64 = b64.strip()
     if b64.startswith("data:") and "base64," in b64:
         b64 = b64.split("base64,", 1)[1]
-    return "".join(b64.split())  # remove whitespace/newlines
+    return "".join(b64.split())
 
 def decode_base64_bytes(b64: str) -> bytes:
-    """Decode base64 string into bytes.
-
-    Supports:
-      - data-URL prefix (data:image/png;base64,...)
-      - urlsafe base64 ('-' and '_' instead of '+' and '/')
-      - missing padding '='
-      - "double base64" (base64 of a base64 string) that sometimes happens in clients
-    """
     if b64 is None:
         return b""
 
     b64_clean = _strip_data_url(str(b64)).strip()
-
-    # Normalize urlsafe alphabet and padding
     b64_clean = b64_clean.replace("-", "+").replace("_", "/")
     pad = len(b64_clean) % 4
     if pad:
         b64_clean += "=" * (4 - pad)
 
-    # First pass
     raw = base64.b64decode(b64_clean, validate=False)
 
-    # If it looks like ASCII base64 text (double-encoded), try decode again
     try:
         as_text = raw.decode("utf-8").strip()
         if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
@@ -470,31 +417,16 @@ def decode_base64_bytes(b64: str) -> bytes:
             if pad2:
                 as_text += "=" * (4 - pad2)
             raw2 = base64.b64decode(as_text, validate=False)
-            # If second pass yields a PNG/JPEG signature, prefer it
             if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff":
                 return raw2
-    except Exception:
-        pass
-
-        return raw
-
     except Exception:
         pass
 
     return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
-    """Return VALID PNG bytes for a mask.
-
-    Supported inputs for `mask_b64`:
-    1) base64(PNG/JPEG bytes)
-    2) base64(JSON) where JSON contains `mask_png_base64` (base64 PNG bytes)
-
-    Output is binarized (0/255) grayscale PNG.
-    """
     raw = decode_base64_bytes(mask_b64)
 
-    # If the client sent base64(JSON), extract embedded PNG base64.
     try:
         if raw[:1] in (b"{", b"["):
             obj = json.loads(raw.decode("utf-8"))
@@ -508,14 +440,11 @@ def ensure_png_mask_bytes(mask_b64: str) -> bytes:
     if mask is None:
         raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
 
-    # Binarize for segmentation ground truth
     _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
     ok, out = cv2.imencode(".png", mask_bin)
     if not ok:
         raise ValueError("Failed to encode mask as PNG")
     return out.tobytes()
-
-
 
 # =============================================
 # EXIF → GPS
@@ -556,7 +485,6 @@ def extract_gps(image_bytes):
     except Exception:
         return None
 
-
 # =============================================
 # Reverse geocode (OSM)
 # =============================================
@@ -575,7 +503,6 @@ def reverse_geocode(lat, lon):
         return data.get("display_name")
     except Exception:
         return None
-
 
 # =============================================
 # Weather API (OpenWeatherMap)
@@ -608,7 +535,6 @@ def get_weather(lat, lon):
     except Exception:
         return None
 
-
 # =============================================
 # SoilGrids (почва)
 # =============================================
@@ -636,7 +562,6 @@ def get_soil(lat, lon):
         return result
     except Exception:
         return None
-
 
 # =============================================
 # Risk Calculation
@@ -727,14 +652,10 @@ def compute_risk(species, height, crown, diameter, weather, soil):
         "explanation": expl,
     }
 
-
-
 # =============================================
-# Beta coefficient estimation (wind drag scaling)
+# Beta coefficient estimation
 # =============================================
 
-# β values for full-scale Scots pine from Borisevich/Kamluk/Rebko paper:
-# 25.5–90.0 kg/s. For other species, values are provisional expert ranges.
 BETA_SPECIES_PARAMS = {
     "Сосна": {"k_area": 3.4, "min": 25.5, "max": 90.0, "base": 47.7},
     "Ель": {"k_area": 3.8, "min": 30.0, "max": 100.0, "base": 60.0},
@@ -747,17 +668,6 @@ def _clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
 def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=None, manual_beta_kg_s=None) -> dict:
-    """Estimate β in kg/s for ArborScan practical wind-risk calculation.
-
-    Method:
-      1) If user provides manual β > 0, use it and only clamp to a broad safety range.
-      2) Otherwise estimate crown frontal area:
-            H_crown ≈ 0.45 * H
-            A_crown ≈ 0.65 * H_crown * W_crown
-         Then:
-            β_raw = k_species * A_crown
-         For pine, k≈3.4 and clamp range 25.5–90 kg/s follows the paper.
-    """
     params = BETA_SPECIES_PARAMS.get(species, BETA_SPECIES_PARAMS["Сосна"])
 
     if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
@@ -772,7 +682,7 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
                 "species": species,
             },
             "notes": [
-                "β использован как заданный пользователем коэффициент аэродинамической интенсивности.",
+                "β использован как заданный пользователем коэффициент.",
                 "Единица измерения: кг/с.",
             ],
         }
@@ -793,7 +703,7 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
                 "crown_width_m": crown_width_m,
             },
             "notes": [
-                "Недостаточно геометрических параметров для расчёта по кроне.",
+                "Недостаточно геометрических параметров для расчёта.",
                 "Использовано базовое значение β для породы.",
             ],
         }
@@ -806,7 +716,7 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
     return {
         "beta_kg_s": beta,
         "method": "estimated_from_geometry",
-        "source": "Оценка по AR/геометрии кроны",
+        "source": "Оценка по геометрии кроны",
         "formula": "Hкроны≈0.45H; A≈0.65·Hкроны·Wкроны; β=clamp(k·A)",
         "input": {
             "species": species,
@@ -821,13 +731,11 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
             "beta_raw": round(beta_raw, 2),
         },
         "notes": [
-            "Это приближённый β для практического риска, а не лабораторно подобранный коэффициент.",
-            "Для сосны диапазон ограничен опубликованными значениями 25.5–90.0 кг/с.",
+            "Приближённый β для практического риска.",
         ],
     }
 
 def beta_wind_force_score(beta_kg_s, weather) -> tuple[float, float | None]:
-    """Return normalized score and force F=β*v using wind gust/speed."""
     if not beta_kg_s or beta_kg_s <= 0 or not weather:
         return 0.5, None
     v = weather.get("wind_gust") or weather.get("wind_speed") or 0
@@ -837,8 +745,6 @@ def beta_wind_force_score(beta_kg_s, weather) -> tuple[float, float | None]:
         v = 0.0
     force_n = float(beta_kg_s) * v
 
-    # Conservative practical normalization:
-    # <150 N low, 150–500 moderate, 500–1200 high, >1200 very high.
     if force_n <= 150:
         score = 0.25
     elif force_n <= 500:
@@ -855,11 +761,6 @@ def beta_wind_force_score(beta_kg_s, weather) -> tuple[float, float | None]:
 # =============================================
 
 def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
-    """Resize and encode BGR image to JPEG base64 for mobile response.
-
-    The original file is still saved to Supabase RAW storage. For API response
-    we send a compressed preview to avoid Android OutOfMemoryError.
-    """
     h, w = img_bgr.shape[:2]
     longest = max(h, w)
     if longest > max_side:
@@ -897,13 +798,11 @@ class FeedbackRequest(BaseModel):
     species_ok: bool
     correct_species: str | None = None
 
-    # новые поля для исправленных параметров и масштаба
     correct_height_m: float | None = None
     correct_crown_width_m: float | None = None
     correct_trunk_diameter_m: float | None = None
     correct_scale_px_to_m: float | None = None
 
-    # PNG маска, закодированная в base64
     user_mask_base64: str | None = None
 
 class TrustedExample(BaseModel):
@@ -921,18 +820,11 @@ class TrustedExample(BaseModel):
     use_for_training: bool | None = None
     needs_manual_review: bool | None = None
 
-
-
-
 class AdminSetTrainingRequest(BaseModel):
-    # accept several keys for backward/forward compatibility with the Flutter admin UI
     use_for_training: bool | None = None
     enabled: bool | None = None
     include: bool | None = None
     value: bool | None = None
-
-
-
 
 # =============================================
 # AUTH MODELS
@@ -943,11 +835,9 @@ class AuthRegisterRequest(BaseModel):
     email: str
     password: str
 
-
 class AuthLoginRequest(BaseModel):
     email: str
     password: str
-
 
 class AuthRoleRequest(BaseModel):
     token: str
@@ -972,12 +862,10 @@ AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
 AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com")
 
-
 def _auth_conn():
     conn = sqlite3.connect(str(AUTH_DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
-
 
 def init_auth_db():
     with _auth_conn() as conn:
@@ -1006,7 +894,6 @@ def init_auth_db():
             )
             """
         )
-                # Backward-compatible migrations for OAuth profile fields.
         existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
         migrations = {
             "provider": "ALTER TABLE users ADD COLUMN provider TEXT",
@@ -1019,10 +906,8 @@ def init_auth_db():
         conn.commit()
 
 
-
 def _now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
-
 
 def _hash_password(password: str, salt_hex: str | None = None) -> tuple[str, str]:
     if salt_hex is None:
@@ -1039,7 +924,6 @@ def _hash_password(password: str, salt_hex: str | None = None) -> tuple[str, str
     ).hex()
     return digest, salt_hex
 
-
 def _user_public(row: sqlite3.Row) -> dict:
     data = {
         "id": row["id"],
@@ -1055,7 +939,6 @@ def _user_public(row: sqlite3.Row) -> dict:
         pass
     return data
 
-
 def _create_session(user_id: str) -> dict:
     token = secrets.token_urlsafe(32)
     created_at = _now_iso()
@@ -1067,7 +950,6 @@ def _create_session(user_id: str) -> dict:
         )
         conn.commit()
     return {"token": token, "expires_at": expires_at}
-
 
 def _get_user_by_token(token: str) -> sqlite3.Row | None:
     if not token:
@@ -1085,10 +967,8 @@ def _get_user_by_token(token: str) -> sqlite3.Row | None:
         ).fetchone()
         return row
 
-
 def _email_norm(email: str) -> str:
     return (email or "").strip().lower()
-
 
 def _validate_auth_payload(name: str | None, email: str, password: str, need_name: bool = False):
     if need_name and (not name or len(name.strip()) < 2):
@@ -1098,12 +978,10 @@ def _validate_auth_payload(name: str | None, email: str, password: str, need_nam
     if not password or len(password) < 4:
         raise HTTPException(status_code=400, detail="Пароль должен быть не короче 4 символов")
 
-
 @app.on_event("startup")
 async def _init_auth_on_startup():
     init_auth_db()
     print(f"[*] Auth DB ready: {AUTH_DB_PATH.resolve()}")
-
 
 @app.post("/auth/register")
 async def auth_register(payload: AuthRegisterRequest):
@@ -1141,7 +1019,6 @@ async def auth_register(payload: AuthRegisterRequest):
         "expires_at": session["expires_at"],
     }
 
-
 @app.post("/auth/login")
 async def auth_login(payload: AuthLoginRequest):
     init_auth_db()
@@ -1167,15 +1044,8 @@ async def auth_login(payload: AuthLoginRequest):
         "expires_at": session["expires_at"],
     }
 
-
-
 @app.post("/auth/google")
 async def auth_google(payload: AuthGoogleRequest):
-    """Google Sign-In.
-
-    Flutter sends Google idToken. Backend verifies it against GOOGLE_CLIENT_ID,
-    then creates or finds a local ArborScan user and returns the normal ArborScan token.
-    """
     init_auth_db()
 
     if google_id_token is None or google_requests is None:
@@ -1252,7 +1122,6 @@ async def auth_google(payload: AuthGoogleRequest):
         "expires_at": session["expires_at"],
     }
 
-
 @app.get("/auth/me")
 async def auth_me(token: str):
     init_auth_db()
@@ -1260,7 +1129,6 @@ async def auth_me(token: str):
     if user is None:
         raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
     return {"ok": True, "user": _user_public(user)}
-
 
 @app.post("/auth/set-role")
 async def auth_set_role(payload: AuthRoleRequest):
@@ -1287,8 +1155,6 @@ async def auth_set_role(payload: AuthRoleRequest):
 
     return {"ok": True, "user": _user_public(updated)}
 
-
-
 @app.on_event("startup")
 async def _log_routes_on_startup():
     try:
@@ -1297,9 +1163,7 @@ async def _log_routes_on_startup():
     except Exception as e:
         print(f"[!] Failed to list routes: {e}")
 
-
 def init_analyses_db():
-    """Create server-side analysis table linked to auth users."""
     init_auth_db()
     with _auth_conn() as conn:
         conn.execute(
@@ -1327,9 +1191,7 @@ def init_analyses_db():
         )
         conn.commit()
 
-
 def _save_analysis_record(response: dict, user: sqlite3.Row | None):
-    """Persist lightweight analysis response for personal history/map."""
     init_analyses_db()
     risk = response.get("risk") or {}
     beta = response.get("beta") or {}
@@ -1368,7 +1230,6 @@ def _save_analysis_record(response: dict, user: sqlite3.Row | None):
         )
         conn.commit()
 
-
 def _analysis_summary(row: sqlite3.Row) -> dict:
     return {
         "analysis_id": row["id"],
@@ -1387,12 +1248,10 @@ def _analysis_summary(row: sqlite3.Row) -> dict:
         "address": row["address"],
     }
 
-
 @app.on_event("startup")
 async def _init_analyses_on_startup():
     init_analyses_db()
     print(f"[*] Analyses table ready in: {AUTH_DB_PATH.resolve()}")
-
 
 @app.get("/analyses/my")
 async def analyses_my(token: str, limit: int = 100):
@@ -1415,7 +1274,6 @@ async def analyses_my(token: str, limit: int = 100):
 
     return {"ok": True, "items": [_analysis_summary(r) for r in rows]}
 
-
 @app.get("/analyses/{analysis_id}")
 async def analyses_get(analysis_id: str, token: str):
     user = _get_user_by_token(token)
@@ -1436,7 +1294,6 @@ async def analyses_get(analysis_id: str, token: str):
         raise HTTPException(status_code=403, detail="Нет доступа к этому анализу")
 
     return {"ok": True, "analysis": json.loads(row["response_json"])}
-
 
 @app.get("/admin/analyses")
 async def admin_analyses(token: str, limit: int = 200):
@@ -1460,10 +1317,7 @@ async def admin_analyses(token: str, limit: int = 200):
 
     return {"ok": True, "items": [_analysis_summary(r) for r in rows]}
 
-
-
 # --- Training events (in-memory) ---
-# Stored in a small ring buffer so the Admin Panel can show a live-ish log.
 TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
 
 def log_training_event(level: str, message: str, data: dict | None = None) -> None:
@@ -1475,12 +1329,9 @@ def log_training_event(level: str, message: str, data: dict | None = None) -> No
             "data": data or {},
         }
         TRAINING_EVENTS.append(evt)
-        # keep a visible server log line too
         print(f"[TRAINING_EVENT] {evt['ts']} {evt['level']}: {evt['message']} {evt['data']}")
     except Exception:
-        # Never break app because of logging
         pass
-
 
 @app.on_event("startup")
 def _startup_load_models():
@@ -1491,12 +1342,7 @@ def _startup_load_models():
     except Exception as e:
         print(f"[!] Startup model load failed: {e}")
 
-
-
-
-
 def normalize_address_ru(address: str | None) -> str | None:
-    """Normalize common Belarusian OSM address fragments to Russian display text."""
     if not address:
         return address
     replacements = {
@@ -1515,6 +1361,22 @@ def normalize_address_ru(address: str | None) -> str | None:
     for src, dst in replacements.items():
         out = out.replace(src, dst)
     return out
+
+# === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ ===
+def _run_yolo_sync(img):
+    tree_model_local = get_tree_model()
+    tree_res = tree_model_local(img)[0]
+    stick_res = stick_model(img)[0]
+    return tree_res, stick_res
+
+def _run_classifier_sync(crop):
+    pil_crop = Image.fromarray(crop)
+    tens = transformer(pil_crop).unsqueeze(0)
+    with torch.no_grad():
+        pred = classifier(tens)
+        cls_id = int(torch.argmax(pred))
+    return CLASS_NAMES_RU[cls_id]
+# ====================================================
 
 @app.post("/analyze-tree")
 async def analyze_tree(
@@ -1544,10 +1406,10 @@ async def analyze_tree(
     H, W = img.shape[:2]
 
     # -----------------------------
-    # YOLO TREE
+    # АСИНХРОННЫЙ ЗАПУСК YOLO (Фоновый поток)
     # -----------------------------
-    tree_model_local = get_tree_model()
-    tree_res = tree_model_local(img)[0]
+    tree_res, stick_res = await run_in_threadpool(_run_yolo_sync, img)
+    
     if tree_res.masks is None:
         return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
 
@@ -1565,7 +1427,6 @@ async def analyze_tree(
     # -----------------------------
     # YOLO STICK
     # -----------------------------
-    stick_res = stick_model(img)[0]
     scale = None
     if len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
@@ -1632,16 +1493,11 @@ async def analyze_tree(
     dimensions_source = "ИИ + AR" if any([has_ar_height, has_ar_crown, has_ar_trunk]) else "ИИ / фото"
 
     # -----------------------------
-    # CLASSIFIER
+    # CLASSIFIER (Запуск в фоне)
     # -----------------------------
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
     crop = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
-    pil_crop = Image.fromarray(crop)
-    tens = transformer(pil_crop).unsqueeze(0)
-    with torch.no_grad():
-        pred = classifier(tens)
-        cls_id = int(torch.argmax(pred))
-    species_name = CLASS_NAMES_RU[cls_id]
+    species_name = await run_in_threadpool(_run_classifier_sync, crop)
 
     # -----------------------------
     # ANNOTATED IMAGE
@@ -1667,8 +1523,6 @@ async def analyze_tree(
             weather = get_weather(gps["lat"], gps["lon"])
             soil = get_soil(gps["lat"], gps["lon"])
 
-        # Manual wind values are used when GPS/weather is unavailable
-        # or when the expert wants to test a scenario.
         if manual_wind_speed_m_s is not None or manual_wind_gust_m_s is not None:
             if weather is None:
                 weather = {}
@@ -1704,14 +1558,8 @@ async def analyze_tree(
     beta_info["wind_force_n"] = wind_force_n
     beta_info["wind_force_score"] = wind_force_score_value
 
-    # -----------------------------
-    # ANALYTICAL WIND-LOAD MODEL
-    # -----------------------------
-    wind_speed_for_model = None
-    wind_gust_for_model = None
-    if weather:
-        wind_speed_for_model = weather.get("wind_speed")
-        wind_gust_for_model = weather.get("wind_gust")
+    wind_speed_for_model = weather.get("wind_speed") if weather else None
+    wind_gust_for_model = weather.get("wind_gust") if weather else None
 
     analytic_wind_model = compute_analytic_wind_model(
         species=species_name,
@@ -1727,7 +1575,6 @@ async def analyze_tree(
         n_elements=20,
     )
 
-    # Add β explanation to risk without breaking the existing risk model yet.
     if risk is not None:
         risk.setdefault("explanation", [])
         beta_value = beta_info.get("beta_kg_s")
@@ -1749,9 +1596,6 @@ async def analyze_tree(
                 f"Центр ветровой нагрузки: {out.get('center_of_load_m')} м"
             )
 
-    # -----------------------------
-    # TEMP CACHE FOR FEEDBACK
-    # -----------------------------
     analysis_id = str(uuid4())
 
     meta = {
@@ -1774,28 +1618,18 @@ async def analyze_tree(
         "weather": weather,
         "soil": soil,
         "risk": risk,
-        "beta": beta_info,
-        "analytic_wind_model": analytic_wind_model,
-        "model_versions": MODEL_VERSIONS,
         "model_versions": MODEL_VERSIONS,
         "build": BUILD_INFO,
         "schema_version": SCHEMA_VERSION,
         "api_version": API_VERSION,
-
     }
 
-    # -----------------------------
-    # PREPARE PRED OBJECTS (also for RAW storage)
-    # -----------------------------
-    # tree_pred
+    # PREPARE PRED OBJECTS
     tree_box_xyxy = tree_res.boxes.xyxy[idx].cpu().numpy().tolist()
     tree_conf = None
     tree_cls_id = None
     try:
         tree_conf = float(tree_res.boxes.conf[idx].cpu().item())
-    except Exception:
-        pass
-    try:
         tree_cls_id = int(tree_res.boxes.cls[idx].cpu().item())
     except Exception:
         pass
@@ -1806,7 +1640,6 @@ async def analyze_tree(
         "class_id": tree_cls_id,
     }
 
-    # stick_pred
     stick_pred = {
         "box_xyxy": None,
         "scale_px_to_m": scale,
@@ -1816,103 +1649,53 @@ async def analyze_tree(
             best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
             x1b, y1b, x2b, y2b = best.xyxy[0].cpu().numpy().astype(int)
             stick_pred["box_xyxy"] = [int(x1b), int(y1b), int(x2b), int(y2b)]
-            try:
-                stick_pred["confidence"] = float(best.conf[0].cpu().item())
-            except Exception:
-                pass
+            stick_pred["confidence"] = float(best.conf[0].cpu().item())
     except Exception:
         pass
 
-    # -----------------------------
-    # NEW: SAVE RAW SAMPLE (ALWAYS) → Supabase Storage
-    # -----------------------------
-    # Сохраняем все загрузки обычных пользователей независимо от feedback.
-    # Если Supabase не настроен/временно недоступен — анализ НЕ ломаем.
+    # SAVE RAW SAMPLE TO SUPABASE
     try:
-        # input
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/input.jpg",
-            image_bytes,
-        )
-
-        # meta
-        supabase_upload_json(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/meta_auto.json",
-            meta,
-        )
-
-        # annotated image (jpg)
+        supabase_upload_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/input.jpg", image_bytes)
+        supabase_upload_json(SUPABASE_BUCKET_RAW, f"{analysis_id}/meta_auto.json", meta)
+        
         try:
             annotated_bytes_for_raw = base64.b64decode(annotated_b64)
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_RAW,
-                f"{analysis_id}/annotated.jpg",
-                annotated_bytes_for_raw,
-            )
-        except Exception as e:
-            print(f"[!] Failed to decode/upload annotated.jpg to RAW for {analysis_id}: {e}")
-
-        # predictions (json)
-        try:
-            supabase_upload_json(
-                SUPABASE_BUCKET_RAW,
-                f"{analysis_id}/tree_pred.json",
-                tree_pred,
-            )
-        except Exception as e:
-            print(f"[!] Failed to upload tree_pred.json to RAW for {analysis_id}: {e}")
+            supabase_upload_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/annotated.jpg", annotated_bytes_for_raw)
+        except Exception:
+            pass
 
         try:
-            supabase_upload_json(
-                SUPABASE_BUCKET_RAW,
-                f"{analysis_id}/stick_pred.json",
-                stick_pred,
-            )
-        except Exception as e:
-            print(f"[!] Failed to upload stick_pred.json to RAW for {analysis_id}: {e}")
+            supabase_upload_json(SUPABASE_BUCKET_RAW, f"{analysis_id}/tree_pred.json", tree_pred)
+            supabase_upload_json(SUPABASE_BUCKET_RAW, f"{analysis_id}/stick_pred.json", stick_pred)
+        except Exception:
+            pass
 
     except Exception as e:
         print(f"[!] Failed to upload raw sample {analysis_id} to Supabase: {e}")
 
-    # -----------------------------
     # CACHE IN /tmp FOR FEEDBACK
-    # -----------------------------
     try:
         tmp_dir = Path("/tmp") / analysis_id
         tmp_dir.mkdir(parents=True, exist_ok=True)
-
-        # Оригинальное изображение
         with open(tmp_dir / "input.jpg", "wb") as f:
             f.write(image_bytes)
-
-        # Аннотированное изображение (для контроля/обучения)
         try:
             annotated_bytes = base64.b64decode(annotated_b64)
             with open(tmp_dir / "annotated.jpg", "wb") as f:
                 f.write(annotated_bytes)
-        except Exception as e:
-            print(f"[!] Failed to save annotated for {analysis_id}: {e}")
-
-        # Предсказание дерева
+        except Exception:
+            pass
         with open(tmp_dir / "tree_pred.json", "w", encoding="utf-8") as f:
             json.dump(tree_pred, f, ensure_ascii=False, indent=2)
-
-        # Предсказание палки
         with open(tmp_dir / "stick_pred.json", "w", encoding="utf-8") as f:
             json.dump(stick_pred, f, ensure_ascii=False, indent=2)
-
-        # Метаданные
         with open(tmp_dir / "meta.json", "w", encoding="utf-8") as f:
             json.dump(meta, f, ensure_ascii=False, indent=2)
 
     except Exception as e:
         print(f"[!] Failed to cache analysis {analysis_id} in /tmp: {e}")
 
-    # -----------------------------
     # RESPONSE
-    # -----------------------------
     response = {
         "analysis_id": analysis_id,
         "species": species_name,
@@ -1930,25 +1713,17 @@ async def analyze_tree(
         "scale_px_to_m": scale,
         "annotated_image_base64": annotated_b64,
     }
-    # Добавляем сжатый preview оригинального изображения для экрана feedback.
-    # Полный оригинал уже сохранён в Supabase RAW; в ответе держим лёгкую версию,
-    # чтобы Flutter не падал с OutOfMemoryError на больших фото.
+    
     try:
         response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
     except Exception:
         response["original_image_base64"] = None
 
-
-    if gps:
-        response["gps"] = gps
-    if address:
-        response["address"] = address
-    if weather:
-        response["weather"] = weather
-    if soil:
-        response["soil"] = soil
-    if risk:
-        response["risk"] = risk
+    if gps: response["gps"] = gps
+    if address: response["address"] = address
+    if weather: response["weather"] = weather
+    if soil: response["soil"] = soil
+    if risk: response["risk"] = risk
 
     if analysis_user is not None:
         response["user"] = _user_public(analysis_user)
@@ -1967,12 +1742,6 @@ async def analyze_tree(
 @app.post("/feedback")
 @app.post("/api/feedback")
 def send_feedback(payload: dict = Body(...)):
-    """
-    Получаем подтверждение/исправление от пользователя и,
-    если всё ок, сохраняем пример в Supabase для будущего обучения моделей
-    + кладём запись в очередь доверенных примеров (Supabase DB).
-    """
-    # Accept both snake_case and camelCase from Flutter; avoid 422 on minor schema drift.
     analysis_id = payload.get('analysis_id') or payload.get('analysisId')
     if not analysis_id:
         raise HTTPException(status_code=422, detail='analysis_id is required')
@@ -1999,23 +1768,15 @@ def send_feedback(payload: dict = Body(...)):
     species_ok = _b(payload.get('species_ok', payload.get('speciesOk')), default=True)
 
     correct_species = payload.get('correct_species') or payload.get('correctSpecies')
-    correct_tree_mask = payload.get('correct_tree_mask') or payload.get('correctTreeMask')
-    correct_stick_mask = payload.get('correct_stick_mask') or payload.get('correctStickMask')
 
     def _f(val):
-        """Best-effort float parsing for user-corrected numeric fields."""
-        if val is None:
-            return None
-        if isinstance(val, (int, float)):
-            return float(val)
+        if val is None: return None
+        if isinstance(val, (int, float)): return float(val)
         if isinstance(val, str):
             s = val.strip().replace(',', '.')
-            if not s or s.lower() in ('null', 'none', 'nan'):
-                return None
-            try:
-                return float(s)
-            except Exception:
-                return None
+            if not s or s.lower() in ('null', 'none', 'nan'): return None
+            try: return float(s)
+            except Exception: return None
         return None
 
     corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
@@ -2036,7 +1797,6 @@ def send_feedback(payload: dict = Body(...)):
     if not tmp_dir.exists():
         raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
 
-    # Если пользователь не хочет использовать пример в обучении
     if not use_for_training:
         try:
             shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -2048,85 +1808,43 @@ def send_feedback(payload: dict = Body(...)):
     if not meta_path.exists():
         raise HTTPException(status_code=500, detail="meta.json не найден для указанного analysis_id")
 
-    # Загружаем исходное meta
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
 
-    # Обновляем meta фидбеком
     meta["tree_ok"] = tree_ok
     meta["stick_ok"] = stick_ok
     meta["params_ok"] = params_ok
     meta["species_ok"] = species_ok
     meta["correct_species"] = correct_species
 
-    # Исправленный вид дерева
     if (not species_ok) and correct_species:
         meta["species"] = correct_species
 
-    # Исправленные численные параметры (если пришли от клиента)
-    if corrected_height_m is not None:
-        meta["height_m"] = corrected_height_m
-    if corrected_crown_width_m is not None:
-        meta["crown_width_m"] = corrected_crown_width_m
-    if corrected_trunk_diameter_m is not None:
-        meta["trunk_diameter_m"] = corrected_trunk_diameter_m
-    if corrected_scale_px_to_m is not None:
-        meta["scale_px_to_m"] = corrected_scale_px_to_m
+    if corrected_height_m is not None: meta["height_m"] = corrected_height_m
+    if corrected_crown_width_m is not None: meta["crown_width_m"] = corrected_crown_width_m
+    if corrected_trunk_diameter_m is not None: meta["trunk_diameter_m"] = corrected_trunk_diameter_m
+    if corrected_scale_px_to_m is not None: meta["scale_px_to_m"] = corrected_scale_px_to_m
 
-    # Trust score
     trust = 0.0
-    if tree_ok:
-        trust += 0.3
-    if stick_ok:
-        trust += 0.2
-    if params_ok:
-        trust += 0.2
-    if species_ok or correct_species:
-        trust += 0.3
+    if tree_ok: trust += 0.3
+    if stick_ok: trust += 0.2
+    if params_ok: trust += 0.2
+    if species_ok or correct_species: trust += 0.3
     meta["trust_score"] = trust
 
-    # ---------------------------------------------
-    # VERIFIED PIPELINE
-    # ---------------------------------------------
+    is_verified = (use_for_training and trust >= VERIFIED_TRUST_THRESHOLD)
 
-    is_verified = (
-    use_for_training and
-    trust >= VERIFIED_TRUST_THRESHOLD
-    )
-
-
-    analysis_id = analysis_id
-
-    # -----------------------------
-    # UPLOAD TO SUPABASE STORAGE
-    # -----------------------------
     try:
-        # input.jpg
         input_path = tmp_dir / "input.jpg"
         if input_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{analysis_id}/input.jpg",
-                input_path.read_bytes(),
-            )
+            supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/input.jpg", input_path.read_bytes())
 
-        # annotated.jpg
         annotated_path = tmp_dir / "annotated.jpg"
         if annotated_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{analysis_id}/annotated.jpg",
-                annotated_path.read_bytes(),
-            )
+            supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/annotated.jpg", annotated_path.read_bytes())
 
-        # user_mask.png (segmentation ground truth)
-        # ВАЖНО: сохраняем/загружаем ТОЛЬКО валидный PNG (0/255), иначе OpenCV/YOLO dataset builder не сможет читать маску.
-                # Маска пользователя (обводка) — опционально.
-        # Если маски нет, это НЕ ошибка (просто этот пример не пойдёт в сегментационный датасет).
-                # Маска пользователя (обводка) — опционально.
-        # Правило: если has_user_mask когда-либо стал True — НЕ затираем его последующими /feedback без маски.
         existing_has_user_mask = False
         try:
             mv_raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json")
@@ -2137,133 +1855,57 @@ def send_feedback(payload: dict = Body(...)):
 
         meta["has_user_mask"] = existing_has_user_mask
 
-        mask_b64 = user_mask_base64
-        if mask_b64 is not None:
-            mask_b64_str = str(mask_b64).strip().lower()
-        else:
-            mask_b64_str = ""
+        mask_b64_str = str(user_mask_base64).strip().lower() if user_mask_base64 else ""
 
         if mask_b64_str and mask_b64_str not in ("null", "undefined"):
             try:
-                mask_png_bytes = ensure_png_mask_bytes(str(mask_b64))
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_INPUTS,
-                    f"{analysis_id}/user_mask.png",
-                    mask_png_bytes,
-                )
+                mask_png_bytes = ensure_png_mask_bytes(str(user_mask_base64))
+                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/user_mask.png", mask_png_bytes)
                 meta["has_user_mask"] = True
             except Exception as e:
-                # Не валим feedback целиком; просто предупреждаем, что маску не удалось распарсить.
                 print(f"[!] User mask provided but could not be decoded for {analysis_id}: {e}")
-        else:
-            # Маски нет — нормальный кейс.
-            pass
 
-
-        # tree_pred.json
         tree_pred_path = tmp_dir / "tree_pred.json"
         if tree_pred_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_PRED,
-                f"{analysis_id}/tree_pred.json",
-                tree_pred_path.read_bytes(),
-            )
+            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/tree_pred.json", tree_pred_path.read_bytes())
 
-        # stick_pred.json
         stick_pred_path = tmp_dir / "stick_pred.json"
         if stick_pred_path.exists():
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_PRED,
-                f"{analysis_id}/stick_pred.json",
-                stick_pred_path.read_bytes(),
-            )
+            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/stick_pred.json", stick_pred_path.read_bytes())
 
-        # meta.json (обновлённый)
-        supabase_upload_json(
-            SUPABASE_BUCKET_META,
-            f"{analysis_id}.json",
-            meta,
-        )
+        supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta)
 
         if is_verified:
             try:
-                # input
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/input.jpg",
-                    (tmp_dir / "input.jpg").read_bytes(),
-                )
-
-                # annotated
-                annotated_path = tmp_dir / "annotated.jpg"
-                if annotated_path.exists():
-                    supabase_upload_bytes(
-                        SUPABASE_BUCKET_VERIFIED,
-                        f"{analysis_id}/annotated.jpg",
-                        annotated_path.read_bytes(),
-                    )
-
+                supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
                 
-                # user mask (если есть) — нормализуем в валидный PNG
+                if annotated_path.exists():
+                    supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg", annotated_path.read_bytes())
+
                 if user_mask_base64:
                     try:
                         mask_png_bytes = ensure_png_mask_bytes(user_mask_base64)
-                        supabase_upload_bytes(
-                            SUPABASE_BUCKET_VERIFIED,
-                            f"{analysis_id}/user_mask.png",
-                            mask_png_bytes,
-                        )
+                        supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png", mask_png_bytes)
                     except Exception as e:
                         print(f"[!] Failed to upload VERIFIED user mask for {analysis_id}: {e}")
 
-                # predictions
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/tree_pred.json",
-                    (tmp_dir / "tree_pred.json").read_bytes(),
-                )
-
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/stick_pred.json",
-                    (tmp_dir / "stick_pred.json").read_bytes(),
-                )
+                supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/tree_pred.json", (tmp_dir / "tree_pred.json").read_bytes())
+                supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json", (tmp_dir / "stick_pred.json").read_bytes())
 
                 meta_verified = meta.copy()
                 meta_verified["verified"] = True
                 meta_verified["verified_at"] = datetime.utcnow().isoformat()
                 meta_verified["verifier_role"] = "admin" if not use_for_training else "user"
 
-                supabase_upload_json(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/meta_verified.json",
-                    meta_verified,
-                )
-               
-                
-
+                supabase_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json", meta_verified)
             except Exception as e:
                 print(f"[!] Failed to upload VERIFIED sample {analysis_id}: {e}")
-
 
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
 
-def request_retrain_if_needed():
-    # считаем сколько масок ещё не использовано
-    count = count_untrained_masks()
-
-    if count >= 10:
-        training_state_update({"retrain_requested": True})
-
-    # -----------------------------
-    # Запись в очередь доверенных примеров (Supabase DB)
-    # -----------------------------
-    # -----------------------------
-    # 7) (Опционально) очередь доверенных примеров (Supabase Postgres)
-    # -----------------------------
     if SUPABASE_ENABLE_QUEUE:
         try:
             queue_row = {
@@ -2278,12 +1920,8 @@ def request_retrain_if_needed():
             }
             supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
         except Exception as e:
-            # Не падаем для пользователя; отсутствие таблицы / ошибки очереди не должны блокировать обучение.
             print(f"[!] Queue insert skipped for {analysis_id}: {e}")
-    else:
-        # Очередь выключена — нормально для пайплайна обучения через Storage.
-        pass
-    # Чистим /tmp
+
     try:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     except Exception as e:
@@ -2294,32 +1932,21 @@ def request_retrain_if_needed():
         "analysis_id": analysis_id,
         "trust_score": trust,
     }
+
 @app.get("/admin/verified-list")
 def admin_verified_list(include_used: bool = False):
-    """
-    Возвращает список analysis_id из arborscan-verified + краткую информацию из meta_verified.json.
-
-    По умолчанию скрывает примеры, которые уже использовались для обучения (used_for_training=true),
-    чтобы вкладка «Датасет для обучения» в приложении показывала только "актуальные" примеры.
-    Если нужно увидеть всё — вызови с include_used=true.
-    """
     try:
         objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
-
     results = []
     for aid in analysis_ids:
         try:
-            meta_bytes = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{aid}/meta_verified.json",
-            )
+            meta_bytes = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{aid}/meta_verified.json")
             meta = json.loads(meta_bytes)
 
-            # Hide already-consumed samples by default (keep them in Supabase, just not shown in UI)
             if (not include_used) and meta.get("used_for_training") is True:
                 continue
 
@@ -2330,31 +1957,17 @@ def admin_verified_list(include_used: bool = False):
                 "trust_score": meta.get("trust_score"),
                 "verified": meta.get("verified", True),
                 "verified_at": meta.get("verified_at"),
-                # important for TrainingDatasetPage
                 "exclude_from_training": meta.get("exclude_from_training", False) == True,
-                # optional debug fields
                 "has_user_mask": meta.get("has_user_mask", False) == True,
                 "used_for_training": meta.get("used_for_training", False) == True,
             })
         except Exception:
             continue
 
-    return {
-        "count": len(results),
-        "items": results,
-    }
+    return {"count": len(results), "items": results}
 
 @app.get("/admin/training-candidates")
 def admin_training_candidates(limit: int = 50):
-    """
-    Диагностический эндпоинт: показывает, почему воркер видит 0 new samples.
-
-    Возвращает:
-      - eligible_new: которые попадут как NEW (has_user_mask && !exclude && !used_for_training)
-      - eligible_replay_pool: которые могут быть выбраны как REPLAY (has_user_mask && !exclude && used_for_training)
-      - skipped_counts: статистика причин отсева
-      - examples: первые N примеров с краткой причиной
-    """
     try:
         objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
     except Exception as e:
@@ -2365,23 +1978,15 @@ def admin_training_candidates(limit: int = 50):
     eligible_new = []
     eligible_replay_pool = []
     skipped_counts = {
-        "no_meta_verified": 0,
-        "no_user_mask": 0,
-        "excluded": 0,
-        "already_used": 0,
-        "other": 0,
+        "no_meta_verified": 0, "no_user_mask": 0, "excluded": 0, "already_used": 0, "other": 0,
     }
     examples = []
 
     def _reason(meta):
-        if meta is None:
-            return "no_meta_verified"
-        if not meta.get("has_user_mask", False):
-            return "no_user_mask"
-        if meta.get("exclude_from_training", False):
-            return "excluded"
-        if meta.get("used_for_training", False):
-            return "already_used"
+        if meta is None: return "no_meta_verified"
+        if not meta.get("has_user_mask", False): return "no_user_mask"
+        if meta.get("exclude_from_training", False): return "excluded"
+        if meta.get("used_for_training", False): return "already_used"
         return "eligible_new"
 
     for aid in analysis_ids:
@@ -2406,8 +2011,7 @@ def admin_training_candidates(limit: int = 50):
 
         if len(examples) < max(0, int(limit)):
             examples.append({
-                "analysis_id": aid,
-                "reason": r,
+                "analysis_id": aid, "reason": r,
                 "has_user_mask": bool(meta.get("has_user_mask")) if meta else None,
                 "exclude_from_training": bool(meta.get("exclude_from_training")) if meta else None,
                 "used_for_training": bool(meta.get("used_for_training")) if meta else None,
@@ -2422,45 +2026,26 @@ def admin_training_candidates(limit: int = 50):
         "eligible_replay_pool": eligible_replay_pool[:limit],
         "skipped_counts": skipped_counts,
         "examples": examples,
-        "notes": {
-            "new_criteria": "has_user_mask=true AND exclude_from_training!=true AND used_for_training!=true",
-            "replay_pool_criteria": "has_user_mask=true AND exclude_from_training!=true AND used_for_training=true",
-        }
     }
-@app.post("/admin/verified/{analysis_id}/set-training")
-@app.post("/admin/verified/{analysis_id}/set-training/")
-def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
-    """
-    Toggle whether a verified sample should be used for training.
-    The admin UI uses this to include/exclude items from the training dataset export.
 
-    Важно: обновляем И meta.json, И meta_verified.json, т.к. export/worker берёт поля из meta_verified.json.
-    """
-    # pick the first provided flag from a set of accepted keys
+@app.post("/admin/verified/{analysis_id}/set-training")
+def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     flag = None
     for v in (req.use_for_training, req.enabled, req.include, req.value):
         if v is not None:
             flag = bool(v)
             break
     if flag is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
-        )
+        raise HTTPException(status_code=400, detail="Missing boolean flag.")
 
-    # Helper to load json safely
     def _load_json(path: str) -> dict:
         try:
             raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path)
-            if not raw:
-                return {}
-            if isinstance(raw, (bytes, bytearray)):
-                return json.loads(raw.decode("utf-8"))
-            return json.loads(raw)
+            if not raw: return {}
+            return json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
         except Exception:
             return {}
 
-    # Update meta.json (legacy)
     meta_path = f"{analysis_id}/meta.json"
     meta = _load_json(meta_path)
     meta["analysis_id"] = analysis_id
@@ -2468,7 +2053,6 @@ def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     meta["exclude_from_training"] = (not flag)
     supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
 
-    # Update meta_verified.json (source of truth for training pipeline)
     mv_path = f"{analysis_id}/meta_verified.json"
     mv = _load_json(mv_path)
     mv["analysis_id"] = analysis_id
@@ -2477,73 +2061,38 @@ def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     supabase_upload_json(SUPABASE_BUCKET_VERIFIED, mv_path, mv)
 
     return {"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": (not flag)}
+
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
-    """
-    Детали одного verified анализа для админки
-    """
     try:
-        input_img = supabase_download_bytes(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/input.jpg",
-        )
-        annotated_img = supabase_download_bytes(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/annotated.jpg",
-        )
+        input_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg")
+        annotated_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg")
 
-        # Optional: user-corrected mask (may not exist for older verified items)
         user_mask_img = None
         try:
-            user_mask_img = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/user_mask.png",
-            )
+            user_mask_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png")
         except Exception:
-            user_mask_img = None
+            pass
 
-        tree_pred = json.loads(
-            supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/tree_pred.json",
-            )
-        )
-        stick_pred = json.loads(
-            supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/stick_pred.json",
-            )
-        )
-        meta = json.loads(
-            supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/meta_verified.json",
-            )
-        )
+        tree_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/tree_pred.json"))
+        stick_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json"))
+        meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json"))
 
     except Exception as e:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Analysis {analysis_id} not found or incomplete: {e}",
-        )
+        raise HTTPException(status_code=404, detail=f"Analysis {analysis_id} not found: {e}")
 
     return {
         "analysis_id": analysis_id,
         "images": {
             "input_base64": base64.b64encode(input_img).decode("utf-8"),
             "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
-            "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8")
-            if user_mask_img
-            else None,
+            "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None,
         },
         "tree_pred": tree_pred,
         "stick_pred": stick_pred,
         "meta": meta,
     }
 
-# =============================================
-# DATASET COLLECTION ENDPOINT (for training from app)
-# =============================================
 
 DATASET_ROOT = "datasets/trees_segmentation"
 IMAGES_DIR = os.path.join(DATASET_ROOT, "images")
@@ -2554,24 +2103,16 @@ os.makedirs(IMAGES_DIR, exist_ok=True)
 os.makedirs(MASKS_DIR, exist_ok=True)
 os.makedirs(META_DIR, exist_ok=True)
 
-
 class UserMaskPayload(BaseModel):
     analysis_id: str
     image_base64: str
     mask_base64: str
     meta: dict | None = None
 
-
-
-# ---------------------------------------------------------
-# Admin training control + model version switch (used by app)
-# ---------------------------------------------------------
-
 @app.get("/admin/training-status")
 def admin_training_status():
     training_state_ensure_row()
     state = training_state_get()
-    # ensure defaults
     if "active_model_version" not in state or state["active_model_version"] is None:
         state["active_model_version"] = 0
     if "last_model_version" not in state or state["last_model_version"] is None:
@@ -2582,30 +2123,23 @@ def admin_training_status():
         state["retrain_requested"] = False
     return state
 
-class _SetActiveModelBody(BaseModel):
-    version: int
-
 @app.post("/admin/set-active-model")
 async def admin_set_active_model(payload: dict = Body(...)):
     training_state_ensure_row()
     raw_v = payload.get('version') or payload.get('model_version') or payload.get('active_model_version')
     if raw_v is None:
-        raise HTTPException(status_code=422, detail="Missing 'version' in request body")
+        raise HTTPException(status_code=422, detail="Missing 'version'")
     v = int(raw_v)
 
-    # verify model exists in Supabase Storage bucket SUPABASE_BUCKET_MODELS
     filename = f"model_v{v}.pt"
     try:
         _ = supabase_download_bytes(SUPABASE_BUCKET_MODELS, filename)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Model file not found in Supabase Storage: {filename}. {e}")
+        raise HTTPException(status_code=400, detail=f"Model not found in Supabase: {filename}. {e}")
 
     training_state_update({"active_model_version": v})
-
-    # hot reload immediately (no server restart)
     with MODEL_LOCK:
         reload_tree_model(force=True)
-
     return {"status": "ok", "active_model_version": v}
 
 @app.post("/admin/request-retrain")
@@ -2617,10 +2151,7 @@ def admin_request_retrain():
 
 @app.post("/dataset/user-mask")
 def save_user_mask(payload: UserMaskPayload):
-    """Сохраняет пару (оригинал + маска) в локальный датасет.
-    Маска нормализуется в валидный PNG (0/255). Поддерживает data-URL prefix."""
     analysis_id = payload.analysis_id
-
     try:
         image_bytes = decode_base64_bytes(payload.image_base64)
         mask_png_bytes = ensure_png_mask_bytes(payload.mask_base64)
@@ -2635,7 +2166,6 @@ def save_user_mask(payload: UserMaskPayload):
 
     with open(image_path, "wb") as f:
         f.write(image_bytes)
-
     with open(mask_path, "wb") as f:
         f.write(mask_png_bytes)
 
@@ -2644,35 +2174,24 @@ def save_user_mask(payload: UserMaskPayload):
         "saved_at": datetime.utcnow().isoformat(),
         **(payload.meta or {}),
     }
-
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
     return {
         "status": "ok",
         "analysis_id": analysis_id,
-        "files": {
-            "image": image_path,
-            "mask": mask_path,
-            "meta": meta_path
-        }
+        "files": {"image": image_path, "mask": mask_path, "meta": meta_path}
     }
-
 
 @app.get("/admin/models")
 def admin_models():
-    """List available model versions and which one is active."""
     return {"models": list_available_model_versions(), "active_model_version": _get_active_model_version()}
 
 @app.get("/admin/training-events")
 def admin_training_events(limit: int = 15):
-    """Return last training/admin events for UI."""
     limit = max(1, min(int(limit), 200))
     items = list(TRAINING_EVENTS)[-limit:]
-    # newest first for UI convenience
     return {"events": list(reversed(items))}
-
-
 
 def get_latest_model_path():
     state = training_state_get()

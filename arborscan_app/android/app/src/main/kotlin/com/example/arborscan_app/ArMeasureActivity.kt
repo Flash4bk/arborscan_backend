@@ -1,4 +1,4 @@
-// FULL UPDATED FILE WITH ML OPTIMIZATION (THREAD + RESIZE)
+// ArborScan AR measurement screen with manual / automatic point placement modes.
 package com.example.arborscan_app
 
 import android.app.Activity
@@ -36,7 +36,6 @@ class ArMeasureActivity : AppCompatActivity() {
         const val EXTRA_RESULT_JSON = "result_json"
         private const val MAX_POINTS = 6
 
-        // Шаг 1: безопасное улучшение точности без ML
         private const val AUTO_PLACE_STABLE_MS = 800L
         private const val AUTO_PLACE_COOLDOWN_MS = 900L
         private const val STABLE_HIT_MAX_WORLD_DELTA_M = 0.03f
@@ -47,6 +46,7 @@ class ArMeasureActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var progressText: TextView
     private lateinit var zoomText: TextView
+    private lateinit var modeBtn: TextView
     private lateinit var placeBtn: ImageButton
     private lateinit var undoBtn: ImageButton
     private lateinit var doneBtn: ImageButton
@@ -60,7 +60,9 @@ class ArMeasureActivity : AppCompatActivity() {
     private var centerReady = false
     private var lastPlacementUsedFeaturePoint = false
 
-    // Для авто-постановки
+    // false by default: field measurements are safer when the user confirms every point.
+    private var autoPlacementEnabled = false
+
     private var stableHitSinceMs: Long = 0L
     private var lastAutoPlaceMs: Long = 0L
     private var lastHitSample: Vector3? = null
@@ -89,6 +91,7 @@ class ArMeasureActivity : AppCompatActivity() {
         statusText = findViewById(R.id.tvStatus)
         progressText = findViewById(R.id.tvProgress)
         zoomText = findViewById(R.id.tvZoom)
+        modeBtn = findViewById(R.id.btnPlacementMode)
         placeBtn = findViewById(R.id.btnPlace)
         undoBtn = findViewById(R.id.btnUndo)
         doneBtn = findViewById(R.id.btnDone)
@@ -109,6 +112,7 @@ class ArMeasureActivity : AppCompatActivity() {
         arFragment.arSceneView.scene.addOnUpdateListener(this::onSceneUpdate)
         arFragment.setOnTapArPlaneListener { _, _, _ -> }
 
+        modeBtn.setOnClickListener { togglePlacementMode() }
         placeBtn.setOnClickListener { placeCenterPoint(isAuto = false) }
         undoBtn.setOnClickListener { undoLastPoint() }
         doneBtn.setOnClickListener {
@@ -119,6 +123,7 @@ class ArMeasureActivity : AppCompatActivity() {
         zoomOutBtn.setOnClickListener { setZoomAssist(zoomAssist - 0.2f) }
 
         updateZoomLabel()
+        updatePlacementModeLabel()
 
         // ML init
         tflite = TFLiteHelper(this)
@@ -157,7 +162,9 @@ class ArMeasureActivity : AppCompatActivity() {
         centerReady = currentHit != null
 
         updateStableHitState()
-        maybeAutoPlace()
+        if (autoPlacementEnabled) {
+            maybeAutoPlace()
+        }
 
         updateUi()
     }
@@ -285,11 +292,13 @@ class ArMeasureActivity : AppCompatActivity() {
                 statusText.text = "Высота: %.2f м\nКрона: %.2f м\nСтвол: %.2f м".format(h, c, t)
             }
             else -> {
-                val prefix = if (isAuto) "Точка поставлена автоматически. " else ""
+                val prefix = if (isAuto) "Точка поставлена автоматически. " else "Точка поставлена вручную. "
                 statusText.text = prefix + currentStageDescription()
             }
         }
 
+        stableHitSinceMs = 0L
+        lastHitSample = null
         updateUi()
     }
 
@@ -351,6 +360,7 @@ class ArMeasureActivity : AppCompatActivity() {
             .put("zoom_assist", zoomAssist.toDouble())
             .put("used_feature_point", lastPlacementUsedFeaturePoint)
             .put("center_placement", true)
+            .put("placement_mode", if (autoPlacementEnabled) "auto" else "manual")
             .toString()
 
         android.util.Log.d("AR_RESULT", json)
@@ -380,6 +390,7 @@ class ArMeasureActivity : AppCompatActivity() {
     private fun updateUi() {
         val tracking = arFragment.arSceneView.arFrame?.camera?.trackingState == TrackingState.TRACKING
         progressText.text = "Точек: ${anchorNodes.size}/6"
+        updatePlacementModeLabel()
 
         when {
             !tracking -> {
@@ -389,31 +400,34 @@ class ArMeasureActivity : AppCompatActivity() {
             }
             anchorNodes.size >= MAX_POINTS -> {
                 hintText.text = "Все 6 точек поставлены"
-                statusText.text = if (anchorNodes.size >= MAX_POINTS) {
-                    val h = segmentDistance(0, 1)
-                    val c = segmentDistance(2, 3)
-                    val t = segmentDistance(4, 5)
-                    "Высота: %.2f м\nКрона: %.2f м\nСтвол: %.2f м".format(h, c, t)
-                } else {
-                    "Нажми Готово, чтобы вернуть размеры в приложение"
-                }
+                val h = segmentDistance(0, 1)
+                val c = segmentDistance(2, 3)
+                val t = segmentDistance(4, 5)
+                statusText.text = "Высота: %.2f м\nКрона: %.2f м\nСтвол: %.2f м".format(h, c, t)
                 setReticleColor("#46E0A1")
             }
             centerReady && currentUsesFeaturePoint -> {
                 hintText.text = currentStageDescription()
-                statusText.text = "Наведение есть, но пока через feature point. Удерживай центр ровно."
+                statusText.text = if (autoPlacementEnabled) {
+                    "Наведение есть через feature point. Удерживай центр ровно или нажми кнопку."
+                } else {
+                    "Наведение есть через feature point. Нажми +, если точка выбрана правильно."
+                }
                 setReticleColor("#F4B03E")
             }
             centerReady -> {
-                val now = System.currentTimeMillis()
-                val stableMs = if (stableHitSinceMs == 0L) 0L else now - stableHitSinceMs
-                val remain = max(0L, AUTO_PLACE_STABLE_MS - stableMs)
-
                 hintText.text = currentStageDescription()
-                statusText.text = if (remain > 0) {
-                    "Центр найден. Удерживай ещё ${"%.1f".format(remain / 1000f)} с или нажми кнопку."
+                statusText.text = if (autoPlacementEnabled) {
+                    val now = System.currentTimeMillis()
+                    val stableMs = if (stableHitSinceMs == 0L) 0L else now - stableHitSinceMs
+                    val remain = max(0L, AUTO_PLACE_STABLE_MS - stableMs)
+                    if (remain > 0) {
+                        "Авто: удерживай центр ещё ${"%.1f".format(remain / 1000f)} с или нажми кнопку."
+                    } else {
+                        "Авто: центр стабилен, точка будет поставлена автоматически."
+                    }
                 } else {
-                    "Центр стабилен. Точка будет поставлена автоматически."
+                    "Ручной режим: наведи центр и нажми +, чтобы поставить точку."
                 }
                 setReticleColor("#46E0A1")
             }
@@ -429,6 +443,36 @@ class ArMeasureActivity : AppCompatActivity() {
         placeBtn.isEnabled = centerReady && anchorNodes.size < MAX_POINTS
         doneBtn.isEnabled = ready
         doneBtn.alpha = if (ready) 1.0f else 0.4f
+    }
+
+    private fun togglePlacementMode() {
+        autoPlacementEnabled = !autoPlacementEnabled
+        stableHitSinceMs = 0L
+        lastAutoPlaceMs = 0L
+        lastHitSample = null
+        statusText.text = if (autoPlacementEnabled) {
+            "Включён автоматический режим: точка ставится после стабильного наведения."
+        } else {
+            "Включён ручной режим: каждая точка ставится кнопкой +."
+        }
+        updatePlacementModeLabel()
+        updateUi()
+    }
+
+    private fun updatePlacementModeLabel() {
+        if (!::modeBtn.isInitialized) return
+        val bgColor = if (autoPlacementEnabled) "#3346E0A1" else "#33132238"
+        val strokeColor = if (autoPlacementEnabled) "#46E0A1" else "#6F7F91"
+        val textColor = if (autoPlacementEnabled) "#46E0A1" else "#F6FAFF"
+
+        modeBtn.text = if (autoPlacementEnabled) "Режим: авто" else "Режим: ручной"
+        modeBtn.setTextColor(Color.parseColor(textColor))
+        modeBtn.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 28f
+            setColor(Color.parseColor(bgColor))
+            setStroke(3, Color.parseColor(strokeColor))
+        }
     }
 
     private fun setReticleColor(hex: String) {
@@ -477,37 +521,37 @@ class ArMeasureActivity : AppCompatActivity() {
     // ================= ML =================
 
     private fun processFrame(frame: Frame) {
-    if (isProcessing) return
-    isProcessing = true
+        if (isProcessing) return
+        isProcessing = true
 
-    try {
-        val image = frame.acquireCameraImage()
+        try {
+            val image = frame.acquireCameraImage()
 
-        mlExecutor.execute {
-            try {
-                val bitmap = imageToBitmap(image)
-                val resized = android.graphics.Bitmap.createScaledBitmap(bitmap, 320, 320, true)
+            mlExecutor.execute {
+                try {
+                    val bitmap = imageToBitmap(image)
+                    val resized = android.graphics.Bitmap.createScaledBitmap(bitmap, 320, 320, true)
 
-                val result = treeDetector.detect(resized)
+                    val result = treeDetector.detect(resized)
 
-                if (result.hasTree) {
-                    android.util.Log.d("ML", "🌳 Дерево найдено")
-                } else {
-                    android.util.Log.d("ML", "❌ Нет дерева")
+                    if (result.hasTree) {
+                        android.util.Log.d("ML", "🌳 Дерево найдено")
+                    } else {
+                        android.util.Log.d("ML", "❌ Нет дерева")
+                    }
+
+                } catch (e: Exception) {
+                    android.util.Log.e("ML", "Ошибка ML: ${e.message}")
+                } finally {
+                    image.close()
+                    isProcessing = false
                 }
-
-            } catch (e: Exception) {
-                android.util.Log.e("ML", "Ошибка ML: ${e.message}")
-            } finally {
-                image.close()
-                isProcessing = false
             }
-        }
 
-    } catch (e: Exception) {
-        isProcessing = false
+        } catch (e: Exception) {
+            isProcessing = false
+        }
     }
-}
 
     private fun imageToBitmap(image: android.media.Image): android.graphics.Bitmap {
         val plane = image.planes[0]
@@ -524,6 +568,7 @@ class ArMeasureActivity : AppCompatActivity() {
             it.setParent(null)
         }
         anchorNodes.clear()
+        mlExecutor.shutdownNow()
         super.onDestroy()
     }
 }
