@@ -11,9 +11,9 @@ import secrets
 import cv2
 import numpy as np
 import requests
+import torch
 from ultralytics import YOLO
 from PIL import Image, ExifTags
-import torch
 from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
@@ -42,7 +42,6 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
-# Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
@@ -123,21 +122,15 @@ def training_state_update(fields: dict) -> dict:
     return rows[0] if rows else fields
 
 
-# Настройки окружения
 WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
                  or os.getenv("OPENWEATHER_API_KEY")
                  or os.getenv("OPENWEATHERMAP_API_KEY")
                  or os.getenv("dc825ffd002731568ec7766eafb54bc9")
                  or None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
-
 SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
-
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
-NOMINATIM_USER_AGENT = os.getenv(
-    "NOMINATIM_USER_AGENT",
-    "arborscan-backend/1.0 (contact: example@mail.com)"
-)
+NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
 
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
@@ -149,7 +142,7 @@ ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 MODEL_VERSIONS = {
     "tree_yolo": "tree_yolov8_seg_v1.2.0",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
-    "classifier": "plantnet_api_v2", # Обновлено
+    "classifier": "plantnet_api_v2", 
 }
 BUILD_INFO = {
     "git_commit": os.getenv("GIT_COMMIT", "unknown"),
@@ -159,9 +152,6 @@ SCHEMA_VERSION = "1.0.0"
 API_VERSION = "2.0.0"
 VERIFIED_TRUST_THRESHOLD = 0.0
 
-# -------------------------------------
-# CLASSES / CONSTANTS
-# -------------------------------------
 REAL_STICK_M = 1.0
 
 # -------------------------------------
@@ -180,7 +170,6 @@ print("[*] Models loaded.")
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -191,7 +180,6 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     if resp.status_code >= 400:
         raise RuntimeError(f"Supabase upload error {resp.status_code}: {resp.text}")
 
-
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
@@ -199,7 +187,6 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
 def supabase_list_objects(bucket: str, prefix: str = ""):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -216,11 +203,9 @@ def supabase_list_objects(bucket: str, prefix: str = ""):
         raise RuntimeError(f"Supabase list error {resp.status_code}: {resp.text}")
     return resp.json()
 
-
 def supabase_download_bytes(bucket: str, path: str) -> bytes:
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/authenticated/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -266,7 +251,6 @@ def _get_active_model_version() -> int:
 
 def list_available_model_versions() -> list[dict]:
     versions: set[int] = set()
-
     try:
         objects = supabase_list_objects(SUPABASE_BUCKET_MODELS)
         for obj in objects:
@@ -302,17 +286,14 @@ def list_available_model_versions() -> list[dict]:
 
     active = _get_active_model_version()
     versions.add(active)
-
     return [{"version": v, "is_active": v == active} for v in sorted(versions)]
 
 def reload_tree_model(force: bool = False):
     global TREE_MODEL, TREE_MODEL_VERSION, _MODEL_LAST_CHECK_TS
-
     now = time.time()
     if not force and (now - _MODEL_LAST_CHECK_TS) < _MODEL_CHECK_INTERVAL_SEC:
         return
     _MODEL_LAST_CHECK_TS = now
-
     v = _get_active_model_version()
     if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v:
         return
@@ -350,7 +331,6 @@ def get_tree_model() -> YOLO:
 def supabase_db_insert(table: str, row: dict):
     if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase DB is not configured")
-
     url = f"{SUPABASE_DB_BASE}/{table}"
     headers = {
         "apikey": SUPABASE_SERVICE_KEY,
@@ -360,9 +340,7 @@ def supabase_db_insert(table: str, row: dict):
     }
     resp = requests.post(url, headers=headers, json=row, timeout=10)
     if resp.status_code >= 400:
-        raise RuntimeError(
-            f"Supabase DB insert error {resp.status_code}: {resp.text}"
-        )
+        raise RuntimeError(f"Supabase DB insert error {resp.status_code}: {resp.text}")
 
 
 # =============================================
@@ -380,15 +358,12 @@ def _strip_data_url(b64: str) -> str:
 def decode_base64_bytes(b64: str) -> bytes:
     if b64 is None:
         return b""
-
     b64_clean = _strip_data_url(str(b64)).strip()
     b64_clean = b64_clean.replace("-", "+").replace("_", "/")
     pad = len(b64_clean) % 4
     if pad:
         b64_clean += "=" * (4 - pad)
-
     raw = base64.b64decode(b64_clean, validate=False)
-
     try:
         as_text = raw.decode("utf-8").strip()
         if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
@@ -401,7 +376,6 @@ def decode_base64_bytes(b64: str) -> bytes:
                 return raw2
     except Exception:
         pass
-
     return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
@@ -441,25 +415,18 @@ def extract_gps(image_bytes):
         exif = img._getexif()
         if not exif:
             return None
-
         gps_info = None
         for k, v in exif.items():
             tag = ExifTags.TAGS.get(k)
             if tag == "GPSInfo":
                 gps_info = v
                 break
-
         if not gps_info:
             return None
-
         lat = _deg(gps_info[2])
         lon = _deg(gps_info[4])
-
-        if gps_info[1] == "S":
-            lat = -lat
-        if gps_info[3] == "W":
-            lon = -lon
-
+        if gps_info[1] == "S": lat = -lat
+        if gps_info[3] == "W": lon = -lon
         return {"lat": lat, "lon": lon}
     except Exception:
         return None
@@ -470,16 +437,11 @@ def extract_gps(image_bytes):
 
 def reverse_geocode(lat, lon):
     try:
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "format": "jsonv2"
-        }
+        params = {"lat": lat, "lon": lon, "format": "jsonv2"}
         headers = {"User-Agent": NOMINATIM_USER_AGENT}
         r = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=5)
         r.raise_for_status()
-        data = r.json()
-        return data.get("display_name")
+        return r.json().get("display_name")
     except Exception:
         return None
 
@@ -491,19 +453,12 @@ def get_weather(lat, lon):
     if not WEATHER_API_KEY:
         return None
     try:
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "appid": WEATHER_API_KEY,
-            "units": "metric",
-            "lang": "ru",
-        }
+        params = {"lat": lat, "lon": lon, "appid": WEATHER_API_KEY, "units": "metric", "lang": "ru"}
         r = requests.get(WEATHER_BASE_URL, params=params, timeout=5)
         r.raise_for_status()
         data = r.json()
         wind = data.get("wind", {})
         main = data.get("main", {})
-
         return {
             "temperature": main.get("temp"),
             "wind_speed": wind.get("speed"),
@@ -520,16 +475,10 @@ def get_weather(lat, lon):
 
 def get_soil(lat, lon):
     try:
-        params = {
-            "lon": lon,
-            "lat": lat,
-            "property": "clay,sand,silt,soc,phh2o",
-            "depth": "0-5cm",
-        }
+        params = {"lon": lon, "lat": lat, "property": "clay,sand,silt,soc,phh2o", "depth": "0-5cm"}
         r = requests.get(SOILGRIDS_URL, params=params, timeout=7)
         r.raise_for_status()
         data = r.json()
-
         result = {}
         layers = data.get("properties", {}).get("layers", [])
         for layer in layers:
@@ -541,7 +490,6 @@ def get_soil(lat, lon):
         return result
     except Exception:
         return None
-
 
 # =============================================
 # Risk Calculation
@@ -559,55 +507,40 @@ SPECIES_BASE = {
 }
 
 def slenderness_score(height, diameter):
-    if not diameter or diameter <= 0:
-        return 1.0
+    if not diameter or diameter <= 0: return 1.0
     S = height / diameter
-    if S >= 80:
-        return 1.0
-    if S >= 60:
-        return 0.7
-    if S >= 40:
-        return 0.4
+    if S >= 80: return 1.0
+    if S >= 60: return 0.7
+    if S >= 40: return 0.4
     return 0.2
 
 def soil_score(soil):
-    if not soil:
-        return 0.5
+    if not soil: return 0.5
     clay = soil.get("clay") or 0
     sand = soil.get("sand") or 0
     org = soil.get("soc") or 0
-    if org > 80:
-        return 1.0
-    if clay > 40:
-        return 0.9
-    if sand > 60:
-        return 0.7
+    if org > 80: return 1.0
+    if clay > 40: return 0.9
+    if sand > 60: return 0.7
     return 0.5
 
 def wind_score(weather):
-    if not weather:
-        return 0.5
+    if not weather: return 0.5
     gust = weather.get("wind_gust") or weather.get("wind_speed") or 0
-    if gust <= 5:
-        return 0.2
-    if gust <= 10:
-        return 0.4
-    if gust <= 15:
-        return 0.6
-    if gust <= 25:
-        return 0.8
+    if gust <= 5: return 0.2
+    if gust <= 10: return 0.4
+    if gust <= 15: return 0.6
+    if gust <= 25: return 0.8
     return 1.0
 
 def compute_risk(species, height, crown, diameter, weather, soil):
     expl = []
-
     base = SPECIES_BASE.get(species, 0.7)
     expl.append(f"Порода ({species}) базовый риск: {base:.2f}")
 
-    if diameter and diameter > 0:
-        S = height / diameter
-    else:
-        S = 0.0
+    if diameter and diameter > 0: S = height / diameter
+    else: S = 0.0
+    
     s_score = slenderness_score(height, diameter)
     expl.append(f"Коэфф. стройности H/D: {S:.1f} → {s_score:.2f}")
 
@@ -620,12 +553,9 @@ def compute_risk(species, height, crown, diameter, weather, soil):
     index = 0.3 * base + 0.3 * s_score + 0.25 * w_score + 0.15 * soil_s
     index = max(0, min(index, 1))
 
-    if index < 0.4:
-        cat = "низкий"
-    elif index < 0.7:
-        cat = "средний"
-    else:
-        cat = "высокий"
+    if index < 0.4: cat = "низкий"
+    elif index < 0.7: cat = "средний"
+    else: cat = "высокий"
 
     expl.append(f"Итоговый риск {index:.2f} ({cat})")
 
@@ -634,7 +564,6 @@ def compute_risk(species, height, crown, diameter, weather, soil):
         "category": cat,
         "explanation": expl,
     }
-
 
 # =============================================
 # Beta coefficient estimation (Borisevich 2021)
@@ -815,7 +744,7 @@ class AuthGoogleRequest(BaseModel):
 app = FastAPI(title="ArborScan API v2.0")
 
 # =============================================
-# SUPABASE AUTH & ANALYSES (РЕШЕНИЕ ПРОБЛЕМЫ SQLITE)
+# SUPABASE AUTH & ANALYSES
 # =============================================
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
