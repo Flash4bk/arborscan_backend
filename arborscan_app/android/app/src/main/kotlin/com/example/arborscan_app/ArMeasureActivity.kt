@@ -22,6 +22,7 @@ import com.google.ar.core.Pose
 import com.google.ar.core.TrackingState
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.FrameTime
+import com.google.ar.sceneform.Node
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.Color as SceneColor
 import com.google.ar.sceneform.rendering.MaterialFactory
@@ -41,9 +42,9 @@ class ArMeasureActivity : AppCompatActivity() {
         const val EXTRA_RESULT_JSON = "result_json"
     }
 
-    // Этапы измерения (Мастер)
+    // Этапы измерения: добавлен FALL_ZONE
     enum class MeasureStep {
-        BASE, TOP, CROWN_LEFT, CROWN_RIGHT, TRUNK_LEFT, TRUNK_RIGHT, DONE
+        BASE, TOP, CROWN_LEFT, CROWN_RIGHT, TRUNK_LEFT, TRUNK_RIGHT, FALL_ZONE, DONE
     }
 
     private lateinit var arFragment: ArFragment
@@ -57,6 +58,7 @@ class ArMeasureActivity : AppCompatActivity() {
     // Сохраненные данные
     private var currentStep = MeasureStep.BASE
     private var baseAnchorNode: AnchorNode? = null
+    private var fallZoneNode: Node? = null
     
     // Результаты измерений
     private var finalHeight = 0.0
@@ -159,16 +161,19 @@ class ArMeasureActivity : AppCompatActivity() {
                     val trunk = 2 * distance * tan(diff / 2)
                     tvRealtime.text = "Ствол: %.2f м".format(trunk)
                 }
+                MeasureStep.FALL_ZONE -> {
+                    tvRealtime.text = "Зона поражения: R = %.1f м".format(finalHeight)
+                }
                 else -> tvRealtime.visibility = View.GONE
             }
         } catch (e: Exception) {
-            // Игнорируем математические ошибки при отрисовке UI
+            // Игнорируем ошибки при отрисовке UI
         }
     }
 
     private fun onPlaceClicked() {
         try {
-            vibrate() // Теперь это безопасно
+            vibrate() 
             val frame = arFragment.arSceneView.arFrame ?: return
             val cameraPose = frame.camera.pose
 
@@ -211,9 +216,14 @@ class ArMeasureActivity : AppCompatActivity() {
                     val distance = getHorizontalDistance(cameraPose, baseAnchorNode!!.anchor!!.pose)
                     val diff = getAngleDiff(trunkLeftYaw, getYaw(cameraPose))
                     finalTrunkDiameter = 2 * distance * tan(diff / 2)
-                    currentStep = MeasureStep.DONE
                     
-                    // Все шаги пройдены, сохраняем и выходим
+                    // Переходим к отрисовке Зоны падения
+                    currentStep = MeasureStep.FALL_ZONE
+                    drawFallZone(finalHeight)
+                }
+                MeasureStep.FALL_ZONE -> {
+                    // Все шаги и осмотр завершены, сохраняем и выходим
+                    currentStep = MeasureStep.DONE
                     finishMeasure()
                     return
                 }
@@ -225,6 +235,24 @@ class ArMeasureActivity : AppCompatActivity() {
             Log.e("ArMeasureActivity", "Error placing point", e)
             tvStatus.text = "Ошибка фиксации. Попробуйте еще раз."
         }
+    }
+
+    private fun drawFallZone(radiusMeters: Double) {
+        if (radiusMeters <= 0.0 || baseAnchorNode == null) return
+
+        val r = radiusMeters.toFloat()
+
+        // Создаем полупрозрачный красный материал
+        MaterialFactory.makeTransparentWithColor(this, SceneColor(1.0f, 0.2f, 0.2f, 0.4f))
+            .thenAccept { material ->
+                // Создаем очень плоский цилиндр (по сути круг на земле)
+                val cylinder = ShapeFactory.makeCylinder(r, 0.02f, Vector3(0f, 0.01f, 0f), material)
+                
+                fallZoneNode = Node().apply {
+                    setParent(baseAnchorNode)
+                    renderable = cylinder
+                }
+            }
     }
 
     private fun undoStep() {
@@ -241,6 +269,11 @@ class ArMeasureActivity : AppCompatActivity() {
                 MeasureStep.CROWN_RIGHT -> currentStep = MeasureStep.CROWN_LEFT
                 MeasureStep.TRUNK_LEFT -> currentStep = MeasureStep.CROWN_RIGHT
                 MeasureStep.TRUNK_RIGHT -> currentStep = MeasureStep.TRUNK_LEFT
+                MeasureStep.FALL_ZONE -> {
+                    fallZoneNode?.setParent(null)
+                    fallZoneNode = null
+                    currentStep = MeasureStep.TRUNK_RIGHT
+                }
                 else -> {}
             }
             updateUi()
@@ -251,7 +284,8 @@ class ArMeasureActivity : AppCompatActivity() {
 
     private fun updateUi() {
         btnUndo.isEnabled = currentStep != MeasureStep.BASE
-        
+        btnPlace.text = "Зафиксировать"
+
         when (currentStep) {
             MeasureStep.BASE -> {
                 tvStep.text = "ШАГ 1 ИЗ 5 (ДИСТАНЦИЯ)"
@@ -261,7 +295,7 @@ class ArMeasureActivity : AppCompatActivity() {
             MeasureStep.TOP -> {
                 tvStep.text = "ШАГ 2 ИЗ 5 (ВЫСОТА)"
                 tvHint.text = "Ведите прицел вверх до самой макушки дерева"
-                tvStatus.text = "Плоскость больше не нужна. Используется гироскоп."
+                tvStatus.text = "AR плоскость больше не нужна. Используется гироскоп."
             }
             MeasureStep.CROWN_LEFT -> {
                 tvStep.text = "ШАГ 3 ИЗ 5 (КРОНА)"
@@ -278,15 +312,17 @@ class ArMeasureActivity : AppCompatActivity() {
             MeasureStep.TRUNK_RIGHT -> {
                 tvStep.text = "ШАГ 5 ИЗ 5 (СТВОЛ)"
                 tvHint.text = "Наведите прицел на ПРАВЫЙ край ствола"
-                btnPlace.text = "Завершить"
+                btnPlace.text = "Показать зону"
+            }
+            MeasureStep.FALL_ZONE -> {
+                tvStep.text = "ИТОГ (ЗОНА ПАДЕНИЯ)"
+                tvHint.text = "Оцените радиус поражения. Дерево выделено красным."
+                tvStatus.text = "Осмотритесь вокруг. Если всё верно — завершайте."
+                btnPlace.text = "Сохранить и выйти"
             }
             MeasureStep.DONE -> {
                 tvHint.text = "Обработка..."
             }
-        }
-        
-        if (currentStep != MeasureStep.TRUNK_RIGHT) {
-            btnPlace.text = "Зафиксировать"
         }
     }
 
@@ -376,7 +412,7 @@ class ArMeasureActivity : AppCompatActivity() {
                 vibrator.vibrate(40)
             }
         } catch (e: Exception) {
-            // Игнорируем, если в AndroidManifest нет разрешения на вибрацию
+            // Игнорируем
         }
     }
 
@@ -413,6 +449,7 @@ class ArMeasureActivity : AppCompatActivity() {
     override fun onDestroy() {
         try {
             baseAnchorNode?.anchor?.detach()
+            fallZoneNode?.setParent(null)
             mlExecutor.shutdownNow()
         } catch (e: Exception) {}
         super.onDestroy()
