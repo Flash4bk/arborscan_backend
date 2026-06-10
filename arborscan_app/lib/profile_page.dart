@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_theme.dart';
+import 'api_config.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -16,13 +17,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  static const String _baseUrl =
-      'https://arborscanbackend-production.up.railway.app';
-
-  static const String _googleWebClientId = '946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com';
-
   static const String _adminFlagKey = 'arborscan_is_admin';
-
   static const String _nameKey = 'arborscan_profile_name';
   static const String _emailKey = 'arborscan_profile_email';
   static const String _loggedInKey = 'arborscan_profile_logged_in';
@@ -33,16 +28,14 @@ class _ProfilePageState extends State<ProfilePage> {
   static const String _appName = 'ArborScan';
   static const String _appVersion = '1.0.0 beta';
   static const String _developerEmail = 'danik.alshkevich@gmail.com';
-  static const String _adminPasscode = '8426';
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _adminCodeController = TextEditingController();
 
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: _googleWebClientId,
+    serverClientId: ApiConfig.googleWebClientId,
   );
 
   bool _loading = true;
@@ -76,12 +69,11 @@ class _ProfilePageState extends State<ProfilePage> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _adminCodeController.dispose();
     super.dispose();
   }
 
   Uri _uri(String path, [Map<String, String>? query]) {
-    return Uri.parse('$_baseUrl$path').replace(queryParameters: query);
+    return Uri.parse('${ApiConfig.baseUrl}$path').replace(queryParameters: query);
   }
 
   Future<Map<String, dynamic>> _postJson(
@@ -330,7 +322,6 @@ class _ProfilePageState extends State<ProfilePage> {
       _role = 'user';
       _token = '';
       _passwordController.clear();
-      _adminCodeController.clear();
       _statusText = 'Вы вышли из профиля.';
       _avatarUrl = '';
       _totalAnalyses = 0;
@@ -365,42 +356,11 @@ class _ProfilePageState extends State<ProfilePage> {
     _snack('Локальная сессия очищена. Аккаунт на сервере не удалён.');
   }
 
-  Future<void> _setRole(String role) async {
-    if (!_loggedIn || _token.isEmpty) {
-      _snack('Сначала войдите или зарегистрируйтесь.');
-      return;
-    }
-
-    final adminCode = _adminCodeController.text.trim();
-    if (role == 'admin' && adminCode.isEmpty) {
-      _snack('Введите код администратора.');
-      return;
-    }
-
-    setState(() => _busy = true);
-    try {
-      final data = await _postJson('/auth/set-role', {
-        'token': _token,
-        'role': role,
-        'admin_code': role == 'admin' ? adminCode : null,
-      });
-      await _applyAuthData(data, tokenFromResponse: _token);
-      if (!mounted) return;
-      _snack(role == 'admin'
-          ? 'Роль администратора включена.'
-          : 'Роль пользователя включена.');
-    } catch (e) {
-      _snack(e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   Future<void> _loginWithGoogle() async {
     setState(() => _busy = true);
     try {
       await _clearInvalidSession('Выполняется вход через Google...');
-      await _googleSignIn.signOut(); // позволяет выбрать аккаунт заново
+      await _googleSignIn.signOut(); 
       final account = await _googleSignIn.signIn();
       if (account == null) {
         _snack('Вход через Google отменён.');
@@ -498,8 +458,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildStatsCard(context),
                     ],
                     const SizedBox(height: 14),
-                    _buildRoleCard(context),
-                    const SizedBox(height: 14),
                     _buildInfoCard(context),
                   ],
                 ),
@@ -590,11 +548,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       text: _serverOnline ? 'Сервер' : 'Локально',
                       color: _serverOnline ? AppTheme.success : AppTheme.warning,
                       icon: _serverOnline ? Icons.cloud_done : Icons.storage,
-                    ),
-                    Ui.badge(
-                      text: _loggedIn ? 'Профиль активен' : 'Гость',
-                      color: _loggedIn ? AppTheme.success : AppTheme.warning,
-                      icon: _loggedIn ? Icons.verified_user : Icons.person_outline,
                     ),
                   ],
                 ),
@@ -747,11 +700,6 @@ class _ProfilePageState extends State<ProfilePage> {
               label: Text(_isRegisterMode ? 'Создать профиль' : 'Войти'),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Регистрация выполняется через сервер ArborScan. Пароль хранится на сервере в виде хэша.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
-          ),
         ],
       ),
     );
@@ -786,11 +734,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    Ui.badge(
-                      text: _isAdmin ? 'Администратор' : 'Пользователь',
-                      color: _isAdmin ? AppTheme.primary : AppTheme.success,
-                      icon: _isAdmin ? Icons.admin_panel_settings : Icons.person,
-                    ),
+                    if (_isAdmin)
+                      Ui.badge(
+                        text: 'Администратор',
+                        color: AppTheme.primary,
+                        icon: Icons.admin_panel_settings,
+                      ),
                     Ui.badge(
                       text: _serverOnline ? 'Серверная сессия' : 'Локальная копия',
                       color: _serverOnline ? AppTheme.success : AppTheme.warning,
@@ -969,86 +918,6 @@ class _ProfilePageState extends State<ProfilePage> {
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoleCard(BuildContext context) {
-    return Ui.paddedCard(
-      context,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.manage_accounts_outlined, color: AppTheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text('Роль в приложении', style: Theme.of(context).textTheme.titleMedium),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Роль хранится на сервере и управляет доступом к админ-функциям.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
-          ),
-          const SizedBox(height: 14),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment<String>(
-                value: 'user',
-                label: Text('Пользователь'),
-                icon: Icon(Icons.person_outline),
-              ),
-              ButtonSegment<String>(
-                value: 'admin',
-                label: Text('Администратор'),
-                icon: Icon(Icons.admin_panel_settings_outlined),
-              ),
-            ],
-            selected: {_isAdmin ? 'admin' : 'user'},
-            onSelectionChanged: _loggedIn
-                ? (v) {
-                    final role = v.first;
-                    if (role == 'user') {
-                      _setRole('user');
-                    }
-                  }
-                : null,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _adminCodeController,
-            enabled: _loggedIn,
-            obscureText: true,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Код администратора',
-              prefixIcon: Icon(Icons.lock_outline),
-              helperText: 'Введите код и нажмите кнопку ниже, чтобы включить роль администратора.',
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _loggedIn && !_busy ? () => _setRole('admin') : null,
-              icon: const Icon(Icons.admin_panel_settings),
-              label: const Text('Включить администратора'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _loggedIn
-                ? (_isAdmin ? 'Текущий доступ: администратор.' : 'Текущий доступ: пользователь.')
-                : 'Для выбора роли сначала создайте профиль или войдите.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: _loggedIn ? AppTheme.muted : AppTheme.warning,
-                  fontWeight: FontWeight.w700,
-                ),
           ),
         ],
       ),

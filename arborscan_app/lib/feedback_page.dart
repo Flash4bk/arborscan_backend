@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'app_theme.dart';
 import 'mask_drawing_page.dart';
 import 'stick_page.dart';
+import 'api_config.dart'; // Подключаем наш конфиг
 
 class FeedbackPage extends StatefulWidget {
   final String analysisId;
@@ -114,7 +115,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
   Future<void> _openStickEditor() async {
     if (_isSending) return;
 
-    // StickPage требует currentScalePxToM (double, required).
     final current = _userScale ?? widget.scalePxToM ?? 0.0;
 
     final scale = await Navigator.push<double>(
@@ -149,7 +149,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
       "params_ok": _checkParamsOk(),
       "species_ok": _selectedSpecies == widget.species,
 
-      // corrected values (only send when user changed them)
+      // corrected values
       "correct_species": (_selectedSpecies == widget.species) ? null : _selectedSpecies,
       "corrected_height_m": _heightController.text.trim().isEmpty
           ? null
@@ -162,13 +162,13 @@ class _FeedbackPageState extends State<FeedbackPage> {
           : double.tryParse(_trunkController.text.trim().replaceAll(',', '.')),
       "corrected_scale_px_to_m": _userScale,
 
-      // IMPORTANT: backend expects this key (and accepts camelCase too)
       "user_mask_base64": _userMaskBase64,
     };
 
     try {
+      // Используем ссылку из ApiConfig
       final response = await http.post(
-        Uri.parse('https://arborscanbackend-production.up.railway.app/feedback'),
+        Uri.parse('${ApiConfig.baseUrl}/feedback'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );

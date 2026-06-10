@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'app_theme.dart';
 import 'location_service.dart';
-
+import 'api_config.dart'; // Подключаем наш конфиг
 
 String _normalizeAddressRu(String? address) {
   if (address == null || address.trim().isEmpty) return '';
@@ -51,7 +51,6 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   static const String _historyKey = 'arborscan_history';
   static const String _authTokenKey = 'arborscan_auth_token';
-  static const String _baseUrl = 'https://arborscanbackend-production.up.railway.app';
 
   bool _loading = true;
   String? _error;
@@ -149,10 +148,6 @@ class _MapPageState extends State<MapPage> {
         return;
       }
 
-      // Otherwise move to first point. If there are no points, keep fallback center.
-      // Current location is available via the built-in Google Maps location button.
-      // This avoids crashes on some Android devices when refresh triggers camera animation
-      // before the map controller is fully ready.
       if (withGeo.isNotEmpty && _mapController != null) {
         await _animateTo(withGeo.first.lat!, withGeo.first.lon!, zoom: 16);
       }
@@ -171,7 +166,8 @@ class _MapPageState extends State<MapPage> {
       final token = prefs.getString(_authTokenKey) ?? '';
       if (token.isEmpty) return const [];
 
-      final uri = Uri.parse('$_baseUrl/analyses/my').replace(
+      // Используем ApiConfig
+      final uri = Uri.parse('${ApiConfig.baseUrl}/analyses/my').replace(
         queryParameters: {'token': token, 'limit': '200'},
       );
       final res = await http.get(uri).timeout(const Duration(seconds: 12));
@@ -219,8 +215,6 @@ class _MapPageState extends State<MapPage> {
   Future<void> _tryApplyPendingFocus() async {
     final f = _pendingFocus;
     if (f == null) return;
-
-    // If controller not created yet, wait until onMapCreated
     if (_mapController == null) return;
 
     await _animateTo(f.lat, f.lon, zoom: f.zoom);
@@ -233,9 +227,7 @@ class _MapPageState extends State<MapPage> {
       final pos = result.position;
       if (pos == null) return;
       await _animateTo(pos.latitude, pos.longitude, zoom: 14);
-    } catch (_) {
-      // ignore
-    }
+    } catch (_) {}
   }
 
   Future<void> _animateTo(
@@ -259,9 +251,7 @@ class _MapPageState extends State<MapPage> {
           ),
         ),
       );
-    } catch (_) {
-      // GoogleMapController can throw during refresh/dispose. Ignore to keep UI alive.
-    }
+    } catch (_) {}
   }
 
   gmaps.LatLng _bestMapTarget() {
@@ -320,10 +310,6 @@ class _MapPageState extends State<MapPage> {
     final lon = item.lon;
     if (lat == null || lon == null) return;
 
-    // More reliable Street View variants for Android.
-    // 1) Native Google Maps Street View scheme.
-    // 2) Google Maps "layer=c" panorama URL.
-    // 3) Browser panorama URL. If Google has no panorama nearby, it will open normal Maps.
     final nativeStreetView = Uri.parse('google.streetview:cbll=$lat,$lon&cbp=0,0,0,0,0');
     final mapsLayerStreetView = Uri.parse('https://www.google.com/maps?layer=c&cbll=$lat,$lon');
     final webStreetView = Uri.parse(
@@ -335,16 +321,12 @@ class _MapPageState extends State<MapPage> {
         await launchUrl(nativeStreetView, mode: LaunchMode.externalApplication);
         return;
       }
-    } catch (_) {
-      // try next
-    }
+    } catch (_) {}
 
     try {
       await launchUrl(mapsLayerStreetView, mode: LaunchMode.externalApplication);
       return;
-    } catch (_) {
-      // try next
-    }
+    } catch (_) {}
 
     await launchUrl(webStreetView, mode: LaunchMode.inAppBrowserView);
   }
@@ -660,7 +642,6 @@ class _MapPageState extends State<MapPage> {
     );
   }
 }
-
 
 class _MapControlButton extends StatelessWidget {
   final IconData icon;

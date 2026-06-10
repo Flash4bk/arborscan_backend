@@ -1,9 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'admin_gate.dart';
-import 'admin_panel_page.dart';
-import 'admin_list_page.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,11 +9,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'api_config.dart';
+import 'admin_gate.dart';
+import 'admin_panel_page.dart';
 import 'feedback_page.dart';
 import 'ar_measure_channel.dart';
 import 'app_theme.dart';
 import 'analysis_report_page.dart';
 import 'location_service.dart';
+
 /// ============================
 ///  Модель результата анализа
 /// ============================
@@ -34,7 +35,6 @@ class AnalysisResult {
   final String imageBase64;
   final DateTime timestamp;
 
-  // ID анализа
   final String analysisId;
 
   AnalysisResult({
@@ -87,9 +87,6 @@ class AnalysisResult {
 }
 
 /// ============================
-///   Приложение + темы
-/// ============================
-/// ============================
 ///      Главный экран
 /// ============================
 class ArborScanPage extends StatefulWidget {
@@ -121,18 +118,11 @@ class _ArborScanPageState extends State<ArborScanPage> {
   double? _manualWindSpeedMS;
   double? _manualWindGustMS;
 
-
-  // Режим администратора
   bool _isAdmin = false;
   static const String _adminFlagKey = 'arborscan_is_admin';
-  // Код администратора (можно поменять на свой)
-  static const String _adminPasscode = '2506';
 
-  static const String _baseUrl =
-      'https://arborscanbackend-production.up.railway.app';
-
-  static String get _apiUrl => '$_baseUrl/analyze-tree';
-  static String get _feedbackUrl => '$_baseUrl/feedback';
+  static String get _apiUrl => '${ApiConfig.baseUrl}/analyze-tree';
+  static String get _feedbackUrl => '${ApiConfig.baseUrl}/feedback';
 
   static const String _historyKey = 'arborscan_history';
   static const String _authTokenKey = 'arborscan_auth_token';
@@ -155,8 +145,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
       for (final e in list.take(30)) {
         try {
           final jsonMap = jsonDecode(e) as Map<String, dynamic>;
-          // Старые версии могли хранить большие base64-картинки в истории.
-          // Больше не держим изображения в SharedPreferences, чтобы не ловить OOM.
           jsonMap['imageBase64'] = '';
           loaded.add(AnalysisResult.fromJson(jsonMap));
         } catch (_) {}
@@ -169,8 +157,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
           ..addAll(loaded);
       });
     } catch (e) {
-      // Если старый SharedPreferences разросся и Android не может его прочитать,
-      // не валим приложение. Пользователь очистит данные приложения один раз.
       debugPrint('History load skipped: $e');
     }
   }
@@ -178,15 +164,11 @@ class _ArborScanPageState extends State<ArborScanPage> {
   Future<void> _saveHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      // SharedPreferences нельзя использовать как хранилище изображений.
-      // Сохраняем только лёгкие метаданные последних 30 анализов.
       final encoded = _history.take(30).map((e) {
         final map = e.toJson();
         map['imageBase64'] = '';
         return jsonEncode(map);
       }).toList();
-
       await prefs.setStringList(_historyKey, encoded);
     } catch (e) {
       debugPrint('History save skipped: $e');
@@ -201,14 +183,13 @@ class _ArborScanPageState extends State<ArborScanPage> {
     });
   }
 
-  /// Загрузка флага режима администратора
   Future<void> _syncServerHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_authTokenKey) ?? '';
       if (token.isEmpty) return;
 
-      final uri = Uri.parse('$_baseUrl/analyses/my').replace(
+      final uri = Uri.parse('${ApiConfig.baseUrl}/analyses/my').replace(
         queryParameters: {
           'token': token,
           'limit': '100',
@@ -286,153 +267,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
     });
   }
 
-  /// Установка флага режима администратора
-  Future<void> _setAdmin(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_adminFlagKey, value);
-    if (!mounted) return;
-    setState(() {
-      _isAdmin = value;
-    });
-  }
-
-  /// Экран / bottom-sheet с настройками роли.
-  Future<void> _openSettings() async {
-    final controller = TextEditingController();
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            Future<void> setRole(bool admin) async {
-              if (admin) {
-                final code = controller.text.trim();
-                if (code != _adminPasscode) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Неверный код администратора.')),
-                  );
-                  return;
-                }
-              }
-
-              await _setAdmin(admin);
-              if (!context.mounted) return;
-              setSheetState(() {});
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    admin
-                        ? 'Роль администратора включена.'
-                        : 'Роль пользователя включена.',
-                  ),
-                ),
-              );
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 12,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'Настройки доступа',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isAdmin
-                        ? 'Сейчас включён режим администратора: доступны исправление анализа, обучение и админ-панель.'
-                        : 'Сейчас включён режим пользователя: доступны анализ, история, карта и отчёты.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 14),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment<bool>(
-                        value: false,
-                        label: Text('Пользователь'),
-                        icon: Icon(Icons.person_outline),
-                      ),
-                      ButtonSegment<bool>(
-                        value: true,
-                        label: Text('Администратор'),
-                        icon: Icon(Icons.admin_panel_settings_outlined),
-                      ),
-                    ],
-                    selected: {_isAdmin},
-                    onSelectionChanged: (v) async {
-                      final targetAdmin = v.first;
-                      if (targetAdmin) return;
-                      await setRole(false);
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: controller,
-                    obscureText: true,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Код администратора',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      helperText: 'Введите код и нажмите кнопку ниже.',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          icon: const Icon(Icons.close),
-                          label: const Text('Закрыть'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () => setRole(true),
-                          icon: const Icon(Icons.admin_panel_settings),
-                          label: const Text('Войти как админ'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(
@@ -459,6 +293,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       });
     }
   }
+
   String _formatMeters(double? value) {
     if (value == null || value <= 0) return 'не измерено';
     return '${value.toStringAsFixed(2)} м';
@@ -470,9 +305,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       if (!mounted) return;
 
       if (result == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AR измерение отменено')),
-        );
+        // Пользователь просто закрыл AR без сохранения
         return;
       }
 
@@ -483,17 +316,17 @@ class _ArborScanPageState extends State<ArborScanPage> {
         _arTrunkDiameterM = result.trunkDiameterMeters;
       });
 
-      final missing = <String>[];
-      if (_arCrownWidthM == null) missing.add('крона');
-      if (_arTrunkDiameterM == null) missing.add('ствол');
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            missing.isEmpty
-                ? 'AR-измерения сохранены'
-                : 'AR сохранил высоту. Не получены: ${missing.join(', ')}',
+          content: Row(
+          children: const [
+              Icon(Icons.check_circle, color: AppTheme.primary),
+              SizedBox(width: 10),
+              Expanded(child: Text('Точные AR-измерения успешно сохранены!')),
+            ],
           ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
     } catch (e) {
@@ -504,7 +337,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
-
   Future<void> _analyze() async {
     if (_imageFile == null) return;
 
@@ -514,7 +346,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
     });
 
     try {
-      // GPS с устройства. Берём current, fallback: lastKnownPosition.
       final locationResult = await LocationService.getCurrentPositionDetailed();
       final pos = locationResult.position;
       final double? deviceLat = pos?.latitude;
@@ -539,7 +370,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
       if (deviceLat != null) request.fields['lat'] = deviceLat.toString();
       if (deviceLon != null) request.fields['lon'] = deviceLon.toString();
 
-      // AR-измерения имеют приоритет над оценкой по фото/масштабу.
       if (_arHeightM != null) {
         request.fields['ar_height_m'] = _arHeightM!.toStringAsFixed(3);
       }
@@ -640,7 +470,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final friendlyError = rawError.contains('OutOfMemoryError') ||
               rawError.contains('Failed to allocate') ||
               rawError.contains('exceeds the limit')
-          ? 'Не хватило памяти. Обычно это происходит из-за старой истории с большими изображениями. Очистите данные приложения ArborScan один раз и повторите анализ. Новая версия больше не сохраняет изображения в SharedPreferences.'
+          ? 'Не хватило памяти. Обычно это происходит из-за старой истории. Очистите данные приложения ArborScan.'
           : rawError;
       setState(() {
         _error = friendlyError;
@@ -772,28 +602,32 @@ class _ArborScanPageState extends State<ArborScanPage> {
     );
   }
 
-
-  Widget _buildArMeasurementsCard() {
+  Widget _buildArMeasurementsCard() { 
+    // Проверяем, есть ли хотя бы одно измерение
     final hasAny = _arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null;
 
+    // Вспомогательный виджет для плитки с параметром (Высота/Крона/Ствол)
     Widget valueTile(String label, double? value, IconData icon) {
+      final hasValue = value != null && value > 0;
       return Expanded(
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppTheme.surface2,
+            color: hasValue ? AppTheme.primary.withOpacity(0.12) : AppTheme.surface2,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(
+              color: hasValue ? AppTheme.primary.withOpacity(0.4) : AppTheme.border,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 20, color: AppTheme.primary),
+              Icon(icon, size: 20, color: hasValue ? AppTheme.primary : AppTheme.muted),
               const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(
-                  color: AppTheme.muted,
+                style: TextStyle(
+                  color: hasValue ? AppTheme.primary : AppTheme.muted,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -801,8 +635,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
               const SizedBox(height: 3),
               Text(
                 _formatMeters(value),
-                style: const TextStyle(
-                  color: AppTheme.text,
+                style: TextStyle(
+                  color: hasValue ? AppTheme.text : AppTheme.muted,
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                 ),
@@ -815,24 +649,44 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.border),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          // Если данные есть, подсвечиваем карточку зеленым контуром
+          color: hasAny ? AppTheme.primary.withOpacity(0.4) : AppTheme.border,
+          width: hasAny ? 1.5 : 1.0,
+        ),
+        boxShadow: hasAny
+            ? [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.08),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                )
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.view_in_ar_outlined, color: AppTheme.primary),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.view_in_ar, color: AppTheme.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'AR-измерения',
+                  'AR-Дальномер',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w900,
                         color: AppTheme.text,
                       ),
                 ),
@@ -847,42 +701,55 @@ class _ArborScanPageState extends State<ArborScanPage> {
                       _arTrunkDiameterM = null;
                     });
                   },
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text('сброс'),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Сброс'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.muted,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                  ),
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
           const Text(
-            'Поставьте 6 точек: 1 — основание дерева, 2 — верхушка, 3–4 — левый и правый край кроны, 5–6 — левый и правый край ствола.',
+            'Умный замер с помощью AR и гироскопа. Наведите камеру на основание дерева, а высоту и крону телефон рассчитает по углу наклона.',
             style: TextStyle(
               color: AppTheme.muted,
-              fontSize: 12,
-              height: 1.25,
+              fontSize: 13,
+              height: 1.3,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             children: [
               valueTile('Высота', _arHeightM, Icons.height),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               valueTile('Крона', _arCrownWidthM, Icons.filter_hdr),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               valueTile('Ствол', _arTrunkDiameterM, Icons.circle_outlined),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
+            child: FilledButton.icon(
               onPressed: _openArMeasure,
-              icon: const Icon(Icons.view_in_ar_outlined),
-              label: const Text('AR: измерить все параметры (6 точек)'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 12),
+              icon: const Icon(Icons.camera_rounded, color: Color(0xFF06140E)),
+              label: const Text(
+                'Запустить AR-дальномер',
+                style: TextStyle(
+                  color: Color(0xFF06140E),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
@@ -891,7 +758,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
       ),
     );
   }
-
 
   Widget _buildBetaSettingsCard() {
     Widget numberField({
@@ -958,7 +824,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Сервер рассчитает β, ветровую силу, центр нагрузки и момент у основания. Если есть экспертные данные — их можно ввести вручную.',
+            'Сервер рассчитает β, ветровую силу, центр нагрузки и момент у основания.',
             style: TextStyle(
               color: AppTheme.muted,
               fontSize: 12,
@@ -1016,7 +882,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
               Expanded(
                 child: numberField(
                   label: 'Ветер',
-                  hint: 'из GPS/погоды',
+                  hint: 'из GPS',
                   suffix: 'м/с',
                   icon: Icons.air,
                   value: _manualWindSpeedMS,
@@ -1027,7 +893,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
               Expanded(
                 child: numberField(
                   label: 'Порыв',
-                  hint: 'если известен',
+                  hint: 'из GPS',
                   suffix: 'м/с',
                   icon: Icons.storm_outlined,
                   value: _manualWindGustMS,
@@ -1036,29 +902,10 @@ class _ArborScanPageState extends State<ArborScanPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Если GPS/погода недоступны, введите ветер вручную. Для сценарного расчёта можно задать порыв, например 15–25 м/с.',
-            style: TextStyle(
-              color: AppTheme.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Коэффициенты кроны обычно оставляйте 1.0. Значения >1 усиливают ветровую нагрузку, <1 уменьшают её.',
-            style: TextStyle(
-              color: AppTheme.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
         ],
       ),
     );
   }
-
 
   Widget _buildGpsStatusCard() {
     final status = _gpsStatusText ??
@@ -1221,7 +1068,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Заголовок + риск
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1248,7 +1094,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -1289,13 +1134,10 @@ class _ArborScanPageState extends State<ArborScanPage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 12),
-
             if (address != null && address.isNotEmpty)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F3FF),
                   borderRadius: BorderRadius.circular(16),
@@ -1349,27 +1191,16 @@ class _ArborScanPageState extends State<ArborScanPage> {
     );
   }
 
-  /// --------- ОТПРАВКА ФИДБЕКА НА СЕРВЕР ---------
   Future<void> _sendFeedbackToServer(
     Map<String, dynamic> feedback,
     String analysisId,
   ) async {
     final body = {
-      // old keys (backward compatible)
-      "height_m_corrected": feedback["height_m_corrected"],
-      "crown_width_m_corrected": feedback["crown_width_m_corrected"],
-      "trunk_diameter_m_corrected": feedback["trunk_diameter_m_corrected"],
-      "scale_px_to_m_corrected": feedback["scale_px_to_m_corrected"],
-
-      // preferred keys (backend parses these first)
       "corrected_height_m": feedback["height_m_corrected"],
       "corrected_crown_width_m": feedback["crown_width_m_corrected"],
       "corrected_trunk_diameter_m": feedback["trunk_diameter_m_corrected"],
       "corrected_scale_px_to_m": feedback["scale_px_to_m_corrected"],
-
-      // кто подтверждает (для meta_verified)
       "verifier_role": _isAdmin ? "admin" : "user",
-
       "analysis_id": analysisId,
       "use_for_training": feedback["use_for_training"] ?? true,
       "tree_ok": feedback["tree_ok"],
@@ -1397,8 +1228,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                "Ошибка отправки фидбека: ${resp.statusCode.toString()}"),
+            content: Text("Ошибка отправки: ${resp.statusCode}"),
           ),
         );
       }
@@ -1410,7 +1240,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
-  /// --------- ОТКРЫТИЕ ЭКРАНА ФИДБЕКА ---------
   Future<void> _openFeedback() async {
     if (_result == null) return;
 
@@ -1457,12 +1286,10 @@ class _ArborScanPageState extends State<ArborScanPage> {
   Future<void> _openAdminPanel() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AdminPanelPage(baseUrl: _baseUrl),
+        builder: (_) => const AdminPanelPage(baseUrl: ApiConfig.baseUrl),
       ),
     );
   }
-
-
 
   Future<void> _openHistory() async {
     final cleared = await Navigator.of(context).push<bool>(
@@ -1487,11 +1314,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
         title: const Text('ArborScan'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Настройки',
-            onPressed: _openSettings,
-          ),
-IconButton(
             icon: const Icon(Icons.history),
             tooltip: 'История',
             onPressed: _history.isEmpty ? null : _openHistory,
@@ -1521,15 +1343,14 @@ IconButton(
                   ),
                   const SizedBox(height: 12),
 
-                  AdminGate(
-                    isAdmin: _isAdmin,
-                    onOpenFeedback: _openFeedback,
-                    onOpenAdminPanel: _openAdminPanel,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  const SizedBox(height: 16),
+                  if (_isAdmin) ...[
+                    AdminGate(
+                      isAdmin: _isAdmin,
+                      onOpenFeedback: _openFeedback,
+                      onOpenAdminPanel: _openAdminPanel,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   _buildImageCard(),
                   const SizedBox(height: 16),
@@ -1556,7 +1377,6 @@ IconButton(
                   ],
                   const SizedBox(height: 12),
 
-                  // КНОПКА ПОДТВЕРЖДЕНИЯ АНАЛИЗА — ТОЛЬКО ДЛЯ АДМИНА
                   if (_isAdmin &&
                       _annotatedImageBytes != null &&
                       _result != null &&
@@ -1582,7 +1402,6 @@ IconButton(
                       _result?['analysis_id'] != null)
                     const SizedBox(height: 16),
 
-                  // Кнопки выбора изображения
                   Row(
                     children: [
                       Expanded(
@@ -1709,7 +1528,6 @@ IconButton(
   }
 }
 
-/// Карточка маленькой метрики (высота, крона и т.п.)
 class _MetricTile extends StatelessWidget {
   final String label;
   final String value;
@@ -1764,98 +1582,6 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
-/// ============================
-///   Admin Panel (инструменты)
-/// ============================
-class _AdminPanelSheet extends StatefulWidget {
-  const _AdminPanelSheet();
-
-  @override
-  State<_AdminPanelSheet> createState() => _AdminPanelSheetState();
-}
-
-class _AdminPanelSheetState extends State<_AdminPanelSheet> {
-  int _selectedModelVersion = 1;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Admin Panel',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Инструменты администратора (переключение моделей, retrain и т.д.).',
-            style: theme.textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
-
-          const Text('Активная версия модели (заглушка):'),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            value: _selectedModelVersion,
-            items: const [
-              DropdownMenuItem(value: 1, child: Text('Model v1')),
-              DropdownMenuItem(value: 2, child: Text('Model v2')),
-              DropdownMenuItem(value: 3, child: Text('Model v3')),
-            ],
-            onChanged: (v) {
-              if (v == null) return;
-              setState(() => _selectedModelVersion = v);
-              // TODO: вызвать AdminService.setActiveModelVersion(v)
-            },
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () {
-              // TODO: вызвать AdminService.requestRetrain()
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Retrain: TODO (подключим к backend следующим шагом)'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.play_circle_outline),
-            label: const Text('Запустить переобучение (TODO)'),
-          ),
-
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Закрыть'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// ============================
-///     История анализов
-/// ============================
 class HistoryPage extends StatelessWidget {
   final List<AnalysisResult> items;
 
@@ -2009,36 +1735,5 @@ class HistoryPage extends StatelessWidget {
               },
             ),
     );
-  }
-}
-
-// ============================
-//  Location helper (no extra files)
-// ============================
-class _LegacyLocationServiceUnused {
-  /// Возвращает Position или null, если:
-  /// - геолокация выключена
-  /// - нет разрешения
-  /// - произошла ошибка / таймаут
-  static Future<Position?> tryGetCurrentPosition() async {
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return null;
-
-      LocationPermission perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        return null;
-      }
-
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 6),
-      );
-    } catch (_) {
-      return null;
-    }
   }
 }
