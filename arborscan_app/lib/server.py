@@ -14,7 +14,6 @@ import requests
 from ultralytics import YOLO
 from PIL import Image, ExifTags
 import torch
-from torchvision import models, transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
@@ -51,10 +50,13 @@ SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 SUPABASE_BUCKET_RAW = "arborscan-raw"
 SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
-# Supabase Postgres REST API (Вместо локального SQLite)
+# Supabase Postgres REST API
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
+
+# Pl@ntNet API Key
+PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "2b10s2QVGCWyalEeU1xv2nOKO")
 
 # ---------------------------------------------------------
 # Supabase PostgREST helpers 
@@ -147,7 +149,7 @@ ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 MODEL_VERSIONS = {
     "tree_yolo": "tree_yolov8_seg_v1.2.0",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
-    "classifier": "resnet18_species_v0.9.1",
+    "classifier": "plantnet_api_v2", # Обновлено
 }
 BUILD_INFO = {
     "git_commit": os.getenv("GIT_COMMIT", "unknown"),
@@ -160,33 +162,15 @@ VERIFIED_TRUST_THRESHOLD = 0.0
 # -------------------------------------
 # CLASSES / CONSTANTS
 # -------------------------------------
-
-CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
 REAL_STICK_M = 1.0
 
 # -------------------------------------
-# LOADING MODELS
+# LOADING YOLO MODELS
 # -------------------------------------
 
 print("[*] Loading YOLO models...")
 tree_model = None  
 stick_model = YOLO("models/stick_model.pt")
-
-print("[*] Loading classifier...")
-classifier = models.resnet18(weights=None)
-classifier.fc = torch.nn.Linear(classifier.fc.in_features, 5)
-classifier.load_state_dict(torch.load("models/classifier.pth", map_location="cpu"))
-classifier.eval()
-
-transformer = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
-    )
-])
-
 print("[*] Models loaded.")
 
 # =============================================
@@ -569,6 +553,9 @@ SPECIES_BASE = {
     "Ель": 1.0,
     "Сосна": 0.75,
     "Тополь": 0.95,
+    "Клен": 0.6,
+    "Ясень": 0.65,
+    "Липа": 0.8,
 }
 
 def slenderness_score(height, diameter):
@@ -650,20 +637,18 @@ def compute_risk(species, height, crown, diameter, weather, soil):
 
 
 # =============================================
-# Beta coefficient estimation (wind drag scaling)
+# Beta coefficient estimation (Borisevich 2021)
 # =============================================
 
-# =============================================
-# Beta coefficient estimation (На базе Borisevich et al. 2021)
-# =============================================
-
-# Эмпирические данные (на базе полевых испытаний полноразмерных деревьев)
 BETA_EMPIRICAL_STATS = {
     "Сосна": {"mean": 47.7, "min": 25.5, "max": 90.0, "ref_height": 20.0},
     "Ель": {"mean": 60.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
     "Береза": {"mean": 52.0, "min": 25.0, "max": 90.0, "ref_height": 20.0},
     "Дуб": {"mean": 65.0, "min": 35.0, "max": 110.0, "ref_height": 20.0},
     "Тополь": {"mean": 58.0, "min": 30.0, "max": 100.0, "ref_height": 25.0},
+    "Клен": {"mean": 55.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
+    "Ясень": {"mean": 55.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
+    "Липа": {"mean": 50.0, "min": 25.0, "max": 90.0, "ref_height": 20.0},
 }
 
 def _clamp(x: float, lo: float, hi: float) -> float:
@@ -672,7 +657,6 @@ def _clamp(x: float, lo: float, hi: float) -> float:
 def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=None, manual_beta_kg_s=None, crown_density_factor=1.0) -> dict:
     stats = BETA_EMPIRICAL_STATS.get(species, BETA_EMPIRICAL_STATS["Сосна"])
 
-    # Если администратор/пользователь ввел бету вручную
     if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
         value = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
         return {
@@ -687,7 +671,6 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
     h = float(height_m or 0)
     density = float(crown_density_factor or 1.0)
 
-    # Если высота неизвестна, берем среднее по породе
     if h <= 0:
         return {
             "beta_kg_s": stats["mean"],
@@ -695,21 +678,13 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
             "method": "species_default",
             "source": "Статистическое среднее по породе",
             "input": {"species": species},
-            "notes": ["Высота не измерена. Использовано среднее значение из исследований."],
+            "notes": ["Высота не измерена. Использовано среднее значение."],
         }
 
-    # 1. Аллометрическое масштабирование. 
-    # Так как лобовая площадь при ветре сильно деформируется, зависимость от высоты 
-    # берется не квадратичная, а с коэффициентом ~1.5 (эмпирическая поправка на гибкость).
     height_ratio = h / stats["ref_height"]
-    
-    # 2. Ожидаемый коэффициент бета
     beta_expected = stats["mean"] * (height_ratio ** 1.5) * density
     beta_expected = _clamp(beta_expected, 5.0, stats["max"] * 1.5)
 
-    # 3. Худший сценарий (Worst-case)
-    # Как показало Дерево №3 в статье, бета может быть почти в 1.9 раз больше средней (90 / 47.7 = 1.88)
-    # из-за аномально жестких веток.
     beta_max_scenario = _clamp(beta_expected * 1.88, beta_expected, stats["max"] * 1.5)
 
     return {
@@ -725,8 +700,7 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
         },
         "notes": [
             "Расчет базируется на полевых испытаниях реальных деревьев.",
-            "Площадь кроны не используется напрямую, так как доказана её слабая связь с β из-за аэродинамической реконфигурации (streamlining).",
-            f"Внимание: при жесткой архитектуре ветвей возможен худший сценарий до {round(beta_max_scenario, 2)} кг/с."
+            f"Худший сценарий для жесткой кроны: до {round(beta_max_scenario, 2)} кг/с."
         ],
     }
 
@@ -734,22 +708,15 @@ def beta_wind_force_score(beta_kg_s, weather) -> tuple[float, float | None]:
     if not beta_kg_s or beta_kg_s <= 0 or not weather:
         return 0.5, None
     v = weather.get("wind_gust") or weather.get("wind_speed") or 0
-    try:
-        v = float(v)
-    except Exception:
-        v = 0.0
+    try: v = float(v)
+    except Exception: v = 0.0
     
     force_n = float(beta_kg_s) * v
 
-    # Шкала силы ветра адаптирована под реальные ньютоны
-    if force_n <= 200:
-        score = 0.25
-    elif force_n <= 600:
-        score = 0.45
-    elif force_n <= 1500:
-        score = 0.75
-    else:
-        score = 1.0
+    if force_n <= 200: score = 0.25
+    elif force_n <= 600: score = 0.45
+    elif force_n <= 1500: score = 0.75
+    else: score = 1.0
     return score, round(force_n, 2)
 
 
@@ -1250,20 +1217,51 @@ def normalize_address_ru(address: str | None) -> str | None:
     return out
 
 
-# === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ (РЕШЕНИЕ ЗАВИСАНИЙ) ===
+# === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ ===
 def _run_yolo_sync(img_array):
     tree_model_local = get_tree_model()
     t_res = tree_model_local(img_array)[0]
     s_res = stick_model(img_array)[0]
     return t_res, s_res
 
-def _run_classifier_sync(crop_rgb):
-    pil_crop = Image.fromarray(crop_rgb)
-    tens = transformer(pil_crop).unsqueeze(0)
-    with torch.no_grad():
-        pred = classifier(tens)
-        cls_id = int(torch.argmax(pred))
-    return CLASS_NAMES_RU[cls_id]
+def map_plantnet_name(raw_name: str) -> str:
+    name_lower = raw_name.lower()
+    if "сосна" in name_lower: return "Сосна"
+    if "ель" in name_lower: return "Ель"
+    if "дуб" in name_lower: return "Дуб"
+    if "береза" in name_lower or "берёза" in name_lower: return "Береза"
+    if "тополь" in name_lower: return "Тополь"
+    if "клен" in name_lower or "клён" in name_lower: return "Клен"
+    if "ясень" in name_lower: return "Ясень"
+    if "липа" in name_lower: return "Липа"
+    return raw_name.capitalize()
+
+def _run_classifier_sync(crop_bgr):
+    ok, encoded_img = cv2.imencode(".jpg", crop_bgr)
+    if not ok: return "Неизвестно"
+    
+    url = f"https://my-api.plantnet.org/v2/identify/all?api-key={PLANTNET_API_KEY}&lang=ru"
+    files = [('images', ('crop.jpg', encoded_img.tobytes(), 'image/jpeg'))]
+    data = {'organs': ['habit']}
+    
+    try:
+        r = requests.post(url, files=files, data=data, timeout=12)
+        if r.status_code == 200:
+            res = r.json()
+            results = res.get('results', [])
+            if results:
+                best = results[0]
+                species = best.get('species', {})
+                common_names = species.get('commonNames', [])
+                if common_names:
+                    return map_plantnet_name(common_names[0])
+                else:
+                    sci_name = species.get('scientificNameWithoutAuthor', 'Неизвестно')
+                    return map_plantnet_name(sci_name)
+    except Exception as e:
+        print(f"[!] Pl@ntNet API error: {e}")
+        
+    return "Неизвестно"
 # ========================================================================
 
 
@@ -1349,28 +1347,20 @@ async def analyze_tree(
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-
     # -----------------------------
     # AI: ПОРИСТОСТЬ КРОНЫ (CROWN DENSITY)
     # -----------------------------
     crown_density_ai = 1.0
     try:
-        # Берем верхние 70% дерева
         crown_mask = mask[y_min : y_min + int(0.7 * height_px), :]
         contours, _ = cv2.findContours(crown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if contours:
-            # Строим "оболочку" вокруг всех веток (общий объем кроны)
             all_pts = np.vstack(contours)
             hull = cv2.convexHull(all_pts)
             hull_area = cv2.contourArea(hull)
-            
-            # Считаем фактическую площадь пикселей дерева
             actual_mask_area = np.sum(crown_mask > 0)
-            
             if hull_area > 0:
-                # Плотность = Реальное дерево / Общий объем оболочки
                 crown_density_ai = round(float(actual_mask_area / hull_area), 3)
-                # Ограничиваем от аномалий
                 crown_density_ai = max(0.1, min(crown_density_ai, 1.0))
     except Exception as e:
         print(f"[CV] Crown density error: {e}")
@@ -1380,21 +1370,15 @@ async def analyze_tree(
     # -----------------------------
     lean_angle_deg = 0.0
     try:
-        # Берем нижние 30% дерева (ствол)
-        trunk_top = y_max - int(0.3 * height_px)
-        trunk_mask = mask[trunk_top : y_max, :]
+        trunk_top_limit = y_max - int(0.3 * height_px)
+        trunk_mask = mask[trunk_top_limit : y_max, :]
         ys_trunk, xs_trunk = np.where(trunk_mask > 0)
         
-        if len(xs_trunk) > 50: # Если есть достаточно пикселей
-            # Строим прямую линию через центр ствола
+        if len(xs_trunk) > 50:
             vx, vy, cx, cy = cv2.fitLine(np.column_stack((xs_trunk, ys_trunk)), cv2.DIST_L2, 0, 0.01, 0.01)
-            # Угол наклона линии (в радианах)
             angle_rad = np.arctan2(vy, vx)
             angle_deg = np.degrees(angle_rad)[0]
-            
-            # Переводим в отклонение от вертикали (вертикаль = 90 градусов)
             deviation = abs(90.0 - abs(angle_deg))
-            # Если дерево наклонено в другую сторону
             if deviation > 90:
                 deviation = 180 - deviation
             lean_angle_deg = round(float(deviation), 1)
@@ -1434,12 +1418,12 @@ async def analyze_tree(
     dimensions_source = "ИИ + AR" if any([has_ar_height, has_ar_crown, has_ar_trunk]) else "ИИ / фото"
 
     # -----------------------------
-    # CLASSIFIER (Запуск в фоне)
+    # CLASSIFIER (PlantNet API)
     # -----------------------------
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
-    crop = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
+    crop_bgr = img[y1:y2, x1:x2]
     
-    species_name = await run_in_threadpool(_run_classifier_sync, crop)
+    species_name = await run_in_threadpool(_run_classifier_sync, crop_bgr)
 
     # -----------------------------
     # ANNOTATED IMAGE
@@ -1495,9 +1479,8 @@ async def analyze_tree(
         crown_m,
         trunk_m,
         manual_beta_kg_s=manual_beta_kg_s,
-        crown_density_factor=final_crown_density # <--- Передаем плотность!
+        crown_density_factor=final_crown_density
     )
-
     wind_force_score_value, wind_force_n = beta_wind_force_score(
         beta_info.get("beta_kg_s"),
         weather,
@@ -1517,30 +1500,29 @@ async def analyze_tree(
         wind_speed_m_s=wind_speed_for_model,
         wind_gust_m_s=wind_gust_for_model,
         crown_start_height_m=crown_start_height_m,
-        crown_density_factor=crown_density_factor or 1.0,
+        crown_density_factor=final_crown_density,
         crown_shape_factor=crown_shape_factor or 1.0,
         n_elements=20,
     )
 
     if risk is not None:
         risk.setdefault("explanation", [])
-        beta_value = beta_info.get("beta_kg_s")
-        beta_max = beta_info.get("beta_max_scenario")
         
-        # Добавляем инфо про плотность
         season = "Зимний режим / Редкая крона" if final_crown_density < 0.5 else "Летний режим / Плотная крона"
         risk["explanation"].insert(0, f"Плотность кроны (AI): {int(final_crown_density * 100)}% ({season})")
         
-        # Оцениваем угол наклона
         if lean_angle_deg > 15.0:
             risk["explanation"].insert(0, f"КРИТИЧЕСКИЙ ФАКТОР: Наклон ствола {lean_angle_deg}°!")
-            risk["category"] = "высокий" # Принудительно ставим высокий риск!
+            risk["category"] = "высокий"
             risk["index"] = max(risk["index"], 0.85)
         elif lean_angle_deg > 5.0:
             risk["explanation"].insert(0, f"Внимание: Наклон ствола {lean_angle_deg}°")
             risk["index"] = min(1.0, risk["index"] + 0.15)
             if risk["index"] > 0.7: risk["category"] = "высокий"
 
+        beta_value = beta_info.get("beta_kg_s")
+        beta_max = beta_info.get("beta_max_scenario")
+        
         risk["explanation"].append(
             f"Коэффициент β (ожидаемый): {beta_value:.2f} кг/с ({beta_info.get('source')})"
         )
@@ -1560,6 +1542,15 @@ async def analyze_tree(
                     f"Ветровая сила (порыв + худший β): до {max_force:.1f} Н"
                 )
 
+        if analytic_wind_model.get("available"):
+            out = analytic_wind_model.get("outputs", {})
+            risk["explanation"].append(
+                f"Аналитический момент у основания: {out.get('base_moment_nm')} Н·м"
+            )
+            risk["explanation"].append(
+                f"Центр ветровой нагрузки: {out.get('center_of_load_m')} м"
+            )
+
     analysis_id = str(uuid4())
 
     meta = {
@@ -1571,6 +1562,8 @@ async def analyze_tree(
         "height_m_ai": height_m_ai,
         "crown_width_m_ai": crown_m_ai,
         "trunk_diameter_m_ai": trunk_m_ai,
+        "crown_density_ai": crown_density_ai,
+        "lean_angle_deg": lean_angle_deg,
         "ar_measurements": ar_measurements,
         "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source,
