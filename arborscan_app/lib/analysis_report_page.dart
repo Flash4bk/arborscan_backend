@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 
-
 Uint8List? _tryDecodeImageB64(String? b64) {
   if (b64 == null) return null;
   var s = b64.trim();
@@ -23,12 +22,9 @@ Uint8List? _tryDecodeImageB64(String? b64) {
 }
 
 /// Экран "Результат анализа v2".
-///
-/// Цель: выглядеть как отчёт/панель мониторинга, а не как набор текста.
-///
 /// Поддерживает 2 сценария:
-/// 1) fromRawResult: сразу после /analyze-tree (доступны risk.explanation, gps/address, original/annotated).
-/// 2) fromHistory: из локальной истории (минимальный набор полей).
+/// 1) fromRawResult: сразу после /analyze-tree
+/// 2) fromHistory: из локальной истории
 class AnalysisReportPageV2 extends StatelessWidget {
   final Map<String, dynamic>? raw;
   final Uint8List? annotatedImageBytes;
@@ -401,8 +397,6 @@ class _RiskBadge extends StatelessWidget {
   }
 }
 
-
-
 class _BetaCard extends StatelessWidget {
   final Map<String, dynamic>? beta;
 
@@ -419,6 +413,7 @@ class _BetaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final betaValue = beta?['beta_kg_s'];
+    final betaMax = beta?['beta_max_scenario'];
     final method = beta?['method']?.toString() ?? '—';
     final source = beta?['source']?.toString() ?? '—';
     final force = beta?['wind_force_n'];
@@ -434,61 +429,90 @@ class _BetaCard extends StatelessWidget {
       case 'species_default':
         methodText = 'по породе';
         break;
+      case 'empirical_borisevich_2021':
+        methodText = 'Borisevich (2021)';
+        break;
       default:
         methodText = method;
     }
 
+    // Вычисляем худшую силу ветра пропорционально (если есть betaMax)
+    double? maxForce;
+    if (betaMax != null && force != null && betaValue != null && betaValue > 0) {
+      maxForce = (force / betaValue) * betaMax;
+    }
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface2,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.air_outlined, color: AppTheme.primary),
-          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.air_outlined, color: AppTheme.primary, size: 24),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Коэффициент β',
+                  'Коэффициент β (аэродинамика)',
                   style: TextStyle(
                     color: AppTheme.text,
                     fontWeight: FontWeight.w900,
+                    fontSize: 15,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
+                
+                _buildRow('Ожидаемый β:', _fmt(betaValue, suffix: ' кг/с'), AppTheme.success),
+                
+                if (betaMax != null && (betaValue == null || betaMax > betaValue)) ...[
+                  const SizedBox(height: 6),
+                  _buildRow('Худший сценарий\n(жесткая крона):', _fmt(betaMax, suffix: ' кг/с'), AppTheme.warning),
+                ],
+
+                const SizedBox(height: 8),
                 Text(
-                  '${_fmt(betaValue, suffix: ' кг/с')} · $methodText',
-                  style: const TextStyle(
-                    color: AppTheme.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  source,
+                  '$source · $methodText',
                   style: const TextStyle(
                     color: AppTheme.muted,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
+                    height: 1.3,
                   ),
                 ),
+
                 if (force != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Оценка ветровой силы: F = β · v = ${_fmt(force, suffix: ' Н')}',
-                    style: const TextStyle(
-                      color: AppTheme.muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(color: AppTheme.border, height: 1),
+                  ),
+                  const Text(
+                    'Ветровая сила (F = β · v)',
+                    style: TextStyle(
+                      color: AppTheme.text,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  _buildRow('Расчетная сила:', _fmt(force, suffix: ' Н'), AppTheme.success),
+                  
+                  if (maxForce != null && maxForce > force) ...[
+                    const SizedBox(height: 6),
+                    _buildRow('При порыве и\nжесткой кроне:', 'до ${_fmt(maxForce, suffix: ' Н')}', AppTheme.warning),
+                  ],
                 ],
               ],
             ),
@@ -497,9 +521,35 @@ class _BetaCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildRow(String label, String value, Color valueColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppTheme.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
 }
-
-
 
 class _AnalyticWindModelCard extends StatelessWidget {
   final Map<String, dynamic>? model;
@@ -604,7 +654,6 @@ class _AnalyticWindModelCard extends StatelessWidget {
     );
   }
 }
-
 
 class _SourceSummaryCard extends StatelessWidget {
   final String? dimensionsSource;
@@ -1031,7 +1080,6 @@ class _RiskHeroData {
     final cat = (riskCategory ?? '').trim().toLowerCase();
     final idx = riskIndex;
 
-    // Цвета: спокойные, без агрессии.
     if (cat == 'низкий') {
       return _RiskHeroData(
         label: 'Низкий риск',
@@ -1057,7 +1105,6 @@ class _RiskHeroData {
       );
     }
 
-    // Fallback: категория не пришла.
     final fallbackFg = theme.colorScheme.primary;
     return _RiskHeroData(
       label: 'Риск',

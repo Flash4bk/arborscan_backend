@@ -1349,6 +1349,58 @@ async def analyze_tree(
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
+
+    # -----------------------------
+    # AI: ПОРИСТОСТЬ КРОНЫ (CROWN DENSITY)
+    # -----------------------------
+    crown_density_ai = 1.0
+    try:
+        # Берем верхние 70% дерева
+        crown_mask = mask[y_min : y_min + int(0.7 * height_px), :]
+        contours, _ = cv2.findContours(crown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            # Строим "оболочку" вокруг всех веток (общий объем кроны)
+            all_pts = np.vstack(contours)
+            hull = cv2.convexHull(all_pts)
+            hull_area = cv2.contourArea(hull)
+            
+            # Считаем фактическую площадь пикселей дерева
+            actual_mask_area = np.sum(crown_mask > 0)
+            
+            if hull_area > 0:
+                # Плотность = Реальное дерево / Общий объем оболочки
+                crown_density_ai = round(float(actual_mask_area / hull_area), 3)
+                # Ограничиваем от аномалий
+                crown_density_ai = max(0.1, min(crown_density_ai, 1.0))
+    except Exception as e:
+        print(f"[CV] Crown density error: {e}")
+
+    # -----------------------------
+    # AI: УГОЛ НАКЛОНА СТВОЛА (LEAN ANGLE)
+    # -----------------------------
+    lean_angle_deg = 0.0
+    try:
+        # Берем нижние 30% дерева (ствол)
+        trunk_top = y_max - int(0.3 * height_px)
+        trunk_mask = mask[trunk_top : y_max, :]
+        ys_trunk, xs_trunk = np.where(trunk_mask > 0)
+        
+        if len(xs_trunk) > 50: # Если есть достаточно пикселей
+            # Строим прямую линию через центр ствола
+            vx, vy, cx, cy = cv2.fitLine(np.column_stack((xs_trunk, ys_trunk)), cv2.DIST_L2, 0, 0.01, 0.01)
+            # Угол наклона линии (в радианах)
+            angle_rad = np.arctan2(vy, vx)
+            angle_deg = np.degrees(angle_rad)[0]
+            
+            # Переводим в отклонение от вертикали (вертикаль = 90 градусов)
+            deviation = abs(90.0 - abs(angle_deg))
+            # Если дерево наклонено в другую сторону
+            if deviation > 90:
+                deviation = 180 - deviation
+            lean_angle_deg = round(float(deviation), 1)
+    except Exception as e:
+        print(f"[CV] Lean angle error: {e}")
+
     # -----------------------------
     # AI + AR MEASUREMENTS MERGE
     # -----------------------------
@@ -1431,6 +1483,9 @@ async def analyze_tree(
             soil,
         )
 
+    # Если юзер не ввел плотность кроны вручную, берем ту, что посчитал ИИ
+    final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
+
     # -----------------------------
     # BETA COEFFICIENT / WIND LOAD
     # -----------------------------
@@ -1440,7 +1495,9 @@ async def analyze_tree(
         crown_m,
         trunk_m,
         manual_beta_kg_s=manual_beta_kg_s,
+        crown_density_factor=final_crown_density # <--- Передаем плотность!
     )
+
     wind_force_score_value, wind_force_n = beta_wind_force_score(
         beta_info.get("beta_kg_s"),
         weather,
@@ -1470,6 +1527,20 @@ async def analyze_tree(
         beta_value = beta_info.get("beta_kg_s")
         beta_max = beta_info.get("beta_max_scenario")
         
+        # Добавляем инфо про плотность
+        season = "Зимний режим / Редкая крона" if final_crown_density < 0.5 else "Летний режим / Плотная крона"
+        risk["explanation"].insert(0, f"Плотность кроны (AI): {int(final_crown_density * 100)}% ({season})")
+        
+        # Оцениваем угол наклона
+        if lean_angle_deg > 15.0:
+            risk["explanation"].insert(0, f"КРИТИЧЕСКИЙ ФАКТОР: Наклон ствола {lean_angle_deg}°!")
+            risk["category"] = "высокий" # Принудительно ставим высокий риск!
+            risk["index"] = max(risk["index"], 0.85)
+        elif lean_angle_deg > 5.0:
+            risk["explanation"].insert(0, f"Внимание: Наклон ствола {lean_angle_deg}°")
+            risk["index"] = min(1.0, risk["index"] + 0.15)
+            if risk["index"] > 0.7: risk["category"] = "высокий"
+
         risk["explanation"].append(
             f"Коэффициент β (ожидаемый): {beta_value:.2f} кг/с ({beta_info.get('source')})"
         )
