@@ -11,10 +11,9 @@ import secrets
 import cv2
 import numpy as np
 import requests
+import torch
 from ultralytics import YOLO
 from PIL import Image, ExifTags
-import torch
-from torchvision import models, transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
@@ -43,7 +42,6 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
-# Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
@@ -51,10 +49,13 @@ SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 SUPABASE_BUCKET_RAW = "arborscan-raw"
 SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
-# Supabase Postgres REST API (Вместо локального SQLite)
+# Supabase Postgres REST API
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
+
+# Pl@ntNet API Key
+PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "2b10s2QVGCWyalEeU1xv2nOKO")
 
 # ---------------------------------------------------------
 # Supabase PostgREST helpers 
@@ -121,21 +122,15 @@ def training_state_update(fields: dict) -> dict:
     return rows[0] if rows else fields
 
 
-# Настройки окружения
 WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
                  or os.getenv("OPENWEATHER_API_KEY")
                  or os.getenv("OPENWEATHERMAP_API_KEY")
                  or os.getenv("dc825ffd002731568ec7766eafb54bc9")
                  or None)
 WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
-
 SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
-
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
-NOMINATIM_USER_AGENT = os.getenv(
-    "NOMINATIM_USER_AGENT",
-    "arborscan-backend/1.0 (contact: example@mail.com)"
-)
+NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
 
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
@@ -147,7 +142,7 @@ ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 MODEL_VERSIONS = {
     "tree_yolo": "tree_yolov8_seg_v1.2.0",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
-    "classifier": "resnet18_species_v0.9.1",
+    "classifier": "plantnet_api_v2", 
 }
 BUILD_INFO = {
     "git_commit": os.getenv("GIT_COMMIT", "unknown"),
@@ -157,36 +152,15 @@ SCHEMA_VERSION = "1.0.0"
 API_VERSION = "2.0.0"
 VERIFIED_TRUST_THRESHOLD = 0.0
 
-# -------------------------------------
-# CLASSES / CONSTANTS
-# -------------------------------------
-
-CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
 REAL_STICK_M = 1.0
 
 # -------------------------------------
-# LOADING MODELS
+# LOADING YOLO MODELS
 # -------------------------------------
 
 print("[*] Loading YOLO models...")
 tree_model = None  
 stick_model = YOLO("models/stick_model.pt")
-
-print("[*] Loading classifier...")
-classifier = models.resnet18(weights=None)
-classifier.fc = torch.nn.Linear(classifier.fc.in_features, 5)
-classifier.load_state_dict(torch.load("models/classifier.pth", map_location="cpu"))
-classifier.eval()
-
-transformer = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
-    )
-])
-
 print("[*] Models loaded.")
 
 # =============================================
@@ -196,7 +170,6 @@ print("[*] Models loaded.")
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -207,7 +180,6 @@ def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     if resp.status_code >= 400:
         raise RuntimeError(f"Supabase upload error {resp.status_code}: {resp.text}")
 
-
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
     supabase_upload_bytes(bucket, path, data)
@@ -215,7 +187,6 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
 def supabase_list_objects(bucket: str, prefix: str = ""):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -232,11 +203,9 @@ def supabase_list_objects(bucket: str, prefix: str = ""):
         raise RuntimeError(f"Supabase list error {resp.status_code}: {resp.text}")
     return resp.json()
 
-
 def supabase_download_bytes(bucket: str, path: str) -> bytes:
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
-
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/authenticated/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -282,7 +251,6 @@ def _get_active_model_version() -> int:
 
 def list_available_model_versions() -> list[dict]:
     versions: set[int] = set()
-
     try:
         objects = supabase_list_objects(SUPABASE_BUCKET_MODELS)
         for obj in objects:
@@ -318,17 +286,14 @@ def list_available_model_versions() -> list[dict]:
 
     active = _get_active_model_version()
     versions.add(active)
-
     return [{"version": v, "is_active": v == active} for v in sorted(versions)]
 
 def reload_tree_model(force: bool = False):
     global TREE_MODEL, TREE_MODEL_VERSION, _MODEL_LAST_CHECK_TS
-
     now = time.time()
     if not force and (now - _MODEL_LAST_CHECK_TS) < _MODEL_CHECK_INTERVAL_SEC:
         return
     _MODEL_LAST_CHECK_TS = now
-
     v = _get_active_model_version()
     if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v:
         return
@@ -366,7 +331,6 @@ def get_tree_model() -> YOLO:
 def supabase_db_insert(table: str, row: dict):
     if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_KEY:
         raise RuntimeError("Supabase DB is not configured")
-
     url = f"{SUPABASE_DB_BASE}/{table}"
     headers = {
         "apikey": SUPABASE_SERVICE_KEY,
@@ -376,9 +340,7 @@ def supabase_db_insert(table: str, row: dict):
     }
     resp = requests.post(url, headers=headers, json=row, timeout=10)
     if resp.status_code >= 400:
-        raise RuntimeError(
-            f"Supabase DB insert error {resp.status_code}: {resp.text}"
-        )
+        raise RuntimeError(f"Supabase DB insert error {resp.status_code}: {resp.text}")
 
 
 # =============================================
@@ -396,15 +358,12 @@ def _strip_data_url(b64: str) -> str:
 def decode_base64_bytes(b64: str) -> bytes:
     if b64 is None:
         return b""
-
     b64_clean = _strip_data_url(str(b64)).strip()
     b64_clean = b64_clean.replace("-", "+").replace("_", "/")
     pad = len(b64_clean) % 4
     if pad:
         b64_clean += "=" * (4 - pad)
-
     raw = base64.b64decode(b64_clean, validate=False)
-
     try:
         as_text = raw.decode("utf-8").strip()
         if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
@@ -417,7 +376,6 @@ def decode_base64_bytes(b64: str) -> bytes:
                 return raw2
     except Exception:
         pass
-
     return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
@@ -457,25 +415,18 @@ def extract_gps(image_bytes):
         exif = img._getexif()
         if not exif:
             return None
-
         gps_info = None
         for k, v in exif.items():
             tag = ExifTags.TAGS.get(k)
             if tag == "GPSInfo":
                 gps_info = v
                 break
-
         if not gps_info:
             return None
-
         lat = _deg(gps_info[2])
         lon = _deg(gps_info[4])
-
-        if gps_info[1] == "S":
-            lat = -lat
-        if gps_info[3] == "W":
-            lon = -lon
-
+        if gps_info[1] == "S": lat = -lat
+        if gps_info[3] == "W": lon = -lon
         return {"lat": lat, "lon": lon}
     except Exception:
         return None
@@ -486,16 +437,11 @@ def extract_gps(image_bytes):
 
 def reverse_geocode(lat, lon):
     try:
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "format": "jsonv2"
-        }
+        params = {"lat": lat, "lon": lon, "format": "jsonv2"}
         headers = {"User-Agent": NOMINATIM_USER_AGENT}
         r = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=5)
         r.raise_for_status()
-        data = r.json()
-        return data.get("display_name")
+        return r.json().get("display_name")
     except Exception:
         return None
 
@@ -507,19 +453,12 @@ def get_weather(lat, lon):
     if not WEATHER_API_KEY:
         return None
     try:
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "appid": WEATHER_API_KEY,
-            "units": "metric",
-            "lang": "ru",
-        }
+        params = {"lat": lat, "lon": lon, "appid": WEATHER_API_KEY, "units": "metric", "lang": "ru"}
         r = requests.get(WEATHER_BASE_URL, params=params, timeout=5)
         r.raise_for_status()
         data = r.json()
         wind = data.get("wind", {})
         main = data.get("main", {})
-
         return {
             "temperature": main.get("temp"),
             "wind_speed": wind.get("speed"),
@@ -536,16 +475,10 @@ def get_weather(lat, lon):
 
 def get_soil(lat, lon):
     try:
-        params = {
-            "lon": lon,
-            "lat": lat,
-            "property": "clay,sand,silt,soc,phh2o",
-            "depth": "0-5cm",
-        }
+        params = {"lon": lon, "lat": lat, "property": "clay,sand,silt,soc,phh2o", "depth": "0-5cm"}
         r = requests.get(SOILGRIDS_URL, params=params, timeout=7)
         r.raise_for_status()
         data = r.json()
-
         result = {}
         layers = data.get("properties", {}).get("layers", [])
         for layer in layers:
@@ -558,7 +491,6 @@ def get_soil(lat, lon):
     except Exception:
         return None
 
-
 # =============================================
 # Risk Calculation
 # =============================================
@@ -569,58 +501,46 @@ SPECIES_BASE = {
     "Ель": 1.0,
     "Сосна": 0.75,
     "Тополь": 0.95,
+    "Клен": 0.6,
+    "Ясень": 0.65,
+    "Липа": 0.8,
 }
 
 def slenderness_score(height, diameter):
-    if not diameter or diameter <= 0:
-        return 1.0
+    if not diameter or diameter <= 0: return 1.0
     S = height / diameter
-    if S >= 80:
-        return 1.0
-    if S >= 60:
-        return 0.7
-    if S >= 40:
-        return 0.4
+    if S >= 80: return 1.0
+    if S >= 60: return 0.7
+    if S >= 40: return 0.4
     return 0.2
 
 def soil_score(soil):
-    if not soil:
-        return 0.5
+    if not soil: return 0.5
     clay = soil.get("clay") or 0
     sand = soil.get("sand") or 0
     org = soil.get("soc") or 0
-    if org > 80:
-        return 1.0
-    if clay > 40:
-        return 0.9
-    if sand > 60:
-        return 0.7
+    if org > 80: return 1.0
+    if clay > 40: return 0.9
+    if sand > 60: return 0.7
     return 0.5
 
 def wind_score(weather):
-    if not weather:
-        return 0.5
+    if not weather: return 0.5
     gust = weather.get("wind_gust") or weather.get("wind_speed") or 0
-    if gust <= 5:
-        return 0.2
-    if gust <= 10:
-        return 0.4
-    if gust <= 15:
-        return 0.6
-    if gust <= 25:
-        return 0.8
+    if gust <= 5: return 0.2
+    if gust <= 10: return 0.4
+    if gust <= 15: return 0.6
+    if gust <= 25: return 0.8
     return 1.0
 
 def compute_risk(species, height, crown, diameter, weather, soil):
     expl = []
-
     base = SPECIES_BASE.get(species, 0.7)
     expl.append(f"Порода ({species}) базовый риск: {base:.2f}")
 
-    if diameter and diameter > 0:
-        S = height / diameter
-    else:
-        S = 0.0
+    if diameter and diameter > 0: S = height / diameter
+    else: S = 0.0
+    
     s_score = slenderness_score(height, diameter)
     expl.append(f"Коэфф. стройности H/D: {S:.1f} → {s_score:.2f}")
 
@@ -633,12 +553,9 @@ def compute_risk(species, height, crown, diameter, weather, soil):
     index = 0.3 * base + 0.3 * s_score + 0.25 * w_score + 0.15 * soil_s
     index = max(0, min(index, 1))
 
-    if index < 0.4:
-        cat = "низкий"
-    elif index < 0.7:
-        cat = "средний"
-    else:
-        cat = "высокий"
+    if index < 0.4: cat = "низкий"
+    elif index < 0.7: cat = "средний"
+    else: cat = "высокий"
 
     expl.append(f"Итоговый риск {index:.2f} ({cat})")
 
@@ -648,88 +565,71 @@ def compute_risk(species, height, crown, diameter, weather, soil):
         "explanation": expl,
     }
 
-
 # =============================================
-# Beta coefficient estimation (wind drag scaling)
+# Beta coefficient estimation (Borisevich 2021)
 # =============================================
 
-BETA_SPECIES_PARAMS = {
-    "Сосна": {"k_area": 3.4, "min": 25.5, "max": 90.0, "base": 47.7},
-    "Ель": {"k_area": 3.8, "min": 30.0, "max": 100.0, "base": 60.0},
-    "Тополь": {"k_area": 3.6, "min": 30.0, "max": 100.0, "base": 58.0},
-    "Береза": {"k_area": 3.3, "min": 25.0, "max": 90.0, "base": 52.0},
-    "Дуб": {"k_area": 3.7, "min": 35.0, "max": 110.0, "base": 65.0},
+BETA_EMPIRICAL_STATS = {
+    "Сосна": {"mean": 47.7, "min": 25.5, "max": 90.0, "ref_height": 20.0},
+    "Ель": {"mean": 60.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
+    "Береза": {"mean": 52.0, "min": 25.0, "max": 90.0, "ref_height": 20.0},
+    "Дуб": {"mean": 65.0, "min": 35.0, "max": 110.0, "ref_height": 20.0},
+    "Тополь": {"mean": 58.0, "min": 30.0, "max": 100.0, "ref_height": 25.0},
+    "Клен": {"mean": 55.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
+    "Ясень": {"mean": 55.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
+    "Липа": {"mean": 50.0, "min": 25.0, "max": 90.0, "ref_height": 20.0},
 }
 
 def _clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
-def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=None, manual_beta_kg_s=None) -> dict:
-    params = BETA_SPECIES_PARAMS.get(species, BETA_SPECIES_PARAMS["Сосна"])
+def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=None, manual_beta_kg_s=None, crown_density_factor=1.0) -> dict:
+    stats = BETA_EMPIRICAL_STATS.get(species, BETA_EMPIRICAL_STATS["Сосна"])
 
     if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
         value = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
         return {
             "beta_kg_s": value,
+            "beta_max_scenario": value,
             "method": "manual",
-            "source": "Введено вручную пользователем",
-            "formula": "F = β · v",
-            "input": {
-                "manual_beta_kg_s": float(manual_beta_kg_s),
-                "species": species,
-            },
-            "notes": [
-                "β использован как заданный пользователем коэффициент аэродинамической интенсивности.",
-                "Единица измерения: кг/с.",
-            ],
+            "source": "Введено вручную",
+            "input": {"manual_beta_kg_s": float(manual_beta_kg_s)},
+            "notes": ["Использован пользовательский коэффициент."],
         }
 
     h = float(height_m or 0)
-    w = float(crown_width_m or 0)
+    density = float(crown_density_factor or 1.0)
 
-    if h <= 0 or w <= 0:
-        value = round(float(params["base"]), 2)
+    if h <= 0:
         return {
-            "beta_kg_s": value,
+            "beta_kg_s": stats["mean"],
+            "beta_max_scenario": stats["max"],
             "method": "species_default",
-            "source": "Среднее/экспертное значение по породе",
-            "formula": "F = β · v",
-            "input": {
-                "species": species,
-                "height_m": height_m,
-                "crown_width_m": crown_width_m,
-            },
-            "notes": [
-                "Недостаточно геометрических параметров для расчёта по кроне.",
-                "Использовано базовое значение β для породы.",
-            ],
+            "source": "Статистическое среднее по породе",
+            "input": {"species": species},
+            "notes": ["Высота не измерена. Использовано среднее значение."],
         }
 
-    crown_height_m = 0.45 * h
-    crown_frontal_area_m2 = 0.65 * crown_height_m * w
-    beta_raw = float(params["k_area"]) * crown_frontal_area_m2
-    beta = round(_clamp(beta_raw, float(params["min"]), float(params["max"])), 2)
+    height_ratio = h / stats["ref_height"]
+    beta_expected = stats["mean"] * (height_ratio ** 1.5) * density
+    beta_expected = _clamp(beta_expected, 5.0, stats["max"] * 1.5)
+
+    beta_max_scenario = _clamp(beta_expected * 1.88, beta_expected, stats["max"] * 1.5)
 
     return {
-        "beta_kg_s": beta,
-        "method": "estimated_from_geometry",
-        "source": "Оценка по AR/геометрии кроны",
-        "formula": "Hкроны≈0.45H; A≈0.65·Hкроны·Wкроны; β=clamp(k·A)",
+        "beta_kg_s": round(beta_expected, 2),
+        "beta_max_scenario": round(beta_max_scenario, 2),
+        "method": "empirical_borisevich_2021",
+        "source": "Полевая статистика (Borisevich et al. 2021)",
+        "formula": f"β = {stats['mean']} * (H/{stats['ref_height']})^1.5",
         "input": {
             "species": species,
             "height_m": h,
-            "crown_width_m": w,
-            "trunk_diameter_m": trunk_diameter_m,
-            "estimated_crown_height_m": round(crown_height_m, 2),
-            "estimated_crown_frontal_area_m2": round(crown_frontal_area_m2, 2),
-            "k_area": params["k_area"],
-            "beta_min": params["min"],
-            "beta_max": params["max"],
-            "beta_raw": round(beta_raw, 2),
+            "crown_density_factor": density
         },
         "notes": [
-            "Это приближённый β для практического риска, а не лабораторно подобранный коэффициент.",
-            "Для сосны диапазон ограничен опубликованными значениями 25.5–90.0 кг/с.",
+            "Расчет базируется на полевых испытаниях реальных деревьев.",
+            f"Худший сценарий для жесткой кроны: до {round(beta_max_scenario, 2)} кг/с."
         ],
     }
 
@@ -737,20 +637,15 @@ def beta_wind_force_score(beta_kg_s, weather) -> tuple[float, float | None]:
     if not beta_kg_s or beta_kg_s <= 0 or not weather:
         return 0.5, None
     v = weather.get("wind_gust") or weather.get("wind_speed") or 0
-    try:
-        v = float(v)
-    except Exception:
-        v = 0.0
+    try: v = float(v)
+    except Exception: v = 0.0
+    
     force_n = float(beta_kg_s) * v
 
-    if force_n <= 150:
-        score = 0.25
-    elif force_n <= 500:
-        score = 0.45
-    elif force_n <= 1200:
-        score = 0.75
-    else:
-        score = 1.0
+    if force_n <= 200: score = 0.25
+    elif force_n <= 600: score = 0.45
+    elif force_n <= 1500: score = 0.75
+    else: score = 1.0
     return score, round(force_n, 2)
 
 
@@ -849,7 +744,7 @@ class AuthGoogleRequest(BaseModel):
 app = FastAPI(title="ArborScan API v2.0")
 
 # =============================================
-# SUPABASE AUTH & ANALYSES (РЕШЕНИЕ ПРОБЛЕМЫ SQLITE)
+# SUPABASE AUTH & ANALYSES
 # =============================================
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
@@ -1251,20 +1146,51 @@ def normalize_address_ru(address: str | None) -> str | None:
     return out
 
 
-# === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ (РЕШЕНИЕ ЗАВИСАНИЙ) ===
+# === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ ===
 def _run_yolo_sync(img_array):
     tree_model_local = get_tree_model()
     t_res = tree_model_local(img_array)[0]
     s_res = stick_model(img_array)[0]
     return t_res, s_res
 
-def _run_classifier_sync(crop_rgb):
-    pil_crop = Image.fromarray(crop_rgb)
-    tens = transformer(pil_crop).unsqueeze(0)
-    with torch.no_grad():
-        pred = classifier(tens)
-        cls_id = int(torch.argmax(pred))
-    return CLASS_NAMES_RU[cls_id]
+def map_plantnet_name(raw_name: str) -> str:
+    name_lower = raw_name.lower()
+    if "сосна" in name_lower: return "Сосна"
+    if "ель" in name_lower: return "Ель"
+    if "дуб" in name_lower: return "Дуб"
+    if "береза" in name_lower or "берёза" in name_lower: return "Береза"
+    if "тополь" in name_lower: return "Тополь"
+    if "клен" in name_lower or "клён" in name_lower: return "Клен"
+    if "ясень" in name_lower: return "Ясень"
+    if "липа" in name_lower: return "Липа"
+    return raw_name.capitalize()
+
+def _run_classifier_sync(crop_bgr):
+    ok, encoded_img = cv2.imencode(".jpg", crop_bgr)
+    if not ok: return "Неизвестно"
+    
+    url = f"https://my-api.plantnet.org/v2/identify/all?api-key={PLANTNET_API_KEY}&lang=ru"
+    files = [('images', ('crop.jpg', encoded_img.tobytes(), 'image/jpeg'))]
+    data = {'organs': ['habit']}
+    
+    try:
+        r = requests.post(url, files=files, data=data, timeout=12)
+        if r.status_code == 200:
+            res = r.json()
+            results = res.get('results', [])
+            if results:
+                best = results[0]
+                species = best.get('species', {})
+                common_names = species.get('commonNames', [])
+                if common_names:
+                    return map_plantnet_name(common_names[0])
+                else:
+                    sci_name = species.get('scientificNameWithoutAuthor', 'Неизвестно')
+                    return map_plantnet_name(sci_name)
+    except Exception as e:
+        print(f"[!] Pl@ntNet API error: {e}")
+        
+    return "Неизвестно"
 # ========================================================================
 
 
@@ -1351,6 +1277,44 @@ async def analyze_tree(
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
     # -----------------------------
+    # AI: ПОРИСТОСТЬ КРОНЫ (CROWN DENSITY)
+    # -----------------------------
+    crown_density_ai = 1.0
+    try:
+        crown_mask = mask[y_min : y_min + int(0.7 * height_px), :]
+        contours, _ = cv2.findContours(crown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            all_pts = np.vstack(contours)
+            hull = cv2.convexHull(all_pts)
+            hull_area = cv2.contourArea(hull)
+            actual_mask_area = np.sum(crown_mask > 0)
+            if hull_area > 0:
+                crown_density_ai = round(float(actual_mask_area / hull_area), 3)
+                crown_density_ai = max(0.1, min(crown_density_ai, 1.0))
+    except Exception as e:
+        print(f"[CV] Crown density error: {e}")
+
+    # -----------------------------
+    # AI: УГОЛ НАКЛОНА СТВОЛА (LEAN ANGLE)
+    # -----------------------------
+    lean_angle_deg = 0.0
+    try:
+        trunk_top_limit = y_max - int(0.3 * height_px)
+        trunk_mask = mask[trunk_top_limit : y_max, :]
+        ys_trunk, xs_trunk = np.where(trunk_mask > 0)
+        
+        if len(xs_trunk) > 50:
+            vx, vy, cx, cy = cv2.fitLine(np.column_stack((xs_trunk, ys_trunk)), cv2.DIST_L2, 0, 0.01, 0.01)
+            angle_rad = np.arctan2(vy, vx)
+            angle_deg = np.degrees(angle_rad)[0]
+            deviation = abs(90.0 - abs(angle_deg))
+            if deviation > 90:
+                deviation = 180 - deviation
+            lean_angle_deg = round(float(deviation), 1)
+    except Exception as e:
+        print(f"[CV] Lean angle error: {e}")
+
+    # -----------------------------
     # AI + AR MEASUREMENTS MERGE
     # -----------------------------
     height_m_ai = height_m
@@ -1383,12 +1347,12 @@ async def analyze_tree(
     dimensions_source = "ИИ + AR" if any([has_ar_height, has_ar_crown, has_ar_trunk]) else "ИИ / фото"
 
     # -----------------------------
-    # CLASSIFIER (Запуск в фоне)
+    # CLASSIFIER (PlantNet API)
     # -----------------------------
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
-    crop = cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
+    crop_bgr = img[y1:y2, x1:x2]
     
-    species_name = await run_in_threadpool(_run_classifier_sync, crop)
+    species_name = await run_in_threadpool(_run_classifier_sync, crop_bgr)
 
     # -----------------------------
     # ANNOTATED IMAGE
@@ -1432,6 +1396,9 @@ async def analyze_tree(
             soil,
         )
 
+    # Если юзер не ввел плотность кроны вручную, берем ту, что посчитал ИИ
+    final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
+
     # -----------------------------
     # BETA COEFFICIENT / WIND LOAD
     # -----------------------------
@@ -1441,6 +1408,7 @@ async def analyze_tree(
         crown_m,
         trunk_m,
         manual_beta_kg_s=manual_beta_kg_s,
+        crown_density_factor=final_crown_density
     )
     wind_force_score_value, wind_force_n = beta_wind_force_score(
         beta_info.get("beta_kg_s"),
@@ -1461,23 +1429,48 @@ async def analyze_tree(
         wind_speed_m_s=wind_speed_for_model,
         wind_gust_m_s=wind_gust_for_model,
         crown_start_height_m=crown_start_height_m,
-        crown_density_factor=crown_density_factor or 1.0,
+        crown_density_factor=final_crown_density,
         crown_shape_factor=crown_shape_factor or 1.0,
         n_elements=20,
     )
 
     if risk is not None:
         risk.setdefault("explanation", [])
+        
+        season = "Зимний режим / Редкая крона" if final_crown_density < 0.5 else "Летний режим / Плотная крона"
+        risk["explanation"].insert(0, f"Плотность кроны (AI): {int(final_crown_density * 100)}% ({season})")
+        
+        if lean_angle_deg > 15.0:
+            risk["explanation"].insert(0, f"КРИТИЧЕСКИЙ ФАКТОР: Наклон ствола {lean_angle_deg}°!")
+            risk["category"] = "высокий"
+            risk["index"] = max(risk["index"], 0.85)
+        elif lean_angle_deg > 5.0:
+            risk["explanation"].insert(0, f"Внимание: Наклон ствола {lean_angle_deg}°")
+            risk["index"] = min(1.0, risk["index"] + 0.15)
+            if risk["index"] > 0.7: risk["category"] = "высокий"
+
         beta_value = beta_info.get("beta_kg_s")
+        beta_max = beta_info.get("beta_max_scenario")
+        
         risk["explanation"].append(
-            f"Коэффициент β: {beta_value:.2f} кг/с ({beta_info.get('source')})"
-            if isinstance(beta_value, (int, float))
-            else f"Коэффициент β: {beta_info.get('source')}"
+            f"Коэффициент β (ожидаемый): {beta_value:.2f} кг/с ({beta_info.get('source')})"
         )
+        if beta_max and beta_max > beta_value:
+            risk["explanation"].append(
+                f"Коэффициент β (худший сценарий жесткой кроны): до {beta_max:.2f} кг/с"
+            )
+
         if wind_force_n is not None:
             risk["explanation"].append(
-                f"Оценка ветровой силы по F=β·v: {wind_force_n:.1f} Н"
+                f"Ветровая сила (ожидаемая): {wind_force_n:.1f} Н"
             )
+            if beta_max:
+                v = weather.get("wind_gust") or weather.get("wind_speed") or 0
+                max_force = beta_max * float(v)
+                risk["explanation"].append(
+                    f"Ветровая сила (порыв + худший β): до {max_force:.1f} Н"
+                )
+
         if analytic_wind_model.get("available"):
             out = analytic_wind_model.get("outputs", {})
             risk["explanation"].append(
@@ -1498,6 +1491,8 @@ async def analyze_tree(
         "height_m_ai": height_m_ai,
         "crown_width_m_ai": crown_m_ai,
         "trunk_diameter_m_ai": trunk_m_ai,
+        "crown_density_ai": crown_density_ai,
+        "lean_angle_deg": lean_angle_deg,
         "ar_measurements": ar_measurements,
         "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source,
