@@ -1149,7 +1149,8 @@ def normalize_address_ru(address: str | None) -> str | None:
 # === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ ===
 def _run_yolo_sync(img_array):
     tree_model_local = get_tree_model()
-    t_res = tree_model_local(img_array)[0]
+    # Увеличиваем разрешение до 1024 и включаем Retina-маски для высокой детализации веток!
+    t_res = tree_model_local(img_array, imgsz=1024, retina_masks=True, conf=0.25)[0]
     s_res = stick_model(img_array)[0]
     return t_res, s_res
 
@@ -1226,19 +1227,40 @@ async def analyze_tree(
     # -----------------------------
     tree_res, stick_res = await run_in_threadpool(_run_yolo_sync, img)
     
+    # ... (код выше: tree_res, stick_res = await run_in_threadpool...)
+    
     if tree_res.masks is None:
         return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
 
     masks = []
-    areas = []
-    for m in tree_res.masks.data:
+    distances_to_center = []
+    img_center_x = W / 2
+    img_center_y = H / 2
+
+    for i, m in enumerate(tree_res.masks.data):
+        # 1. Извлекаем маску
         mask = (m.cpu().numpy() > 0.5).astype(np.uint8) * 255
         mask = cv2.resize(mask, (W, H), interpolation=cv2.INTER_NEAREST)
-        areas.append(mask.sum())
+        
+        # 2. Делаем легкое сглаживание краев (Морфология), чтобы убрать "рваные" ветки
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        
+        # 3. Вычисляем расстояние от центра дерева до центра кадра
+        x1, y1, x2, y2 = tree_res.boxes.xyxy[i].cpu().numpy()
+        tree_center_x = (x1 + x2) / 2
+        tree_center_y = (y1 + y2) / 2
+        
+        # Считаем квадрат расстояния
+        dist = (tree_center_x - img_center_x)**2 + (tree_center_y - img_center_y)**2
+        
+        distances_to_center.append(dist)
         masks.append(mask)
 
-    idx = int(np.argmax(areas))
+    # ВЫБИРАЕМ ДЕРЕВО БЛИЖЕ ВСЕГО К ЦЕНТРУ КАДРА (а не самое большое)
+    idx = int(np.argmin(distances_to_center))
     mask = masks[idx]
+    
 
     # -----------------------------
     # YOLO STICK
