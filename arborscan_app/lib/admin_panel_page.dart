@@ -96,7 +96,7 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
       await _refresh();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Запрос на обучение отправлен')),
+          const SnackBar(content: Text('Запрос обучения отправлен')),
         );
       }
     } catch (e) {
@@ -198,7 +198,7 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                             );
                           },
                           icon: const Icon(Icons.dataset_outlined),
-                          label: const Text('Датасет для обучения'),
+                          label: const Text('Датасет для последующего обучения'),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),
                           ),
@@ -254,6 +254,7 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: Theme.of(context).colorScheme.error.withOpacity(0.10),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.25)),
