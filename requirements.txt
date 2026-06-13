@@ -11,3 +11,4 @@ requests
 tqdm
 supabase
 google-auth>=2.29.0
+rembg

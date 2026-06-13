@@ -24,6 +24,9 @@ from datetime import datetime, timedelta
 from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
 
+# ИМПОРТИРУЕМ НАШ НОВЫЙ ИИ ДЛЯ ИДЕАЛЬНЫХ МАСОК
+from rembg import remove, new_session
+
 try:
     from google.oauth2 import id_token as google_id_token
     from google.auth.transport import requests as google_requests
@@ -41,7 +44,6 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
-# Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
@@ -121,26 +123,29 @@ MODEL_VERSIONS = {
     "tree_yolo": "tree_yolov8_seg_v1.2.0",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
     "classifier": "plantnet_api_v2", 
+    "mask_refiner": "u2net_rembg_v1.0"
 }
 BUILD_INFO = {
     "git_commit": os.getenv("GIT_COMMIT", "unknown"),
     "build_time": os.getenv("BUILD_TIME")
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.1.0" # Обновили API версию до SIA
+API_VERSION = "2.1.0" 
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
 CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
 
 # -------------------------------------
-# LOADING YOLO MODELS
+# LOADING AI MODELS
 # -------------------------------------
 
 print("[*] Loading YOLO models...")
 tree_model = None  
 stick_model = YOLO("models/stick_model.pt")
-print("[*] Models loaded.")
+print("[*] YOLO Models loaded.")
+
+REMBG_SESSION = None
 
 # =============================================
 # SUPABASE UTILS (Storage + DB)
@@ -298,8 +303,7 @@ def _strip_data_url(b64: str) -> str:
 
 def decode_base64_bytes(b64: str) -> bytes:
     if b64 is None: return b""
-    b64_clean = _strip_data_url(str(b64)).strip()
-    b64_clean = b64_clean.replace("-", "+").replace("_", "/")
+    b64_clean = _strip_data_url(str(b64)).strip().replace("-", "+").replace("_", "/")
     pad = len(b64_clean) % 4
     if pad: b64_clean += "=" * (4 - pad)
     raw = base64.b64decode(b64_clean, validate=False)
@@ -464,7 +468,6 @@ def estimate_beta_kg_s(species: str, height_m, manual_beta_kg_s=None, crown_dens
 
 
 def slenderness_score(height_m, diameter_m):
-    """ Отношение высоты к толщине ствола (H/D) """
     if not diameter_m or diameter_m <= 0: 
         return 0.0, 0.0
     S = height_m / diameter_m
@@ -477,12 +480,10 @@ def slenderness_score(height_m, diameter_m):
 
 
 def bending_stress_score(species, height_m, trunk_diameter_m, beta_kg_s, wind_speed):
-    """ Оцениваем, сломается ли ствол при заданном ветре (SIA метод) """
     if not all([height_m, trunk_diameter_m, beta_kg_s]) or trunk_diameter_m <= 0:
         return 99.0, 0.0, [], 0.0, 0.0, 0.0
 
     expl = []
-    # Нормативный ветер берется из слайдера пользователя (или 25 м/с по умолчанию)
     design_wind_speed = float(wind_speed) if wind_speed and wind_speed > 0 else 25.0
     
     force_n = beta_kg_s * design_wind_speed
@@ -514,7 +515,6 @@ def bending_stress_score(species, height_m, trunk_diameter_m, beta_kg_s, wind_sp
 def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_speed):
     expl = []
     
-    # 1. ФАКТОР НАКЛОНА
     lean_score = 0.0
     if lean_angle_deg > 15.0:
         lean_score = 1.0
@@ -525,18 +525,15 @@ def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_spee
     else:
         expl.append(f"Наклон ствола в пределах нормы ({lean_angle_deg}°).")
 
-    # 2. ФАКТОР СТРОЙНОСТИ
     S, s_score = slenderness_score(height, diameter)
     if diameter and diameter > 0:
         state = "Опасно (Тонкое)" if S > 80 else "Норма"
         expl.append(f"Стройность H/D: {S:.1f} ({state})")
 
-    # 3. ФАКТОР ИЗЛОМА (SIA)
     beta = beta_info.get("beta_max_scenario") or beta_info.get("beta_kg_s") or 0
     safety_factor, wind_score_val, wind_expl, f_n, l_m, m_nm = bending_stress_score(species, height, diameter, beta, wind_speed)
     expl.extend(wind_expl)
 
-    # ИТОГОВЫЙ ИНДЕКС
     index = max(lean_score, s_score, wind_score_val) + 0.1 * (lean_score + s_score + wind_score_val)
     index = max(0.0, min(index, 1.0))
 
@@ -712,48 +709,38 @@ async def auth_google(payload: AuthGoogleRequest):
 @app.get("/auth/me")
 async def auth_me(token: str):
     user = _get_user_by_token(token)
-    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+    if not user: raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
     return {"ok": True, "user": _user_public(user)}
 
 @app.post("/auth/set-role")
 async def auth_set_role(payload: AuthRoleRequest):
     user = _get_user_by_token(payload.token)
-    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена")
+    if not user: raise HTTPException(status_code=401, detail="Сессия не найдена")
 
     role = (payload.role or "").strip().lower()
     if role not in ("user", "admin"): raise HTTPException(status_code=400, detail="Недопустимая роль")
-    if role == "admin" and payload.admin_code != AUTH_ADMIN_CODE: raise HTTPException(status_code=403, detail="Неверный код администратора")
+    if role == "admin" and payload.admin_code != AUTH_ADMIN_CODE: raise HTTPException(status_code=403, detail="Неверный код")
 
     resp = requests.patch(f"{SUPABASE_DB_BASE}/users?id=eq.{user['id']}", headers={**_sb_headers(), "Prefer": "return=representation"}, json={"role": role, "updated_at": _now_iso()}, timeout=10)
     return {"ok": True, "user": _user_public(resp.json()[0])}
 
 
 def _save_analysis_record(response: dict, user: dict | None):
-    if not SUPABASE_DB_BASE: return
     risk = response.get("risk") or {}
     beta = response.get("beta") or {}
     analytic_out = (response.get("analytic_wind_model") or {}).get("outputs") or {}
     gps = response.get("gps") or {}
 
     payload = {
-        "id": response.get("analysis_id"),
-        "user_id": user.get("id") if user else None,
-        "created_at": _now_iso(),
-        "species": response.get("species"),
-        "risk_index": risk.get("index"),
-        "risk_category": risk.get("category"),
-        "height_m": response.get("height_m"),
-        "crown_width_m": response.get("crown_width_m"),
-        "trunk_diameter_m": response.get("trunk_diameter_m"),
-        "beta_kg_s": beta.get("beta_kg_s"),
-        "base_moment_nm": analytic_out.get("base_moment_nm"),
-        "center_of_load_m": analytic_out.get("center_of_load_m"),
-        "lat": gps.get("lat"),
-        "lon": gps.get("lon"),
-        "address": response.get("address"),
-        "response_json": response
+        "id": response.get("analysis_id"), "user_id": user.get("id") if user else None,
+        "created_at": _now_iso(), "species": response.get("species"),
+        "risk_index": risk.get("index"), "risk_category": risk.get("category"),
+        "height_m": response.get("height_m"), "crown_width_m": response.get("crown_width_m"), "trunk_diameter_m": response.get("trunk_diameter_m"),
+        "beta_kg_s": beta.get("beta_kg_s"), "base_moment_nm": analytic_out.get("base_moment_nm"), "center_of_load_m": analytic_out.get("center_of_load_m"),
+        "lat": gps.get("lat"), "lon": gps.get("lon"), "address": response.get("address"),
+        "response_json": response,
     }
-    requests.post(f"{SUPABASE_DB_BASE}/analyses", headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"}, json=payload, timeout=10)
+    requests.post(f"{SUPABASE_DB_BASE}/analyses", headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"}, json=payload)
 
 
 def _analysis_summary(row: dict) -> dict:
@@ -765,37 +752,42 @@ def _analysis_summary(row: dict) -> dict:
         "lat": row.get("lat"), "lon": row.get("lon"), "address": row.get("address"),
     }
 
+
 @app.get("/analyses/my")
 async def analyses_my(token: str, limit: int = 100):
     user = _get_user_by_token(token)
-    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена")
+    if not user: raise HTTPException(status_code=401, detail="Сессия не найдена")
     limit = max(1, min(int(limit), 500))
-    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
+    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc&limit={limit}", headers=_sb_headers())
     return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
+
 
 @app.get("/analyses/{analysis_id}")
 async def analyses_get(analysis_id: str, token: str):
     user = _get_user_by_token(token)
-    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена")
-    rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?id=eq.{analysis_id}", headers=_sb_headers(), timeout=10).json()
+    if not user: raise HTTPException(status_code=401, detail="Сессия не найдена")
+    rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?id=eq.{analysis_id}", headers=_sb_headers()).json()
     if not rows: raise HTTPException(status_code=404, detail="Анализ не найден")
     row = rows[0]
-    if row.get("user_id") != user.get("id") and user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нет доступа")
+    if row.get("user_id") != user["id"] and user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нет доступа")
     return {"ok": True, "analysis": row.get("response_json")}
+
 
 @app.get("/admin/analyses")
 async def admin_analyses(token: str, limit: int = 200):
     user = _get_user_by_token(token)
-    if user is None or user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нужна роль администратора")
+    if not user or user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нужна роль администратора")
     limit = max(1, min(int(limit), 1000))
-    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
+    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}", headers=_sb_headers())
     return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
+
 
 @app.get("/profile/stats")
 async def profile_stats(token: str):
     user = _get_user_by_token(token)
     if not user: raise HTTPException(status_code=401, detail="Сессия не найдена")
-    rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc", headers=_sb_headers(), timeout=10).json()
+    url = f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc"
+    rows = requests.get(url, headers=_sb_headers()).json()
 
     total = len(rows)
     with_geo = sum(1 for r in rows if r.get("lat") is not None and r.get("lon") is not None)
@@ -812,7 +804,6 @@ async def profile_stats(token: str):
     }
 
 
-# --- Training events (in-memory) ---
 TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
 
 def log_training_event(level: str, message: str, data: dict | None = None) -> None:
@@ -828,8 +819,20 @@ def _startup_load_models():
     try:
         training_state_ensure_row()
         with MODEL_LOCK: reload_tree_model(force=True)
+        
+        # ЗАГРУЗКА И ПРОГРЕВ REMBG (U-2-NET)
+        global REMBG_SESSION
+        print("[*] Loading rembg (U-2-Net) model for ultra-sharp masks...")
+        REMBG_SESSION = new_session("u2net")
+        try:
+            dummy = np.zeros((10, 10, 3), dtype=np.uint8)
+            remove(dummy, session=REMBG_SESSION, only_mask=True)
+            print("[*] rembg loaded and warmed up.")
+        except Exception as e:
+            print(f"[!] rembg warmup failed (it might still work later): {e}")
+
     except Exception as e:
-        print(f"[!] Startup model load failed: {e}")
+        print(f"[!] Startup models load failed: {e}")
 
 
 def normalize_address_ru(address: str | None) -> str | None:
@@ -843,6 +846,7 @@ def normalize_address_ru(address: str | None) -> str | None:
 # === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ ===
 def _run_yolo_sync(img_array):
     tree_model_local = get_tree_model()
+    # Увеличиваем разрешение и включаем Retina-маски
     t_res = tree_model_local(img_array, imgsz=1024, retina_masks=True, conf=0.25)[0]
     s_res = stick_model(img_array)[0]
     return t_res, s_res
@@ -870,14 +874,22 @@ def _run_classifier_sync(crop_bgr):
     try:
         r = requests.post(url, files=files, data=data, timeout=12)
         if r.status_code == 200:
-            results = r.json().get('results', [])
+            res = r.json()
+            results = res.get('results', [])
             if results:
-                species = results[0].get('species', {})
-                common = species.get('commonNames', [])
-                if common: return map_plantnet_name(common[0])
-                return map_plantnet_name(species.get('scientificNameWithoutAuthor', 'Неизвестно'))
-    except Exception as e: print(f"[!] Pl@ntNet API error: {e}")
+                best = results[0]
+                species = best.get('species', {})
+                common_names = species.get('commonNames', [])
+                if common_names:
+                    return map_plantnet_name(common_names[0])
+                else:
+                    sci_name = species.get('scientificNameWithoutAuthor', 'Неизвестно')
+                    return map_plantnet_name(sci_name)
+    except Exception as e:
+        print(f"[!] Pl@ntNet API error: {e}")
+        
     return "Неизвестно"
+# ========================================================================
 
 
 @app.post("/analyze-tree")
@@ -899,49 +911,108 @@ async def analyze_tree(
     analysis_user = _get_user_by_token(auth_token) if auth_token else None
 
     image_bytes = await file.read()
-    img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    if img is None: raise HTTPException(status_code=400, detail="Не удалось прочитать изображение")
+    np_img = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+
+    if img is None:
+        raise HTTPException(status_code=400, detail="Не удалось прочитать изображение")
+
     H, W = img.shape[:2]
 
-    # YOLO Фоновый поток
+    # 1. ЗАПУСК YOLO 
     tree_res, stick_res = await run_in_threadpool(_run_yolo_sync, img)
-    if tree_res.masks is None: return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
+    if tree_res.masks is None:
+        return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
 
-    masks, distances_to_center = [], []
+    # 2. СНАЙПЕРСКИЙ ФОКУС (Выбор дерева по центру кадра)
+    masks = []
+    distances_to_center = []
     img_center_x, img_center_y = W / 2.0, H / 2.0
 
     for i, m in enumerate(tree_res.masks.data):
-        mask = cv2.resize((m.cpu().numpy() > 0.5).astype(np.uint8) * 255, (W, H), interpolation=cv2.INTER_NEAREST)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+        mask = (m.cpu().numpy() > 0.5).astype(np.uint8) * 255
+        mask = cv2.resize(mask, (W, H), interpolation=cv2.INTER_NEAREST)
         x1, y1, x2, y2 = tree_res.boxes.xyxy[i].cpu().numpy()
         distances_to_center.append(((x1 + x2)/2.0 - img_center_x)**2 + ((y1 + y2)/2.0 - img_center_y)**2)
         masks.append(mask)
 
     idx = int(np.argmin(distances_to_center))
-    mask = masks[idx]
+    yolo_mask = masks[idx]
 
+    # 3. ИДЕАЛЬНОЕ ВЫРЕЗАНИЕ ЧЕРЕЗ REMBG (U-2-Net)
+    try:
+        x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
+        margin = 30
+        x1_c, y1_c = max(0, x1 - margin), max(0, y1 - margin)
+        x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
+        
+        crop_bgr = img[y1_c:y2_c, x1_c:x2_c]
+        
+        def _refine_mask_sync(crop):
+            # rembg вырезает фон, оставляя только главное дерево
+            return remove(crop, session=REMBG_SESSION, only_mask=True)
+            
+        refined_crop_mask = await run_in_threadpool(_refine_mask_sync, crop_bgr)
+        
+        if len(refined_crop_mask.shape) == 3:
+            refined_crop_mask = refined_crop_mask[:, :, 0]
+            
+        _, refined_crop_mask = cv2.threshold(refined_crop_mask, 127, 255, cv2.THRESH_BINARY)
+        
+        # Вставляем идеальную маску обратно в полноразмерную картинку
+        final_mask = np.zeros((H, W), dtype=np.uint8)
+        final_mask[y1_c:y2_c, x1_c:x2_c] = refined_crop_mask
+        
+        # Морфологическая очистка от мелкого мусора
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    except Exception as e:
+        print(f"[!] rembg refinement failed: {e}")
+        mask = yolo_mask # Если rembg упал, используем старую маску YOLO
+
+    # -----------------------------
+    # YOLO STICK
+    # -----------------------------
     scale = None
     if len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
-        stick_h = int(best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item())
-        if stick_h > 10: scale = REAL_STICK_M / stick_h
+        x1s, y1s, x2s, y2s = best.xyxy[0].cpu().numpy().astype(int)
+        stick_h = y2s - y1s
+        if stick_h > 10:
+            scale = REAL_STICK_M / stick_h
 
+    # -----------------------------
+    # MEASUREMENTS
+    # -----------------------------
     ys, xs = np.where(mask > 0)
+    if len(ys) == 0:
+        return JSONResponse({"error": "Ошибка обработки контура дерева"}, status_code=400)
+
     y_min, y_max = ys.min(), ys.max()
     height_px = y_max - y_min
+
     height_m = round(height_px * scale, 2) if scale else None
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
         row = np.where(mask[y] > 0)[0]
-        if len(row) > 0: crown_width_px = max(crown_width_px, row.max() - row.min())
+        if len(row) > 0:
+            crown_width_px = max(crown_width_px, row.max() - row.min())
     crown_m = round(crown_width_px * scale, 2) if scale else None
 
-    trunk_vals = [np.where(mask[y] > 0)[0].max() - np.where(mask[y] > 0)[0].min() for y in range(y_max - int(0.2 * height_px), y_max) if len(np.where(mask[y] > 0)[0]) > 0]
+    trunk_vals = []
+    trunk_top = y_max - int(0.2 * height_px)
+    for y in range(trunk_top, y_max):
+        row = np.where(mask[y] > 0)[0]
+        if len(row) > 0:
+            trunk_vals.append(row.max() - row.min())
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # Пористость (AI)
+    # -----------------------------
+    # AI: ПОРИСТОСТЬ КРОНЫ И УГОЛ НАКЛОНА
+    # -----------------------------
     crown_density_ai = 1.0
     try:
         crown_mask = mask[y_min : y_min + int(0.7 * height_px), :]
@@ -949,10 +1020,11 @@ async def analyze_tree(
         if contours:
             hull = cv2.convexHull(np.vstack(contours))
             hull_area = cv2.contourArea(hull)
-            if hull_area > 0: crown_density_ai = max(0.1, min(round(float(np.sum(crown_mask > 0) / hull_area), 3), 1.0))
+            actual_mask_area = np.sum(crown_mask > 0)
+            if hull_area > 0:
+                crown_density_ai = max(0.1, min(round(float(actual_mask_area / hull_area), 3), 1.0))
     except Exception: pass
 
-    # Наклон ствола (AI)
     lean_angle_deg = 0.0
     try:
         trunk_mask = mask[y_max - int(0.3 * height_px) : y_max, :]
@@ -964,7 +1036,11 @@ async def analyze_tree(
             lean_angle_deg = round(float(180 - dev if dev > 90 else dev), 1)
     except Exception: pass
 
+    # -----------------------------
+    # AR MEASUREMENTS MERGE
+    # -----------------------------
     height_m_ai, crown_m_ai, trunk_m_ai = height_m, crown_m, trunk_m
+
     if ar_height_m: height_m = round(float(ar_height_m), 2)
     if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
     if ar_trunk_diameter_m: trunk_m = round(float(ar_trunk_diameter_m), 2)
@@ -986,23 +1062,14 @@ async def analyze_tree(
         if gps: address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
 
     final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
-
     beta_info = estimate_beta_kg_s(species_name, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
     
-    # Берем нормативный ветер для расчета (максимальный из введенных или 25 м/с)
     wind_design = float(manual_wind_gust_m_s or manual_wind_speed_m_s or 25.0)
-
     risk, f_n, l_m, m_nm, s_f = compute_risk(species_name, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
 
-    # Заполняем аналитическую карточку для Flutter
     analytic_wind_model = {
         "available": True,
-        "outputs": {
-            "total_force_n": round(f_n, 1),
-            "center_of_load_m": round(l_m, 1),
-            "base_moment_nm": round(m_nm, 1),
-            "analytical_score": round(s_f, 2)
-        },
+        "outputs": {"total_force_n": round(f_n, 1), "center_of_load_m": round(l_m, 1), "base_moment_nm": round(m_nm, 1), "analytical_score": round(s_f, 2)},
         "inputs": {"crown_start_height_m": round((height_m or 0) * 0.5, 1), "n_elements": 1}
     }
 
@@ -1137,7 +1204,6 @@ def send_feedback(payload: dict = Body(...)):
 
         if (tmp_dir / "tree_pred.json").exists(): supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/tree_pred.json", (tmp_dir / "tree_pred.json").read_bytes())
         if (tmp_dir / "stick_pred.json").exists(): supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/stick_pred.json", (tmp_dir / "stick_pred.json").read_bytes())
-
         supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta)
 
         if is_verified:
@@ -1149,7 +1215,7 @@ def send_feedback(payload: dict = Body(...)):
                     except Exception as e: print(f"[!] Verified mask error: {e}")
                 supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/tree_pred.json", (tmp_dir / "tree_pred.json").read_bytes())
                 supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json", (tmp_dir / "stick_pred.json").read_bytes())
-
+                
                 meta_verified = meta.copy()
                 meta_verified["verified"] = True
                 meta_verified["verified_at"] = datetime.utcnow().isoformat()
@@ -1243,3 +1309,7 @@ def admin_request_retrain():
 @app.get("/admin/models")
 def admin_models():
     return {"models": list_available_model_versions(), "active_model_version": _get_active_model_version()}
+
+@app.get("/admin/training-events")
+def admin_training_events(limit: int = 15):
+    return {"events": list(reversed(list(TRAINING_EVENTS)[-max(1, min(int(limit), 200)):]))}
