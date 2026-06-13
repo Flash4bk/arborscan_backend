@@ -30,7 +30,6 @@ try:
 except Exception:
     google_id_token = None
     google_requests = None
-from tree_dynamics import compute_analytic_wind_model
 
 # -------------------------------------
 # CONFIG
@@ -42,6 +41,7 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
 
+# Buckets в Supabase Storage
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
 SUPABASE_BUCKET_META = "arborscan-meta"
@@ -56,6 +56,11 @@ SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "
 
 # Pl@ntNet API Key
 PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "2b10s2QVGCWyalEeU1xv2nOKO")
+
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
+NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
+
+ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
 # ---------------------------------------------------------
 # Supabase PostgREST helpers 
@@ -73,7 +78,7 @@ def _sb_headers(json_ct: bool = True) -> dict:
 
 def training_state_get() -> dict:
     if not SUPABASE_DB_BASE:
-        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
+        raise RuntimeError("Supabase DB is not configured")
     url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1&select=*"
     resp = requests.get(url, headers=_sb_headers(json_ct=False), timeout=30)
     if resp.status_code >= 400:
@@ -96,43 +101,16 @@ def training_state_ensure_row():
         "last_model_version": 0,
         "active_model_version": 0,
     }
-    resp = requests.post(
-        url,
-        headers={**_sb_headers(), "Prefer": "return=representation"},
-        data=json.dumps(payload),
-        timeout=30,
-    )
-    if resp.status_code >= 400:
-        raise RuntimeError(f"training_state_ensure_row error {resp.status_code}: {resp.text}")
+    requests.post(url, headers={**_sb_headers(), "Prefer": "return=representation"}, data=json.dumps(payload), timeout=30)
 
 
 def training_state_update(fields: dict) -> dict:
     if not SUPABASE_DB_BASE:
-        raise RuntimeError("Supabase DB is not configured (SUPABASE_URL missing)")
+        raise RuntimeError("Supabase DB is not configured")
     url = f"{SUPABASE_DB_BASE}/training_state?id=eq.1"
-    resp = requests.patch(
-        url,
-        headers={**_sb_headers(), "Prefer": "return=representation"},
-        data=json.dumps(fields),
-        timeout=30,
-    )
-    if resp.status_code >= 400:
-        raise RuntimeError(f"training_state_update error {resp.status_code}: {resp.text}")
+    resp = requests.patch(url, headers={**_sb_headers(), "Prefer": "return=representation"}, data=json.dumps(fields), timeout=30)
     rows = resp.json()
     return rows[0] if rows else fields
-
-
-WEATHER_API_KEY = (os.getenv("WEATHER_API_KEY")
-                 or os.getenv("OPENWEATHER_API_KEY")
-                 or os.getenv("OPENWEATHERMAP_API_KEY")
-                 or os.getenv("dc825ffd002731568ec7766eafb54bc9")
-                 or None)
-WEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
-SOILGRIDS_URL = "https://rest.isric.org/soilgrids/v2.0/properties/query"
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
-NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
-
-ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
 
 # -------------------------------------
@@ -149,10 +127,11 @@ BUILD_INFO = {
     "build_time": os.getenv("BUILD_TIME")
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.0.0"
+API_VERSION = "2.1.0" # Обновили API версию до SIA
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
+CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
 
 # -------------------------------------
 # LOADING YOLO MODELS
@@ -169,16 +148,14 @@ print("[*] Models loaded.")
 
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
+        raise RuntimeError("Supabase is not configured")
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
         "Content-Type": "application/octet-stream",
         "x-upsert": "true",
     }
-    resp = requests.post(url, headers=headers, data=data, timeout=30)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Supabase upload error {resp.status_code}: {resp.text}")
+    requests.post(url, headers=headers, data=data, timeout=30)
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
     data = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
@@ -186,34 +163,22 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
 
 def supabase_list_objects(bucket: str, prefix: str = ""):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
+        raise RuntimeError("Supabase is not configured")
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}"
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Content-Type": "application/json",
-    }
     payload = {
         "prefix": prefix,
         "limit": 200,
         "offset": 0,
         "sortBy": {"column": "name", "order": "desc"},
     }
-    resp = requests.post(url, headers=headers, json=payload, timeout=15)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Supabase list error {resp.status_code}: {resp.text}")
+    resp = requests.post(url, headers=_sb_headers(), json=payload, timeout=15)
     return resp.json()
 
 def supabase_download_bytes(bucket: str, path: str) -> bytes:
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured (no URL or SERVICE_KEY)")
+        raise RuntimeError("Supabase is not configured")
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/authenticated/{bucket}/{path}"
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "apikey": SUPABASE_SERVICE_KEY,
-    }
-    resp = requests.get(url, headers=headers, timeout=60)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Supabase download error {resp.status_code}: {resp.text}")
+    resp = requests.get(url, headers=_sb_headers(False), timeout=60)
     return resp.content
 
 
@@ -245,9 +210,7 @@ def _download_model_if_needed(version: int) -> str:
 def _get_active_model_version() -> int:
     state = training_state_get()
     v = state.get("active_model_version")
-    if v is None:
-        return 0
-    return int(v)
+    return int(v) if v is not None else 0
 
 def list_available_model_versions() -> list[dict]:
     versions: set[int] = set()
@@ -266,23 +229,18 @@ def list_available_model_versions() -> list[dict]:
     if env_hint:
         for part in env_hint.split(","):
             part = part.strip()
-            if not part:
-                continue
-            try:
-                versions.add(int(part))
-            except ValueError:
-                pass
+            if part:
+                try: versions.add(int(part))
+                except ValueError: pass
 
     for p in Path("/tmp/models").glob("model_v*.pt"):
         mm = re.search(r"model_v(\d+)\.pt$", p.name)
-        if mm:
-            versions.add(int(mm.group(1)))
+        if mm: versions.add(int(mm.group(1)))
 
     if Path("models").exists():
         for p in Path("models").glob("model_v*.pt"):
             mm = re.search(r"model_v(\d+)\.pt$", p.name)
-            if mm:
-                versions.add(int(mm.group(1)))
+            if mm: versions.add(int(mm.group(1)))
 
     active = _get_active_model_version()
     versions.add(active)
@@ -324,23 +282,7 @@ def get_tree_model() -> YOLO:
         reload_tree_model(force=False)
         if TREE_MODEL is None:
             reload_tree_model(force=True)
-        if TREE_MODEL is None:
-            raise RuntimeError("TREE_MODEL is not loaded")
         return TREE_MODEL
-
-def supabase_db_insert(table: str, row: dict):
-    if not SUPABASE_DB_BASE or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase DB is not configured")
-    url = f"{SUPABASE_DB_BASE}/{table}"
-    headers = {
-        "apikey": SUPABASE_SERVICE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-    }
-    resp = requests.post(url, headers=headers, json=row, timeout=10)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Supabase DB insert error {resp.status_code}: {resp.text}")
 
 
 # =============================================
@@ -348,29 +290,25 @@ def supabase_db_insert(table: str, row: dict):
 # =============================================
 
 def _strip_data_url(b64: str) -> str:
-    if not b64:
-        return b64
+    if not b64: return b64
     b64 = b64.strip()
     if b64.startswith("data:") and "base64," in b64:
         b64 = b64.split("base64,", 1)[1]
     return "".join(b64.split()) 
 
 def decode_base64_bytes(b64: str) -> bytes:
-    if b64 is None:
-        return b""
+    if b64 is None: return b""
     b64_clean = _strip_data_url(str(b64)).strip()
     b64_clean = b64_clean.replace("-", "+").replace("_", "/")
     pad = len(b64_clean) % 4
-    if pad:
-        b64_clean += "=" * (4 - pad)
+    if pad: b64_clean += "=" * (4 - pad)
     raw = base64.b64decode(b64_clean, validate=False)
     try:
         as_text = raw.decode("utf-8").strip()
         if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
             as_text = _strip_data_url(as_text).strip().replace("-", "+").replace("_", "/")
             pad2 = len(as_text) % 4
-            if pad2:
-                as_text += "=" * (4 - pad2)
+            if pad2: as_text += "=" * (4 - pad2)
             raw2 = base64.b64decode(as_text, validate=False)
             if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff":
                 return raw2
@@ -392,12 +330,30 @@ def ensure_png_mask_bytes(mask_b64: str) -> bytes:
     mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
     if mask is None:
         raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
-
     _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
     ok, out = cv2.imencode(".png", mask_bin)
     if not ok:
         raise ValueError("Failed to encode mask as PNG")
     return out.tobytes()
+
+def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
+    h, w = img_bgr.shape[:2]
+    longest = max(h, w)
+    if longest > max_side:
+        scale = max_side / float(longest)
+        new_w = max(1, int(w * scale))
+        new_h = max(1, int(h * scale))
+        img_bgr = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    ok, out = cv2.imencode(".jpg", img_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)])
+    return base64.b64encode(out.tobytes()).decode("ascii")
+
+def draw_mask(img_bgr, mask):
+    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in cnts:
+        approx = cv2.approxPolyDP(cnt, 0.003 * cv2.arcLength(cnt, True), True)
+        cv2.drawContours(img_bgr, [approx], -1, (0, 255, 0), 3)
+    return encode_jpeg_base64(img_bgr, max_side=1280, quality=74)
 
 # =============================================
 # EXIF → GPS
@@ -413,16 +369,13 @@ def extract_gps(image_bytes):
     try:
         img = Image.open(io.BytesIO(image_bytes))
         exif = img._getexif()
-        if not exif:
-            return None
+        if not exif: return None
         gps_info = None
         for k, v in exif.items():
-            tag = ExifTags.TAGS.get(k)
-            if tag == "GPSInfo":
+            if ExifTags.TAGS.get(k) == "GPSInfo":
                 gps_info = v
                 break
-        if not gps_info:
-            return None
+        if not gps_info: return None
         lat = _deg(gps_info[2])
         lon = _deg(gps_info[4])
         if gps_info[1] == "S": lat = -lat
@@ -431,143 +384,28 @@ def extract_gps(image_bytes):
     except Exception:
         return None
 
-# =============================================
-# Reverse geocode (OSM)
-# =============================================
-
 def reverse_geocode(lat, lon):
     try:
-        params = {"lat": lat, "lon": lon, "format": "jsonv2"}
-        headers = {"User-Agent": NOMINATIM_USER_AGENT}
-        r = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=5)
-        r.raise_for_status()
+        r = requests.get(NOMINATIM_URL, params={"lat": lat, "lon": lon, "format": "jsonv2"}, headers={"User-Agent": NOMINATIM_USER_AGENT}, timeout=5)
         return r.json().get("display_name")
     except Exception:
         return None
 
-# =============================================
-# Weather API (OpenWeatherMap)
-# =============================================
-
-def get_weather(lat, lon):
-    if not WEATHER_API_KEY:
-        return None
-    try:
-        params = {"lat": lat, "lon": lon, "appid": WEATHER_API_KEY, "units": "metric", "lang": "ru"}
-        r = requests.get(WEATHER_BASE_URL, params=params, timeout=5)
-        r.raise_for_status()
-        data = r.json()
-        wind = data.get("wind", {})
-        main = data.get("main", {})
-        return {
-            "temperature": main.get("temp"),
-            "wind_speed": wind.get("speed"),
-            "wind_gust": wind.get("gust"),
-            "pressure": main.get("pressure"),
-            "humidity": main.get("humidity"),
-        }
-    except Exception:
-        return None
 
 # =============================================
-# SoilGrids (почва)
+# ПРОФЕССИОНАЛЬНАЯ ОЦЕНКА РИСКА (SIA METHOD)
 # =============================================
 
-def get_soil(lat, lon):
-    try:
-        params = {"lon": lon, "lat": lat, "property": "clay,sand,silt,soc,phh2o", "depth": "0-5cm"}
-        r = requests.get(SOILGRIDS_URL, params=params, timeout=7)
-        r.raise_for_status()
-        data = r.json()
-        result = {}
-        layers = data.get("properties", {}).get("layers", [])
-        for layer in layers:
-            name = layer.get("name")
-            first_depth = layer.get("depths", [])
-            if first_depth:
-                mean = first_depth[0].get("values", {}).get("mean")
-                result[name] = mean
-        return result
-    except Exception:
-        return None
-
-# =============================================
-# Risk Calculation
-# =============================================
-
-SPECIES_BASE = {
-    "Береза": 0.7,
-    "Дуб": 0.5,
-    "Ель": 1.0,
-    "Сосна": 0.75,
-    "Тополь": 0.95,
-    "Клен": 0.6,
-    "Ясень": 0.65,
-    "Липа": 0.8,
+SPECIES_STRENGTH_MPA = {
+    "Береза": 45.0,
+    "Дуб": 60.0,
+    "Ель": 40.0,
+    "Сосна": 42.0,
+    "Тополь": 30.0,
+    "Клен": 50.0,
+    "Ясень": 55.0,
+    "Липа": 35.0,
 }
-
-def slenderness_score(height, diameter):
-    if not diameter or diameter <= 0: return 1.0
-    S = height / diameter
-    if S >= 80: return 1.0
-    if S >= 60: return 0.7
-    if S >= 40: return 0.4
-    return 0.2
-
-def soil_score(soil):
-    if not soil: return 0.5
-    clay = soil.get("clay") or 0
-    sand = soil.get("sand") or 0
-    org = soil.get("soc") or 0
-    if org > 80: return 1.0
-    if clay > 40: return 0.9
-    if sand > 60: return 0.7
-    return 0.5
-
-def wind_score(weather):
-    if not weather: return 0.5
-    gust = weather.get("wind_gust") or weather.get("wind_speed") or 0
-    if gust <= 5: return 0.2
-    if gust <= 10: return 0.4
-    if gust <= 15: return 0.6
-    if gust <= 25: return 0.8
-    return 1.0
-
-def compute_risk(species, height, crown, diameter, weather, soil):
-    expl = []
-    base = SPECIES_BASE.get(species, 0.7)
-    expl.append(f"Порода ({species}) базовый риск: {base:.2f}")
-
-    if diameter and diameter > 0: S = height / diameter
-    else: S = 0.0
-    
-    s_score = slenderness_score(height, diameter)
-    expl.append(f"Коэфф. стройности H/D: {S:.1f} → {s_score:.2f}")
-
-    w_score = wind_score(weather)
-    expl.append(f"Ветровая нагрузка: {w_score:.2f}")
-
-    soil_s = soil_score(soil)
-    expl.append(f"Почвенный фактор: {soil_s:.2f}")
-
-    index = 0.3 * base + 0.3 * s_score + 0.25 * w_score + 0.15 * soil_s
-    index = max(0, min(index, 1))
-
-    if index < 0.4: cat = "низкий"
-    elif index < 0.7: cat = "средний"
-    else: cat = "высокий"
-
-    expl.append(f"Итоговый риск {index:.2f} ({cat})")
-
-    return {
-        "index": index,
-        "category": cat,
-        "explanation": expl,
-    }
-
-# =============================================
-# Beta coefficient estimation (Borisevich 2021)
-# =============================================
 
 BETA_EMPIRICAL_STATS = {
     "Сосна": {"mean": 47.7, "min": 25.5, "max": 90.0, "ref_height": 20.0},
@@ -583,7 +421,7 @@ BETA_EMPIRICAL_STATS = {
 def _clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
-def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=None, manual_beta_kg_s=None, crown_density_factor=1.0) -> dict:
+def estimate_beta_kg_s(species: str, height_m, manual_beta_kg_s=None, crown_density_factor=1.0) -> dict:
     stats = BETA_EMPIRICAL_STATS.get(species, BETA_EMPIRICAL_STATS["Сосна"])
 
     if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
@@ -605,9 +443,9 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
             "beta_kg_s": stats["mean"],
             "beta_max_scenario": stats["max"],
             "method": "species_default",
-            "source": "Статистическое среднее по породе",
+            "source": "Статистическое среднее",
             "input": {"species": species},
-            "notes": ["Высота не измерена. Использовано среднее значение."],
+            "notes": ["Высота не измерена. Взято среднее значение."],
         }
 
     height_ratio = h / stats["ref_height"]
@@ -621,61 +459,96 @@ def estimate_beta_kg_s(species: str, height_m, crown_width_m, trunk_diameter_m=N
         "beta_max_scenario": round(beta_max_scenario, 2),
         "method": "empirical_borisevich_2021",
         "source": "Полевая статистика (Borisevich et al. 2021)",
-        "formula": f"β = {stats['mean']} * (H/{stats['ref_height']})^1.5",
-        "input": {
-            "species": species,
-            "height_m": h,
-            "crown_density_factor": density
-        },
-        "notes": [
-            "Расчет базируется на полевых испытаниях реальных деревьев.",
-            f"Худший сценарий для жесткой кроны: до {round(beta_max_scenario, 2)} кг/с."
-        ],
+        "input": {"species": species, "height_m": h, "crown_density_factor": density},
     }
 
-def beta_wind_force_score(beta_kg_s, weather) -> tuple[float, float | None]:
-    if not beta_kg_s or beta_kg_s <= 0 or not weather:
-        return 0.5, None
-    v = weather.get("wind_gust") or weather.get("wind_speed") or 0
-    try: v = float(v)
-    except Exception: v = 0.0
+
+def slenderness_score(height_m, diameter_m):
+    """ Отношение высоты к толщине ствола (H/D) """
+    if not diameter_m or diameter_m <= 0: 
+        return 0.0, 0.0
+    S = height_m / diameter_m
+    if S >= 100: score = 1.0
+    elif S >= 80: score = 0.8
+    elif S >= 60: score = 0.5
+    elif S >= 40: score = 0.2
+    else: score = 0.0
+    return S, score
+
+
+def bending_stress_score(species, height_m, trunk_diameter_m, beta_kg_s, wind_speed):
+    """ Оцениваем, сломается ли ствол при заданном ветре (SIA метод) """
+    if not all([height_m, trunk_diameter_m, beta_kg_s]) or trunk_diameter_m <= 0:
+        return 99.0, 0.0, [], 0.0, 0.0, 0.0
+
+    expl = []
+    # Нормативный ветер берется из слайдера пользователя (или 25 м/с по умолчанию)
+    design_wind_speed = float(wind_speed) if wind_speed and wind_speed > 0 else 25.0
     
-    force_n = float(beta_kg_s) * v
+    force_n = beta_kg_s * design_wind_speed
+    lever_arm_m = height_m * 0.5 
+    bending_moment_nm = force_n * lever_arm_m
+    
+    w_m3 = (3.14159 * (trunk_diameter_m ** 3)) / 32.0
+    stress_mpa = (bending_moment_nm / w_m3) / 1_000_000.0
+    
+    limit_mpa = SPECIES_STRENGTH_MPA.get(species, 40.0) 
+    safety_factor = limit_mpa / stress_mpa if stress_mpa > 0 else 99.0
 
-    if force_n <= 200: score = 0.25
-    elif force_n <= 600: score = 0.45
-    elif force_n <= 1500: score = 0.75
-    else: score = 1.0
-    return score, round(force_n, 2)
+    expl.append(f"Расчетный ветер: {design_wind_speed:.1f} м/с. Момент у основания: {bending_moment_nm/1000:.1f} кН·м")
+    expl.append(f"Напряжение в стволе: {stress_mpa:.1f} МПа (Предел для '{species}': {limit_mpa} МПа)")
+    
+    if safety_factor < 1.0:
+        expl.append(f"КРИТИЧЕСКИЙ РИСК ИЗЛОМА! Запас прочности: {safety_factor:.2f}")
+        score = 1.0
+    elif safety_factor < 1.5:
+        expl.append(f"Низкий запас прочности ({safety_factor:.2f}). Риск поломки ствола.")
+        score = 0.7
+    else:
+        expl.append(f"Ствол выдержит ветер. Запас прочности: {safety_factor:.2f}")
+        score = 0.1
 
-
-# =============================================
-# IMAGE ENCODING / DRAW MASK
-# =============================================
-
-def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
-    h, w = img_bgr.shape[:2]
-    longest = max(h, w)
-    if longest > max_side:
-        scale = max_side / float(longest)
-        new_w = max(1, int(w * scale))
-        new_h = max(1, int(h * scale))
-        img_bgr = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-    encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)]
-    ok, out = cv2.imencode(".jpg", img_bgr, encode_params)
-    if not ok:
-        raise ValueError("Failed to encode image as JPEG")
-    return base64.b64encode(out.tobytes()).decode("ascii")
+    return safety_factor, score, expl, force_n, lever_arm_m, bending_moment_nm
 
 
-def draw_mask(img_bgr, mask):
-    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for cnt in cnts:
-        approx = cv2.approxPolyDP(cnt, 0.003 * cv2.arcLength(cnt, True), True)
-        cv2.drawContours(img_bgr, [approx], -1, (0, 255, 0), 3)
+def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_speed):
+    expl = []
+    
+    # 1. ФАКТОР НАКЛОНА
+    lean_score = 0.0
+    if lean_angle_deg > 15.0:
+        lean_score = 1.0
+        expl.append(f"ОПАСНОСТЬ: Аномальный наклон ствола ({lean_angle_deg}°). Риск выкорчевывания.")
+    elif lean_angle_deg > 7.0:
+        lean_score = 0.5
+        expl.append(f"Внимание: Наклон ствола {lean_angle_deg}°.")
+    else:
+        expl.append(f"Наклон ствола в пределах нормы ({lean_angle_deg}°).")
 
-    return encode_jpeg_base64(img_bgr, max_side=1280, quality=74)
+    # 2. ФАКТОР СТРОЙНОСТИ
+    S, s_score = slenderness_score(height, diameter)
+    if diameter and diameter > 0:
+        state = "Опасно (Тонкое)" if S > 80 else "Норма"
+        expl.append(f"Стройность H/D: {S:.1f} ({state})")
+
+    # 3. ФАКТОР ИЗЛОМА (SIA)
+    beta = beta_info.get("beta_max_scenario") or beta_info.get("beta_kg_s") or 0
+    safety_factor, wind_score_val, wind_expl, f_n, l_m, m_nm = bending_stress_score(species, height, diameter, beta, wind_speed)
+    expl.extend(wind_expl)
+
+    # ИТОГОВЫЙ ИНДЕКС
+    index = max(lean_score, s_score, wind_score_val) + 0.1 * (lean_score + s_score + wind_score_val)
+    index = max(0.0, min(index, 1.0))
+
+    if index < 0.4: cat = "низкий"
+    elif index < 0.7: cat = "средний"
+    else: cat = "высокий"
+
+    return {
+        "index": index,
+        "category": cat,
+        "explanation": expl,
+    }, f_n, l_m, m_nm, safety_factor
 
 
 # =============================================
@@ -696,29 +569,11 @@ class FeedbackRequest(BaseModel):
     correct_scale_px_to_m: float | None = None
     user_mask_base64: str | None = None
 
-class TrustedExample(BaseModel):
-    analysis_id: str
-    species: str | None = None
-    trust_score: float | None = None
-    created_at: str | None = None
-    tree_ok: bool | None = None
-    stick_ok: bool | None = None
-    params_ok: bool | None = None
-    species_ok: bool | None = None
-    has_user_mask: bool | None = None
-    use_for_training: bool | None = None
-    needs_manual_review: bool | None = None
-
 class AdminSetTrainingRequest(BaseModel):
     use_for_training: bool | None = None
     enabled: bool | None = None
     include: bool | None = None
     value: bool | None = None
-
-
-# =============================================
-# AUTH MODELS
-# =============================================
 
 class AuthRegisterRequest(BaseModel):
     name: str
@@ -741,7 +596,7 @@ class AuthGoogleRequest(BaseModel):
     photo_url: str | None = None
 
 
-app = FastAPI(title="ArborScan API v2.0")
+app = FastAPI(title="ArborScan API v2.1")
 
 # =============================================
 # SUPABASE AUTH & ANALYSES
@@ -761,227 +616,123 @@ def _hash_password(password: str, salt_hex: str | None = None) -> tuple[str, str
     else:
         salt = bytes.fromhex(salt_hex)
 
-    digest = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt,
-        120_000,
-    ).hex()
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 120_000).hex()
     return digest, salt_hex
 
 def _user_public(row: dict) -> dict:
-    data = {
-        "id": row.get("id"),
-        "name": row.get("name"),
-        "email": row.get("email"),
-        "role": row.get("role"),
-        "created_at": row.get("created_at"),
-    }
-    if "provider" in row:
-        data["provider"] = row["provider"]
-    if "avatar_url" in row:
-        data["avatar_url"] = row["avatar_url"]
+    data = {"id": row.get("id"), "name": row.get("name"), "email": row.get("email"), "role": row.get("role"), "created_at": row.get("created_at")}
+    if "provider" in row: data["provider"] = row["provider"]
+    if "avatar_url" in row: data["avatar_url"] = row["avatar_url"]
     return data
 
 def _create_session(user_id: str) -> dict:
-    if not SUPABASE_DB_BASE:
-        raise RuntimeError("Supabase is not configured.")
+    if not SUPABASE_DB_BASE: raise RuntimeError("Supabase is not configured.")
     token = secrets.token_urlsafe(32)
     created_at = _now_iso()
     expires_at = (datetime.utcnow() + timedelta(days=AUTH_TOKEN_TTL_DAYS)).isoformat(timespec="seconds") + "Z"
-    
-    url = f"{SUPABASE_DB_BASE}/auth_sessions"
-    payload = {
-        "token": token,
-        "user_id": user_id,
-        "created_at": created_at,
-        "expires_at": expires_at
-    }
-    requests.post(url, headers=_sb_headers(), json=payload, timeout=10)
+    requests.post(f"{SUPABASE_DB_BASE}/auth_sessions", headers=_sb_headers(), json={"token": token, "user_id": user_id, "created_at": created_at, "expires_at": expires_at}, timeout=10)
     return {"token": token, "expires_at": expires_at}
 
 def _get_user_by_token(token: str) -> dict | None:
-    if not token or not SUPABASE_DB_BASE:
-        return None
-    now = _now_iso()
-    url = f"{SUPABASE_DB_BASE}/auth_sessions?token=eq.{token}&expires_at=gt.{now}&select=*,users(*)"
-    resp = requests.get(url, headers=_sb_headers(), timeout=10)
-    if resp.status_code >= 400:
-        return None
-    rows = resp.json()
-    if not rows:
-        return None
-    return rows[0].get("users")
+    if not token or not SUPABASE_DB_BASE: return None
+    rows = requests.get(f"{SUPABASE_DB_BASE}/auth_sessions?token=eq.{token}&expires_at=gt.{_now_iso()}&select=*,users(*)", headers=_sb_headers(), timeout=10).json()
+    return rows[0].get("users") if rows else None
 
 def _email_norm(email: str) -> str:
     return (email or "").strip().lower()
 
 def _validate_auth_payload(name: str | None, email: str, password: str, need_name: bool = False):
-    if need_name and (not name or len(name.strip()) < 2):
-        raise HTTPException(status_code=400, detail="Имя должно быть не короче 2 символов")
-    if "@" not in email or "." not in email:
-        raise HTTPException(status_code=400, detail="Введите корректную почту")
-    if not password or len(password) < 4:
-        raise HTTPException(status_code=400, detail="Пароль должен быть не короче 4 символов")
+    if need_name and (not name or len(name.strip()) < 2): raise HTTPException(status_code=400, detail="Имя должно быть не короче 2 символов")
+    if "@" not in email or "." not in email: raise HTTPException(status_code=400, detail="Введите корректную почту")
+    if not password or len(password) < 4: raise HTTPException(status_code=400, detail="Пароль должен быть не короче 4 символов")
 
 @app.post("/auth/register")
 async def auth_register(payload: AuthRegisterRequest):
     if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
-    name = payload.name.strip()
-    email = _email_norm(payload.email)
-    password = payload.password
+    name, email, password = payload.name.strip(), _email_norm(payload.email), payload.password
     _validate_auth_payload(name, email, password, need_name=True)
 
-    url_check = f"{SUPABASE_DB_BASE}/users?email=eq.{email}"
-    if requests.get(url_check, headers=_sb_headers(), timeout=10).json():
+    if requests.get(f"{SUPABASE_DB_BASE}/users?email=eq.{email}", headers=_sb_headers(), timeout=10).json():
         raise HTTPException(status_code=409, detail="Пользователь с такой почтой уже существует")
 
     password_hash, salt = _hash_password(password)
-    user_id = str(uuid4())
-    now = _now_iso()
+    user_id, now = str(uuid4()), _now_iso()
 
-    url_insert = f"{SUPABASE_DB_BASE}/users"
-    payload_user = {
-        "id": user_id, "name": name, "email": email,
-        "password_hash": password_hash, "salt": salt, "role": "user",
-        "created_at": now, "updated_at": now
-    }
-    requests.post(url_insert, headers=_sb_headers(), json=payload_user, timeout=10)
-
+    requests.post(f"{SUPABASE_DB_BASE}/users", headers=_sb_headers(), json={"id": user_id, "name": name, "email": email, "password_hash": password_hash, "salt": salt, "role": "user", "created_at": now, "updated_at": now}, timeout=10)
     session = _create_session(user_id)
     user_rows = requests.get(f"{SUPABASE_DB_BASE}/users?id=eq.{user_id}", headers=_sb_headers(), timeout=10).json()
-
-    return {
-        "ok": True,
-        "user": _user_public(user_rows[0]),
-        "token": session["token"],
-        "expires_at": session["expires_at"],
-    }
+    return {"ok": True, "user": _user_public(user_rows[0]), "token": session["token"], "expires_at": session["expires_at"]}
 
 @app.post("/auth/login")
 async def auth_login(payload: AuthLoginRequest):
     if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
-    email = _email_norm(payload.email)
-    password = payload.password
+    email, password = _email_norm(payload.email), payload.password
     _validate_auth_payload(None, email, password, need_name=False)
 
-    url = f"{SUPABASE_DB_BASE}/users?email=eq.{email}"
-    rows = requests.get(url, headers=_sb_headers(), timeout=10).json()
-
-    if not rows:
-        raise HTTPException(status_code=401, detail="Неверная почта или пароль")
+    rows = requests.get(f"{SUPABASE_DB_BASE}/users?email=eq.{email}", headers=_sb_headers(), timeout=10).json()
+    if not rows: raise HTTPException(status_code=401, detail="Неверная почта или пароль")
 
     user = rows[0]
     expected, _ = _hash_password(password, user["salt"])
-    if not secrets.compare_digest(expected, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Неверная почта или пароль")
+    if not secrets.compare_digest(expected, user["password_hash"]): raise HTTPException(status_code=401, detail="Неверная почта или пароль")
 
     session = _create_session(user["id"])
-    return {
-        "ok": True,
-        "user": _user_public(user),
-        "token": session["token"],
-        "expires_at": session["expires_at"],
-    }
+    return {"ok": True, "user": _user_public(user), "token": session["token"], "expires_at": session["expires_at"]}
 
 @app.post("/auth/google")
 async def auth_google(payload: AuthGoogleRequest):
     if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
+    if not google_id_token or not GOOGLE_CLIENT_ID: raise HTTPException(status_code=500, detail="Google Auth is not configured")
 
-    if google_id_token is None or google_requests is None:
-        raise HTTPException(status_code=500, detail="google-auth не установлен")
+    try: info = google_id_token.verify_oauth2_token(payload.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
+    except Exception as e: raise HTTPException(status_code=401, detail=f"Google token error: {e}")
 
-    if not GOOGLE_CLIENT_ID:
-        raise HTTPException(status_code=500, detail="GOOGLE_CLIENT_ID не задан")
-
-    try:
-        info = google_id_token.verify_oauth2_token(
-            payload.id_token,
-            google_requests.Request(),
-            GOOGLE_CLIENT_ID,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Google token не прошёл проверку: {e}")
-
-    sub = str(info.get("sub") or "")
-    email = _email_norm(str(info.get("email") or payload.email or ""))
+    sub, email = str(info.get("sub") or ""), _email_norm(str(info.get("email") or payload.email or ""))
     name = str(info.get("name") or payload.name or email.split("@")[0] or "Google user").strip()
     avatar_url = str(info.get("picture") or payload.photo_url or "")
 
-    if not sub or not email:
-        raise HTTPException(status_code=401, detail="Google не вернул sub/email")
+    if not sub or not email: raise HTTPException(status_code=401, detail="Google didn't return sub/email")
 
     now = _now_iso()
-
-    url_check = f"{SUPABASE_DB_BASE}/users?or=(google_sub.eq.{sub},email.eq.{email})"
-    rows = requests.get(url_check, headers=_sb_headers(), timeout=10).json()
+    rows = requests.get(f"{SUPABASE_DB_BASE}/users?or=(google_sub.eq.{sub},email.eq.{email})", headers=_sb_headers(), timeout=10).json()
 
     if not rows:
         user_id = str(uuid4())
-        random_password = secrets.token_urlsafe(24)
-        password_hash, salt = _hash_password(random_password)
-        
-        payload_user = {
-            "id": user_id, "name": name, "email": email, "password_hash": password_hash, 
-            "salt": salt, "role": "user", "created_at": now, "updated_at": now, 
-            "provider": "google", "google_sub": sub, "avatar_url": avatar_url
-        }
-        requests.post(f"{SUPABASE_DB_BASE}/users", headers=_sb_headers(), json=payload_user, timeout=10)
+        password_hash, salt = _hash_password(secrets.token_urlsafe(24))
+        requests.post(f"{SUPABASE_DB_BASE}/users", headers=_sb_headers(), json={"id": user_id, "name": name, "email": email, "password_hash": password_hash, "salt": salt, "role": "user", "created_at": now, "updated_at": now, "provider": "google", "google_sub": sub, "avatar_url": avatar_url}, timeout=10)
         user = requests.get(f"{SUPABASE_DB_BASE}/users?id=eq.{user_id}", headers=_sb_headers(), timeout=10).json()[0]
     else:
         user = rows[0]
-        update_payload = {
-            "name": name or user.get("name"),
-            "provider": "google",
-            "google_sub": sub or user.get("google_sub"),
-            "avatar_url": avatar_url or user.get("avatar_url"),
-            "updated_at": now
-        }
-        url_patch = f"{SUPABASE_DB_BASE}/users?id=eq.{user['id']}"
-        resp = requests.patch(url_patch, headers={**_sb_headers(), "Prefer": "return=representation"}, json=update_payload, timeout=10)
+        resp = requests.patch(f"{SUPABASE_DB_BASE}/users?id=eq.{user['id']}", headers={**_sb_headers(), "Prefer": "return=representation"}, json={"name": name or user.get("name"), "provider": "google", "google_sub": sub or user.get("google_sub"), "avatar_url": avatar_url or user.get("avatar_url"), "updated_at": now}, timeout=10)
         user = resp.json()[0]
 
     session = _create_session(user["id"])
-    return {
-        "ok": True,
-        "user": _user_public(user),
-        "token": session["token"],
-        "expires_at": session["expires_at"],
-    }
+    return {"ok": True, "user": _user_public(user), "token": session["token"], "expires_at": session["expires_at"]}
 
 @app.get("/auth/me")
 async def auth_me(token: str):
     user = _get_user_by_token(token)
-    if user is None:
-        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
     return {"ok": True, "user": _user_public(user)}
 
 @app.post("/auth/set-role")
 async def auth_set_role(payload: AuthRoleRequest):
     user = _get_user_by_token(payload.token)
-    if user is None:
-        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
+    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена")
 
     role = (payload.role or "").strip().lower()
-    if role not in ("user", "admin"):
-        raise HTTPException(status_code=400, detail="Недопустимая роль")
+    if role not in ("user", "admin"): raise HTTPException(status_code=400, detail="Недопустимая роль")
+    if role == "admin" and payload.admin_code != AUTH_ADMIN_CODE: raise HTTPException(status_code=403, detail="Неверный код администратора")
 
-    if role == "admin" and payload.admin_code != AUTH_ADMIN_CODE:
-        raise HTTPException(status_code=403, detail="Неверный код администратора")
-
-    url_patch = f"{SUPABASE_DB_BASE}/users?id=eq.{user['id']}"
-    resp = requests.patch(url_patch, headers={**_sb_headers(), "Prefer": "return=representation"}, json={"role": role, "updated_at": _now_iso()}, timeout=10)
-    updated = resp.json()[0]
-
-    return {"ok": True, "user": _user_public(updated)}
+    resp = requests.patch(f"{SUPABASE_DB_BASE}/users?id=eq.{user['id']}", headers={**_sb_headers(), "Prefer": "return=representation"}, json={"role": role, "updated_at": _now_iso()}, timeout=10)
+    return {"ok": True, "user": _user_public(resp.json()[0])}
 
 
 def _save_analysis_record(response: dict, user: dict | None):
     if not SUPABASE_DB_BASE: return
     risk = response.get("risk") or {}
     beta = response.get("beta") or {}
-    analytic = response.get("analytic_wind_model") or {}
-    analytic_out = analytic.get("outputs") or {}
+    analytic_out = (response.get("analytic_wind_model") or {}).get("outputs") or {}
     gps = response.get("gps") or {}
 
     payload = {
@@ -1002,98 +753,61 @@ def _save_analysis_record(response: dict, user: dict | None):
         "address": response.get("address"),
         "response_json": response
     }
-    
-    url = f"{SUPABASE_DB_BASE}/analyses"
-    requests.post(url, headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"}, json=payload, timeout=10)
+    requests.post(f"{SUPABASE_DB_BASE}/analyses", headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"}, json=payload, timeout=10)
 
 
 def _analysis_summary(row: dict) -> dict:
     return {
-        "analysis_id": row.get("id"),
-        "created_at": row.get("created_at"),
-        "species": row.get("species"),
-        "risk_index": row.get("risk_index"),
-        "risk_category": row.get("risk_category"),
-        "height_m": row.get("height_m"),
-        "crown_width_m": row.get("crown_width_m"),
-        "trunk_diameter_m": row.get("trunk_diameter_m"),
-        "beta_kg_s": row.get("beta_kg_s"),
-        "base_moment_nm": row.get("base_moment_nm"),
-        "center_of_load_m": row.get("center_of_load_m"),
-        "lat": row.get("lat"),
-        "lon": row.get("lon"),
-        "address": row.get("address"),
+        "analysis_id": row.get("id"), "created_at": row.get("created_at"), "species": row.get("species"),
+        "risk_index": row.get("risk_index"), "risk_category": row.get("risk_category"),
+        "height_m": row.get("height_m"), "crown_width_m": row.get("crown_width_m"), "trunk_diameter_m": row.get("trunk_diameter_m"),
+        "beta_kg_s": row.get("beta_kg_s"), "base_moment_nm": row.get("base_moment_nm"), "center_of_load_m": row.get("center_of_load_m"),
+        "lat": row.get("lat"), "lon": row.get("lon"), "address": row.get("address"),
     }
 
 @app.get("/analyses/my")
 async def analyses_my(token: str, limit: int = 100):
     user = _get_user_by_token(token)
-    if user is None:
-        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
-
+    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена")
     limit = max(1, min(int(limit), 500))
-    url = f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc&limit={limit}"
-    resp = requests.get(url, headers=_sb_headers(), timeout=10)
-    
+    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
     return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
 
 @app.get("/analyses/{analysis_id}")
 async def analyses_get(analysis_id: str, token: str):
     user = _get_user_by_token(token)
-    if user is None:
-        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
-
-    url = f"{SUPABASE_DB_BASE}/analyses?id=eq.{analysis_id}"
-    rows = requests.get(url, headers=_sb_headers(), timeout=10).json()
-
-    if not rows:
-        raise HTTPException(status_code=404, detail="Анализ не найден")
-    
+    if user is None: raise HTTPException(status_code=401, detail="Сессия не найдена")
+    rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?id=eq.{analysis_id}", headers=_sb_headers(), timeout=10).json()
+    if not rows: raise HTTPException(status_code=404, detail="Анализ не найден")
     row = rows[0]
-    if row.get("user_id") != user.get("id") and user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Нет доступа к этому анализу")
-
+    if row.get("user_id") != user.get("id") and user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нет доступа")
     return {"ok": True, "analysis": row.get("response_json")}
 
 @app.get("/admin/analyses")
 async def admin_analyses(token: str, limit: int = 200):
     user = _get_user_by_token(token)
-    if user is None or user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Нужна роль администратора")
-
+    if user is None or user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нужна роль администратора")
     limit = max(1, min(int(limit), 1000))
-    url = f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}"
-    resp = requests.get(url, headers=_sb_headers(), timeout=10)
-
+    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
     return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
 
 @app.get("/profile/stats")
 async def profile_stats(token: str):
     user = _get_user_by_token(token)
-    if not user:
-        raise HTTPException(status_code=401, detail="Сессия не найдена или истекла")
-
-    url = f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc"
-    rows = requests.get(url, headers=_sb_headers(), timeout=10).json()
+    if not user: raise HTTPException(status_code=401, detail="Сессия не найдена")
+    rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc", headers=_sb_headers(), timeout=10).json()
 
     total = len(rows)
     with_geo = sum(1 for r in rows if r.get("lat") is not None and r.get("lon") is not None)
     high_risk = sum(1 for r in rows if r.get("risk_category") == "высокий")
-    
     risks = [r.get("risk_index") for r in rows if isinstance(r.get("risk_index"), (int, float))]
-    avg_risk = sum(risks) / len(risks) if risks else None
     
-    last_analysis = _analysis_summary(rows[0]) if rows else None
-
     return {
-        "ok": True,
-        "user": _user_public(user),
+        "ok": True, "user": _user_public(user),
         "stats": {
-            "total_analyses": total,
-            "with_geo": with_geo,
-            "high_risk_count": high_risk,
-            "avg_risk": avg_risk,
-            "last_analysis": last_analysis
+            "total_analyses": total, "with_geo": with_geo, "high_risk_count": high_risk,
+            "avg_risk": sum(risks) / len(risks) if risks else None,
+            "last_analysis": _analysis_summary(rows[0]) if rows else None
         }
     }
 
@@ -1103,53 +817,32 @@ TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
 
 def log_training_event(level: str, message: str, data: dict | None = None) -> None:
     try:
-        evt = {
-            "ts": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
-            "level": level.upper(),
-            "message": message,
-            "data": data or {},
-        }
+        evt = {"ts": datetime.utcnow().replace(microsecond=0).isoformat() + "Z", "level": level.upper(), "message": message, "data": data or {}}
         TRAINING_EVENTS.append(evt)
         print(f"[TRAINING_EVENT] {evt['ts']} {evt['level']}: {evt['message']} {evt['data']}")
-    except Exception:
-        pass
+    except Exception: pass
 
 
 @app.on_event("startup")
 def _startup_load_models():
     try:
         training_state_ensure_row()
-        with MODEL_LOCK:
-            reload_tree_model(force=True)
+        with MODEL_LOCK: reload_tree_model(force=True)
     except Exception as e:
         print(f"[!] Startup model load failed: {e}")
 
 
 def normalize_address_ru(address: str | None) -> str | None:
-    if not address:
-        return address
-    replacements = {
-        "Інтэрнат": "Интернат",
-        "вуліца": "улица",
-        "вул.": "ул.",
-        "Машынабудаўнікоў": "Машиностроителей",
-        "Аўтазаводскі": "Автозаводский",
-        "раён": "район",
-        "Пасёлак": "Посёлок",
-        "Заводскі": "Заводской",
-        "Мінск": "Минск",
-        "Беларусь": "Беларусь",
-    }
+    if not address: return address
+    replacements = {"Інтэрнат": "Интернат", "вуліца": "улица", "вул.": "ул.", "Машынабудаўнікоў": "Машиностроителей", "Аўтазаводскі": "Автозаводский", "раён": "район", "Пасёлак": "Посёлок", "Заводскі": "Заводской", "Мінск": "Минск", "Беларусь": "Беларусь"}
     out = address
-    for src, dst in replacements.items():
-        out = out.replace(src, dst)
+    for src, dst in replacements.items(): out = out.replace(src, dst)
     return out
 
 
 # === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ ===
 def _run_yolo_sync(img_array):
     tree_model_local = get_tree_model()
-    # Увеличиваем разрешение до 1024 и включаем Retina-маски для высокой детализации веток!
     t_res = tree_model_local(img_array, imgsz=1024, retina_masks=True, conf=0.25)[0]
     s_res = stick_model(img_array)[0]
     return t_res, s_res
@@ -1177,22 +870,14 @@ def _run_classifier_sync(crop_bgr):
     try:
         r = requests.post(url, files=files, data=data, timeout=12)
         if r.status_code == 200:
-            res = r.json()
-            results = res.get('results', [])
+            results = r.json().get('results', [])
             if results:
-                best = results[0]
-                species = best.get('species', {})
-                common_names = species.get('commonNames', [])
-                if common_names:
-                    return map_plantnet_name(common_names[0])
-                else:
-                    sci_name = species.get('scientificNameWithoutAuthor', 'Неизвестно')
-                    return map_plantnet_name(sci_name)
-    except Exception as e:
-        print(f"[!] Pl@ntNet API error: {e}")
-        
+                species = results[0].get('species', {})
+                common = species.get('commonNames', [])
+                if common: return map_plantnet_name(common[0])
+                return map_plantnet_name(species.get('scientificNameWithoutAuthor', 'Неизвестно'))
+    except Exception as e: print(f"[!] Pl@ntNet API error: {e}")
     return "Неизвестно"
-# ========================================================================
 
 
 @app.post("/analyze-tree")
@@ -1214,435 +899,162 @@ async def analyze_tree(
     analysis_user = _get_user_by_token(auth_token) if auth_token else None
 
     image_bytes = await file.read()
-    np_img = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
-
-    if img is None:
-        raise HTTPException(status_code=400, detail="Не удалось прочитать изображение")
-
+    img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if img is None: raise HTTPException(status_code=400, detail="Не удалось прочитать изображение")
     H, W = img.shape[:2]
 
-    # -----------------------------
-    # АСИНХРОННЫЙ ЗАПУСК YOLO (Фоновый поток)
-    # -----------------------------
+    # YOLO Фоновый поток
     tree_res, stick_res = await run_in_threadpool(_run_yolo_sync, img)
-    
-    # ... (код выше: tree_res, stick_res = await run_in_threadpool...)
-    
-    if tree_res.masks is None:
-        return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
+    if tree_res.masks is None: return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
 
-    masks = []
-    distances_to_center = []
-    img_center_x = W / 2
-    img_center_y = H / 2
+    masks, distances_to_center = [], []
+    img_center_x, img_center_y = W / 2.0, H / 2.0
 
     for i, m in enumerate(tree_res.masks.data):
-        # 1. Извлекаем маску
-        mask = (m.cpu().numpy() > 0.5).astype(np.uint8) * 255
-        mask = cv2.resize(mask, (W, H), interpolation=cv2.INTER_NEAREST)
-        
-        # 2. Делаем легкое сглаживание краев (Морфология), чтобы убрать "рваные" ветки
-        kernel = np.ones((5, 5), np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        
-        # 3. Вычисляем расстояние от центра дерева до центра кадра
+        mask = cv2.resize((m.cpu().numpy() > 0.5).astype(np.uint8) * 255, (W, H), interpolation=cv2.INTER_NEAREST)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
         x1, y1, x2, y2 = tree_res.boxes.xyxy[i].cpu().numpy()
-        tree_center_x = (x1 + x2) / 2
-        tree_center_y = (y1 + y2) / 2
-        
-        # Считаем квадрат расстояния
-        dist = (tree_center_x - img_center_x)**2 + (tree_center_y - img_center_y)**2
-        
-        distances_to_center.append(dist)
+        distances_to_center.append(((x1 + x2)/2.0 - img_center_x)**2 + ((y1 + y2)/2.0 - img_center_y)**2)
         masks.append(mask)
 
-    # ВЫБИРАЕМ ДЕРЕВО БЛИЖЕ ВСЕГО К ЦЕНТРУ КАДРА (а не самое большое)
     idx = int(np.argmin(distances_to_center))
     mask = masks[idx]
-    
 
-    # -----------------------------
-    # YOLO STICK
-    # -----------------------------
     scale = None
     if len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
-        x1s, y1s, x2s, y2s = best.xyxy[0].cpu().numpy().astype(int)
-        stick_h = y2s - y1s
-        if stick_h > 10:
-            scale = REAL_STICK_M / stick_h
+        stick_h = int(best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item())
+        if stick_h > 10: scale = REAL_STICK_M / stick_h
 
-    # -----------------------------
-    # MEASUREMENTS
-    # -----------------------------
     ys, xs = np.where(mask > 0)
     y_min, y_max = ys.min(), ys.max()
     height_px = y_max - y_min
-
     height_m = round(height_px * scale, 2) if scale else None
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
         row = np.where(mask[y] > 0)[0]
-        if len(row) > 0:
-            crown_width_px = max(crown_width_px, row.max() - row.min())
+        if len(row) > 0: crown_width_px = max(crown_width_px, row.max() - row.min())
     crown_m = round(crown_width_px * scale, 2) if scale else None
 
-    trunk_vals = []
-    trunk_top = y_max - int(0.2 * height_px)
-    for y in range(trunk_top, y_max):
-        row = np.where(mask[y] > 0)[0]
-        if len(row) > 0:
-            trunk_vals.append(row.max() - row.min())
+    trunk_vals = [np.where(mask[y] > 0)[0].max() - np.where(mask[y] > 0)[0].min() for y in range(y_max - int(0.2 * height_px), y_max) if len(np.where(mask[y] > 0)[0]) > 0]
     trunk_px = np.mean(trunk_vals) if trunk_vals else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # -----------------------------
-    # AI: ПОРИСТОСТЬ КРОНЫ (CROWN DENSITY)
-    # -----------------------------
+    # Пористость (AI)
     crown_density_ai = 1.0
     try:
         crown_mask = mask[y_min : y_min + int(0.7 * height_px), :]
         contours, _ = cv2.findContours(crown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if contours:
-            all_pts = np.vstack(contours)
-            hull = cv2.convexHull(all_pts)
+            hull = cv2.convexHull(np.vstack(contours))
             hull_area = cv2.contourArea(hull)
-            actual_mask_area = np.sum(crown_mask > 0)
-            if hull_area > 0:
-                crown_density_ai = round(float(actual_mask_area / hull_area), 3)
-                crown_density_ai = max(0.1, min(crown_density_ai, 1.0))
-    except Exception as e:
-        print(f"[CV] Crown density error: {e}")
+            if hull_area > 0: crown_density_ai = max(0.1, min(round(float(np.sum(crown_mask > 0) / hull_area), 3), 1.0))
+    except Exception: pass
 
-    # -----------------------------
-    # AI: УГОЛ НАКЛОНА СТВОЛА (LEAN ANGLE)
-    # -----------------------------
+    # Наклон ствола (AI)
     lean_angle_deg = 0.0
     try:
-        trunk_top_limit = y_max - int(0.3 * height_px)
-        trunk_mask = mask[trunk_top_limit : y_max, :]
+        trunk_mask = mask[y_max - int(0.3 * height_px) : y_max, :]
         ys_trunk, xs_trunk = np.where(trunk_mask > 0)
-        
         if len(xs_trunk) > 50:
-            vx, vy, cx, cy = cv2.fitLine(np.column_stack((xs_trunk, ys_trunk)), cv2.DIST_L2, 0, 0.01, 0.01)
-            angle_rad = np.arctan2(vy, vx)
-            angle_deg = np.degrees(angle_rad)[0]
-            deviation = abs(90.0 - abs(angle_deg))
-            if deviation > 90:
-                deviation = 180 - deviation
-            lean_angle_deg = round(float(deviation), 1)
-    except Exception as e:
-        print(f"[CV] Lean angle error: {e}")
+            vx, vy, _, _ = cv2.fitLine(np.column_stack((xs_trunk, ys_trunk)), cv2.DIST_L2, 0, 0.01, 0.01)
+            angle_deg = np.degrees(np.arctan2(vy, vx))[0]
+            dev = abs(90.0 - abs(angle_deg))
+            lean_angle_deg = round(float(180 - dev if dev > 90 else dev), 1)
+    except Exception: pass
 
-    # -----------------------------
-    # AI + AR MEASUREMENTS MERGE
-    # -----------------------------
-    height_m_ai = height_m
-    crown_m_ai = crown_m
-    trunk_m_ai = trunk_m
+    height_m_ai, crown_m_ai, trunk_m_ai = height_m, crown_m, trunk_m
+    if ar_height_m: height_m = round(float(ar_height_m), 2)
+    if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
+    if ar_trunk_diameter_m: trunk_m = round(float(ar_trunk_diameter_m), 2)
 
-    has_ar_height = ar_height_m is not None and ar_height_m > 0
-    has_ar_crown = ar_crown_width_m is not None and ar_crown_width_m > 0
-    has_ar_trunk = ar_trunk_diameter_m is not None and ar_trunk_diameter_m > 0
+    ar_measurements = {"height_m": height_m if ar_height_m else None, "crown_width_m": crown_m if ar_crown_width_m else None, "trunk_diameter_m": trunk_m if ar_trunk_diameter_m else None}
+    measurement_sources = {"height_m": "ar" if ar_height_m else "image", "crown_width_m": "ar" if ar_crown_width_m else "image", "trunk_diameter_m": "ar" if ar_trunk_diameter_m else "image"}
+    dimensions_source = "ИИ + AR" if any([ar_height_m, ar_crown_width_m, ar_trunk_diameter_m]) else "ИИ / фото"
 
-    if has_ar_height:
-        height_m = round(float(ar_height_m), 2)
-    if has_ar_crown:
-        crown_m = round(float(ar_crown_width_m), 2)
-    if has_ar_trunk:
-        trunk_m = round(float(ar_trunk_diameter_m), 2)
-
-    ar_measurements = {
-        "height_m": round(float(ar_height_m), 2) if has_ar_height else None,
-        "crown_width_m": round(float(ar_crown_width_m), 2) if has_ar_crown else None,
-        "trunk_diameter_m": round(float(ar_trunk_diameter_m), 2) if has_ar_trunk else None,
-    }
-
-    measurement_sources = {
-        "height_m": "ar" if has_ar_height else "image",
-        "crown_width_m": "ar" if has_ar_crown else "image",
-        "trunk_diameter_m": "ar" if has_ar_trunk else "image",
-    }
-
-    dimensions_source = "ИИ + AR" if any([has_ar_height, has_ar_crown, has_ar_trunk]) else "ИИ / фото"
-
-    # -----------------------------
-    # CLASSIFIER (PlantNet API)
-    # -----------------------------
     x1, y1, x2, y2 = tree_res.boxes.xyxy[idx].cpu().numpy().astype(int)
-    crop_bgr = img[y1:y2, x1:x2]
-    
-    species_name = await run_in_threadpool(_run_classifier_sync, crop_bgr)
-
-    # -----------------------------
-    # ANNOTATED IMAGE
-    # -----------------------------
+    species_name = await run_in_threadpool(_run_classifier_sync, img[y1:y2, x1:x2])
     annotated_b64 = draw_mask(img.copy(), mask)
 
     # -----------------------------
-    # ENVIRONMENT
+    # ОСНОВНОЙ РАСЧЕТ РИСКОВ (SIA)
     # -----------------------------
-    gps = None
-    address = None
-    weather = None
-    soil = None
-    risk = None
-
+    gps, address = None, None
     if ENABLE_ENV_ANALYSIS:
-        if lat is not None and lon is not None:
-            gps = {"lat": float(lat), "lon": float(lon)}
-        else:
-            gps = extract_gps(image_bytes)
-        if gps:
-            address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
-            weather = get_weather(gps["lat"], gps["lon"])
-            soil = get_soil(gps["lat"], gps["lon"])
+        gps = {"lat": float(lat), "lon": float(lon)} if (lat and lon) else extract_gps(image_bytes)
+        if gps: address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
 
-        if manual_wind_speed_m_s is not None or manual_wind_gust_m_s is not None:
-            if weather is None:
-                weather = {}
-            if manual_wind_speed_m_s is not None and manual_wind_speed_m_s > 0:
-                weather["wind_speed"] = float(manual_wind_speed_m_s)
-            if manual_wind_gust_m_s is not None and manual_wind_gust_m_s > 0:
-                weather["wind_gust"] = float(manual_wind_gust_m_s)
-            weather["source"] = "manual"
-
-        risk = compute_risk(
-            species_name,
-            height_m or 0,
-            crown_m or 0,
-            trunk_m or 0,
-            weather,
-            soil,
-        )
-
-    # Если юзер не ввел плотность кроны вручную, берем ту, что посчитал ИИ
     final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
 
-    # -----------------------------
-    # BETA COEFFICIENT / WIND LOAD
-    # -----------------------------
-    beta_info = estimate_beta_kg_s(
-        species_name,
-        height_m,
-        crown_m,
-        trunk_m,
-        manual_beta_kg_s=manual_beta_kg_s,
-        crown_density_factor=final_crown_density
-    )
-    wind_force_score_value, wind_force_n = beta_wind_force_score(
-        beta_info.get("beta_kg_s"),
-        weather,
-    )
-    beta_info["wind_force_n"] = wind_force_n
-    beta_info["wind_force_score"] = wind_force_score_value
+    beta_info = estimate_beta_kg_s(species_name, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
+    
+    # Берем нормативный ветер для расчета (максимальный из введенных или 25 м/с)
+    wind_design = float(manual_wind_gust_m_s or manual_wind_speed_m_s or 25.0)
 
-    wind_speed_for_model = weather.get("wind_speed") if weather else None
-    wind_gust_for_model = weather.get("wind_gust") if weather else None
+    risk, f_n, l_m, m_nm, s_f = compute_risk(species_name, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
 
-    analytic_wind_model = compute_analytic_wind_model(
-        species=species_name,
-        height_m=height_m,
-        crown_width_m=crown_m,
-        trunk_diameter_m=trunk_m,
-        beta_kg_s=beta_info.get("beta_kg_s"),
-        wind_speed_m_s=wind_speed_for_model,
-        wind_gust_m_s=wind_gust_for_model,
-        crown_start_height_m=crown_start_height_m,
-        crown_density_factor=final_crown_density,
-        crown_shape_factor=crown_shape_factor or 1.0,
-        n_elements=20,
-    )
-
-    if risk is not None:
-        risk.setdefault("explanation", [])
-        
-        season = "Зимний режим / Редкая крона" if final_crown_density < 0.5 else "Летний режим / Плотная крона"
-        risk["explanation"].insert(0, f"Плотность кроны (AI): {int(final_crown_density * 100)}% ({season})")
-        
-        if lean_angle_deg > 15.0:
-            risk["explanation"].insert(0, f"КРИТИЧЕСКИЙ ФАКТОР: Наклон ствола {lean_angle_deg}°!")
-            risk["category"] = "высокий"
-            risk["index"] = max(risk["index"], 0.85)
-        elif lean_angle_deg > 5.0:
-            risk["explanation"].insert(0, f"Внимание: Наклон ствола {lean_angle_deg}°")
-            risk["index"] = min(1.0, risk["index"] + 0.15)
-            if risk["index"] > 0.7: risk["category"] = "высокий"
-
-        beta_value = beta_info.get("beta_kg_s")
-        beta_max = beta_info.get("beta_max_scenario")
-        
-        risk["explanation"].append(
-            f"Коэффициент β (ожидаемый): {beta_value:.2f} кг/с ({beta_info.get('source')})"
-        )
-        if beta_max and beta_max > beta_value:
-            risk["explanation"].append(
-                f"Коэффициент β (худший сценарий жесткой кроны): до {beta_max:.2f} кг/с"
-            )
-
-        if wind_force_n is not None:
-            risk["explanation"].append(
-                f"Ветровая сила (ожидаемая): {wind_force_n:.1f} Н"
-            )
-            if beta_max:
-                v = weather.get("wind_gust") or weather.get("wind_speed") or 0
-                max_force = beta_max * float(v)
-                risk["explanation"].append(
-                    f"Ветровая сила (порыв + худший β): до {max_force:.1f} Н"
-                )
-
-        if analytic_wind_model.get("available"):
-            out = analytic_wind_model.get("outputs", {})
-            risk["explanation"].append(
-                f"Аналитический момент у основания: {out.get('base_moment_nm')} Н·м"
-            )
-            risk["explanation"].append(
-                f"Центр ветровой нагрузки: {out.get('center_of_load_m')} м"
-            )
+    # Заполняем аналитическую карточку для Flutter
+    analytic_wind_model = {
+        "available": True,
+        "outputs": {
+            "total_force_n": round(f_n, 1),
+            "center_of_load_m": round(l_m, 1),
+            "base_moment_nm": round(m_nm, 1),
+            "analytical_score": round(s_f, 2)
+        },
+        "inputs": {"crown_start_height_m": round((height_m or 0) * 0.5, 1), "n_elements": 1}
+    }
 
     analysis_id = str(uuid4())
-
     meta = {
-        "analysis_id": analysis_id,
-        "species": species_name,
-        "height_m": height_m,
-        "crown_width_m": crown_m,
-        "trunk_diameter_m": trunk_m,
-        "height_m_ai": height_m_ai,
-        "crown_width_m_ai": crown_m_ai,
-        "trunk_diameter_m_ai": trunk_m_ai,
-        "crown_density_ai": crown_density_ai,
-        "lean_angle_deg": lean_angle_deg,
-        "ar_measurements": ar_measurements,
-        "measurement_sources": measurement_sources,
-        "dimensions_source": dimensions_source,
-        "beta": beta_info,
-        "analytic_wind_model": analytic_wind_model,
-        "scale_px_to_m": scale,
-        "gps": gps,
-        "address": address,
-        "weather": weather,
-        "soil": soil,
-        "risk": risk,
-        "model_versions": MODEL_VERSIONS,
-        "build": BUILD_INFO,
-        "schema_version": SCHEMA_VERSION,
-        "api_version": API_VERSION,
+        "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
+        "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "crown_density_ai": crown_density_ai,
+        "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
+        "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
+        "gps": gps, "address": address, "risk": risk, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
     }
 
-    # PREPARE PRED OBJECTS
-    tree_box_xyxy = tree_res.boxes.xyxy[idx].cpu().numpy().tolist()
-    tree_conf = None
-    tree_cls_id = None
-    try:
-        tree_conf = float(tree_res.boxes.conf[idx].cpu().item())
-        tree_cls_id = int(tree_res.boxes.cls[idx].cpu().item())
-    except Exception:
-        pass
+    tree_pred = {"box_xyxy": tree_res.boxes.xyxy[idx].cpu().numpy().tolist(), "confidence": float(tree_res.boxes.conf[idx].cpu().item()) if len(tree_res.boxes.conf)>idx else None, "class_id": int(tree_res.boxes.cls[idx].cpu().item()) if len(tree_res.boxes.cls)>idx else None}
+    stick_pred = {"box_xyxy": None, "scale_px_to_m": scale}
+    if len(stick_res.boxes) > 0:
+        best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
+        stick_pred.update({"box_xyxy": [int(x) for x in best.xyxy[0].cpu().numpy()], "confidence": float(best.conf[0].cpu().item())})
 
-    tree_pred = {
-        "box_xyxy": tree_box_xyxy,
-        "confidence": tree_conf,
-        "class_id": tree_cls_id,
-    }
-
-    stick_pred = {
-        "box_xyxy": None,
-        "scale_px_to_m": scale,
-    }
-    try:
-        if len(stick_res.boxes) > 0:
-            best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
-            x1b, y1b, x2b, y2b = best.xyxy[0].cpu().numpy().astype(int)
-            stick_pred["box_xyxy"] = [int(x1b), int(y1b), int(x2b), int(y2b)]
-            stick_pred["confidence"] = float(best.conf[0].cpu().item())
-    except Exception:
-        pass
-
-    # SAVE RAW SAMPLE TO SUPABASE
     try:
         supabase_upload_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/input.jpg", image_bytes)
         supabase_upload_json(SUPABASE_BUCKET_RAW, f"{analysis_id}/meta_auto.json", meta)
-        
-        try:
-            annotated_bytes_for_raw = base64.b64decode(annotated_b64)
-            supabase_upload_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/annotated.jpg", annotated_bytes_for_raw)
-        except Exception:
-            pass
-
+        try: supabase_upload_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/annotated.jpg", base64.b64decode(annotated_b64))
+        except Exception: pass
         try:
             supabase_upload_json(SUPABASE_BUCKET_RAW, f"{analysis_id}/tree_pred.json", tree_pred)
             supabase_upload_json(SUPABASE_BUCKET_RAW, f"{analysis_id}/stick_pred.json", stick_pred)
-        except Exception:
-            pass
+        except Exception: pass
+    except Exception as e: print(f"[!] Failed to upload raw sample: {e}")
 
-    except Exception as e:
-        print(f"[!] Failed to upload raw sample {analysis_id} to Supabase: {e}")
-
-    # CACHE IN /tmp FOR FEEDBACK
     try:
         tmp_dir = Path("/tmp") / analysis_id
         tmp_dir.mkdir(parents=True, exist_ok=True)
-        with open(tmp_dir / "input.jpg", "wb") as f:
-            f.write(image_bytes)
-        try:
-            annotated_bytes = base64.b64decode(annotated_b64)
-            with open(tmp_dir / "annotated.jpg", "wb") as f:
-                f.write(annotated_bytes)
-        except Exception:
-            pass
-        with open(tmp_dir / "tree_pred.json", "w", encoding="utf-8") as f:
-            json.dump(tree_pred, f, ensure_ascii=False, indent=2)
-        with open(tmp_dir / "stick_pred.json", "w", encoding="utf-8") as f:
-            json.dump(stick_pred, f, ensure_ascii=False, indent=2)
-        with open(tmp_dir / "meta.json", "w", encoding="utf-8") as f:
-            json.dump(meta, f, ensure_ascii=False, indent=2)
+        (tmp_dir / "input.jpg").write_bytes(image_bytes)
+        try: (tmp_dir / "annotated.jpg").write_bytes(base64.b64decode(annotated_b64))
+        except Exception: pass
+        (tmp_dir / "tree_pred.json").write_text(json.dumps(tree_pred, ensure_ascii=False))
+        (tmp_dir / "stick_pred.json").write_text(json.dumps(stick_pred, ensure_ascii=False))
+        (tmp_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False))
+    except Exception as e: print(f"[!] Failed to cache in /tmp: {e}")
 
-    except Exception as e:
-        print(f"[!] Failed to cache analysis {analysis_id} in /tmp: {e}")
-
-    # RESPONSE
     response = {
-        "analysis_id": analysis_id,
-        "species": species_name,
-        "height_m": height_m,
-        "crown_width_m": crown_m,
-        "trunk_diameter_m": trunk_m,
-        "height_m_ai": height_m_ai,
-        "crown_width_m_ai": crown_m_ai,
-        "trunk_diameter_m_ai": trunk_m_ai,
-        "ar_measurements": ar_measurements,
-        "measurement_sources": measurement_sources,
-        "dimensions_source": dimensions_source,
-        "beta": beta_info,
-        "analytic_wind_model": analytic_wind_model,
-        "scale_px_to_m": scale,
-        "annotated_image_base64": annotated_b64,
+        "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
+        "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
+        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
+        "scale_px_to_m": scale, "annotated_image_base64": annotated_b64, "gps": gps, "address": address, "risk": risk,
     }
-    
-    try:
-        response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
-    except Exception:
-        response["original_image_base64"] = None
+    try: response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
+    except Exception: response["original_image_base64"] = None
 
-    if gps: response["gps"] = gps
-    if address: response["address"] = address
-    if weather: response["weather"] = weather
-    if soil: response["soil"] = soil
-    if risk: response["risk"] = risk
-
-    if analysis_user is not None:
-        response["user"] = _user_public(analysis_user)
-        response["server_saved"] = True
-    else:
-        response["server_saved"] = False
-
-    try:
-        _save_analysis_record(response, analysis_user)
-    except Exception as e:
-        print(f"[!] Failed to save analysis {analysis_id} to DB: {e}")
+    response["server_saved"] = analysis_user is not None
+    try: _save_analysis_record(response, analysis_user)
+    except Exception as e: print(f"[!] Failed to save DB record: {e}")
 
     return JSONResponse(response)
 
@@ -1651,8 +1063,7 @@ async def analyze_tree(
 @app.post("/api/feedback")
 def send_feedback(payload: dict = Body(...)):
     analysis_id = payload.get('analysis_id') or payload.get('analysisId')
-    if not analysis_id:
-        raise HTTPException(status_code=422, detail='analysis_id is required')
+    if not analysis_id: raise HTTPException(status_code=422, detail='analysis_id is required')
 
     def _b(val, default=True):
         if val is None: return default
@@ -1669,7 +1080,6 @@ def send_feedback(payload: dict = Body(...)):
     stick_ok = _b(payload.get('stick_ok', payload.get('stickOk')), default=True)
     params_ok = _b(payload.get('params_ok', payload.get('paramsOk')), default=True)
     species_ok = _b(payload.get('species_ok', payload.get('speciesOk')), default=True)
-
     correct_species = payload.get('correct_species') or payload.get('correctSpecies')
 
     def _f(val):
@@ -1685,113 +1095,58 @@ def send_feedback(payload: dict = Body(...)):
     corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
     corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
     corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
-    corrected_scale_px_to_m = _f(
-        payload.get('corrected_scale_px_to_m') or payload.get('correctedScalePxToM') or
-        payload.get('scale_px_to_m_corrected') or payload.get('scalePxToMCorrected') or
-        payload.get('scale_px_to_m') or payload.get('scalePxToM') or
-        payload.get('scale') or payload.get('corrected_scale') or payload.get('correctedScale')
-    )
-    user_mask_base64 = payload.get('user_mask_base64') or payload.get('userMaskBase64') or payload.get('mask_base64') or payload.get('maskBase64')
+    corrected_scale_px_to_m = _f(payload.get('corrected_scale_px_to_m') or payload.get('scale_px_to_m_corrected'))
+    user_mask_base64 = payload.get('user_mask_base64') or payload.get('mask_base64')
 
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise HTTPException(status_code=500, detail="Supabase не настроен на сервере")
-
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: raise HTTPException(status_code=500, detail="Supabase не настроен")
     tmp_dir = Path("/tmp") / analysis_id
-    if not tmp_dir.exists():
-        raise HTTPException(status_code=404, detail="analysis_id не найден или истёк срок хранения")
+    if not tmp_dir.exists(): raise HTTPException(status_code=404, detail="analysis_id не найден")
 
     if not use_for_training:
-        try:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-        except Exception:
-            pass
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         return {"status": "ignored", "reason": "user_disabled_training"}
 
-    meta_path = tmp_dir / "meta.json"
-    if not meta_path.exists():
-        raise HTTPException(status_code=500, detail="meta.json не найден для указанного analysis_id")
+    try: meta = json.loads((tmp_dir / "meta.json").read_text(encoding="utf-8"))
+    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
 
-    try:
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
-
-    meta["tree_ok"] = tree_ok
-    meta["stick_ok"] = stick_ok
-    meta["params_ok"] = params_ok
-    meta["species_ok"] = species_ok
-    meta["correct_species"] = correct_species
-
-    if (not species_ok) and correct_species:
-        meta["species"] = correct_species
-
+    meta.update({"tree_ok": tree_ok, "stick_ok": stick_ok, "params_ok": params_ok, "species_ok": species_ok, "correct_species": correct_species})
+    if not species_ok and correct_species: meta["species"] = correct_species
     if corrected_height_m is not None: meta["height_m"] = corrected_height_m
     if corrected_crown_width_m is not None: meta["crown_width_m"] = corrected_crown_width_m
     if corrected_trunk_diameter_m is not None: meta["trunk_diameter_m"] = corrected_trunk_diameter_m
     if corrected_scale_px_to_m is not None: meta["scale_px_to_m"] = corrected_scale_px_to_m
 
-    trust = 0.0
-    if tree_ok: trust += 0.3
-    if stick_ok: trust += 0.2
-    if params_ok: trust += 0.2
-    if species_ok or correct_species: trust += 0.3
+    trust = sum([0.3 if tree_ok else 0, 0.2 if stick_ok else 0, 0.2 if params_ok else 0, 0.3 if (species_ok or correct_species) else 0])
     meta["trust_score"] = trust
-
     is_verified = (use_for_training and trust >= VERIFIED_TRUST_THRESHOLD)
 
     try:
-        input_path = tmp_dir / "input.jpg"
-        if input_path.exists():
-            supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/input.jpg", input_path.read_bytes())
-
-        annotated_path = tmp_dir / "annotated.jpg"
-        if annotated_path.exists():
-            supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/annotated.jpg", annotated_path.read_bytes())
+        if (tmp_dir / "input.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
+        if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
 
         existing_has_user_mask = False
-        try:
-            mv_raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json")
-            mv = json.loads(mv_raw)
-            existing_has_user_mask = bool(mv.get("has_user_mask", False))
-        except Exception:
-            existing_has_user_mask = False
-
+        try: existing_has_user_mask = bool(json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json")).get("has_user_mask", False))
+        except Exception: pass
         meta["has_user_mask"] = existing_has_user_mask
 
-        mask_b64_str = str(user_mask_base64).strip().lower() if user_mask_base64 else ""
-
-        if mask_b64_str and mask_b64_str not in ("null", "undefined"):
+        if user_mask_base64 and str(user_mask_base64).strip().lower() not in ("null", "undefined"):
             try:
-                mask_png_bytes = ensure_png_mask_bytes(str(user_mask_base64))
-                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/user_mask.png", mask_png_bytes)
+                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(str(user_mask_base64)))
                 meta["has_user_mask"] = True
-            except Exception as e:
-                print(f"[!] User mask provided but could not be decoded for {analysis_id}: {e}")
+            except Exception as e: print(f"[!] User mask error: {e}")
 
-        tree_pred_path = tmp_dir / "tree_pred.json"
-        if tree_pred_path.exists():
-            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/tree_pred.json", tree_pred_path.read_bytes())
-
-        stick_pred_path = tmp_dir / "stick_pred.json"
-        if stick_pred_path.exists():
-            supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/stick_pred.json", stick_pred_path.read_bytes())
+        if (tmp_dir / "tree_pred.json").exists(): supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/tree_pred.json", (tmp_dir / "tree_pred.json").read_bytes())
+        if (tmp_dir / "stick_pred.json").exists(): supabase_upload_bytes(SUPABASE_BUCKET_PRED, f"{analysis_id}/stick_pred.json", (tmp_dir / "stick_pred.json").read_bytes())
 
         supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta)
 
         if is_verified:
             try:
                 supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
-                
-                if annotated_path.exists():
-                    supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg", annotated_path.read_bytes())
-
+                if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
                 if user_mask_base64:
-                    try:
-                        mask_png_bytes = ensure_png_mask_bytes(user_mask_base64)
-                        supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png", mask_png_bytes)
-                    except Exception as e:
-                        print(f"[!] Failed to upload VERIFIED user mask for {analysis_id}: {e}")
-
+                    try: supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(user_mask_base64))
+                    except Exception as e: print(f"[!] Verified mask error: {e}")
                 supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/tree_pred.json", (tmp_dir / "tree_pred.json").read_bytes())
                 supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json", (tmp_dir / "stick_pred.json").read_bytes())
 
@@ -1799,375 +1154,92 @@ def send_feedback(payload: dict = Body(...)):
                 meta_verified["verified"] = True
                 meta_verified["verified_at"] = datetime.utcnow().isoformat()
                 meta_verified["verifier_role"] = "admin" if not use_for_training else "user"
-
                 supabase_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json", meta_verified)
+            except Exception as e: print(f"[!] Verified upload error: {e}")
 
-            except Exception as e:
-                print(f"[!] Failed to upload VERIFIED sample {analysis_id}: {e}")
-
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при загрузке в Supabase: {e}")
+    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка Supabase: {e}")
 
     if SUPABASE_ENABLE_QUEUE:
-        try:
-            queue_row = {
-                "analysis_id": analysis_id,
-                "trust_score": trust,
-                "species": meta.get("species"),
-                "has_user_mask": meta.get("has_user_mask", False),
-                "tree_ok": meta.get("tree_ok"),
-                "stick_ok": meta.get("stick_ok"),
-                "params_ok": meta.get("params_ok"),
-                "species_ok": meta.get("species_ok"),
-            }
-            supabase_db_insert(SUPABASE_QUEUE_TABLE, queue_row)
-        except Exception as e:
-            print(f"[!] Queue insert skipped for {analysis_id}: {e}")
+        try: supabase_db_insert(SUPABASE_QUEUE_TABLE, {"analysis_id": analysis_id, "trust_score": trust, "species": meta.get("species"), "has_user_mask": meta.get("has_user_mask", False), "tree_ok": meta.get("tree_ok"), "stick_ok": meta.get("stick_ok"), "params_ok": meta.get("params_ok"), "species_ok": meta.get("species_ok")})
+        except Exception as e: print(f"[!] Queue error: {e}")
 
-    try:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-    except Exception as e:
-        print(f"[!] Failed to remove tmp dir for {analysis_id}: {e}")
-
-    return {
-        "status": "ok",
-        "analysis_id": analysis_id,
-        "trust_score": trust,
-    }
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+    return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
 
 
 @app.get("/admin/verified-list")
 def admin_verified_list(include_used: bool = False):
-    try:
-        objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    try: objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
     analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
-
     results = []
     for aid in analysis_ids:
         try:
-            meta_bytes = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{aid}/meta_verified.json",
-            )
-            meta = json.loads(meta_bytes)
-
-            if (not include_used) and meta.get("used_for_training") is True:
-                continue
-
-            results.append({
-                "analysis_id": aid,
-                "species": meta.get("species"),
-                "risk_category": meta.get("risk", {}).get("category"),
-                "trust_score": meta.get("trust_score"),
-                "verified": meta.get("verified", True),
-                "verified_at": meta.get("verified_at"),
-                "exclude_from_training": meta.get("exclude_from_training", False) == True,
-                "has_user_mask": meta.get("has_user_mask", False) == True,
-                "used_for_training": meta.get("used_for_training", False) == True,
-            })
-        except Exception:
-            continue
-
-    return {
-        "count": len(results),
-        "items": results,
-    }
-
-@app.get("/admin/training-candidates")
-def admin_training_candidates(limit: int = 50):
-    try:
-        objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"list_objects failed: {e}")
-
-    analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
-
-    eligible_new = []
-    eligible_replay_pool = []
-    skipped_counts = {
-        "no_meta_verified": 0,
-        "no_user_mask": 0,
-        "excluded": 0,
-        "already_used": 0,
-        "other": 0,
-    }
-    examples = []
-
-    def _reason(meta):
-        if meta is None:
-            return "no_meta_verified"
-        if not meta.get("has_user_mask", False):
-            return "no_user_mask"
-        if meta.get("exclude_from_training", False):
-            return "excluded"
-        if meta.get("used_for_training", False):
-            return "already_used"
-        return "eligible_new"
-
-    for aid in analysis_ids:
-        meta = None
-        try:
-            meta_bytes = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{aid}/meta_verified.json")
-            meta = json.loads(meta_bytes)
-        except Exception:
-            meta = None
-
-        r = _reason(meta)
-        if r == "eligible_new":
-            eligible_new.append(aid)
-        elif r == "already_used":
-            if meta and meta.get("has_user_mask", False) and (not meta.get("exclude_from_training", False)):
-                eligible_replay_pool.append(aid)
-            skipped_counts["already_used"] += 1
-        elif r in skipped_counts:
-            skipped_counts[r] += 1
-        else:
-            skipped_counts["other"] += 1
-
-        if len(examples) < max(0, int(limit)):
-            examples.append({
-                "analysis_id": aid,
-                "reason": r,
-                "has_user_mask": bool(meta.get("has_user_mask")) if meta else None,
-                "exclude_from_training": bool(meta.get("exclude_from_training")) if meta else None,
-                "used_for_training": bool(meta.get("used_for_training")) if meta else None,
-                "verified_at": meta.get("verified_at") if meta else None,
-            })
-
-    return {
-        "bucket_verified": SUPABASE_BUCKET_VERIFIED,
-        "eligible_new_count": len(eligible_new),
-        "eligible_new": eligible_new[:limit],
-        "eligible_replay_pool_count": len(eligible_replay_pool),
-        "eligible_replay_pool": eligible_replay_pool[:limit],
-        "skipped_counts": skipped_counts,
-        "examples": examples,
-        "notes": {
-            "new_criteria": "has_user_mask=true AND exclude_from_training!=true AND used_for_training!=true",
-            "replay_pool_criteria": "has_user_mask=true AND exclude_from_training!=true AND used_for_training=true",
-        }
-    }
+            meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{aid}/meta_verified.json"))
+            if (not include_used) and meta.get("used_for_training") is True: continue
+            results.append({"analysis_id": aid, "species": meta.get("species"), "risk_category": meta.get("risk", {}).get("category"), "trust_score": meta.get("trust_score"), "verified": meta.get("verified", True), "verified_at": meta.get("verified_at"), "exclude_from_training": meta.get("exclude_from_training", False) == True, "has_user_mask": meta.get("has_user_mask", False) == True, "used_for_training": meta.get("used_for_training", False) == True})
+        except Exception: continue
+    return {"count": len(results), "items": results}
 
 
 @app.post("/admin/verified/{analysis_id}/set-training")
-@app.post("/admin/verified/{analysis_id}/set-training/")
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
-    flag = None
-    for v in (req.use_for_training, req.enabled, req.include, req.value):
-        if v is not None:
-            flag = bool(v)
-            break
-    if flag is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing boolean flag. Send JSON with one of: use_for_training / enabled / include / value.",
-        )
+    flag = next((v for v in (req.use_for_training, req.enabled, req.include, req.value) if v is not None), None)
+    if flag is None: raise HTTPException(status_code=400, detail="Missing boolean flag")
 
-    def _load_json(path: str) -> dict:
-        try:
-            raw = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path)
-            if not raw:
-                return {}
-            if isinstance(raw, (bytes, bytearray)):
-                return json.loads(raw.decode("utf-8"))
-            return json.loads(raw)
-        except Exception:
-            return {}
+    def _load_json(path):
+        try: return json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path).decode("utf-8"))
+        except Exception: return {}
 
-    meta_path = f"{analysis_id}/meta.json"
-    meta = _load_json(meta_path)
-    meta["analysis_id"] = analysis_id
-    meta["use_for_training"] = flag
-    meta["exclude_from_training"] = (not flag)
-    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, meta_path, meta)
-
-    mv_path = f"{analysis_id}/meta_verified.json"
-    mv = _load_json(mv_path)
-    mv["analysis_id"] = analysis_id
-    mv["use_for_training"] = flag
-    mv["exclude_from_training"] = (not flag)
-    supabase_upload_json(SUPABASE_BUCKET_VERIFIED, mv_path, mv)
-
-    return {"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": (not flag)}
+    for path in [f"{analysis_id}/meta.json", f"{analysis_id}/meta_verified.json"]:
+        data = _load_json(path)
+        data.update({"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag})
+        supabase_upload_json(SUPABASE_BUCKET_VERIFIED, path, data)
+    return {"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag}
 
 
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     try:
-        input_img = supabase_download_bytes(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/input.jpg",
-        )
-        annotated_img = supabase_download_bytes(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/annotated.jpg",
-        )
-
-        user_mask_img = None
-        try:
-            user_mask_img = supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/user_mask.png",
-            )
-        except Exception:
-            user_mask_img = None
-
-        tree_pred = json.loads(
-            supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/tree_pred.json",
-            )
-        )
-        stick_pred = json.loads(
-            supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/stick_pred.json",
-            )
-        )
-        meta = json.loads(
-            supabase_download_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/meta_verified.json",
-            )
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Analysis {analysis_id} not found or incomplete: {e}",
-        )
+        input_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg")
+        annotated_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg")
+        try: user_mask_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png")
+        except Exception: user_mask_img = None
+        tree_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/tree_pred.json"))
+        stick_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json"))
+        meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json"))
+    except Exception as e: raise HTTPException(status_code=404, detail=f"Analysis not found: {e}")
 
     return {
         "analysis_id": analysis_id,
-        "images": {
-            "input_base64": base64.b64encode(input_img).decode("utf-8"),
-            "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
-            "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8")
-            if user_mask_img
-            else None,
-        },
-        "tree_pred": tree_pred,
-        "stick_pred": stick_pred,
-        "meta": meta,
+        "images": {"input_base64": base64.b64encode(input_img).decode("utf-8"), "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"), "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None},
+        "tree_pred": tree_pred, "stick_pred": stick_pred, "meta": meta,
     }
 
-
-DATASET_ROOT = "datasets/trees_segmentation"
-IMAGES_DIR = os.path.join(DATASET_ROOT, "images")
-MASKS_DIR = os.path.join(DATASET_ROOT, "masks")
-META_DIR = os.path.join(DATASET_ROOT, "meta")
-
-os.makedirs(IMAGES_DIR, exist_ok=True)
-os.makedirs(MASKS_DIR, exist_ok=True)
-os.makedirs(META_DIR, exist_ok=True)
-
-class UserMaskPayload(BaseModel):
-    analysis_id: str
-    image_base64: str
-    mask_base64: str
-    meta: dict | None = None
 
 @app.get("/admin/training-status")
 def admin_training_status():
     training_state_ensure_row()
     state = training_state_get()
-    if "active_model_version" not in state or state["active_model_version"] is None:
-        state["active_model_version"] = 0
-    if "last_model_version" not in state or state["last_model_version"] is None:
-        state["last_model_version"] = 0
-    if "training_in_progress" not in state or state["training_in_progress"] is None:
-        state["training_in_progress"] = False
-    if "retrain_requested" not in state or state["retrain_requested"] is None:
-        state["retrain_requested"] = False
-    return state
+    return {"active_model_version": state.get("active_model_version", 0), "last_model_version": state.get("last_model_version", 0), "training_in_progress": state.get("training_in_progress", False), "retrain_requested": state.get("retrain_requested", False)}
 
 @app.post("/admin/set-active-model")
 async def admin_set_active_model(payload: dict = Body(...)):
     training_state_ensure_row()
-    raw_v = payload.get('version') or payload.get('model_version') or payload.get('active_model_version')
-    if raw_v is None:
-        raise HTTPException(status_code=422, detail="Missing 'version' in request body")
-    v = int(raw_v)
-
-    filename = f"model_v{v}.pt"
-    try:
-        _ = supabase_download_bytes(SUPABASE_BUCKET_MODELS, filename)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Model file not found in Supabase Storage: {filename}. {e}")
-
+    v = int(payload.get('version') or payload.get('model_version') or payload.get('active_model_version') or 0)
+    try: supabase_download_bytes(SUPABASE_BUCKET_MODELS, f"model_v{v}.pt")
+    except Exception as e: raise HTTPException(status_code=400, detail=f"Model not found: {e}")
     training_state_update({"active_model_version": v})
-
-    with MODEL_LOCK:
-        reload_tree_model(force=True)
-
+    with MODEL_LOCK: reload_tree_model(force=True)
     return {"status": "ok", "active_model_version": v}
 
 @app.post("/admin/request-retrain")
 def admin_request_retrain():
-    log_training_event("INFO", "Admin requested retraining")
     training_state_ensure_row()
     training_state_update({"retrain_requested": True})
     return {"status": "ok", "retrain_requested": True}
 
-@app.post("/dataset/user-mask")
-def save_user_mask(payload: UserMaskPayload):
-    analysis_id = payload.analysis_id
-
-    try:
-        image_bytes = decode_base64_bytes(payload.image_base64)
-        mask_png_bytes = ensure_png_mask_bytes(payload.mask_base64)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid base64 data")
-
-    image_path = os.path.join(IMAGES_DIR, f"{analysis_id}.jpg")
-    mask_path = os.path.join(MASKS_DIR, f"{analysis_id}.png")
-    meta_path = os.path.join(META_DIR, f"{analysis_id}.json")
-
-    with open(image_path, "wb") as f:
-        f.write(image_bytes)
-
-    with open(mask_path, "wb") as f:
-        f.write(mask_png_bytes)
-
-    meta = {
-        "analysis_id": analysis_id,
-        "saved_at": datetime.utcnow().isoformat(),
-        **(payload.meta or {}),
-    }
-
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
-
-    return {
-        "status": "ok",
-        "analysis_id": analysis_id,
-        "files": {
-            "image": image_path,
-            "mask": mask_path,
-            "meta": meta_path
-        }
-    }
-
 @app.get("/admin/models")
 def admin_models():
     return {"models": list_available_model_versions(), "active_model_version": _get_active_model_version()}
-
-@app.get("/admin/training-events")
-def admin_training_events(limit: int = 15):
-    limit = max(1, min(int(limit), 200))
-    items = list(TRAINING_EVENTS)[-limit:]
-    return {"events": list(reversed(items))}
-
-def get_latest_model_path():
-    state = training_state_get()
-    v = int(state.get("last_model_version", 0))
-    if v == 0:
-        return "models/base.pt"
-    return f"models/model_v{v}.pt"

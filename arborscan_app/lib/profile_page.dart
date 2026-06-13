@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'onboarding_page.dart';
 
 import 'app_theme.dart';
 import 'api_config.dart';
@@ -267,7 +268,12 @@ class _ProfilePageState extends State<ProfilePage> {
         _serverOnline = true;
         _statusText = 'Профиль создан на сервере.';
       });
-      _snack('Профиль создан. Вы вошли как пользователь.');
+      _snack('Профиль создан. Добро пожаловать!');
+      
+      // ПОКАЗЫВАЕМ ОБУЧЕНИЕ ПОСЛЕ РЕГИСТРАЦИИ!
+      if (mounted) {
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OnboardingPage()));
+      }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {

@@ -41,6 +41,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
   bool _isSending = false;
 
   late String _selectedSpecies;
+  late List<String> _speciesList;
   late TextEditingController _heightController;
   late TextEditingController _crownController;
   late TextEditingController _trunkController;
@@ -48,12 +49,20 @@ class _FeedbackPageState extends State<FeedbackPage> {
   String? _userMaskBase64;
   double? _userScale;
 
-  final List<String> _popularSpecies = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"];
-
   @override
   void initState() {
     super.initState();
     _selectedSpecies = widget.species;
+    
+    // Формируем динамический список пород.
+    _speciesList = ["Береза", "Дуб", "Ель", "Сосна", "Тополь", "Клен", "Ясень", "Липа"];
+    
+    // Если ИИ вернул породу, которой нет в списке (например, Саподилла),
+    // мы добавляем её, чтобы Dropdown не выдавал ошибку!
+    if (!_speciesList.contains(_selectedSpecies)) {
+      _speciesList.insert(0, _selectedSpecies);
+    }
+
     _heightController = TextEditingController(text: widget.heightM?.toStringAsFixed(2) ?? '');
     _crownController = TextEditingController(text: widget.crownWidthM?.toStringAsFixed(2) ?? '');
     _trunkController = TextEditingController(text: widget.trunkDiameterM?.toStringAsFixed(2) ?? '');
@@ -69,9 +78,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
   }
 
   bool _checkParamsOk() {
-    final h = double.tryParse(_heightController.text);
-    final c = double.tryParse(_crownController.text);
-    final t = double.tryParse(_trunkController.text);
+    final h = double.tryParse(_heightController.text.replaceAll(',', '.'));
+    final c = double.tryParse(_crownController.text.replaceAll(',', '.'));
+    final t = double.tryParse(_trunkController.text.replaceAll(',', '.'));
 
     final okH = (h == null && widget.heightM == null) ||
         (h != null && widget.heightM != null && (h - widget.heightM!).abs() < 1e-6);
@@ -166,7 +175,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
     };
 
     try {
-      // Используем ссылку из ApiConfig
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/feedback'),
         headers: {"Content-Type": "application/json"},
@@ -288,7 +296,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 DropdownButtonFormField<String>(
                   value: _selectedSpecies,
                   isExpanded: true,
-                  items: _popularSpecies
+                  items: _speciesList
                       .map((s) => DropdownMenuItem<String>(value: s, child: Text(s)))
                       .toList(),
                   onChanged: (v) => setState(() => _selectedSpecies = v ?? _selectedSpecies),

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'analyze_page.dart';
@@ -26,62 +27,63 @@ class _AppRootState extends State<AppRoot> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 320),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          final offsetAnimation = Tween<Offset>(
-            begin: const Offset(0.04, 0),
-            end: Offset.zero,
-          ).animate(animation);
-
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: offsetAnimation,
-              child: child,
+      extendBody: true,
+      body: Stack(
+        children: [
+          Positioned(
+            top: -100,
+            left: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.primary2.withOpacity(0.15),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: const SizedBox(),
+              ),
             ),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey<int>(_index),
-          child: _KeepAlivePage(
-            child: _pages[_index],
           ),
-        ),
+          
+          // Плавный эффект переходов между вкладками (Fade + Scale)
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.96, end: 1.0).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey<int>(_index),
+              child: _KeepAlivePage(child: _pages[_index]),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+        minimum: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: GlassPanel(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          radius: 24,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          radius: 30,
+          border: Border.all(color: AppTheme.primary.withOpacity(0.3), width: 1),
+          boxShadow: [
+            BoxShadow(color: AppTheme.primary2.withOpacity(0.1), blurRadius: 30, spreadRadius: 5)
+          ],
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(
-                icon: Icons.camera_alt_rounded,
-                label: 'Анализ',
-                selected: _index == 0,
-                onTap: () => setState(() => _index = 0),
-              ),
-              _NavItem(
-                icon: Icons.history_rounded,
-                label: 'История',
-                selected: _index == 1,
-                onTap: () => setState(() => _index = 1),
-              ),
-              _NavItem(
-                icon: Icons.map_rounded,
-                label: 'Карта',
-                selected: _index == 2,
-                onTap: () => setState(() => _index = 2),
-              ),
-              _NavItem(
-                icon: Icons.person_rounded,
-                label: 'Профиль',
-                selected: _index == 3,
-                onTap: () => setState(() => _index = 3),
-              ),
+              _NavItem(icon: Icons.radar_rounded, label: 'АНАЛИЗ', selected: _index == 0, onTap: () => setState(() => _index = 0)),
+              _NavItem(icon: Icons.history_rounded, label: 'ИСТОРИЯ', selected: _index == 1, onTap: () => setState(() => _index = 1)),
+              _NavItem(icon: Icons.map_rounded, label: 'КАРТА', selected: _index == 2, onTap: () => setState(() => _index = 2)),
+              _NavItem(icon: Icons.person_rounded, label: 'ПРОФИЛЬ', selected: _index == 3, onTap: () => setState(() => _index = 3)),
             ],
           ),
         ),
@@ -98,8 +100,7 @@ class _KeepAlivePage extends StatefulWidget {
   State<_KeepAlivePage> createState() => _KeepAlivePageState();
 }
 
-class _KeepAlivePageState extends State<_KeepAlivePage>
-    with AutomaticKeepAliveClientMixin {
+class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -116,57 +117,46 @@ class _NavItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: AnimatedScale(
-            scale: selected ? 1.0 : 0.98,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              decoration: BoxDecoration(
-                color: selected ? AppTheme.primary.withOpacity(0.14) : Colors.transparent,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedScale(
-                    duration: const Duration(milliseconds: 180),
-                    scale: selected ? 1.08 : 1.0,
-                    child: Icon(
-                      icon,
-                      color: selected ? AppTheme.primary : AppTheme.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 180),
-                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: selected ? AppTheme.text : AppTheme.muted,
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                        ),
-                    child: Text(label),
-                  ),
-                ],
-              ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutExpo,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? AppTheme.primary.withOpacity(0.5) : Colors.transparent),
+          boxShadow: selected ? [BoxShadow(color: AppTheme.primary.withOpacity(0.2), blurRadius: 12)] : [],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: selected ? AppTheme.primary : AppTheme.muted,
+              size: selected ? 28 : 24,
+              shadows: selected ? [const Shadow(color: AppTheme.primary, blurRadius: 8)] : [],
             ),
-          ),
+            if (selected) ...[
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                  shadows: [Shadow(color: AppTheme.primary2, blurRadius: 6)],
+                ),
+              ),
+            ]
+          ],
         ),
       ),
     );

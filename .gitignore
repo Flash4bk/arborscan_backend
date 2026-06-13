@@ -11,6 +11,7 @@ android/app/build/
 android/build/
 **/android/app/build/
 **/android/build/
+.gemini/extensions/
 
 # iOS
 ios/Pods/

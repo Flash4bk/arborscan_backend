@@ -1,199 +1,89 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color background = Color(0xFF071414);
+  // Eco-Futurism Palette
+  static const Color background = Color(0xFF041217); // Глубокий сине-зеленый
   static const Color bg = background;
 
-  static const Color surface = Color(0xFF0D1B2A);
-  static const Color surface2 = Color(0xFF10243A);
-  static const Color surface3 = Color(0xFF172B43);
+  static const Color surface = Color(0xFF082229); // Стекло 1
+  static const Color surface2 = Color(0xFF0B2E36); // Стекло 2
+  static const Color surface3 = Color(0xFF103A43);
 
-  static const Color primary = Color(0xFF37D88B);
-  static const Color primary2 = Color(0xFF1E6F5C);
+  static const Color primary = Color(0xFF00FFA3); // Neon Mint
+  static const Color primary2 = Color(0xFF00E5FF); // Cyan Glow
   static const Color accent = primary;
 
   static const Color text = Color(0xFFF8FAFC);
-  static const Color muted = Color(0xFFB8C4CC);
-  static const Color border = Color(0xFF24364A);
+  static const Color muted = Color(0xFF6B929B); // Мягкий лесной тон
+  static const Color border = Color(0x5500FFA3); // Полупрозрачный мятный бордер
 
-  static const Color danger = Color(0xFFFF6B6B);
-  static const Color warning = Color(0xFFFBBF24);
-  static const Color success = Color(0xFF37D88B);
+  static const Color danger = Color(0xFFFF4B6B);
+  static const Color warning = Color(0xFFFFB800);
+  static const Color success = Color(0xFF00FFA3);
 
-  static const Color textOnLight = Color(0xFF101418);
-  static const Color mutedOnLight = Color(0xFF4B5563);
+  static const Color textOnLight = Color(0xFF041217);
+  static const Color mutedOnLight = Color(0xFF385E66);
 
   static ThemeData light() {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      scaffoldBackgroundColor: background,
+      canvasColor: background,
       colorScheme: const ColorScheme.dark(
         primary: primary,
         secondary: primary2,
         surface: surface,
         background: background,
         error: danger,
-        onPrimary: Color(0xFF06140E),
-        onSecondary: text,
-        onSurface: text,
-        onBackground: text,
-        onError: Color(0xFF2A0505),
-        onSurfaceVariant: muted,
-        outline: border,
       ),
-      scaffoldBackgroundColor: background,
-      canvasColor: background,
     );
 
-    final radius = BorderRadius.circular(18);
+    final radius = BorderRadius.circular(24);
 
     return base.copyWith(
       textTheme: base.textTheme.apply(
         bodyColor: text,
         displayColor: text,
+        fontFamily: 'Roboto',
       ).copyWith(
         headlineSmall: base.textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w900,
           color: text,
-          letterSpacing: 0.1,
+          letterSpacing: 1.2,
+          shadows: [const Shadow(color: primary2, blurRadius: 12)],
         ),
         titleLarge: base.textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w800,
           color: text,
+          shadows: [const Shadow(color: primary, blurRadius: 8)],
         ),
         titleMedium: base.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w700,
           color: text,
         ),
-        titleSmall: base.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: text,
-        ),
-        bodyLarge: base.textTheme.bodyLarge?.copyWith(color: text, height: 1.25),
-        bodyMedium: base.textTheme.bodyMedium?.copyWith(color: text, height: 1.25),
-        bodySmall: base.textTheme.bodySmall?.copyWith(color: muted, height: 1.25),
-        labelLarge: base.textTheme.labelLarge?.copyWith(color: text, fontWeight: FontWeight.w800),
-        labelMedium: base.textTheme.labelMedium?.copyWith(color: text, fontWeight: FontWeight.w700),
-        labelSmall: base.textTheme.labelSmall?.copyWith(color: muted, fontWeight: FontWeight.w700),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: background,
-        surfaceTintColor: background,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         titleTextStyle: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
           color: text,
-          letterSpacing: 0.2,
-        ),
-        iconTheme: IconThemeData(color: text),
-        actionsIconTheme: IconThemeData(color: text),
-      ),
-      cardTheme: CardThemeData(
-        color: surface,
-        surfaceTintColor: surface,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: const BorderSide(color: border, width: 1),
+          letterSpacing: 2.0,
+          shadows: [Shadow(color: primary2, blurRadius: 10)],
         ),
       ),
-      dividerTheme: const DividerThemeData(color: border, thickness: 1, space: 1),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surface2,
+        fillColor: surface.withOpacity(0.5),
         labelStyle: const TextStyle(color: muted, fontWeight: FontWeight.w600),
-        hintStyle: const TextStyle(color: muted),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: border)),
         enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: border)),
-        focusedBorder: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: primary, width: 1.4)),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: const Color(0xFF06140E),
-          disabledBackgroundColor: const Color(0xFF1A2B3A),
-          disabledForegroundColor: const Color(0xFF7D8B96),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: const Color(0xFF06140E),
-          disabledBackgroundColor: const Color(0xFF1A2B3A),
-          disabledForegroundColor: const Color(0xFF7D8B96),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: text,
-          disabledForegroundColor: const Color(0xFF7D8B96),
-          side: const BorderSide(color: border),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: primary,
-          disabledForegroundColor: const Color(0xFF7D8B96),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primary,
-        foregroundColor: const Color(0xFF06140E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      ),
-      chipTheme: base.chipTheme.copyWith(
-        backgroundColor: surface2,
-        selectedColor: primary.withOpacity(0.22),
-        disabledColor: const Color(0xFF172333),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-        side: const BorderSide(color: border),
-        labelStyle: const TextStyle(color: text, fontWeight: FontWeight.w700),
-        secondaryLabelStyle: const TextStyle(color: text, fontWeight: FontWeight.w700),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Color(0xFF0A1824),
-        selectedItemColor: primary,
-        unselectedItemColor: Color(0xFFA8B3BC),
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w800),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w700),
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: surface,
-        surfaceTintColor: surface,
-        showDragHandle: true,
-        dragHandleColor: muted,
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: surface,
-        surfaceTintColor: surface,
-        titleTextStyle: const TextStyle(color: text, fontSize: 18, fontWeight: FontWeight.w800),
-        contentTextStyle: const TextStyle(color: text),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: const Color(0xFF111827),
-        contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        behavior: SnackBarBehavior.floating,
+        focusedBorder: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: primary, width: 2)),
       ),
     );
   }
@@ -211,25 +101,27 @@ class GlassPanel extends StatelessWidget {
   final double blur;
   final double? width;
   final double? height;
+  final VoidCallback? onTap;
 
   const GlassPanel({
     super.key,
     required this.child,
     this.padding,
     this.margin,
-    this.radius = 22,
+    this.radius = 24,
     this.color,
     this.gradient,
     this.border,
     this.boxShadow,
-    this.blur = 12,
+    this.blur = 16,
     this.width,
     this.height,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    Widget content = Container(
       width: width,
       height: height,
       margin: margin,
@@ -238,22 +130,85 @@ class GlassPanel extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           child: Container(
-            padding: padding ?? const EdgeInsets.all(14),
+            padding: padding ?? const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color ?? AppTheme.surface.withOpacity(0.92),
+              color: color ?? AppTheme.surface.withOpacity(0.3),
               gradient: gradient,
               borderRadius: BorderRadius.circular(radius),
-              border: border ?? Border.all(color: AppTheme.border.withOpacity(0.85), width: 1),
-              boxShadow: boxShadow,
+              border: border ?? Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1.5),
+              boxShadow: boxShadow ?? [
+                BoxShadow(
+                  color: AppTheme.primary2.withOpacity(0.05),
+                  blurRadius: 20,
+                  spreadRadius: -5,
+                )
+              ],
             ),
             child: child,
           ),
         ),
       ),
     );
+
+    if (onTap != null) {
+      return GestureDetector(onTap: onTap, child: content);
+    }
+    return content;
   }
 }
 
+class Ui {
+  static Widget sectionTitle(BuildContext context, String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 12),
+      child: Text(
+        text.toUpperCase(),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: AppTheme.primary,
+          letterSpacing: 1.5,
+          shadows: [const Shadow(color: AppTheme.primary, blurRadius: 10)],
+        ),
+      ),
+    );
+  }
+
+  static Widget paddedCard(
+    BuildContext context, {
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+    EdgeInsetsGeometry? margin,
+  }) {
+    return GlassPanel(
+      margin: margin ?? const EdgeInsets.only(bottom: 12),
+      padding: padding,
+      child: child,
+    );
+  }
+
+  static Widget badge({required String text, required Color color, IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 8)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+          ],
+          Text(text, style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 12, letterSpacing: 0.5)),
+        ],
+      ),
+    );
+  }
+}
+
+// Восстановленные виджеты, которые нужны для history_tab_page.dart
 class AppActionButton extends StatelessWidget {
   final String? label;
   final String? title;
@@ -297,8 +252,9 @@ class AppActionButton extends StatelessWidget {
     final caption = label ?? title ?? text ?? '';
     final callback = onPressed ?? onTap;
     final isEnabled = enabled && !loading && callback != null;
-    final bg = color ?? (danger ? AppTheme.danger : primary ? AppTheme.primary : AppTheme.surface2);
-    final fg = foregroundColor ?? (primary || danger ? const Color(0xFF06140E) : AppTheme.text);
+    final bg = color ?? (danger ? AppTheme.danger.withOpacity(0.2) : primary ? AppTheme.primary.withOpacity(0.2) : AppTheme.surface2);
+    final fg = foregroundColor ?? (danger ? AppTheme.danger : primary ? AppTheme.primary : AppTheme.text);
+    final borderColor = danger ? AppTheme.danger : primary ? AppTheme.primary : AppTheme.border;
 
     final hasSubtitle = subtitle != null && subtitle!.isNotEmpty;
 
@@ -325,7 +281,7 @@ class AppActionButton extends StatelessWidget {
                   Text(
                     caption,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: fg, fontWeight: FontWeight.w800),
+                    style: TextStyle(color: fg, fontWeight: FontWeight.w900, letterSpacing: 1.0),
                   ),
                 if (hasSubtitle) ...[
                   const SizedBox(height: 2),
@@ -334,7 +290,7 @@ class AppActionButton extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: fg.withOpacity(0.78),
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -348,19 +304,19 @@ class AppActionButton extends StatelessWidget {
     return SizedBox(
       width: expanded ? double.infinity : null,
       child: Material(
-        color: isEnabled ? bg : AppTheme.surface2.withOpacity(0.55),
-        borderRadius: BorderRadius.circular(compact ? 13 : 16),
+        color: Colors.transparent,
         child: InkWell(
           onTap: isEnabled ? callback : null,
-          borderRadius: BorderRadius.circular(compact ? 13 : 16),
+          borderRadius: BorderRadius.circular(compact ? 16 : 20),
           child: Container(
             padding: padding ?? EdgeInsets.symmetric(
-              horizontal: compact ? 10 : 14,
-              vertical: compact ? 8 : 12,
+              horizontal: compact ? 12 : 16,
+              vertical: compact ? 10 : 14,
             ),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(compact ? 13 : 16),
-              border: Border.all(color: AppTheme.border),
+              color: isEnabled ? bg : AppTheme.surface2.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(compact ? 16 : 20),
+              border: Border.all(color: isEnabled ? borderColor.withOpacity(0.5) : AppTheme.border),
             ),
             child: child,
           ),
@@ -394,91 +350,41 @@ class AppStatCard extends StatelessWidget {
     final t = title ?? label ?? '';
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface2,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.border),
+        color: AppTheme.surface2.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: c.withOpacity(0.3)),
+        boxShadow: [BoxShadow(color: c.withOpacity(0.05), blurRadius: 10)],
       ),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, color: c, size: 24),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: c.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: c, size: 24),
+            ),
+            const SizedBox(width: 12),
           ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (t.isNotEmpty)
-                  Text(t, style: const TextStyle(color: AppTheme.muted, fontSize: 12, fontWeight: FontWeight.w700)),
-                if (t.isNotEmpty) const SizedBox(height: 3),
-                Text(value, style: const TextStyle(color: AppTheme.text, fontSize: 18, fontWeight: FontWeight.w900)),
+                  Text(t.toUpperCase(), style: const TextStyle(color: AppTheme.muted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                if (t.isNotEmpty) const SizedBox(height: 4),
+                Text(value, style: TextStyle(color: AppTheme.text, fontSize: 20, fontWeight: FontWeight.w900, shadows: [Shadow(color: c, blurRadius: 8)])),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(subtitle!, style: const TextStyle(color: AppTheme.muted, fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(subtitle!, style: const TextStyle(color: AppTheme.muted, fontSize: 11, fontWeight: FontWeight.w600)),
                 ],
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class Ui {
-  static Widget sectionTitle(BuildContext context, String text) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
-      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
-    );
-  }
-
-  static Widget paddedCard(
-    BuildContext context, {
-    required Widget child,
-    EdgeInsetsGeometry? padding,
-    EdgeInsetsGeometry? margin,
-    Color? color,
-    double radius = 18,
-  }) {
-    return Container(
-      margin: margin,
-      child: Card(
-        color: color ?? AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radius),
-          side: const BorderSide(color: AppTheme.border),
-        ),
-        child: Padding(
-          padding: padding ?? const EdgeInsets.all(14),
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  static Widget badge({
-    required String text,
-    required Color color,
-    IconData? icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.32)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-          ],
-          Text(text, style: TextStyle(fontWeight: FontWeight.w800, color: color, fontSize: 12)),
         ],
       ),
     );
