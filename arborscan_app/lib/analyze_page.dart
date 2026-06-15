@@ -18,6 +18,7 @@ import 'ar_measure_channel.dart';
 import 'app_theme.dart';
 import 'analysis_report_page.dart';
 import 'location_service.dart';
+import 'stick_page.dart'; // Обязательно нужен для рисования линии
 
 class AnalysisResult {
   final String species;
@@ -101,9 +102,13 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   String? _error;
   String? _gpsStatusText;
   bool _lastGpsOk = false;
+  
+  double? _lastArMeters;
   double? _arHeightM;
   double? _arCrownWidthM;
   double? _arTrunkDiameterM;
+  
+  double? _manualScale; // Новый параметр для масштаба по предмету
   
   double _manualWindSpeedMS = 5.0; 
   double _manualWindGustMS = 8.0;
@@ -251,6 +256,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         _arHeightM = null;
         _arCrownWidthM = null;
         _arTrunkDiameterM = null;
+        _manualScale = null;
       });
     } catch (e) {
       setState(() => _error = 'Ошибка при выборе изображения: $e');
@@ -265,6 +271,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         _arHeightM = result.heightMeters ?? result.distanceMeters;
         _arCrownWidthM = result.crownWidthMeters;
         _arTrunkDiameterM = result.trunkDiameterMeters;
+        _manualScale = null; // Сбрасываем ручной масштаб, если есть AR
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -277,6 +284,155 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('AR ошибка: $e')));
     }
+  }
+
+  // --- УМНЫЙ ЗАПУСК АНАЛИЗА ---
+  void _onAnalyzeTap() {
+    if (_imageFile == null) return;
+
+    // Если у нас уже есть AR-размеры, сразу отправляем на сервер
+    if (_arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null) {
+      _analyze();
+    } else {
+      // Иначе просим пользователя подсказать масштаб
+      _showScaleOptionsModal();
+    }
+  }
+
+  void _showScaleOptionsModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => GlassPanel(
+        padding: const EdgeInsets.all(24),
+        radius: 30,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("МАСШТАБ ФОТО", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: 2)),
+            const SizedBox(height: 12),
+            const Text(
+              "На фото нет AR-замеров. Как вычислим реальные размеры дерева?",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.muted, fontSize: 13, height: 1.3),
+            ),
+            const SizedBox(height: 24),
+            _ScaleOptionBtn(
+              icon: Icons.auto_awesome,
+              title: "Автоматически (ИИ)",
+              subtitle: "Нейросеть подберет средние размеры по породе",
+              onTap: () {
+                Navigator.pop(ctx);
+                _analyze();
+              }
+            ),
+            const SizedBox(height: 12),
+            _ScaleOptionBtn(
+              icon: Icons.straighten,
+              title: "Знаю один размер",
+              subtitle: "Например, толщину ствола или высоту",
+              onTap: () {
+                Navigator.pop(ctx);
+                _showSingleSizeInputDialog();
+              }
+            ),
+            const SizedBox(height: 12),
+            _ScaleOptionBtn(
+              icon: Icons.design_services,
+              title: "По объекту в кадре",
+              subtitle: "Провести 1-метровую линию (человек, лопата и т.д.)",
+              onTap: () async {
+                Navigator.pop(ctx);
+                final bytes = await _imageFile!.readAsBytes();
+                final b64 = base64Encode(bytes);
+                if (!mounted) return;
+                
+                final scale = await Navigator.push<double>(
+                  context,
+                  MaterialPageRoute(builder: (_) => StickPage(originalImageBase64: b64, currentScalePxToM: 0.0)),
+                );
+                
+                if (scale != null) {
+                  setState(() => _manualScale = scale);
+                  _analyze();
+                }
+              }
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSingleSizeInputDialog() {
+    String selectedType = 'trunk'; // trunk, height, crown
+    final ctrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: GlassPanel(
+              radius: 24,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("ИЗВЕСТНЫЙ РАЗМЕР", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: 2)),
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    value: selectedType,
+                    dropdownColor: AppTheme.surface2,
+                    decoration: const InputDecoration(labelText: 'Что вы можете оценить?'),
+                    items: const [
+                      DropdownMenuItem(value: 'trunk', child: Text('Толщина ствола (м)')),
+                      DropdownMenuItem(value: 'height', child: Text('Высота дерева (м)')),
+                      DropdownMenuItem(value: 'crown', child: Text('Ширина кроны (м)')),
+                    ],
+                    onChanged: (v) => setDialogState(() => selectedType = v!),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: ctrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Значение в метрах',
+                      hintText: 'Например, 0.4',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: () {
+                        final val = double.tryParse(ctrl.text.replaceAll(',', '.'));
+                        if (val != null && val > 0) {
+                          setState(() {
+                            if (selectedType == 'trunk') _arTrunkDiameterM = val;
+                            if (selectedType == 'height') _arHeightM = val;
+                            if (selectedType == 'crown') _arCrownWidthM = val;
+                          });
+                          Navigator.pop(ctx);
+                          _analyze();
+                        }
+                      },
+                      child: const Text('ПРОДОЛЖИТЬ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                    )
+                  )
+                ]
+              )
+            )
+          );
+        }
+      )
+    );
   }
 
   Future<void> _analyze() async {
@@ -292,6 +448,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       final request = http.MultipartRequest('POST', uri);
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_authTokenKey) ?? '';
+      
       if (token.isNotEmpty) request.fields['auth_token'] = token;
       if (pos != null) {
         request.fields['lat'] = pos.latitude.toString();
@@ -302,6 +459,9 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       if (_arCrownWidthM != null) request.fields['ar_crown_width_m'] = _arCrownWidthM!.toStringAsFixed(3);
       if (_arTrunkDiameterM != null) request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
       
+      // Передаем масштаб ручной палки (если есть)
+      if (_manualScale != null) request.fields['manual_scale'] = _manualScale!.toStringAsFixed(6);
+
       request.fields['manual_wind_speed_m_s'] = _manualWindSpeedMS.toStringAsFixed(3);
       request.fields['manual_wind_gust_m_s'] = _manualWindGustMS.toStringAsFixed(3);
 
@@ -327,6 +487,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
           riskCategory: (data['risk'] ?? {})['category'],
           lat: pos?.latitude,
           lon: pos?.longitude,
+          address: data['address']?.toString(),
           imageBase64: '',
           timestamp: DateTime.now(),
           analysisId: data['analysis_id'] ?? '',
@@ -392,19 +553,17 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
                     ),
                   ],
 
-                  // КНОПКА АНАЛИЗА ВНИЗУ
                   if (_imageFile != null && !_isLoading) ...[
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: _analyze,
+                        onPressed: _onAnalyzeTap,
                         icon: const Icon(Icons.analytics_outlined, color: Colors.black),
                         label: const Text(
                           "АНАЛИЗИРОВАТЬ", 
                           style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 16)
                         ),
-                        // ИСПРАВЛЕНИЕ ОШИБКИ: backgroundColor находится ВНУТРИ styleFrom
                         style: FilledButton.styleFrom(
                           backgroundColor: AppTheme.primary,
                           padding: const EdgeInsets.symmetric(vertical: 20),
@@ -552,7 +711,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   }
 
   Widget _buildArMeasurementsCard() {
-    final hasAny = _arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null;
+    final hasAny = _arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null || _manualScale != null;
     return GlassPanel(
       border: Border.all(color: hasAny ? AppTheme.primary : AppTheme.primary.withOpacity(0.2), width: hasAny ? 2 : 1),
       boxShadow: hasAny ? [BoxShadow(color: AppTheme.primary.withOpacity(0.2), blurRadius: 20)] : null,
@@ -565,7 +724,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
               const SizedBox(width: 12),
               const Expanded(child: Text('AR-ИЗМЕРЕНИЯ', style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: 1.5))),
               if (hasAny)
-                IconButton(icon: const Icon(Icons.refresh, color: AppTheme.muted), onPressed: () => setState((){ _arHeightM=null; _arCrownWidthM=null; _arTrunkDiameterM=null; }))
+                IconButton(icon: const Icon(Icons.refresh, color: AppTheme.muted), onPressed: () => setState((){ _arHeightM=null; _arCrownWidthM=null; _arTrunkDiameterM=null; _manualScale=null; }))
             ],
           ),
           const SizedBox(height: 16),
@@ -669,6 +828,47 @@ class _ArStat extends StatelessWidget {
           const SizedBox(height: 4),
           Text(val == null ? "—" : "${val!.toStringAsFixed(1)} м", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
         ],
+      ),
+    );
+  }
+}
+
+class _ScaleOptionBtn extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ScaleOptionBtn({required this.icon, required this.title, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surface3.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 32, color: AppTheme.primary),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.text, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(color: AppTheme.muted, fontSize: 11)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppTheme.muted),
+          ],
+        ),
       ),
     );
   }

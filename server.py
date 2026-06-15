@@ -129,7 +129,7 @@ BUILD_INFO = {
     "build_time": os.getenv("BUILD_TIME")
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.2.0" # Added Proportional & Statistical Scaling
+API_VERSION = "2.2.0" 
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
@@ -893,7 +893,7 @@ async def analyze_tree(
     ar_height_m: Optional[float] = Form(None),
     ar_crown_width_m: Optional[float] = Form(None),
     ar_trunk_diameter_m: Optional[float] = Form(None),
-    manual_scale: Optional[float] = Form(None), # НОВОЕ ПОЛЕ ДЛЯ ПРЕДМЕТОВ В КАДРЕ
+    manual_scale: Optional[float] = Form(None),
     manual_beta_kg_s: Optional[float] = Form(None),
     crown_density_factor: Optional[float] = Form(None),
     manual_wind_speed_m_s: Optional[float] = Form(None),
@@ -913,7 +913,8 @@ async def analyze_tree(
     tree_res, stick_res = await run_in_threadpool(_run_yolo_sync, img)
     if tree_res.masks is None: return JSONResponse({"error": "Дерево не найдено"}, status_code=400)
 
-    # 2. СНАЙПЕРСКИЙ ФОКУС
+    # 2. СНАЙПЕРСКИЙ ФОКУС (ИСХОДНЫЕ ПЕРЕМЕННЫЕ)
+    height_m_ai, crown_m_ai, trunk_m_ai = None, None, None
     masks, distances_to_center = [], []
     img_center_x, img_center_y = W / 2.0, H / 2.0
 
@@ -967,13 +968,13 @@ async def analyze_tree(
     # 5. КЛАССИФИКАЦИЯ (PLANTNET)
     species_name = await run_in_threadpool(_run_classifier_sync, img[y1:y2, x1:x2])
 
-    # 6. МАСШТАБ И РАЗМЕРЫ (СВЯТОЙ ГРААЛЬ: Каскадный поиск масштаба)
+    # 6. МАСШТАБ И РАЗМЕРЫ (СВЯТОЙ ГРААЛЬ)
     scale = None
     dimensions_source = "Неизвестно"
 
     if manual_scale and float(manual_scale) > 0:
         scale = float(manual_scale)
-        dimensions_source = "Пользовательский маркер (Линия на фото)"
+        dimensions_source = "Пользовательский маркер"
     
     if not scale and len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
@@ -1003,7 +1004,7 @@ async def analyze_tree(
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # ПЕРЕЗАПИСЬ (Если мы знаем точные AR-значения, они приоритетнее расчетов ИИ)
+    # ПЕРЕЗАПИСЬ AR
     if ar_height_m: height_m = round(float(ar_height_m), 2)
     if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
     if ar_trunk_diameter_m: trunk_m = round(float(ar_trunk_diameter_m), 2)
@@ -1291,7 +1292,3 @@ def admin_request_retrain():
 @app.get("/admin/models")
 def admin_models():
     return {"models": list_available_model_versions(), "active_model_version": _get_active_model_version()}
-
-@app.get("/admin/training-events")
-def admin_training_events(limit: int = 15):
-    return {"events": list(reversed(list(TRAINING_EVENTS)[-max(1, min(int(limit), 200)):]))}
