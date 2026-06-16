@@ -41,7 +41,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set. /feedback will not upload to Supabase.")
+    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set.")
 
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
@@ -50,17 +50,14 @@ SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
 SUPABASE_BUCKET_RAW = "arborscan-raw"
 SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
 
-# Supabase Postgres REST API
 SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
-# Pl@ntNet API Key
 PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "2b10s2QVGCWyalEeU1xv2nOKO")
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
-
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
 
 # ---------------------------------------------------------
@@ -76,7 +73,6 @@ def _sb_headers(json_ct: bool = True) -> dict:
         h["Content-Type"] = "application/json"
     return h
 
-
 def training_state_get() -> dict:
     if not SUPABASE_DB_BASE:
         raise RuntimeError("Supabase DB is not configured")
@@ -85,25 +81,17 @@ def training_state_get() -> dict:
     if resp.status_code >= 400:
         raise RuntimeError(f"training_state_get error {resp.status_code}: {resp.text}")
     rows = resp.json()
-    if not rows:
-        return {}
-    return rows[0]
-
+    return rows[0] if rows else {}
 
 def training_state_ensure_row():
     state = training_state_get()
-    if state:
-        return
+    if state: return
     url = f"{SUPABASE_DB_BASE}/training_state"
     payload = {
-        "id": 1,
-        "retrain_requested": False,
-        "training_in_progress": False,
-        "last_model_version": 0,
-        "active_model_version": 0,
+        "id": 1, "retrain_requested": False, "training_in_progress": False,
+        "last_model_version": 0, "active_model_version": 0,
     }
     requests.post(url, headers={**_sb_headers(), "Prefer": "return=representation"}, data=json.dumps(payload), timeout=30)
-
 
 def training_state_update(fields: dict) -> dict:
     if not SUPABASE_DB_BASE:
@@ -112,7 +100,6 @@ def training_state_update(fields: dict) -> dict:
     resp = requests.patch(url, headers={**_sb_headers(), "Prefer": "return=representation"}, data=json.dumps(fields), timeout=30)
     rows = resp.json()
     return rows[0] if rows else fields
-
 
 # -------------------------------------
 # MODEL VERSIONS
@@ -151,14 +138,9 @@ REMBG_SESSION = None
 # =============================================
 
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured")
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: return
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}"
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Content-Type": "application/octet-stream",
-        "x-upsert": "true",
-    }
+    headers = {"Authorization": f"Bearer {SUPABASE_SERVICE_KEY}", "Content-Type": "application/octet-stream", "x-upsert": "true"}
     requests.post(url, headers=headers, data=data, timeout=30)
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
@@ -166,21 +148,14 @@ def supabase_upload_json(bucket: str, path: str, obj: dict):
     supabase_upload_bytes(bucket, path, data)
 
 def supabase_list_objects(bucket: str, prefix: str = ""):
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured")
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: return []
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}"
-    payload = {
-        "prefix": prefix,
-        "limit": 200,
-        "offset": 0,
-        "sortBy": {"column": "name", "order": "desc"},
-    }
+    payload = {"prefix": prefix, "limit": 200, "offset": 0, "sortBy": {"column": "name", "order": "desc"}}
     resp = requests.post(url, headers=_sb_headers(), json=payload, timeout=15)
     return resp.json()
 
 def supabase_download_bytes(bucket: str, path: str) -> bytes:
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise RuntimeError("Supabase is not configured")
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: raise RuntimeError("Supabase is not configured")
     url = SUPABASE_URL.rstrip("/") + f"/storage/v1/object/authenticated/{bucket}/{path}"
     resp = requests.get(url, headers=_sb_headers(False), timeout=60)
     return resp.content
@@ -204,11 +179,9 @@ def _local_model_path(version: int) -> str:
 def _download_model_if_needed(version: int) -> str:
     filename = f"model_v{version}.pt"
     local_path = _local_model_path(version)
-    if os.path.exists(local_path):
-        return local_path
+    if os.path.exists(local_path): return local_path
     data = supabase_download_bytes(SUPABASE_BUCKET_MODELS, filename)
-    with open(local_path, "wb") as f:
-        f.write(data)
+    with open(local_path, "wb") as f: f.write(data)
     return local_path
 
 def _get_active_model_version() -> int:
@@ -219,22 +192,16 @@ def _get_active_model_version() -> int:
 def list_available_model_versions() -> list[dict]:
     versions: set[int] = set()
     try:
-        objects = supabase_list_objects(SUPABASE_BUCKET_MODELS)
-        for obj in objects:
-            name = obj.get("name") or ""
-            base = name.split("/")[-1]
-            mm = re.search(r"model_v(\d+)\.pt$", base)
-            if mm:
-                versions.add(int(mm.group(1)))
-    except Exception:
-        pass
+        for obj in supabase_list_objects(SUPABASE_BUCKET_MODELS):
+            mm = re.search(r"model_v(\d+)\.pt$", (obj.get("name") or "").split("/")[-1])
+            if mm: versions.add(int(mm.group(1)))
+    except Exception: pass
 
     env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
     if env_hint:
         for part in env_hint.split(","):
-            part = part.strip()
-            if part:
-                try: versions.add(int(part))
+            if part.strip():
+                try: versions.add(int(part.strip()))
                 except ValueError: pass
 
     for p in Path("/tmp/models").glob("model_v*.pt"):
@@ -253,12 +220,10 @@ def list_available_model_versions() -> list[dict]:
 def reload_tree_model(force: bool = False):
     global TREE_MODEL, TREE_MODEL_VERSION, _MODEL_LAST_CHECK_TS
     now = time.time()
-    if not force and (now - _MODEL_LAST_CHECK_TS) < _MODEL_CHECK_INTERVAL_SEC:
-        return
+    if not force and (now - _MODEL_LAST_CHECK_TS) < _MODEL_CHECK_INTERVAL_SEC: return
     _MODEL_LAST_CHECK_TS = now
     v = _get_active_model_version()
-    if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v:
-        return
+    if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v: return
 
     if v == 0:
         local_fallback = "models/tree_model.pt"
@@ -273,8 +238,7 @@ def reload_tree_model(force: bool = False):
             TREE_MODEL = YOLO(path)
             TREE_MODEL_VERSION = 0
             return
-        except Exception as e:
-            raise RuntimeError(f"No tree model available (v0). {e}")
+        except Exception as e: raise RuntimeError(f"No tree model available (v0). {e}")
 
     path = _download_model_if_needed(v)
     print(f"[*] Switching tree model to v{v}: {path}")
@@ -284,8 +248,7 @@ def reload_tree_model(force: bool = False):
 def get_tree_model() -> YOLO:
     with MODEL_LOCK:
         reload_tree_model(force=False)
-        if TREE_MODEL is None:
-            reload_tree_model(force=True)
+        if TREE_MODEL is None: reload_tree_model(force=True)
         return TREE_MODEL
 
 
@@ -296,8 +259,7 @@ def get_tree_model() -> YOLO:
 def _strip_data_url(b64: str) -> str:
     if not b64: return b64
     b64 = b64.strip()
-    if b64.startswith("data:") and "base64," in b64:
-        b64 = b64.split("base64,", 1)[1]
+    if b64.startswith("data:") and "base64," in b64: b64 = b64.split("base64,", 1)[1]
     return "".join(b64.split()) 
 
 def decode_base64_bytes(b64: str) -> bytes:
@@ -313,10 +275,8 @@ def decode_base64_bytes(b64: str) -> bytes:
             pad2 = len(as_text) % 4
             if pad2: as_text += "=" * (4 - pad2)
             raw2 = base64.b64decode(as_text, validate=False)
-            if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff":
-                return raw2
-    except Exception:
-        pass
+            if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff": return raw2
+    except Exception: pass
     return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
@@ -326,17 +286,13 @@ def ensure_png_mask_bytes(mask_b64: str) -> bytes:
             obj = json.loads(raw.decode("utf-8"))
             if isinstance(obj, dict) and obj.get("mask_png_base64"):
                 raw = decode_base64_bytes(str(obj["mask_png_base64"]))
-    except Exception:
-        pass
+    except Exception: pass
 
     np_buf = np.frombuffer(raw, np.uint8)
     mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
-    if mask is None:
-        raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
+    if mask is None: raise ValueError("user_mask_base64 is not a valid PNG/JPEG image payload")
     _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
     ok, out = cv2.imencode(".png", mask_bin)
-    if not ok:
-        raise ValueError("Failed to encode mask as PNG")
     return out.tobytes()
 
 def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
@@ -344,10 +300,7 @@ def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
     longest = max(h, w)
     if longest > max_side:
         scale = max_side / float(longest)
-        new_w = max(1, int(w * scale))
-        new_h = max(1, int(h * scale))
-        img_bgr = cv2.resize(img_bgr, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
+        img_bgr = cv2.resize(img_bgr, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=cv2.INTER_AREA)
     ok, out = cv2.imencode(".jpg", img_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)])
     return base64.b64encode(out.tobytes()).decode("ascii")
 
@@ -363,9 +316,7 @@ def draw_mask(img_bgr, mask):
 # =============================================
 
 def _deg(v):
-    d = v[0][0] / v[0][1]
-    m = v[1][0] / v[1][1]
-    s = v[2][0] / v[2][1]
+    d = v[0][0] / v[0][1]; m = v[1][0] / v[1][1]; s = v[2][0] / v[2][1]
     return d + m / 60 + s / 3600
 
 def extract_gps(image_bytes):
@@ -376,23 +327,19 @@ def extract_gps(image_bytes):
         gps_info = None
         for k, v in exif.items():
             if ExifTags.TAGS.get(k) == "GPSInfo":
-                gps_info = v
-                break
+                gps_info = v; break
         if not gps_info: return None
-        lat = _deg(gps_info[2])
-        lon = _deg(gps_info[4])
+        lat = _deg(gps_info[2]); lon = _deg(gps_info[4])
         if gps_info[1] == "S": lat = -lat
         if gps_info[3] == "W": lon = -lon
         return {"lat": lat, "lon": lon}
-    except Exception:
-        return None
+    except Exception: return None
 
 def reverse_geocode(lat, lon):
     try:
         r = requests.get(NOMINATIM_URL, params={"lat": lat, "lon": lon, "format": "jsonv2"}, headers={"User-Agent": NOMINATIM_USER_AGENT}, timeout=5)
         return r.json().get("display_name")
-    except Exception:
-        return None
+    except Exception: return None
 
 
 # =============================================
@@ -400,14 +347,8 @@ def reverse_geocode(lat, lon):
 # =============================================
 
 SPECIES_STRENGTH_MPA = {
-    "Береза": 45.0,
-    "Дуб": 60.0,
-    "Ель": 40.0,
-    "Сосна": 42.0,
-    "Тополь": 30.0,
-    "Клен": 50.0,
-    "Ясень": 55.0,
-    "Липа": 35.0,
+    "Береза": 45.0, "Дуб": 60.0, "Ель": 40.0, "Сосна": 42.0, "Тополь": 30.0,
+    "Клен": 50.0, "Ясень": 55.0, "Липа": 35.0,
 }
 
 BETA_EMPIRICAL_STATS = {
@@ -430,12 +371,8 @@ def estimate_beta_kg_s(species: str, height_m, manual_beta_kg_s=None, crown_dens
     if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
         value = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
         return {
-            "beta_kg_s": value,
-            "beta_max_scenario": value,
-            "method": "manual",
-            "source": "Введено вручную",
-            "input": {"manual_beta_kg_s": float(manual_beta_kg_s)},
-            "notes": ["Использован пользовательский коэффициент."],
+            "beta_kg_s": value, "beta_max_scenario": value, "method": "manual",
+            "source": "Введено вручную", "input": {"manual_beta_kg_s": float(manual_beta_kg_s)},
         }
 
     h = float(height_m or 0)
@@ -443,32 +380,23 @@ def estimate_beta_kg_s(species: str, height_m, manual_beta_kg_s=None, crown_dens
 
     if h <= 0:
         return {
-            "beta_kg_s": stats["mean"],
-            "beta_max_scenario": stats["max"],
-            "method": "species_default",
-            "source": "Статистическое среднее",
-            "input": {"species": species},
-            "notes": ["Высота не измерена. Взято среднее значение."],
+            "beta_kg_s": stats["mean"], "beta_max_scenario": stats["max"],
+            "method": "species_default", "source": "Статистическое среднее", "input": {"species": species},
         }
 
     height_ratio = h / stats["ref_height"]
-    beta_expected = stats["mean"] * (height_ratio ** 1.5) * density
-    beta_expected = _clamp(beta_expected, 5.0, stats["max"] * 1.5)
-
+    beta_expected = _clamp(stats["mean"] * (height_ratio ** 1.5) * density, 5.0, stats["max"] * 1.5)
     beta_max_scenario = _clamp(beta_expected * 1.88, beta_expected, stats["max"] * 1.5)
 
     return {
-        "beta_kg_s": round(beta_expected, 2),
-        "beta_max_scenario": round(beta_max_scenario, 2),
-        "method": "empirical_borisevich_2021",
-        "source": "Полевая статистика (Borisevich et al. 2021)",
+        "beta_kg_s": round(beta_expected, 2), "beta_max_scenario": round(beta_max_scenario, 2),
+        "method": "empirical_borisevich_2021", "source": "Полевая статистика (Borisevich 2021)",
         "input": {"species": species, "height_m": h, "crown_density_factor": density},
     }
 
 
 def slenderness_score(height_m, diameter_m):
-    if not diameter_m or diameter_m <= 0: 
-        return 0.0, 0.0
+    if not diameter_m or diameter_m <= 0: return 0.0, 0.0
     S = height_m / diameter_m
     if S >= 100: score = 1.0
     elif S >= 80: score = 0.8
@@ -968,7 +896,7 @@ async def analyze_tree(
     # 5. КЛАССИФИКАЦИЯ (PLANTNET)
     species_name = await run_in_threadpool(_run_classifier_sync, img[y1:y2, x1:x2])
 
-    # 6. МАСШТАБ И РАЗМЕРЫ (Каскадный поиск)
+    # 6. МАСШТАБ И РАЗМЕРЫ (СВЯТОЙ ГРААЛЬ)
     scale = None
     dimensions_source = "Неизвестно"
 
@@ -1004,36 +932,49 @@ async def analyze_tree(
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # ПЕРЕЗАПИСЬ (Если мы знаем точные AR/введенные значения, они приоритетнее)
+    # Сохраняем чистые значения ИИ
+    height_m_ai = height_m
+    crown_m_ai = crown_m
+    trunk_m_ai = trunk_m
+
+    # ПЕРЕЗАПИСЬ AR
     if ar_height_m: height_m = round(float(ar_height_m), 2)
     if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
     if ar_trunk_diameter_m: trunk_m = round(float(ar_trunk_diameter_m), 2)
 
-    # --- НОВАЯ МАГИЯ: АЛЛОМЕТРИЧЕСКАЯ КОРРЕКЦИЯ ПЕРСПЕКТИВЫ ---
-    # Если введен только ствол, а высота получилась слишком маленькой (искажение перспективы)
+    # --- АЛЛОМЕТРИЧЕСКАЯ КОРРЕКЦИЯ ПЕРСПЕКТИВЫ ---
     if ar_trunk_diameter_m and not ar_height_m and trunk_px > 0:
         pixel_s = height_px / trunk_px
-        if pixel_s < 35:  # Дерево на фото выглядит неправдоподобно толстым и коротким
+        if pixel_s < 35:  
             slenderness_db = {
                 "Сосна": 65, "Ель": 70, "Береза": 60, "Дуб": 45,
                 "Тополь": 55, "Клен": 50, "Ясень": 55, "Липа": 50
             }
             typical_s = slenderness_db.get(species_name, 55)
-            
-            # Лесоводческая (биологическая) высота
             height_m = round(float(ar_trunk_diameter_m) * typical_s, 2)
             
-            # Крона тоже корректируется по лесоводческим законам
             if not ar_crown_width_m:
                 crown_ratio = 12 if species_name in ["Ель", "Сосна"] else 18
                 crown_m = round(float(ar_trunk_diameter_m) * crown_ratio, 2)
                 
             dimensions_source = "Аллометрия (Коррекция перспективы)"
-    # ---------------------------------------------------------
 
     if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
         if not manual_scale and "Аллометрия" not in dimensions_source: 
             dimensions_source = "Введено пользователем"
+
+    # ВОТ ОНИ! Переменные, которых не хватило:
+    ar_measurements = {
+        "height_m": round(float(ar_height_m), 2) if ar_height_m else None,
+        "crown_width_m": round(float(ar_crown_width_m), 2) if ar_crown_width_m else None,
+        "trunk_diameter_m": round(float(ar_trunk_diameter_m), 2) if ar_trunk_diameter_m else None,
+    }
+
+    measurement_sources = {
+        "height_m": "ar" if ar_height_m else "image",
+        "crown_width_m": "ar" if ar_crown_width_m else "image",
+        "trunk_diameter_m": "ar" if ar_trunk_diameter_m else "image",
+    }
 
     # 7. AI: ПОРИСТОСТЬ КРОНЫ И УГОЛ НАКЛОНА
     crown_density_ai = 1.0
