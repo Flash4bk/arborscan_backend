@@ -968,7 +968,7 @@ async def analyze_tree(
     # 5. КЛАССИФИКАЦИЯ (PLANTNET)
     species_name = await run_in_threadpool(_run_classifier_sync, img[y1:y2, x1:x2])
 
-    # 6. МАСШТАБ И РАЗМЕРЫ (СВЯТОЙ ГРААЛЬ)
+    # 6. МАСШТАБ И РАЗМЕРЫ (Каскадный поиск)
     scale = None
     dimensions_source = "Неизвестно"
 
@@ -986,13 +986,13 @@ async def analyze_tree(
     if not scale:
         if ar_height_m and height_px > 0:
             scale = float(ar_height_m) / height_px
-            dimensions_source = "Пропорционально (по AR Высоте)"
+            dimensions_source = "Пропорционально (Высота)"
         elif ar_crown_width_m and crown_width_px > 0:
             scale = float(ar_crown_width_m) / crown_width_px
-            dimensions_source = "Пропорционально (по AR Кроне)"
+            dimensions_source = "Пропорционально (Крона)"
         elif ar_trunk_diameter_m and trunk_px > 0:
             scale = float(ar_trunk_diameter_m) / trunk_px
-            dimensions_source = "Пропорционально (по AR Стволу)"
+            dimensions_source = "Пропорционально (Ствол)"
 
     if not scale:
         ref_h = BETA_EMPIRICAL_STATS.get(species_name, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
@@ -1004,17 +1004,36 @@ async def analyze_tree(
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # ПЕРЕЗАПИСЬ AR
+    # ПЕРЕЗАПИСЬ (Если мы знаем точные AR/введенные значения, они приоритетнее)
     if ar_height_m: height_m = round(float(ar_height_m), 2)
     if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
     if ar_trunk_diameter_m: trunk_m = round(float(ar_trunk_diameter_m), 2)
 
-    if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
-        if not manual_scale: 
-            dimensions_source = "AR-клинометр"
+    # --- НОВАЯ МАГИЯ: АЛЛОМЕТРИЧЕСКАЯ КОРРЕКЦИЯ ПЕРСПЕКТИВЫ ---
+    # Если введен только ствол, а высота получилась слишком маленькой (искажение перспективы)
+    if ar_trunk_diameter_m and not ar_height_m and trunk_px > 0:
+        pixel_s = height_px / trunk_px
+        if pixel_s < 35:  # Дерево на фото выглядит неправдоподобно толстым и коротким
+            slenderness_db = {
+                "Сосна": 65, "Ель": 70, "Береза": 60, "Дуб": 45,
+                "Тополь": 55, "Клен": 50, "Ясень": 55, "Липа": 50
+            }
+            typical_s = slenderness_db.get(species_name, 55)
+            
+            # Лесоводческая (биологическая) высота
+            height_m = round(float(ar_trunk_diameter_m) * typical_s, 2)
+            
+            # Крона тоже корректируется по лесоводческим законам
+            if not ar_crown_width_m:
+                crown_ratio = 12 if species_name in ["Ель", "Сосна"] else 18
+                crown_m = round(float(ar_trunk_diameter_m) * crown_ratio, 2)
+                
+            dimensions_source = "Аллометрия (Коррекция перспективы)"
+    # ---------------------------------------------------------
 
-    ar_measurements = {"height_m": height_m if ar_height_m else None, "crown_width_m": crown_m if ar_crown_width_m else None, "trunk_diameter_m": trunk_m if ar_trunk_diameter_m else None}
-    measurement_sources = {"height_m": "ar" if ar_height_m else "image", "crown_width_m": "ar" if ar_crown_width_m else "image", "trunk_diameter_m": "ar" if ar_trunk_diameter_m else "image"}
+    if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
+        if not manual_scale and "Аллометрия" not in dimensions_source: 
+            dimensions_source = "Введено пользователем"
 
     # 7. AI: ПОРИСТОСТЬ КРОНЫ И УГОЛ НАКЛОНА
     crown_density_ai = 1.0
