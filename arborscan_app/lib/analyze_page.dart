@@ -18,7 +18,7 @@ import 'ar_measure_channel.dart';
 import 'app_theme.dart';
 import 'analysis_report_page.dart';
 import 'location_service.dart';
-import 'stick_page.dart'; // Обязательно нужен для рисования линии
+import 'stick_page.dart'; 
 
 class AnalysisResult {
   final String species;
@@ -108,10 +108,10 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   double? _arCrownWidthM;
   double? _arTrunkDiameterM;
   
-  double? _manualScale; // Новый параметр для масштаба по предмету
+  double? _manualScale; 
   
-  double _manualWindSpeedMS = 5.0; 
-  double _manualWindGustMS = 8.0;
+  // Оставили только один ползунок: 25 м/с (нормативный шторм)
+  double _manualWindSpeedMS = 25.0; 
 
   bool _isAdmin = false;
   static const String _adminFlagKey = 'arborscan_is_admin';
@@ -271,7 +271,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         _arHeightM = result.heightMeters ?? result.distanceMeters;
         _arCrownWidthM = result.crownWidthMeters;
         _arTrunkDiameterM = result.trunkDiameterMeters;
-        _manualScale = null; // Сбрасываем ручной масштаб, если есть AR
+        _manualScale = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -286,15 +286,12 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
     }
   }
 
-  // --- УМНЫЙ ЗАПУСК АНАЛИЗА ---
   void _onAnalyzeTap() {
     if (_imageFile == null) return;
 
-    // Если у нас уже есть AR-размеры, сразу отправляем на сервер
     if (_arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null) {
       _analyze();
     } else {
-      // Иначе просим пользователя подсказать масштаб
       _showScaleOptionsModal();
     }
   }
@@ -367,7 +364,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   }
 
   void _showSingleSizeInputDialog() {
-    String selectedType = 'trunk'; // trunk, height, crown
+    String selectedType = 'trunk'; 
     final ctrl = TextEditingController();
 
     showDialog(
@@ -459,11 +456,10 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       if (_arCrownWidthM != null) request.fields['ar_crown_width_m'] = _arCrownWidthM!.toStringAsFixed(3);
       if (_arTrunkDiameterM != null) request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
       
-      // Передаем масштаб ручной палки (если есть)
       if (_manualScale != null) request.fields['manual_scale'] = _manualScale!.toStringAsFixed(6);
 
+      // ИСПРАВЛЕНИЕ ОШИБКИ: Отправляем только скорость ветра (мы удалили порывы)
       request.fields['manual_wind_speed_m_s'] = _manualWindSpeedMS.toStringAsFixed(3);
-      request.fields['manual_wind_gust_m_s'] = _manualWindGustMS.toStringAsFixed(3);
 
       request.files.add(await http.MultipartFile.fromPath('file', _imageFile!.path));
 
@@ -657,15 +653,23 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         children: [
           Row(
             children: const [
-              Icon(Icons.storm, color: AppTheme.primary2),
+              Icon(Icons.cyclone, color: AppTheme.primary2),
               SizedBox(width: 8),
-              Expanded(child: Text("ВЕТРОВАЯ НАГРУЗКА", style: TextStyle(color: AppTheme.text, fontWeight: FontWeight.w900, letterSpacing: 1.0))),
+              Expanded(
+                child: Text(
+                  "СИМУЛЯТОР ШТОРМА (SIA)", 
+                  style: TextStyle(color: AppTheme.text, fontWeight: FontWeight.w900, letterSpacing: 1.0)
+                )
+              ),
             ],
           ),
+          const SizedBox(height: 12),
+          const Text(
+            "Проверка на прочность. По умолчанию риск рассчитывается для ураганного ветра (25 м/с). Вы можете изменить силу шторма для краш-теста.",
+            style: TextStyle(color: AppTheme.muted, fontSize: 12, height: 1.3),
+          ),
           const SizedBox(height: 20),
-          _buildSingleHorizontalSlider('СКОРОСТЬ ВЕТРА', _manualWindSpeedMS, 30.0, (v) => setState(() => _manualWindSpeedMS = v)),
-          const SizedBox(height: 16),
-          _buildSingleHorizontalSlider('ПОРЫВЫ ВЕТРА', _manualWindGustMS, 30.0, (v) => setState(() => _manualWindGustMS = v)),
+          _buildSingleHorizontalSlider('СКОРОСТЬ ВЕТРА', _manualWindSpeedMS, 35.0, (v) => setState(() => _manualWindSpeedMS = v)),
         ],
       ),
     );
