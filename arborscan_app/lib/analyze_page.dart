@@ -110,8 +110,11 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   
   double? _manualScale; 
   
-  // Оставили только один ползунок: 25 м/с (нормативный шторм)
   double _manualWindSpeedMS = 25.0; 
+
+  // --- ПЕРЕМЕННЫЕ ДЛЯ ТАПА ПО ДЕРЕВУ ---
+  double? _tapX;
+  double? _tapY;
 
   bool _isAdmin = false;
   static const String _adminFlagKey = 'arborscan_is_admin';
@@ -257,6 +260,10 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         _arCrownWidthM = null;
         _arTrunkDiameterM = null;
         _manualScale = null;
+        
+        // СБРАСЫВАЕМ ТАП ПРИ ВЫБОРЕ НОВОГО ФОТО
+        _tapX = null;
+        _tapY = null;
       });
     } catch (e) {
       setState(() => _error = 'Ошибка при выборе изображения: $e');
@@ -271,7 +278,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         _arHeightM = result.heightMeters ?? result.distanceMeters;
         _arCrownWidthM = result.crownWidthMeters;
         _arTrunkDiameterM = result.trunkDiameterMeters;
-        _manualScale = null;
+        _manualScale = null; // Сбрасываем ручной масштаб, если есть AR
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -286,12 +293,15 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
     }
   }
 
+  // --- УМНЫЙ ЗАПУСК АНАЛИЗА ---
   void _onAnalyzeTap() {
     if (_imageFile == null) return;
 
+    // Если у нас уже есть AR-размеры, сразу отправляем на сервер
     if (_arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null) {
       _analyze();
     } else {
+      // Иначе просим пользователя подсказать масштаб
       _showScaleOptionsModal();
     }
   }
@@ -452,13 +462,17 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         request.fields['lon'] = pos.longitude.toString();
       }
 
+      // --- ИСПРАВЛЕНИЕ: ОТПРАВЛЯЕМ КООРДИНАТЫ ТАПА НА СЕРВЕР ---
+      if (_tapX != null) request.fields['tap_x'] = _tapX!.toStringAsFixed(4);
+      if (_tapY != null) request.fields['tap_y'] = _tapY!.toStringAsFixed(4);
+      // ---------------------------------------------------------
+
       if (_arHeightM != null) request.fields['ar_height_m'] = _arHeightM!.toStringAsFixed(3);
       if (_arCrownWidthM != null) request.fields['ar_crown_width_m'] = _arCrownWidthM!.toStringAsFixed(3);
       if (_arTrunkDiameterM != null) request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
       
       if (_manualScale != null) request.fields['manual_scale'] = _manualScale!.toStringAsFixed(6);
 
-      // ИСПРАВЛЕНИЕ ОШИБКИ: Отправляем только скорость ветра (мы удалили порывы)
       request.fields['manual_wind_speed_m_s'] = _manualWindSpeedMS.toStringAsFixed(3);
 
       request.files.add(await http.MultipartFile.fromPath('file', _imageFile!.path));
@@ -597,52 +611,104 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   }
 
   Widget _buildMainGlassButton() {
-    return GestureDetector(
-      onTap: _pickImageSource,
-      child: GlassPanel(
-        height: 220,
-        width: double.infinity,
-        color: AppTheme.surface.withOpacity(0.4),
-        child: _imageFile == null
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (ctx, child) {
-                      return Transform.scale(
-                        scale: 1.0 + (_pulseController.value * 0.05),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.primary.withOpacity(0.1),
-                            boxShadow: [BoxShadow(color: AppTheme.primary.withOpacity(0.3 * _pulseController.value), blurRadius: 30)],
+    return GlassPanel(
+      height: 320, 
+      width: double.infinity,
+      color: AppTheme.surface.withOpacity(0.4),
+      padding: EdgeInsets.zero,
+      child: _imageFile == null
+          ? GestureDetector(
+              onTap: _pickImageSource,
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (ctx, child) {
+                        return Transform.scale(
+                          scale: 1.0 + (_pulseController.value * 0.05),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.primary.withOpacity(0.1),
+                              boxShadow: [BoxShadow(color: AppTheme.primary.withOpacity(0.3 * _pulseController.value), blurRadius: 30)],
+                            ),
+                            child: const Icon(Icons.document_scanner_outlined, size: 48, color: AppTheme.primary),
                           ),
-                          child: const Icon(Icons.document_scanner_outlined, size: 48, color: AppTheme.primary),
-                        ),
-                      );
-                    }
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "НАЖМИТЕ ИЛИ ПЕРЕТАЩИТЕ ФОТО",
-                    style: TextStyle(
-                      color: AppTheme.primary2,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                      shadows: [Shadow(color: AppTheme.primary2, blurRadius: 8)],
+                        );
+                      }
                     ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "НАЖМИТЕ ИЛИ ПЕРЕТАЩИТЕ ФОТО",
+                      style: TextStyle(
+                        color: AppTheme.primary2,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        shadows: [Shadow(color: AppTheme.primary2, blurRadius: 8)],
+                      ),
+                    ),
+                  ],
+                ),
+          )
+          : LayoutBuilder(
+              builder: (ctx, constraints) {
+                return GestureDetector(
+                  onTapDown: (details) {
+                    if (_isLoading) return;
+                    setState(() {
+                      _tapX = details.localPosition.dx / constraints.maxWidth;
+                      _tapY = details.localPosition.dy / constraints.maxHeight;
+                    });
+                  },
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: _annotatedImageBytes != null
+                            ? Image.memory(_annotatedImageBytes!, fit: BoxFit.cover)
+                            : Image.file(_imageFile!, fit: BoxFit.cover),
+                      ),
+                      
+                      // РИСУЕМ ПРИЦЕЛ ТАМ, ГДЕ ТАПНУЛ ЮЗЕР
+                      if (_tapX != null && _tapY != null && _annotatedImageBytes == null)
+                        Positioned(
+                          left: _tapX! * constraints.maxWidth - 24,
+                          top: _tapY! * constraints.maxHeight - 24,
+                          child: const Icon(Icons.gps_fixed, color: AppTheme.primary, size: 48, shadows: [Shadow(color: Colors.black, blurRadius: 10)]),
+                        ),
+
+                      // ПОДСКАЗКА
+                      if (_annotatedImageBytes == null)
+                        Positioned(
+                          bottom: 12, left: 12, right: 12,
+                          child: GlassPanel(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            radius: 16,
+                            color: Colors.black.withOpacity(0.5),
+                            child: const Text(
+                              "ТАПНИТЕ НА НУЖНОЕ ДЕРЕВО", 
+                              textAlign: TextAlign.center, 
+                              style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.0)
+                            )
+                          ),
+                        ),
+                        
+                      // КНОПКА ЗАМЕНЫ ФОТО
+                      Positioned(
+                        top: 10, right: 10,
+                        child: IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.white, shadows: [Shadow(color: Colors.black, blurRadius: 4)]),
+                          onPressed: _pickImageSource,
+                        ),
+                      )
+                    ],
                   ),
-                ],
-              )
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: _annotatedImageBytes != null
-                    ? Image.memory(_annotatedImageBytes!, fit: BoxFit.cover, width: double.infinity)
-                    : Image.file(_imageFile!, fit: BoxFit.cover, width: double.infinity),
-              ),
-      ),
+                );
+              },
+            ),
     );
   }
 
@@ -653,7 +719,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         children: [
           Row(
             children: const [
-              Icon(Icons.cyclone, color: AppTheme.primary2),
+              Icon(Icons.storm, color: AppTheme.primary2),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
