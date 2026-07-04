@@ -109,9 +109,12 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   double? _arTrunkDiameterM;
   
   double? _manualScale; 
-  
-  // Нормативный шторм (25 м/с) по умолчанию
   double _manualWindSpeedMS = 25.0; 
+
+  // --- ПАРАМЕТРЫ ТОНКОЙ НАСТРОЙКИ ИИ ---
+  double _aiConf = 0.15; // По умолчанию очень цепкий
+  double _aiSmoothness = 5.0; // Среднее сглаживание
+  bool _aiUseRembg = false; // По умолчанию выключен (быстрый режим)
 
   bool _isAdmin = false;
   static const String _adminFlagKey = 'arborscan_is_admin';
@@ -142,6 +145,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
     super.dispose();
   }
 
+  // ... [Методы работы с историей остаются без изменений] ...
   Future<void> _loadHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -162,13 +166,15 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   Future<void> _saveHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final encoded = _history.take(30).map((e) {
-        final map = e.toJson();
-        map['imageBase64'] = '';
-        return jsonEncode(map);
-      }).toList();
+      final encoded = _history.take(30).map((e) => jsonEncode(e.toJson()..['imageBase64']='')).toList();
       await prefs.setStringList(_historyKey, encoded);
     } catch (_) {}
+  }
+
+  Future<void> _clearHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_historyKey);
+    setState(() => _history.clear());
   }
 
   Future<void> _syncServerHistory() async {
@@ -216,6 +222,72 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   Future<void> _loadAdminFlag() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() => _isAdmin = prefs.getBool(_adminFlagKey) ?? false);
+  }
+
+  // --- МЕНЮ НАСТРОЕК ИИ (ПО КЛИКУ НА ШЕСТЕРЕНКУ) ---
+  void _openAiSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => GlassPanel(
+          padding: const EdgeInsets.all(24),
+          radius: 30,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Center(child: Text("НАСТРОЙКИ ИИ", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: 2))),
+              const SizedBox(height: 24),
+
+              Text("ЧУВСТВИТЕЛЬНОСТЬ: ${(_aiConf * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primary2, fontSize: 12, letterSpacing: 1.0)),
+              const SizedBox(height: 4),
+              const Text("Меньше = цепляется за голые ветки. Больше = игнорирует фон.", style: TextStyle(fontSize: 11, color: AppTheme.muted, height: 1.2)),
+              SliderTheme(
+                data: SliderThemeData(activeTrackColor: AppTheme.primary2, thumbColor: AppTheme.primary2, inactiveTrackColor: AppTheme.surface3),
+                child: Slider(
+                  value: _aiConf, min: 0.05, max: 0.95,
+                  onChanged: (v) { setModalState(() => _aiConf = v); setState(() => _aiConf = v); }
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Text("СГЛАЖИВАНИЕ МАСКИ: ${_aiSmoothness.toInt()}", style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.warning, fontSize: 12, letterSpacing: 1.0)),
+              const SizedBox(height: 4),
+              const Text("Заливка 'дырок' в кроне. 1 = пиксельно точно, 15 = монолитная шапка.", style: TextStyle(fontSize: 11, color: AppTheme.muted, height: 1.2)),
+              SliderTheme(
+                data: SliderThemeData(activeTrackColor: AppTheme.warning, thumbColor: AppTheme.warning, inactiveTrackColor: AppTheme.surface3),
+                child: Slider(
+                  value: _aiSmoothness, min: 1, max: 15, divisions: 14,
+                  onChanged: (v) { setModalState(() => _aiSmoothness = v); setState(() => _aiSmoothness = v); }
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppTheme.primary,
+                title: const Text("ГЛУБОКАЯ ОЧИСТКА ФОНА", style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primary, fontSize: 12, letterSpacing: 1.0)),
+                subtitle: const Text("Использовать U-2-Net для вырезания зданий и неба.", style: TextStyle(fontSize: 11, color: AppTheme.muted, height: 1.2)),
+                value: _aiUseRembg,
+                onChanged: (v) { setModalState(() => _aiUseRembg = v); setState(() => _aiUseRembg = v); }
+              ),
+              
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: FilledButton.styleFrom(backgroundColor: AppTheme.primary, padding: const EdgeInsets.symmetric(vertical: 16)),
+                  child: const Text("СОХРАНИТЬ", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                )
+              )
+            ],
+          )
+        )
+      )
+    );
   }
 
   void _pickImageSource() {
@@ -288,7 +360,6 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
 
   void _onAnalyzeTap() {
     if (_imageFile == null) return;
-
     if (_arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null) {
       _analyze();
     } else {
@@ -319,20 +390,14 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
               icon: Icons.auto_awesome,
               title: "Автоматически (ИИ)",
               subtitle: "Нейросеть подберет средние размеры по породе",
-              onTap: () {
-                Navigator.pop(ctx);
-                _analyze();
-              }
+              onTap: () { Navigator.pop(ctx); _analyze(); }
             ),
             const SizedBox(height: 12),
             _ScaleOptionBtn(
               icon: Icons.straighten,
               title: "Знаю один размер",
               subtitle: "Например, толщину ствола или высоту",
-              onTap: () {
-                Navigator.pop(ctx);
-                _showSingleSizeInputDialog();
-              }
+              onTap: () { Navigator.pop(ctx); _showSingleSizeInputDialog(); }
             ),
             const SizedBox(height: 12),
             _ScaleOptionBtn(
@@ -455,10 +520,13 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       if (_arHeightM != null) request.fields['ar_height_m'] = _arHeightM!.toStringAsFixed(3);
       if (_arCrownWidthM != null) request.fields['ar_crown_width_m'] = _arCrownWidthM!.toStringAsFixed(3);
       if (_arTrunkDiameterM != null) request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
-      
       if (_manualScale != null) request.fields['manual_scale'] = _manualScale!.toStringAsFixed(6);
-
       request.fields['manual_wind_speed_m_s'] = _manualWindSpeedMS.toStringAsFixed(3);
+
+      // ОТПРАВЛЯЕМ НАСТРОЙКИ ИИ НА СЕРВЕР!
+      request.fields['ai_conf'] = _aiConf.toStringAsFixed(2);
+      request.fields['ai_smoothness'] = _aiSmoothness.toInt().toString();
+      request.fields['ai_use_rembg'] = _aiUseRembg.toString();
 
       request.files.add(await http.MultipartFile.fromPath('file', _imageFile!.path));
 
@@ -502,6 +570,14 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('ARBORSCAN'),
+        actions: [
+          // РАБОЧАЯ КНОПКА НАСТРОЕК ИИ!
+          IconButton(
+            icon: const Icon(Icons.tune_rounded, color: AppTheme.primary2),
+            tooltip: 'Настройки ИИ',
+            onPressed: _openAiSettings,
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -645,6 +721,22 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
                         ? Image.memory(_annotatedImageBytes!, fit: BoxFit.cover)
                         : Image.file(_imageFile!, fit: BoxFit.cover),
                   ),
+                  
+                  if (_annotatedImageBytes == null)
+                    Positioned(
+                      bottom: 12, left: 12, right: 12,
+                      child: GlassPanel(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        radius: 16,
+                        color: Colors.black.withOpacity(0.5),
+                        child: const Text(
+                          "ДЕРЕВО ПО ЦЕНТРУ БУДЕТ ВЫДЕЛЕНО", 
+                          textAlign: TextAlign.center, 
+                          style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.0)
+                        )
+                      ),
+                    ),
+                    
                   Positioned(
                     top: 10, right: 10,
                     child: IconButton(

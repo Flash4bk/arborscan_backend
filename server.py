@@ -91,7 +91,7 @@ MODEL_VERSIONS = {
 }
 BUILD_INFO = {"git_commit": os.getenv("GIT_COMMIT", "unknown"), "build_time": os.getenv("BUILD_TIME")}
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.6.0" # Added AI Fine-Tuning Params
+API_VERSION = "2.6.1" # Fixed IndexError on strict AI
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
@@ -351,7 +351,7 @@ def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_spee
     index = max(lean_score, s_score, wind_score_val) + 0.1 * (lean_score + s_score + wind_score_val)
     index = max(0.0, min(index, 1.0))
     cat = "низкий" if index < 0.4 else "средний" if index < 0.7 else "высокий"
-    return {"index": index, "category": cat, "explanation": expl}, f_n, l_m, m_nm, safety_factor
+    return {"index": index, "category": cat, "explanation": expl}
 
 
 class FeedbackRequest(BaseModel):
@@ -367,7 +367,7 @@ class AuthLoginRequest(BaseModel): email: str; password: str
 class AuthRoleRequest(BaseModel): token: str; role: str; admin_code: str | None = None
 class AuthGoogleRequest(BaseModel): id_token: str; email: str | None = None; name: str | None = None; photo_url: str | None = None
 
-app = FastAPI(title="ArborScan API v2.6 (AI Tuner)")
+app = FastAPI(title="ArborScan API v2.6.1")
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
 AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
@@ -465,15 +465,13 @@ def _save_analysis_record(response: dict, user: dict | None):
     if not SUPABASE_DB_BASE: return
     risk = response.get("risk") or {}
     beta = response.get("beta") or {}
-    analytic_out = (response.get("analytic_wind_model") or {}).get("outputs") or {}
     gps = response.get("gps") or {}
     payload = {
         "id": response.get("analysis_id"), "user_id": user.get("id") if user else None,
         "created_at": _now_iso(), "species": response.get("species"),
         "risk_index": risk.get("index"), "risk_category": risk.get("category"),
         "height_m": response.get("height_m"), "crown_width_m": response.get("crown_width_m"), "trunk_diameter_m": response.get("trunk_diameter_m"),
-        "beta_kg_s": beta.get("beta_kg_s"), "base_moment_nm": analytic_out.get("base_moment_nm"), "center_of_load_m": analytic_out.get("center_of_load_m"),
-        "lat": gps.get("lat"), "lon": gps.get("lon"), "address": response.get("address"), "response_json": response
+        "beta_kg_s": beta.get("beta_kg_s"), "lat": gps.get("lat"), "lon": gps.get("lon"), "address": response.get("address"), "response_json": response
     }
     requests.post(f"{SUPABASE_DB_BASE}/analyses", headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"}, json=payload, timeout=10)
 
@@ -536,9 +534,6 @@ def normalize_address_ru(address: str | None) -> str | None:
     for src, dst in replacements.items(): address = address.replace(src, dst)
     return address
 
-
-# === СИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ В ПУЛЕ ПОТОКОВ ===
-# Добавлен параметр conf (чувствительность ИИ)
 def _run_yolo_sync(img_array, conf=0.25):
     return get_tree_model()(img_array, imgsz=1024, retina_masks=True, conf=conf)[0], stick_model(img_array)[0]
 
@@ -598,15 +593,17 @@ async def analyze_tree(
     target_x = (float(tap_x) * W) if tap_x is not None else (W / 2.0)
     target_y = (float(tap_y) * H) if tap_y is not None else (H / 2.0)
     
-    # Сглаживание контуров
     smooth_k = max(1, int(ai_smoothness)) if ai_smoothness else 5
     kernel = np.ones((smooth_k, smooth_k), np.uint8)
 
     if tree_res.masks is None or len(tree_res.masks.data) == 0:
         fallback_mask = np.zeros((H, W), dtype=np.uint8)
-        cv2.rectangle(fallback_mask, (int(W*0.3), int(H*0.1)), (int(W*0.7), int(H*0.9)), 255, -1)
-        masks.append(fallback_mask)
+        x1_f, y1_f = int(W * 0.3), int(H * 0.1)
+        x2_f, y2_f = int(W * 0.7), int(H * 0.9)
+        cv2.rectangle(fallback_mask, (x1_f, y1_f), (x2_f, y2_f), 255, -1)
+        mask = fallback_mask
         idx = 0
+        x1, y1, x2, y2 = x1_f, y1_f, x2_f, y2_f
     else:
         idx = -1
         for i, m in enumerate(tree_res.masks.data):
@@ -621,22 +618,22 @@ async def analyze_tree(
                 if tmp_mask[check_y, check_x] > 0:
                     idx = i 
                     
-            x1, y1, x2, y2 = tree_res.boxes.xyxy[i].cpu().numpy()
-            dist = (((x1+x2)/2.0) - target_x)**2 + (((y1+y2)/2.0) - target_y)**2
+            x1_t, y1_t, x2_t, y2_t = tree_res.boxes.xyxy[i].cpu().numpy()
+            dist = (((x1_t+x2_t)/2.0) - target_x)**2 + (((y1_t+y2_t)/2.0) - target_y)**2
             distances.append(dist)
 
         if idx == -1 and distances:
             idx = int(np.argmin(distances))
+            
+        yolo_mask = masks[idx]
+        # ИСПРАВЛЕНО: Безопасное извлечение координат
+        x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
 
-    yolo_mask = masks[idx]
-    
     # 3. ИДЕАЛЬНАЯ МАСКА (REMBG + OPENCV SOLID FILL) - ТОЛЬКО ЕСЛИ ЮЗЕР ВКЛЮЧИЛ!
     use_rembg = str(ai_use_rembg).lower() in ("true", "1", "yes")
     
     if use_rembg:
         try:
-            ys_tmp, xs_tmp = np.where(yolo_mask > 0)
-            x1, y1, x2, y2 = xs_tmp.min(), ys_tmp.min(), xs_tmp.max(), ys_tmp.max()
             margin = 30
             x1_c, y1_c = max(0, x1 - margin), max(0, y1 - margin)
             x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
@@ -664,7 +661,10 @@ async def analyze_tree(
             mask = yolo_mask
     else:
         # Если rembg выключен, берем чистую YOLO маску
-        mask = yolo_mask
+        try:
+            mask = yolo_mask
+        except Exception:
+            mask = fallback_mask
 
     # 4. ИЗВЛЕЧЕНИЕ ПИКСЕЛЬНЫХ РАЗМЕРОВ
     ys, xs = np.where(mask > 0)
@@ -681,7 +681,6 @@ async def analyze_tree(
     trunk_px = np.mean(trunk_vals) if trunk_vals else 0
 
     # 5. КЛАССИФИКАЦИЯ (PLANTNET)
-    x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
     species_name = await run_in_threadpool(_run_classifier_sync, img[y1:y2, x1:x2])
 
     # 6. МАСШТАБ И РАЗМЕРЫ
@@ -763,12 +762,6 @@ async def analyze_tree(
     wind_design = float(manual_wind_speed_m_s or 25.0)
     risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_name, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
 
-    analytic_wind_model = {
-        "available": True,
-        "outputs": {"total_force_n": round(f_n, 1), "center_of_load_m": round(l_m, 1), "base_moment_nm": round(m_nm, 1), "analytical_score": round(s_f, 2)},
-        "inputs": {"crown_start_height_m": round((height_m or 0) * 0.5, 1), "n_elements": 1}
-    }
-
     analysis_id = str(uuid4())
     meta = {
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
@@ -776,7 +769,7 @@ async def analyze_tree(
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source, "beta": beta_info, "scale_px_to_m": scale,
         "gps": gps, "address": address, "risk": risk_data, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
-        "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg} # Логируем настройки
+        "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg}
     }
 
     try:
