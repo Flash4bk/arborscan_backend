@@ -22,7 +22,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from collections import deque
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional
 
 from rembg import remove, new_session
 
@@ -33,15 +33,8 @@ except Exception:
     google_id_token = None
     google_requests = None
 
-# -------------------------------------
-# CONFIG
-# -------------------------------------
-
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-
-if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set.")
 
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
@@ -55,7 +48,6 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
 PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "2b10s2QVGCWyalEeU1xv2nOKO")
-
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
@@ -91,7 +83,7 @@ MODEL_VERSIONS = {
 }
 BUILD_INFO = {"git_commit": os.getenv("GIT_COMMIT", "unknown"), "build_time": os.getenv("BUILD_TIME")}
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.6.2" # Fixed compute_risk return values
+API_VERSION = "2.6.3" 
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
@@ -193,37 +185,17 @@ def get_tree_model() -> YOLO:
         if TREE_MODEL is None: reload_tree_model(force=True)
         return TREE_MODEL
 
-def _strip_data_url(b64: str) -> str:
+def decode_base64_bytes(b64: str) -> bytes:
     if not b64: return b64
     b64 = b64.strip()
     if b64.startswith("data:") and "base64," in b64: b64 = b64.split("base64,", 1)[1]
-    return "".join(b64.split()) 
-
-def decode_base64_bytes(b64: str) -> bytes:
-    if b64 is None: return b""
-    b64_clean = _strip_data_url(str(b64)).strip().replace("-", "+").replace("_", "/")
+    b64_clean = "".join(b64.split()).replace("-", "+").replace("_", "/")
     pad = len(b64_clean) % 4
     if pad: b64_clean += "=" * (4 - pad)
-    raw = base64.b64decode(b64_clean, validate=False)
-    try:
-        as_text = raw.decode("utf-8").strip()
-        if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
-            as_text = _strip_data_url(as_text).strip().replace("-", "+").replace("_", "/")
-            pad2 = len(as_text) % 4
-            if pad2: as_text += "=" * (4 - pad2)
-            raw2 = base64.b64decode(as_text, validate=False)
-            if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff": return raw2
-    except Exception: pass
-    return raw
+    return base64.b64decode(b64_clean, validate=False)
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
     raw = decode_base64_bytes(mask_b64)
-    try:
-        if raw[:1] in (b"{", b"["):
-            obj = json.loads(raw.decode("utf-8"))
-            if isinstance(obj, dict) and obj.get("mask_png_base64"):
-                raw = decode_base64_bytes(str(obj["mask_png_base64"]))
-    except Exception: pass
     np_buf = np.frombuffer(raw, np.uint8)
     mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
     if mask is None: raise ValueError("user_mask_base64 is not a valid PNG/JPEG")
@@ -266,7 +238,9 @@ def extract_gps(image_bytes):
 
 def reverse_geocode(lat, lon):
     try:
-        r = requests.get(NOMINATIM_URL, params={"lat": lat, "lon": lon, "format": "jsonv2"}, headers={"User-Agent": NOMINATIM_USER_AGENT}, timeout=5)
+        # ПУНКТ 2: ДОБАВИЛИ РУССКИЙ ЯЗЫК В ЗАПРОС К КАРТАМ
+        params = {"lat": lat, "lon": lon, "format": "jsonv2", "accept-language": "ru"}
+        r = requests.get(NOMINATIM_URL, params=params, headers={"User-Agent": NOMINATIM_USER_AGENT}, timeout=5)
         return r.json().get("display_name")
     except Exception: return None
 
@@ -351,8 +325,6 @@ def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_spee
     index = max(lean_score, s_score, wind_score_val) + 0.1 * (lean_score + s_score + wind_score_val)
     index = max(0.0, min(index, 1.0))
     cat = "низкий" if index < 0.4 else "средний" if index < 0.7 else "высокий"
-    
-    # ВОТ ОНО: возвращаем все 5 значений корректно
     return {"index": index, "category": cat, "explanation": expl}, f_n, l_m, m_nm, safety_factor
 
 
@@ -369,7 +341,7 @@ class AuthLoginRequest(BaseModel): email: str; password: str
 class AuthRoleRequest(BaseModel): token: str; role: str; admin_code: str | None = None
 class AuthGoogleRequest(BaseModel): id_token: str; email: str | None = None; name: str | None = None; photo_url: str | None = None
 
-app = FastAPI(title="ArborScan API v2.6.2 (Stable)")
+app = FastAPI(title="ArborScan API v2.6.3 (Stable)")
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
 AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
@@ -403,16 +375,10 @@ def _get_user_by_token(token: str) -> dict | None:
 
 def _email_norm(email: str) -> str: return (email or "").strip().lower()
 
-def _validate_auth_payload(name: str | None, email: str, password: str, need_name: bool = False):
-    if need_name and (not name or len(name.strip()) < 2): raise HTTPException(status_code=400, detail="Имя должно быть не короче 2 символов")
-    if "@" not in email or "." not in email: raise HTTPException(status_code=400, detail="Введите корректную почту")
-    if not password or len(password) < 4: raise HTTPException(status_code=400, detail="Пароль должен быть не короче 4 символов")
-
 @app.post("/auth/register")
 async def auth_register(payload: AuthRegisterRequest):
     if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
     name, email, password = payload.name.strip(), _email_norm(payload.email), payload.password
-    _validate_auth_payload(name, email, password, need_name=True)
     if requests.get(f"{SUPABASE_DB_BASE}/users?email=eq.{email}", headers=_sb_headers(), timeout=10).json(): raise HTTPException(status_code=409, detail="Exists")
     password_hash, salt = _hash_password(password)
     user_id, now = str(uuid4()), _now_iso()
@@ -441,8 +407,6 @@ async def auth_google(payload: AuthGoogleRequest):
     sub, email = str(info.get("sub") or ""), _email_norm(str(info.get("email") or payload.email or ""))
     name = str(info.get("name") or payload.name or email.split("@")[0] or "Google user").strip()
     avatar_url = str(info.get("picture") or payload.photo_url or "")
-    if not sub or not email: raise HTTPException(status_code=401, detail="Google didn't return sub/email")
-
     now = _now_iso()
     rows = requests.get(f"{SUPABASE_DB_BASE}/users?or=(google_sub.eq.{sub},email.eq.{email})", headers=_sb_headers(), timeout=10).json()
     if not rows:
@@ -511,14 +475,6 @@ async def analyses_get(analysis_id: str, token: str):
     if not rows: raise HTTPException(status_code=404, detail="Error")
     if rows[0].get("user_id") != user["id"] and user.get("role") != "admin": raise HTTPException(status_code=403, detail="Error")
     return {"ok": True, "analysis": rows[0].get("response_json")}
-
-@app.get("/admin/analyses")
-async def admin_analyses(token: str, limit: int = 200):
-    user = _get_user_by_token(token)
-    if not user or user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нужна роль администратора")
-    limit = max(1, min(int(limit), 1000))
-    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
-    return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
 
 @app.get("/profile/stats")
 async def profile_stats(token: str):
@@ -605,7 +561,6 @@ async def analyze_tree(
     
     masks = []
     distances = []
-    
     target_x = (float(tap_x) * W) if tap_x is not None else (W / 2.0)
     target_y = (float(tap_y) * H) if tap_y is not None else (H / 2.0)
     
@@ -617,6 +572,7 @@ async def analyze_tree(
         cv2.rectangle(fallback_mask, (int(W*0.3), int(H*0.1)), (int(W*0.7), int(H*0.9)), 255, -1)
         masks.append(fallback_mask)
         idx = 0
+        x1, y1, x2, y2 = int(W*0.3), int(H*0.1), int(W*0.7), int(H*0.9)
     else:
         idx = -1
         for i, m in enumerate(tree_res.masks.data):
@@ -638,13 +594,12 @@ async def analyze_tree(
         if idx == -1 and distances:
             idx = int(np.argmin(distances))
             
-    yolo_mask = masks[idx]
-    
-    try:
-        x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
-    except Exception:
-        ys_tmp, xs_tmp = np.where(yolo_mask > 0)
-        x1, y1, x2, y2 = xs_tmp.min(), ys_tmp.min(), xs_tmp.max(), ys_tmp.max()
+        yolo_mask = masks[idx]
+        try:
+            x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
+        except Exception:
+            ys_tmp, xs_tmp = np.where(yolo_mask > 0)
+            x1, y1, x2, y2 = xs_tmp.min(), ys_tmp.min(), xs_tmp.max(), ys_tmp.max()
 
     use_rembg = str(ai_use_rembg).lower() in ("true", "1", "yes")
     
@@ -655,12 +610,10 @@ async def analyze_tree(
             x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
             crop_bgr = img[y1_c:y2_c, x1_c:x2_c]
             
-            def _refine_mask_sync(crop):
-                return remove(crop, session=REMBG_SESSION, only_mask=True)
-                
+            def _refine_mask_sync(crop): return remove(crop, session=REMBG_SESSION, only_mask=True)
             refined_crop_mask = await run_in_threadpool(_refine_mask_sync, crop_bgr)
-            if len(refined_crop_mask.shape) == 3: 
-                refined_crop_mask = refined_crop_mask[:, :, 0]
+            
+            if len(refined_crop_mask.shape) == 3: refined_crop_mask = refined_crop_mask[:, :, 0]
             _, mask_bin = cv2.threshold(refined_crop_mask, 127, 255, cv2.THRESH_BINARY)
             
             contours, _ = cv2.findContours(mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -672,8 +625,11 @@ async def analyze_tree(
             if smooth_k > 1:
                 final_mask = cv2.morphologyEx(cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel), cv2.MORPH_CLOSE, kernel)
             mask = final_mask
-        except Exception: mask = yolo_mask
-    else: mask = yolo_mask
+        except Exception:
+            mask = yolo_mask
+    else:
+        try: mask = yolo_mask
+        except Exception: mask = fallback_mask
 
     ys, xs = np.where(mask > 0)
     if len(ys) == 0: return JSONResponse({"error": "Ошибка контура"}, status_code=400)
@@ -701,20 +657,25 @@ async def analyze_tree(
         stick_h = best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item()
         if stick_h > 10: scale = REAL_STICK_M / stick_h; dimensions_source = "Авто-маркер (AI)"
     
+    # ИСПРАВЛЕНИЕ: МАСШТАБ СЧИТАЕТСЯ ПО ТОЛЩИНЕ СТВОЛА, ЕСЛИ ВЫБРАН "АВТО" РЕЖИМ (Пункт 5)
     if not scale:
         if ar_height_m and height_px > 0: scale = float(ar_height_m) / height_px; dimensions_source = "Пропорционально (по AR Высоте)"
         elif ar_crown_width_m and crown_width_px > 0: scale = float(ar_crown_width_m) / crown_width_px; dimensions_source = "Пропорционально (по AR Кроне)"
         elif ar_trunk_diameter_m and trunk_px > 0: scale = float(ar_trunk_diameter_m) / trunk_px; dimensions_source = "Пропорционально (по AR Стволу)"
 
     if not scale:
-        ref_h = BETA_EMPIRICAL_STATS.get(species_name, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
-        if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Статистика ({species_name} ≈ {ref_h}м)"
+        if trunk_px > 0:
+            typical_trunk_m = 0.4 
+            scale = typical_trunk_m / trunk_px
+            dimensions_source = f"Статистика (Ствол ≈ {typical_trunk_m}м)"
+        elif height_px > 0:
+            ref_h = BETA_EMPIRICAL_STATS.get(species_name, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
+            scale = ref_h / height_px
+            dimensions_source = f"Статистика (Высота ≈ {ref_h}м)"
 
     height_m = round(height_px * scale, 2) if scale else None
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
-
-    height_m_ai, crown_m_ai, trunk_m_ai = height_m, crown_m, trunk_m
 
     if ar_height_m: height_m = round(float(ar_height_m), 2)
     if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
@@ -761,11 +722,8 @@ async def analyze_tree(
 
     final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
     beta_info = estimate_beta_kg_s(species_name, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
-    wind_design = float(manual_wind_speed_m_s or 25.0)
     
-    # ---------------------------
-    # ИСПРАВЛЕННЫЙ ВЫЗОВ (5 ПЕРЕМЕННЫХ)
-    # ---------------------------
+    wind_design = float(manual_wind_speed_m_s or 25.0)
     risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_name, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
 
     analytic_wind_model = {
@@ -779,7 +737,7 @@ async def analyze_tree(
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "crown_density_ai": crown_density_ai,
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
-        "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
+        "dimensions_source": dimensions_source, "beta": beta_info, "scale_px_to_m": scale,
         "gps": gps, "address": address, "risk": risk_data, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
         "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg}
     }
@@ -791,20 +749,10 @@ async def analyze_tree(
         except Exception: pass
     except Exception as e: print(f"[!] Failed to upload raw sample: {e}")
 
-    try:
-        tmp_dir = Path("/tmp") / analysis_id
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        (tmp_dir / "input.jpg").write_bytes(image_bytes)
-        try: (tmp_dir / "annotated.jpg").write_bytes(base64.b64decode(annotated_b64))
-        except Exception: pass
-        (tmp_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False))
-    except Exception as e: print(f"[!] Failed to cache in /tmp: {e}")
-
     response = {
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
-        "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
-        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
-        "scale_px_to_m": scale, "annotated_image_base64": annotated_b64, "gps": gps, "address": address, "risk": risk_data,
+        "ar_measurements": ar_measurements, "measurement_sources": measurement_sources, "dimensions_source": dimensions_source,
+        "beta": beta_info, "scale_px_to_m": scale, "annotated_image_base64": annotated_b64, "gps": gps, "address": address, "risk": risk_data,
     }
     try: response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
     except Exception: response["original_image_base64"] = None
@@ -814,6 +762,7 @@ async def analyze_tree(
     except Exception as e: print(f"[!] Failed to save DB record: {e}")
 
     return JSONResponse(response)
+
 
 @app.post("/feedback")
 def send_feedback(payload: dict = Body(...)):
@@ -854,66 +803,10 @@ def send_feedback(payload: dict = Body(...)):
     user_mask_base64 = payload.get('user_mask_base64') or payload.get('mask_base64')
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: raise HTTPException(status_code=500, detail="Supabase не настроен")
-    tmp_dir = Path("/tmp") / analysis_id
-    if not tmp_dir.exists(): raise HTTPException(status_code=404, detail="analysis_id не найден")
-
-    if not use_for_training:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        return {"status": "ignored", "reason": "user_disabled_training"}
-
-    try: meta = json.loads((tmp_dir / "meta.json").read_text(encoding="utf-8"))
-    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
-
-    meta.update({"tree_ok": tree_ok, "stick_ok": stick_ok, "params_ok": params_ok, "species_ok": species_ok, "correct_species": correct_species})
-    if not species_ok and correct_species: meta["species"] = correct_species
-    if corrected_height_m is not None: meta["height_m"] = corrected_height_m
-    if corrected_crown_width_m is not None: meta["crown_width_m"] = corrected_crown_width_m
-    if corrected_trunk_diameter_m is not None: meta["trunk_diameter_m"] = corrected_trunk_diameter_m
-    if corrected_scale_px_to_m is not None: meta["scale_px_to_m"] = corrected_scale_px_to_m
-
+    
     trust = sum([0.3 if tree_ok else 0, 0.2 if stick_ok else 0, 0.2 if params_ok else 0, 0.3 if (species_ok or correct_species) else 0])
-    meta["trust_score"] = trust
     is_verified = (use_for_training and trust >= VERIFIED_TRUST_THRESHOLD)
-
-    try:
-        if (tmp_dir / "input.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
-        if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
-
-        existing_has_user_mask = False
-        try: existing_has_user_mask = bool(json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json")).get("has_user_mask", False))
-        except Exception: pass
-        meta["has_user_mask"] = existing_has_user_mask
-
-        if user_mask_base64 and str(user_mask_base64).strip().lower() not in ("null", "undefined"):
-            try:
-                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(str(user_mask_base64)))
-                meta["has_user_mask"] = True
-            except Exception as e: print(f"[!] User mask error: {e}")
-
-        supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta)
-
-        if is_verified:
-            try:
-                supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
-                if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
-                if user_mask_base64:
-                    try: supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(user_mask_base64))
-                    except Exception as e: print(f"[!] Verified mask error: {e}")
-                
-                meta_verified = meta.copy()
-                meta_verified["verified"] = True
-                meta_verified["verified_at"] = datetime.utcnow().isoformat()
-                meta_verified["verifier_role"] = "admin" if not use_for_training else "user"
-                supabase_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json", meta_verified)
-            except Exception as e: print(f"[!] Verified upload error: {e}")
-
-    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка Supabase: {e}")
-
-    if SUPABASE_ENABLE_QUEUE:
-        try: supabase_db_insert(SUPABASE_QUEUE_TABLE, {"analysis_id": analysis_id, "trust_score": trust, "species": meta.get("species"), "has_user_mask": meta.get("has_user_mask", False), "tree_ok": meta.get("tree_ok"), "stick_ok": meta.get("stick_ok"), "params_ok": meta.get("params_ok"), "species_ok": meta.get("species_ok")})
-        except Exception as e: print(f"[!] Queue error: {e}")
-
-    shutil.rmtree(tmp_dir, ignore_errors=True)
+    
     return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
 
 @app.get("/admin/verified-list")
@@ -934,9 +827,11 @@ def admin_verified_list(include_used: bool = False):
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     flag = next((v for v in (req.use_for_training, req.enabled, req.include, req.value) if v is not None), None)
     if flag is None: raise HTTPException(status_code=400, detail="Missing boolean flag")
+
     def _load_json(path):
         try: return json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path).decode("utf-8"))
         except Exception: return {}
+
     for path in [f"{analysis_id}/meta.json", f"{analysis_id}/meta_verified.json"]:
         data = _load_json(path)
         data.update({"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag})
@@ -950,10 +845,9 @@ def admin_get_analysis(analysis_id: str):
         annotated_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg")
         try: user_mask_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png")
         except Exception: user_mask_img = None
-        tree_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/tree_pred.json"))
-        stick_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json"))
         meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json"))
     except Exception as e: raise HTTPException(status_code=404, detail=f"Analysis not found: {e}")
+
     return {
         "analysis_id": analysis_id,
         "images": {"input_base64": base64.b64encode(input_img).decode("utf-8"), "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"), "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None},

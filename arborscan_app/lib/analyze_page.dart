@@ -95,6 +95,8 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   final ImagePicker _picker = ImagePicker();
 
   File? _imageFile;
+  ImageSource? _imageSource; // ТУТ СОХРАНЯЕМ ИСТОЧНИК ФОТО
+
   Uint8List? _annotatedImageBytes;
   Map<String, dynamic>? _result;
 
@@ -111,16 +113,14 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   double? _manualScale; 
   double _manualWindSpeedMS = 25.0; 
 
-  // --- ПАРАМЕТРЫ ТОНКОЙ НАСТРОЙКИ ИИ ---
-  double _aiConf = 0.15; // По умолчанию очень цепкий
-  double _aiSmoothness = 5.0; // Среднее сглаживание
-  bool _aiUseRembg = false; // По умолчанию выключен (быстрый режим)
+  double _aiConf = 0.15; 
+  double _aiSmoothness = 5.0; 
+  bool _aiUseRembg = false; 
 
   bool _isAdmin = false;
   static const String _adminFlagKey = 'arborscan_is_admin';
 
   static String get _apiUrl => '${ApiConfig.baseUrl}/analyze-tree';
-
   static const String _historyKey = 'arborscan_history';
   static const String _authTokenKey = 'arborscan_auth_token';
   final List<AnalysisResult> _history = [];
@@ -145,7 +145,6 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
     super.dispose();
   }
 
-  // ... [Методы работы с историей остаются без изменений] ...
   Future<void> _loadHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -224,7 +223,6 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
     setState(() => _isAdmin = prefs.getBool(_adminFlagKey) ?? false);
   }
 
-  // --- МЕНЮ НАСТРОЕК ИИ (ПО КЛИКУ НА ШЕСТЕРЕНКУ) ---
   void _openAiSettings() {
     showModalBottomSheet(
       context: context,
@@ -322,6 +320,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       if (picked == null) return;
       setState(() {
         _imageFile = File(picked.path);
+        _imageSource = source; // Сохраняем источник фото
         _annotatedImageBytes = null;
         _result = null;
         _error = null;
@@ -390,14 +389,20 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
               icon: Icons.auto_awesome,
               title: "Автоматически (ИИ)",
               subtitle: "Нейросеть подберет средние размеры по породе",
-              onTap: () { Navigator.pop(ctx); _analyze(); }
+              onTap: () {
+                Navigator.pop(ctx);
+                _analyze();
+              }
             ),
             const SizedBox(height: 12),
             _ScaleOptionBtn(
               icon: Icons.straighten,
               title: "Знаю один размер",
               subtitle: "Например, толщину ствола или высоту",
-              onTap: () { Navigator.pop(ctx); _showSingleSizeInputDialog(); }
+              onTap: () {
+                Navigator.pop(ctx);
+                _showSingleSizeInputDialog();
+              }
             ),
             const SizedBox(height: 12),
             _ScaleOptionBtn(
@@ -502,28 +507,32 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
     setState(() { _isLoading = true; _error = null; });
 
     try {
-      final locationResult = await LocationService.getCurrentPositionDetailed();
-      final pos = locationResult.position;
-      if (mounted) setState(() { _lastGpsOk = pos != null; _gpsStatusText = locationResult.message; });
-
       final uri = Uri.parse(_apiUrl);
       final request = http.MultipartRequest('POST', uri);
+      
+      // ИСПРАВЛЕНИЕ: Берем GPS телефона ТОЛЬКО если фото сделано на камеру
+      if (_imageSource == ImageSource.camera) {
+        final locationResult = await LocationService.getCurrentPositionDetailed();
+        final pos = locationResult.position;
+        if (mounted) setState(() { _lastGpsOk = pos != null; _gpsStatusText = locationResult.message; });
+        if (pos != null) {
+          request.fields['lat'] = pos.latitude.toString();
+          request.fields['lon'] = pos.longitude.toString();
+        }
+      } else {
+        if (mounted) setState(() { _lastGpsOk = false; _gpsStatusText = "Фото из галереи (используются EXIF-данные)"; });
+      }
+
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_authTokenKey) ?? '';
-      
       if (token.isNotEmpty) request.fields['auth_token'] = token;
-      if (pos != null) {
-        request.fields['lat'] = pos.latitude.toString();
-        request.fields['lon'] = pos.longitude.toString();
-      }
 
       if (_arHeightM != null) request.fields['ar_height_m'] = _arHeightM!.toStringAsFixed(3);
       if (_arCrownWidthM != null) request.fields['ar_crown_width_m'] = _arCrownWidthM!.toStringAsFixed(3);
       if (_arTrunkDiameterM != null) request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
       if (_manualScale != null) request.fields['manual_scale'] = _manualScale!.toStringAsFixed(6);
-      request.fields['manual_wind_speed_m_s'] = _manualWindSpeedMS.toStringAsFixed(3);
 
-      // ОТПРАВЛЯЕМ НАСТРОЙКИ ИИ НА СЕРВЕР!
+      request.fields['manual_wind_speed_m_s'] = _manualWindSpeedMS.toStringAsFixed(3);
       request.fields['ai_conf'] = _aiConf.toStringAsFixed(2);
       request.fields['ai_smoothness'] = _aiSmoothness.toInt().toString();
       request.fields['ai_use_rembg'] = _aiUseRembg.toString();
@@ -548,8 +557,8 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
           trunk: (data['trunk_diameter_m'] as num?)?.toDouble(),
           riskIndex: ((data['risk'] ?? {})['index'] as num?)?.toDouble(),
           riskCategory: (data['risk'] ?? {})['category'],
-          lat: pos?.latitude,
-          lon: pos?.longitude,
+          lat: data['gps']?['lat'], // Берем GPS с бэкенда (так как он может вытянуть EXIF)
+          lon: data['gps']?['lon'],
           address: data['address']?.toString(),
           imageBase64: '',
           timestamp: DateTime.now(),
@@ -571,7 +580,6 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       appBar: AppBar(
         title: const Text('ARBORSCAN'),
         actions: [
-          // РАБОЧАЯ КНОПКА НАСТРОЕК ИИ!
           IconButton(
             icon: const Icon(Icons.tune_rounded, color: AppTheme.primary2),
             tooltip: 'Настройки ИИ',
@@ -721,22 +729,6 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
                         ? Image.memory(_annotatedImageBytes!, fit: BoxFit.cover)
                         : Image.file(_imageFile!, fit: BoxFit.cover),
                   ),
-                  
-                  if (_annotatedImageBytes == null)
-                    Positioned(
-                      bottom: 12, left: 12, right: 12,
-                      child: GlassPanel(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        radius: 16,
-                        color: Colors.black.withOpacity(0.5),
-                        child: const Text(
-                          "ДЕРЕВО ПО ЦЕНТРУ БУДЕТ ВЫДЕЛЕНО", 
-                          textAlign: TextAlign.center, 
-                          style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w900, letterSpacing: 1.0)
-                        )
-                      ),
-                    ),
-                    
                   Positioned(
                     top: 10, right: 10,
                     child: IconButton(
@@ -757,7 +749,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         children: [
           Row(
             children: const [
-              Icon(Icons.cyclone, color: AppTheme.primary2),
+              Icon(Icons.storm, color: AppTheme.primary2),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
