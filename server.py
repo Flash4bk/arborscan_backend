@@ -91,7 +91,7 @@ MODEL_VERSIONS = {
 }
 BUILD_INFO = {"git_commit": os.getenv("GIT_COMMIT", "unknown"), "build_time": os.getenv("BUILD_TIME")}
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.6.1" # Fixed IndexError on strict AI
+API_VERSION = "2.6.2" # Fixed compute_risk return values
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
@@ -351,7 +351,9 @@ def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_spee
     index = max(lean_score, s_score, wind_score_val) + 0.1 * (lean_score + s_score + wind_score_val)
     index = max(0.0, min(index, 1.0))
     cat = "низкий" if index < 0.4 else "средний" if index < 0.7 else "высокий"
-    return {"index": index, "category": cat, "explanation": expl}
+    
+    # ВОТ ОНО: возвращаем все 5 значений корректно
+    return {"index": index, "category": cat, "explanation": expl}, f_n, l_m, m_nm, safety_factor
 
 
 class FeedbackRequest(BaseModel):
@@ -367,7 +369,7 @@ class AuthLoginRequest(BaseModel): email: str; password: str
 class AuthRoleRequest(BaseModel): token: str; role: str; admin_code: str | None = None
 class AuthGoogleRequest(BaseModel): id_token: str; email: str | None = None; name: str | None = None; photo_url: str | None = None
 
-app = FastAPI(title="ArborScan API v2.6.1")
+app = FastAPI(title="ArborScan API v2.6.2 (Stable)")
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
 AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
@@ -401,10 +403,16 @@ def _get_user_by_token(token: str) -> dict | None:
 
 def _email_norm(email: str) -> str: return (email or "").strip().lower()
 
+def _validate_auth_payload(name: str | None, email: str, password: str, need_name: bool = False):
+    if need_name and (not name or len(name.strip()) < 2): raise HTTPException(status_code=400, detail="Имя должно быть не короче 2 символов")
+    if "@" not in email or "." not in email: raise HTTPException(status_code=400, detail="Введите корректную почту")
+    if not password or len(password) < 4: raise HTTPException(status_code=400, detail="Пароль должен быть не короче 4 символов")
+
 @app.post("/auth/register")
 async def auth_register(payload: AuthRegisterRequest):
     if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
     name, email, password = payload.name.strip(), _email_norm(payload.email), payload.password
+    _validate_auth_payload(name, email, password, need_name=True)
     if requests.get(f"{SUPABASE_DB_BASE}/users?email=eq.{email}", headers=_sb_headers(), timeout=10).json(): raise HTTPException(status_code=409, detail="Exists")
     password_hash, salt = _hash_password(password)
     user_id, now = str(uuid4()), _now_iso()
@@ -426,12 +434,15 @@ async def auth_login(payload: AuthLoginRequest):
 
 @app.post("/auth/google")
 async def auth_google(payload: AuthGoogleRequest):
+    if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
     if not google_id_token or not GOOGLE_CLIENT_ID: raise HTTPException(status_code=500, detail="Google Auth is not configured")
     try: info = google_id_token.verify_oauth2_token(payload.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
     except Exception as e: raise HTTPException(status_code=401, detail=f"Google error: {e}")
     sub, email = str(info.get("sub") or ""), _email_norm(str(info.get("email") or payload.email or ""))
     name = str(info.get("name") or payload.name or email.split("@")[0] or "Google user").strip()
     avatar_url = str(info.get("picture") or payload.photo_url or "")
+    if not sub or not email: raise HTTPException(status_code=401, detail="Google didn't return sub/email")
+
     now = _now_iso()
     rows = requests.get(f"{SUPABASE_DB_BASE}/users?or=(google_sub.eq.{sub},email.eq.{email})", headers=_sb_headers(), timeout=10).json()
     if not rows:
@@ -465,13 +476,15 @@ def _save_analysis_record(response: dict, user: dict | None):
     if not SUPABASE_DB_BASE: return
     risk = response.get("risk") or {}
     beta = response.get("beta") or {}
+    analytic_out = (response.get("analytic_wind_model") or {}).get("outputs") or {}
     gps = response.get("gps") or {}
     payload = {
         "id": response.get("analysis_id"), "user_id": user.get("id") if user else None,
         "created_at": _now_iso(), "species": response.get("species"),
         "risk_index": risk.get("index"), "risk_category": risk.get("category"),
         "height_m": response.get("height_m"), "crown_width_m": response.get("crown_width_m"), "trunk_diameter_m": response.get("trunk_diameter_m"),
-        "beta_kg_s": beta.get("beta_kg_s"), "lat": gps.get("lat"), "lon": gps.get("lon"), "address": response.get("address"), "response_json": response
+        "beta_kg_s": beta.get("beta_kg_s"), "base_moment_nm": analytic_out.get("base_moment_nm"), "center_of_load_m": analytic_out.get("center_of_load_m"),
+        "lat": gps.get("lat"), "lon": gps.get("lon"), "address": response.get("address"), "response_json": response
     }
     requests.post(f"{SUPABASE_DB_BASE}/analyses", headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"}, json=payload, timeout=10)
 
@@ -498,6 +511,14 @@ async def analyses_get(analysis_id: str, token: str):
     if not rows: raise HTTPException(status_code=404, detail="Error")
     if rows[0].get("user_id") != user["id"] and user.get("role") != "admin": raise HTTPException(status_code=403, detail="Error")
     return {"ok": True, "analysis": rows[0].get("response_json")}
+
+@app.get("/admin/analyses")
+async def admin_analyses(token: str, limit: int = 200):
+    user = _get_user_by_token(token)
+    if not user or user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нужна роль администратора")
+    limit = max(1, min(int(limit), 1000))
+    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
+    return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
 
 @app.get("/profile/stats")
 async def profile_stats(token: str):
@@ -553,7 +574,6 @@ def _run_classifier_sync(crop_bgr):
     except Exception: pass
     return "Неизвестно"
 
-
 @app.post("/analyze-tree")
 async def analyze_tree(
     file: UploadFile = File(...),
@@ -566,12 +586,9 @@ async def analyze_tree(
     manual_beta_kg_s: Optional[float] = Form(None),
     crown_density_factor: Optional[float] = Form(None),
     manual_wind_speed_m_s: Optional[float] = Form(None),
-    
-    # --- НОВЫЕ ПАРАМЕТРЫ ТОНКОЙ НАСТРОЙКИ ИИ ---
     ai_conf: Optional[float] = Form(0.25),
     ai_use_rembg: Optional[str] = Form("false"),
     ai_smoothness: Optional[int] = Form(5),
-    
     auth_token: Optional[str] = Form(None),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
@@ -583,7 +600,6 @@ async def analyze_tree(
     if img is None: raise HTTPException(status_code=400, detail="Не удалось прочитать изображение")
     H, W = img.shape[:2]
 
-    # 1. YOLO (С учетом чувствительности ai_conf)
     conf_val = max(0.05, min(0.95, float(ai_conf))) if ai_conf else 0.25
     tree_res, stick_res = await run_in_threadpool(_run_yolo_sync, img, conf_val)
     
@@ -598,12 +614,9 @@ async def analyze_tree(
 
     if tree_res.masks is None or len(tree_res.masks.data) == 0:
         fallback_mask = np.zeros((H, W), dtype=np.uint8)
-        x1_f, y1_f = int(W * 0.3), int(H * 0.1)
-        x2_f, y2_f = int(W * 0.7), int(H * 0.9)
-        cv2.rectangle(fallback_mask, (x1_f, y1_f), (x2_f, y2_f), 255, -1)
-        mask = fallback_mask
+        cv2.rectangle(fallback_mask, (int(W*0.3), int(H*0.1)), (int(W*0.7), int(H*0.9)), 255, -1)
+        masks.append(fallback_mask)
         idx = 0
-        x1, y1, x2, y2 = x1_f, y1_f, x2_f, y2_f
     else:
         idx = -1
         for i, m in enumerate(tree_res.masks.data):
@@ -625,11 +638,14 @@ async def analyze_tree(
         if idx == -1 and distances:
             idx = int(np.argmin(distances))
             
-        yolo_mask = masks[idx]
-        # ИСПРАВЛЕНО: Безопасное извлечение координат
+    yolo_mask = masks[idx]
+    
+    try:
         x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
+    except Exception:
+        ys_tmp, xs_tmp = np.where(yolo_mask > 0)
+        x1, y1, x2, y2 = xs_tmp.min(), ys_tmp.min(), xs_tmp.max(), ys_tmp.max()
 
-    # 3. ИДЕАЛЬНАЯ МАСКА (REMBG + OPENCV SOLID FILL) - ТОЛЬКО ЕСЛИ ЮЗЕР ВКЛЮЧИЛ!
     use_rembg = str(ai_use_rembg).lower() in ("true", "1", "yes")
     
     if use_rembg:
@@ -637,7 +653,6 @@ async def analyze_tree(
             margin = 30
             x1_c, y1_c = max(0, x1 - margin), max(0, y1 - margin)
             x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
-            
             crop_bgr = img[y1_c:y2_c, x1_c:x2_c]
             
             def _refine_mask_sync(crop):
@@ -657,16 +672,9 @@ async def analyze_tree(
             if smooth_k > 1:
                 final_mask = cv2.morphologyEx(cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel), cv2.MORPH_CLOSE, kernel)
             mask = final_mask
-        except Exception:
-            mask = yolo_mask
-    else:
-        # Если rembg выключен, берем чистую YOLO маску
-        try:
-            mask = yolo_mask
-        except Exception:
-            mask = fallback_mask
+        except Exception: mask = yolo_mask
+    else: mask = yolo_mask
 
-    # 4. ИЗВЛЕЧЕНИЕ ПИКСЕЛЬНЫХ РАЗМЕРОВ
     ys, xs = np.where(mask > 0)
     if len(ys) == 0: return JSONResponse({"error": "Ошибка контура"}, status_code=400)
     y_min, y_max = ys.min(), ys.max()
@@ -680,23 +688,18 @@ async def analyze_tree(
     trunk_vals = [np.where(mask[y] > 0)[0].max() - np.where(mask[y] > 0)[0].min() for y in range(y_max - int(0.2 * height_px), y_max) if len(np.where(mask[y] > 0)[0]) > 0]
     trunk_px = np.mean(trunk_vals) if trunk_vals else 0
 
-    # 5. КЛАССИФИКАЦИЯ (PLANTNET)
     species_name = await run_in_threadpool(_run_classifier_sync, img[y1:y2, x1:x2])
 
-    # 6. МАСШТАБ И РАЗМЕРЫ
     scale = None
     dimensions_source = "Неизвестно"
 
     if manual_scale and float(manual_scale) > 0:
-        scale = float(manual_scale)
-        dimensions_source = "Пользовательский маркер"
+        scale = float(manual_scale); dimensions_source = "Пользовательский маркер"
     
     if not scale and len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
         stick_h = best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item()
-        if stick_h > 10:
-            scale = REAL_STICK_M / stick_h
-            dimensions_source = "Авто-маркер (AI)"
+        if stick_h > 10: scale = REAL_STICK_M / stick_h; dimensions_source = "Авто-маркер (AI)"
     
     if not scale:
         if ar_height_m and height_px > 0: scale = float(ar_height_m) / height_px; dimensions_source = "Пропорционально (по AR Высоте)"
@@ -758,16 +761,25 @@ async def analyze_tree(
 
     final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
     beta_info = estimate_beta_kg_s(species_name, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
-    
     wind_design = float(manual_wind_speed_m_s or 25.0)
+    
+    # ---------------------------
+    # ИСПРАВЛЕННЫЙ ВЫЗОВ (5 ПЕРЕМЕННЫХ)
+    # ---------------------------
     risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_name, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
+
+    analytic_wind_model = {
+        "available": True,
+        "outputs": {"total_force_n": round(f_n, 1), "center_of_load_m": round(l_m, 1), "base_moment_nm": round(m_nm, 1), "analytical_score": round(s_f, 2)},
+        "inputs": {"crown_start_height_m": round((height_m or 0) * 0.5, 1), "n_elements": 1}
+    }
 
     analysis_id = str(uuid4())
     meta = {
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "crown_density_ai": crown_density_ai,
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
-        "dimensions_source": dimensions_source, "beta": beta_info, "scale_px_to_m": scale,
+        "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
         "gps": gps, "address": address, "risk": risk_data, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
         "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg}
     }
@@ -791,7 +803,7 @@ async def analyze_tree(
     response = {
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
-        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info,
+        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
         "scale_px_to_m": scale, "annotated_image_base64": annotated_b64, "gps": gps, "address": address, "risk": risk_data,
     }
     try: response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
@@ -803,9 +815,7 @@ async def analyze_tree(
 
     return JSONResponse(response)
 
-
 @app.post("/feedback")
-@app.post("/api/feedback")
 def send_feedback(payload: dict = Body(...)):
     analysis_id = payload.get('analysis_id') or payload.get('analysisId')
     if not analysis_id: raise HTTPException(status_code=422, detail='analysis_id is required')
@@ -906,12 +916,10 @@ def send_feedback(payload: dict = Body(...)):
     shutil.rmtree(tmp_dir, ignore_errors=True)
     return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
 
-
 @app.get("/admin/verified-list")
 def admin_verified_list(include_used: bool = False):
     try: objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
-
     analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
     results = []
     for aid in analysis_ids:
@@ -922,22 +930,18 @@ def admin_verified_list(include_used: bool = False):
         except Exception: continue
     return {"count": len(results), "items": results}
 
-
 @app.post("/admin/verified/{analysis_id}/set-training")
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     flag = next((v for v in (req.use_for_training, req.enabled, req.include, req.value) if v is not None), None)
     if flag is None: raise HTTPException(status_code=400, detail="Missing boolean flag")
-
     def _load_json(path):
         try: return json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path).decode("utf-8"))
         except Exception: return {}
-
     for path in [f"{analysis_id}/meta.json", f"{analysis_id}/meta_verified.json"]:
         data = _load_json(path)
         data.update({"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag})
         supabase_upload_json(SUPABASE_BUCKET_VERIFIED, path, data)
     return {"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag}
-
 
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
@@ -950,13 +954,11 @@ def admin_get_analysis(analysis_id: str):
         stick_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json"))
         meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json"))
     except Exception as e: raise HTTPException(status_code=404, detail=f"Analysis not found: {e}")
-
     return {
         "analysis_id": analysis_id,
         "images": {"input_base64": base64.b64encode(input_img).decode("utf-8"), "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"), "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None},
         "tree_pred": {}, "stick_pred": {}, "meta": meta,
     }
-
 
 @app.get("/admin/training-status")
 def admin_training_status():
