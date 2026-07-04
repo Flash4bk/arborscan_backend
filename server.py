@@ -22,7 +22,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from collections import deque
-from typing import Optional
+from typing import Optional, Dict, Any, List, Tuple
 
 from rembg import remove, new_session
 
@@ -33,8 +33,15 @@ except Exception:
     google_id_token = None
     google_requests = None
 
+# -------------------------------------
+# CONFIG
+# -------------------------------------
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set.")
 
 SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
 SUPABASE_BUCKET_PRED = "arborscan-predictions"
@@ -48,6 +55,7 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
 
 PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "2b10s2QVGCWyalEeU1xv2nOKO")
+
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
 ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
@@ -83,7 +91,7 @@ MODEL_VERSIONS = {
 }
 BUILD_INFO = {"git_commit": os.getenv("GIT_COMMIT", "unknown"), "build_time": os.getenv("BUILD_TIME")}
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.6.3" 
+API_VERSION = "2.6.4" 
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
@@ -185,17 +193,37 @@ def get_tree_model() -> YOLO:
         if TREE_MODEL is None: reload_tree_model(force=True)
         return TREE_MODEL
 
-def decode_base64_bytes(b64: str) -> bytes:
+def _strip_data_url(b64: str) -> str:
     if not b64: return b64
     b64 = b64.strip()
     if b64.startswith("data:") and "base64," in b64: b64 = b64.split("base64,", 1)[1]
-    b64_clean = "".join(b64.split()).replace("-", "+").replace("_", "/")
+    return "".join(b64.split()) 
+
+def decode_base64_bytes(b64: str) -> bytes:
+    if b64 is None: return b""
+    b64_clean = _strip_data_url(str(b64)).strip().replace("-", "+").replace("_", "/")
     pad = len(b64_clean) % 4
     if pad: b64_clean += "=" * (4 - pad)
-    return base64.b64decode(b64_clean, validate=False)
+    raw = base64.b64decode(b64_clean, validate=False)
+    try:
+        as_text = raw.decode("utf-8").strip()
+        if len(as_text) > 16 and all(c.isalnum() or c in "+/=_-\n\r" for c in as_text):
+            as_text = _strip_data_url(as_text).strip().replace("-", "+").replace("_", "/")
+            pad2 = len(as_text) % 4
+            if pad2: as_text += "=" * (4 - pad2)
+            raw2 = base64.b64decode(as_text, validate=False)
+            if raw2.startswith(b"\x89PNG\r\n\x1a\n") or raw2[:3] == b"\xff\xd8\xff": return raw2
+    except Exception: pass
+    return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
     raw = decode_base64_bytes(mask_b64)
+    try:
+        if raw[:1] in (b"{", b"["):
+            obj = json.loads(raw.decode("utf-8"))
+            if isinstance(obj, dict) and obj.get("mask_png_base64"):
+                raw = decode_base64_bytes(str(obj["mask_png_base64"]))
+    except Exception: pass
     np_buf = np.frombuffer(raw, np.uint8)
     mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
     if mask is None: raise ValueError("user_mask_base64 is not a valid PNG/JPEG")
@@ -238,9 +266,7 @@ def extract_gps(image_bytes):
 
 def reverse_geocode(lat, lon):
     try:
-        # ПУНКТ 2: ДОБАВИЛИ РУССКИЙ ЯЗЫК В ЗАПРОС К КАРТАМ
-        params = {"lat": lat, "lon": lon, "format": "jsonv2", "accept-language": "ru"}
-        r = requests.get(NOMINATIM_URL, params=params, headers={"User-Agent": NOMINATIM_USER_AGENT}, timeout=5)
+        r = requests.get(NOMINATIM_URL, params={"lat": lat, "lon": lon, "format": "jsonv2"}, headers={"User-Agent": NOMINATIM_USER_AGENT}, timeout=5)
         return r.json().get("display_name")
     except Exception: return None
 
@@ -341,7 +367,7 @@ class AuthLoginRequest(BaseModel): email: str; password: str
 class AuthRoleRequest(BaseModel): token: str; role: str; admin_code: str | None = None
 class AuthGoogleRequest(BaseModel): id_token: str; email: str | None = None; name: str | None = None; photo_url: str | None = None
 
-app = FastAPI(title="ArborScan API v2.6.3 (Stable)")
+app = FastAPI(title="ArborScan API v2.6.4")
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
 AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
@@ -481,12 +507,16 @@ async def profile_stats(token: str):
     user = _get_user_by_token(token)
     if not user: raise HTTPException(status_code=401, detail="Error")
     rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc", headers=_sb_headers(), timeout=10).json()
+
+    total = len(rows)
+    with_geo = sum(1 for r in rows if r.get("lat") is not None and r.get("lon") is not None)
+    high_risk = sum(1 for r in rows if r.get("risk_category") == "высокий")
     risks = [r.get("risk_index") for r in rows if isinstance(r.get("risk_index"), (int, float))]
+    
     return {
         "ok": True, "user": _user_public(user),
         "stats": {
-            "total_analyses": len(rows), "with_geo": sum(1 for r in rows if r.get("lat") is not None),
-            "high_risk_count": sum(1 for r in rows if r.get("risk_category") == "высокий"),
+            "total_analyses": total, "with_geo": with_geo, "high_risk_count": high_risk,
             "avg_risk": sum(risks) / len(risks) if risks else None, "last_analysis": _analysis_summary(rows[0]) if rows else None
         }
     }
@@ -529,6 +559,7 @@ def _run_classifier_sync(crop_bgr):
             return map_plantnet_name(r.json().get('results')[0].get('species', {}).get('commonNames', [r.json().get('results')[0].get('species', {}).get('scientificNameWithoutAuthor', 'Неизвестно')])[0])
     except Exception: pass
     return "Неизвестно"
+
 
 @app.post("/analyze-tree")
 async def analyze_tree(
@@ -610,10 +641,12 @@ async def analyze_tree(
             x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
             crop_bgr = img[y1_c:y2_c, x1_c:x2_c]
             
-            def _refine_mask_sync(crop): return remove(crop, session=REMBG_SESSION, only_mask=True)
+            def _refine_mask_sync(crop):
+                return remove(crop, session=REMBG_SESSION, only_mask=True)
+                
             refined_crop_mask = await run_in_threadpool(_refine_mask_sync, crop_bgr)
-            
-            if len(refined_crop_mask.shape) == 3: refined_crop_mask = refined_crop_mask[:, :, 0]
+            if len(refined_crop_mask.shape) == 3: 
+                refined_crop_mask = refined_crop_mask[:, :, 0]
             _, mask_bin = cv2.threshold(refined_crop_mask, 127, 255, cv2.THRESH_BINARY)
             
             contours, _ = cv2.findContours(mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -644,7 +677,7 @@ async def analyze_tree(
     trunk_vals = [np.where(mask[y] > 0)[0].max() - np.where(mask[y] > 0)[0].min() for y in range(y_max - int(0.2 * height_px), y_max) if len(np.where(mask[y] > 0)[0]) > 0]
     trunk_px = np.mean(trunk_vals) if trunk_vals else 0
 
-    species_name = await run_in_threadpool(_run_classifier_sync, img[y1:y2, x1:x2])
+    species_name = await run_in_threadpool(_run_classifier_sync, img[y1_c:y2_c, x1_c:x2_c])
 
     scale = None
     dimensions_source = "Неизвестно"
@@ -657,25 +690,23 @@ async def analyze_tree(
         stick_h = best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item()
         if stick_h > 10: scale = REAL_STICK_M / stick_h; dimensions_source = "Авто-маркер (AI)"
     
-    # ИСПРАВЛЕНИЕ: МАСШТАБ СЧИТАЕТСЯ ПО ТОЛЩИНЕ СТВОЛА, ЕСЛИ ВЫБРАН "АВТО" РЕЖИМ (Пункт 5)
     if not scale:
         if ar_height_m and height_px > 0: scale = float(ar_height_m) / height_px; dimensions_source = "Пропорционально (по AR Высоте)"
         elif ar_crown_width_m and crown_width_px > 0: scale = float(ar_crown_width_m) / crown_width_px; dimensions_source = "Пропорционально (по AR Кроне)"
         elif ar_trunk_diameter_m and trunk_px > 0: scale = float(ar_trunk_diameter_m) / trunk_px; dimensions_source = "Пропорционально (по AR Стволу)"
 
     if not scale:
-        if trunk_px > 0:
-            typical_trunk_m = 0.4 
-            scale = typical_trunk_m / trunk_px
-            dimensions_source = f"Статистика (Ствол ≈ {typical_trunk_m}м)"
-        elif height_px > 0:
-            ref_h = BETA_EMPIRICAL_STATS.get(species_name, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
-            scale = ref_h / height_px
-            dimensions_source = f"Статистика (Высота ≈ {ref_h}м)"
+        ref_h = BETA_EMPIRICAL_STATS.get(species_name, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
+        if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Статистика ({species_name} ≈ {ref_h}м)"
 
     height_m = round(height_px * scale, 2) if scale else None
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
+
+    # ВОТ ОНИ! Переменные для отчета
+    height_m_ai = height_m
+    crown_m_ai = crown_m
+    trunk_m_ai = trunk_m
 
     if ar_height_m: height_m = round(float(ar_height_m), 2)
     if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
@@ -691,6 +722,7 @@ async def analyze_tree(
     if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
         if not manual_scale and "Аллометрия" not in dimensions_source: dimensions_source = "Введено пользователем"
 
+    # ВОТ ОНИ! Переменные для отчета
     ar_measurements = {"height_m": height_m if ar_height_m else None, "crown_width_m": crown_m if ar_crown_width_m else None, "trunk_diameter_m": trunk_m if ar_trunk_diameter_m else None}
     measurement_sources = {"height_m": "ar" if ar_height_m else "image", "crown_width_m": "ar" if ar_crown_width_m else "image", "trunk_diameter_m": "ar" if ar_trunk_diameter_m else "image"}
 
@@ -737,7 +769,7 @@ async def analyze_tree(
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "crown_density_ai": crown_density_ai,
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
-        "dimensions_source": dimensions_source, "beta": beta_info, "scale_px_to_m": scale,
+        "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
         "gps": gps, "address": address, "risk": risk_data, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
         "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg}
     }
@@ -749,10 +781,20 @@ async def analyze_tree(
         except Exception: pass
     except Exception as e: print(f"[!] Failed to upload raw sample: {e}")
 
+    try:
+        tmp_dir = Path("/tmp") / analysis_id
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        (tmp_dir / "input.jpg").write_bytes(image_bytes)
+        try: (tmp_dir / "annotated.jpg").write_bytes(base64.b64decode(annotated_b64))
+        except Exception: pass
+        (tmp_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False))
+    except Exception as e: print(f"[!] Failed to cache in /tmp: {e}")
+
     response = {
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
-        "ar_measurements": ar_measurements, "measurement_sources": measurement_sources, "dimensions_source": dimensions_source,
-        "beta": beta_info, "scale_px_to_m": scale, "annotated_image_base64": annotated_b64, "gps": gps, "address": address, "risk": risk_data,
+        "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
+        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
+        "scale_px_to_m": scale, "annotated_image_base64": annotated_b64, "gps": gps, "address": address, "risk": risk_data,
     }
     try: response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
     except Exception: response["original_image_base64"] = None
@@ -803,10 +845,66 @@ def send_feedback(payload: dict = Body(...)):
     user_mask_base64 = payload.get('user_mask_base64') or payload.get('mask_base64')
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: raise HTTPException(status_code=500, detail="Supabase не настроен")
-    
+    tmp_dir = Path("/tmp") / analysis_id
+    if not tmp_dir.exists(): raise HTTPException(status_code=404, detail="analysis_id не найден")
+
+    if not use_for_training:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return {"status": "ignored", "reason": "user_disabled_training"}
+
+    try: meta = json.loads((tmp_dir / "meta.json").read_text(encoding="utf-8"))
+    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
+
+    meta.update({"tree_ok": tree_ok, "stick_ok": stick_ok, "params_ok": params_ok, "species_ok": species_ok, "correct_species": correct_species})
+    if not species_ok and correct_species: meta["species"] = correct_species
+    if corrected_height_m is not None: meta["height_m"] = corrected_height_m
+    if corrected_crown_width_m is not None: meta["crown_width_m"] = corrected_crown_width_m
+    if corrected_trunk_diameter_m is not None: meta["trunk_diameter_m"] = corrected_trunk_diameter_m
+    if corrected_scale_px_to_m is not None: meta["scale_px_to_m"] = corrected_scale_px_to_m
+
     trust = sum([0.3 if tree_ok else 0, 0.2 if stick_ok else 0, 0.2 if params_ok else 0, 0.3 if (species_ok or correct_species) else 0])
+    meta["trust_score"] = trust
     is_verified = (use_for_training and trust >= VERIFIED_TRUST_THRESHOLD)
-    
+
+    try:
+        if (tmp_dir / "input.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
+        if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
+
+        existing_has_user_mask = False
+        try: existing_has_user_mask = bool(json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json")).get("has_user_mask", False))
+        except Exception: pass
+        meta["has_user_mask"] = existing_has_user_mask
+
+        if user_mask_base64 and str(user_mask_base64).strip().lower() not in ("null", "undefined"):
+            try:
+                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(str(user_mask_base64)))
+                meta["has_user_mask"] = True
+            except Exception as e: print(f"[!] User mask error: {e}")
+
+        supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta)
+
+        if is_verified:
+            try:
+                supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
+                if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
+                if user_mask_base64:
+                    try: supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(user_mask_base64))
+                    except Exception as e: print(f"[!] Verified mask error: {e}")
+                
+                meta_verified = meta.copy()
+                meta_verified["verified"] = True
+                meta_verified["verified_at"] = datetime.utcnow().isoformat()
+                meta_verified["verifier_role"] = "admin" if not use_for_training else "user"
+                supabase_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json", meta_verified)
+            except Exception as e: print(f"[!] Verified upload error: {e}")
+
+    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка Supabase: {e}")
+
+    if SUPABASE_ENABLE_QUEUE:
+        try: supabase_db_insert(SUPABASE_QUEUE_TABLE, {"analysis_id": analysis_id, "trust_score": trust, "species": meta.get("species"), "has_user_mask": meta.get("has_user_mask", False), "tree_ok": meta.get("tree_ok"), "stick_ok": meta.get("stick_ok"), "params_ok": meta.get("params_ok"), "species_ok": meta.get("species_ok")})
+        except Exception as e: print(f"[!] Queue error: {e}")
+
+    shutil.rmtree(tmp_dir, ignore_errors=True)
     return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
 
 @app.get("/admin/verified-list")
@@ -827,11 +925,9 @@ def admin_verified_list(include_used: bool = False):
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     flag = next((v for v in (req.use_for_training, req.enabled, req.include, req.value) if v is not None), None)
     if flag is None: raise HTTPException(status_code=400, detail="Missing boolean flag")
-
     def _load_json(path):
         try: return json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path).decode("utf-8"))
         except Exception: return {}
-
     for path in [f"{analysis_id}/meta.json", f"{analysis_id}/meta_verified.json"]:
         data = _load_json(path)
         data.update({"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag})
@@ -847,7 +943,6 @@ def admin_get_analysis(analysis_id: str):
         except Exception: user_mask_img = None
         meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json"))
     except Exception as e: raise HTTPException(status_code=404, detail=f"Analysis not found: {e}")
-
     return {
         "analysis_id": analysis_id,
         "images": {"input_base64": base64.b64encode(input_img).decode("utf-8"), "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"), "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None},
