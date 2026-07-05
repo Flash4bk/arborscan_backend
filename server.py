@@ -91,7 +91,7 @@ MODEL_VERSIONS = {
 }
 BUILD_INFO = {"git_commit": os.getenv("GIT_COMMIT", "unknown"), "build_time": os.getenv("BUILD_TIME")}
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.6.5" 
+API_VERSION = "2.6.4" 
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
@@ -353,7 +353,6 @@ def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_spee
     cat = "низкий" if index < 0.4 else "средний" if index < 0.7 else "высокий"
     return {"index": index, "category": cat, "explanation": expl}, f_n, l_m, m_nm, safety_factor
 
-
 class FeedbackRequest(BaseModel):
     analysis_id: str; use_for_training: bool; tree_ok: bool; stick_ok: bool; params_ok: bool; species_ok: bool
     correct_species: str | None = None; correct_height_m: float | None = None; correct_crown_width_m: float | None = None
@@ -502,21 +501,25 @@ async def analyses_get(analysis_id: str, token: str):
     if rows[0].get("user_id") != user["id"] and user.get("role") != "admin": raise HTTPException(status_code=403, detail="Error")
     return {"ok": True, "analysis": rows[0].get("response_json")}
 
+@app.get("/admin/analyses")
+async def admin_analyses(token: str, limit: int = 200):
+    user = _get_user_by_token(token)
+    if not user or user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нужна роль администратора")
+    limit = max(1, min(int(limit), 1000))
+    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
+    return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
+
 @app.get("/profile/stats")
 async def profile_stats(token: str):
     user = _get_user_by_token(token)
     if not user: raise HTTPException(status_code=401, detail="Error")
     rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc", headers=_sb_headers(), timeout=10).json()
-
-    total = len(rows)
-    with_geo = sum(1 for r in rows if r.get("lat") is not None and r.get("lon") is not None)
-    high_risk = sum(1 for r in rows if r.get("risk_category") == "высокий")
     risks = [r.get("risk_index") for r in rows if isinstance(r.get("risk_index"), (int, float))]
-    
     return {
         "ok": True, "user": _user_public(user),
         "stats": {
-            "total_analyses": total, "with_geo": with_geo, "high_risk_count": high_risk,
+            "total_analyses": len(rows), "with_geo": sum(1 for r in rows if r.get("lat") is not None),
+            "high_risk_count": sum(1 for r in rows if r.get("risk_category") == "высокий"),
             "avg_risk": sum(risks) / len(risks) if risks else None, "last_analysis": _analysis_summary(rows[0]) if rows else None
         }
     }
@@ -607,39 +610,36 @@ async def analyze_tree(
         idx = -1
         for i, m in enumerate(tree_res.masks.data):
             tmp_mask = cv2.resize((m.cpu().numpy() > 0.5).astype(np.uint8) * 255, (W, H), interpolation=cv2.INTER_NEAREST)
-            if smooth_k > 1:
-                tmp_mask = cv2.morphologyEx(tmp_mask, cv2.MORPH_CLOSE, kernel)
+            if smooth_k > 1: tmp_mask = cv2.morphologyEx(tmp_mask, cv2.MORPH_CLOSE, kernel)
             masks.append(tmp_mask)
             
             if tap_x is not None and tap_y is not None:
                 check_y = min(max(int(target_y), 0), H - 1)
                 check_x = min(max(int(target_x), 0), W - 1)
-                if tmp_mask[check_y, check_x] > 0:
-                    idx = i 
+                if tmp_mask[check_y, check_x] > 0: idx = i 
                     
             x1_t, y1_t, x2_t, y2_t = tree_res.boxes.xyxy[i].cpu().numpy()
             dist = (((x1_t+x2_t)/2.0) - target_x)**2 + (((y1_t+y2_t)/2.0) - target_y)**2
             distances.append(dist)
 
-        if idx == -1 and distances:
-            idx = int(np.argmin(distances))
+        if idx == -1 and distances: idx = int(np.argmin(distances))
             
         yolo_mask = masks[idx]
-        try:
-            x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
+        try: x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
         except Exception:
             ys_tmp, xs_tmp = np.where(yolo_mask > 0)
             x1, y1, x2, y2 = xs_tmp.min(), ys_tmp.min(), xs_tmp.max(), ys_tmp.max()
+
+    # --- ИСПРАВЛЕНИЕ: КООРДИНАТЫ CROP ВЫНЕСЕНЫ ИЗ IF-БЛОКА ---
+    margin = 30
+    x1_c, y1_c = max(0, x1 - margin), max(0, y1 - margin)
+    x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
 
     use_rembg = str(ai_use_rembg).lower() in ("true", "1", "yes")
     
     if use_rembg:
         try:
-            margin = 30
-            x1_c, y1_c = max(0, x1 - margin), max(0, y1 - margin)
-            x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
             crop_bgr = img[y1_c:y2_c, x1_c:x2_c]
-            
             def _refine_mask_sync(crop): return remove(crop, session=REMBG_SESSION, only_mask=True)
             refined_crop_mask = await run_in_threadpool(_refine_mask_sync, crop_bgr)
             
@@ -652,11 +652,9 @@ async def analyze_tree(
             
             final_mask = np.zeros((H, W), dtype=np.uint8)
             final_mask[y1_c:y2_c, x1_c:x2_c] = solid_crop_mask
-            if smooth_k > 1:
-                final_mask = cv2.morphologyEx(cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel), cv2.MORPH_CLOSE, kernel)
+            if smooth_k > 1: final_mask = cv2.morphologyEx(cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel), cv2.MORPH_CLOSE, kernel)
             mask = final_mask
-        except Exception:
-            mask = yolo_mask
+        except Exception: mask = yolo_mask
     else:
         try: mask = yolo_mask
         except Exception: mask = fallback_mask
@@ -700,12 +698,10 @@ async def analyze_tree(
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # ВОТ ОНИ! (Объявляем переменные ДО ПЕРЕЗАПИСИ)
-    # ----------------------------------------------------
+    # ОБЯЗАТЕЛЬНО ИНИЦИАЛИЗИРУЕМ ЭТИ ПЕРЕМЕННЫЕ
     height_m_ai = height_m
     crown_m_ai = crown_m
     trunk_m_ai = trunk_m
-    # ----------------------------------------------------
 
     if ar_height_m: height_m = round(float(ar_height_m), 2)
     if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
@@ -721,11 +717,9 @@ async def analyze_tree(
     if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
         if not manual_scale and "Аллометрия" not in dimensions_source: dimensions_source = "Введено пользователем"
 
-    # И ВОТ ОНИ (Собираем словари)
-    # ----------------------------------------------------
+    # И ЭТИ ТОЖЕ
     ar_measurements = {"height_m": height_m if ar_height_m else None, "crown_width_m": crown_m if ar_crown_width_m else None, "trunk_diameter_m": trunk_m if ar_trunk_diameter_m else None}
     measurement_sources = {"height_m": "ar" if ar_height_m else "image", "crown_width_m": "ar" if ar_crown_width_m else "image", "trunk_diameter_m": "ar" if ar_trunk_diameter_m else "image"}
-    # ----------------------------------------------------
 
     crown_density_ai = 1.0
     try:
@@ -757,10 +751,6 @@ async def analyze_tree(
     beta_info = estimate_beta_kg_s(species_name, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
     
     wind_design = float(manual_wind_speed_m_s or 25.0)
-    
-    # ----------------------------------------------------
-    # И ТУТ ИСПРАВЛЕННАЯ ФУНКЦИЯ COMPUTE_RISK
-    # ----------------------------------------------------
     risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_name, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
 
     analytic_wind_model = {
@@ -912,6 +902,7 @@ def send_feedback(payload: dict = Body(...)):
     shutil.rmtree(tmp_dir, ignore_errors=True)
     return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
 
+
 @app.get("/admin/verified-list")
 def admin_verified_list(include_used: bool = False):
     try: objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
@@ -926,6 +917,7 @@ def admin_verified_list(include_used: bool = False):
         except Exception: continue
     return {"count": len(results), "items": results}
 
+
 @app.post("/admin/verified/{analysis_id}/set-training")
 def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
     flag = next((v for v in (req.use_for_training, req.enabled, req.include, req.value) if v is not None), None)
@@ -939,6 +931,7 @@ def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
         supabase_upload_json(SUPABASE_BUCKET_VERIFIED, path, data)
     return {"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag}
 
+
 @app.get("/admin/analysis/{analysis_id}")
 def admin_get_analysis(analysis_id: str):
     try:
@@ -946,15 +939,15 @@ def admin_get_analysis(analysis_id: str):
         annotated_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg")
         try: user_mask_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png")
         except Exception: user_mask_img = None
-        tree_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/tree_pred.json"))
-        stick_pred = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/stick_pred.json"))
         meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json"))
     except Exception as e: raise HTTPException(status_code=404, detail=f"Analysis not found: {e}")
+
     return {
         "analysis_id": analysis_id,
         "images": {"input_base64": base64.b64encode(input_img).decode("utf-8"), "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"), "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None},
         "tree_pred": {}, "stick_pred": {}, "meta": meta,
     }
+
 
 @app.get("/admin/training-status")
 def admin_training_status():
