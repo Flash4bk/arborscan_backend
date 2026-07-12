@@ -27,6 +27,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   ui.Image? _image;
   Size? _imageSize;
   ui.Image? _aiMaskImage;
+  ui.Image? _initialMaskImage;
 
   final TransformationController _controller = TransformationController();
   final List<Offset> _points = [];
@@ -96,7 +97,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     if (widget.originalImageBase64 == null) {
       throw Exception('originalImageBase64 is required');
     }
-    _imageBytes = base64Decode(widget.originalImageBase64!);
+    _imageBytes = _decodeBase64(widget.originalImageBase64!);
     _loadImage();
     
     if (widget.aiMaskBase64 != null && widget.aiMaskBase64!.isNotEmpty) {
@@ -107,6 +108,16 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     if (widget.initialMaskBase64 != null && widget.initialMaskBase64!.isNotEmpty) {
       _loadInitialMask();
     }
+  }
+
+
+  Uint8List _decodeBase64(String value) {
+    var normalized = value.trim();
+    if (normalized.startsWith('data:')) {
+      final comma = normalized.indexOf(',');
+      if (comma >= 0) normalized = normalized.substring(comma + 1);
+    }
+    return base64Decode(normalized);
   }
 
   Future<void> _loadImage() async {
@@ -120,7 +131,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   Future<void> _loadAiMask() async {
     try {
-      final aiMaskBytes = base64Decode(widget.aiMaskBase64!);
+      final aiMaskBytes = _decodeBase64(widget.aiMaskBase64!);
       final codec = await ui.instantiateImageCodec(aiMaskBytes);
       final frame = await codec.getNextFrame();
       setState(() {
@@ -133,11 +144,13 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   Future<void> _loadInitialMask() async {
     try {
-      final maskBytes = base64Decode(widget.initialMaskBase64!);
+      final maskBytes = _decodeBase64(widget.initialMaskBase64!);
       final codec = await ui.instantiateImageCodec(maskBytes);
       final frame = await codec.getNextFrame();
-      // Для начальной маски пользователя можно создать изображение контура
-      // или просто пропустить, так как у нас уже есть точки
+      if (!mounted) return;
+      setState(() {
+        _initialMaskImage = frame.image;
+      });
     } catch (e) {
       print('Ошибка загрузки начальной маски: $e');
     }
@@ -195,6 +208,24 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       );
     }
     
+    if (_initialMaskImage != null) {
+      canvas.drawImageRect(
+        _initialMaskImage!,
+        Rect.fromLTWH(
+          0,
+          0,
+          _initialMaskImage!.width.toDouble(),
+          _initialMaskImage!.height.toDouble(),
+        ),
+        Rect.fromLTWH(0, 0, previewWidth, previewHeight),
+        Paint()
+          ..colorFilter = ColorFilter.mode(
+            Colors.blue.withOpacity(0.35),
+            BlendMode.srcATop,
+          ),
+      );
+    }
+
     if (_points.length >= 3) {
       final path = Path();
       path.moveTo(_points.first.dx * scaleX, _points.first.dy * scaleY);
@@ -643,7 +674,6 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                               !_inPinch &&
                               !_closed &&
                               _tapDownScene != null &&
-                              _tapDownScene != null &&
                               _tapDownLocal != null) {
                             final tapLocal = _tapDownLocal!;
 
@@ -683,6 +713,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                             points: _points,
                             closed: _closed,
                             aiMaskImage: _aiMaskImage,
+                            initialMaskImage: _initialMaskImage,
                           ),
                         ),
                       ),
@@ -767,12 +798,14 @@ class _EnhancedMaskPainter extends CustomPainter {
   final List<Offset> points;
   final bool closed;
   final ui.Image? aiMaskImage;
+  final ui.Image? initialMaskImage;
 
   _EnhancedMaskPainter({
     required this.image,
     required this.points,
     required this.closed,
     this.aiMaskImage,
+    this.initialMaskImage,
   });
 
   @override
@@ -802,6 +835,24 @@ class _EnhancedMaskPainter extends CustomPainter {
         Paint()
           ..colorFilter = ColorFilter.mode(
             Colors.green.withOpacity(0.25),
+            BlendMode.srcATop,
+          ),
+      );
+    }
+
+    if (initialMaskImage != null) {
+      canvas.drawImageRect(
+        initialMaskImage!,
+        Rect.fromLTWH(
+          0,
+          0,
+          initialMaskImage!.width.toDouble(),
+          initialMaskImage!.height.toDouble(),
+        ),
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()
+          ..colorFilter = ColorFilter.mode(
+            Colors.blue.withOpacity(0.35),
             BlendMode.srcATop,
           ),
       );
@@ -847,5 +898,6 @@ class _EnhancedMaskPainter extends CustomPainter {
   bool shouldRepaint(covariant _EnhancedMaskPainter oldDelegate) =>
       oldDelegate.points != points ||
       oldDelegate.closed != closed ||
-      oldDelegate.aiMaskImage != aiMaskImage;
+      oldDelegate.aiMaskImage != aiMaskImage ||
+      oldDelegate.initialMaskImage != initialMaskImage;
 }

@@ -168,8 +168,8 @@ BUILD_INFO = {
     "build_time": os.getenv("BUILD_TIME"),
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.9.0"
-VERIFIED_TRUST_THRESHOLD = 0.0
+API_VERSION = "3.0.0"
+VERIFIED_TRUST_THRESHOLD = float(os.getenv("VERIFIED_TRUST_THRESHOLD", "0.70"))
 
 REAL_STICK_M = 1.0
 CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
@@ -896,16 +896,151 @@ def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
     longest = max(h, w)
     if longest > max_side:
         scale = max_side / float(longest)
-        img_bgr = cv2.resize(img_bgr, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=cv2.INTER_AREA)
-    ok, out = cv2.imencode(".jpg", img_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)])
+        img_bgr = cv2.resize(
+            img_bgr,
+            (max(1, int(round(w * scale))), max(1, int(round(h * scale)))),
+            interpolation=cv2.INTER_AREA,
+        )
+    ok, out = cv2.imencode(
+        ".jpg",
+        img_bgr,
+        [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)],
+    )
+    if not ok:
+        raise ValueError("Failed to encode JPEG")
     return base64.b64encode(out.tobytes()).decode("ascii")
+
 
 def draw_mask(img_bgr, mask):
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in cnts:
-        approx = cv2.approxPolyDP(cnt, 0.003 * cv2.arcLength(cnt, True), True)
+        approx = cv2.approxPolyDP(
+            cnt,
+            0.003 * cv2.arcLength(cnt, True),
+            True,
+        )
         cv2.drawContours(img_bgr, [approx], -1, (0, 255, 0), 3)
     return encode_jpeg_base64(img_bgr, max_side=1280, quality=74)
+
+
+def prepare_feedback_assets(
+    img_bgr: np.ndarray,
+    mask: np.ndarray,
+    *,
+    max_side: int = 1600,
+    jpeg_quality: int = 82,
+) -> dict:
+    """Create image/mask files with identical dimensions for user correction.
+
+    The original uploaded photo may be several thousand pixels wide. Flutter
+    receives a reduced copy so the editor remains responsive. The automatic
+    mask is resized with nearest-neighbour interpolation to exactly the same
+    dimensions. The verified training image is later taken from this reduced
+    copy, so a user mask can never have a different shape from its image.
+    """
+    if img_bgr is None or mask is None:
+        raise ValueError("Image and mask are required")
+
+    height, width = img_bgr.shape[:2]
+    longest = max(height, width)
+    scale = 1.0
+    if longest > max_side:
+        scale = max_side / float(longest)
+
+    target_w = max(1, int(round(width * scale)))
+    target_h = max(1, int(round(height * scale)))
+
+    if (target_w, target_h) != (width, height):
+        feedback_img = cv2.resize(
+            img_bgr,
+            (target_w, target_h),
+            interpolation=cv2.INTER_AREA,
+        )
+        feedback_mask = cv2.resize(
+            mask,
+            (target_w, target_h),
+            interpolation=cv2.INTER_NEAREST,
+        )
+    else:
+        feedback_img = img_bgr.copy()
+        feedback_mask = mask.copy()
+
+    _, feedback_mask = cv2.threshold(
+        feedback_mask.astype(np.uint8),
+        127,
+        255,
+        cv2.THRESH_BINARY,
+    )
+
+    annotated = feedback_img.copy()
+    contours, _ = cv2.findContours(
+        feedback_mask,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE,
+    )
+    cv2.drawContours(annotated, contours, -1, (0, 255, 0), 3)
+
+    ok_img, img_buf = cv2.imencode(
+        ".jpg",
+        feedback_img,
+        [int(cv2.IMWRITE_JPEG_QUALITY), int(jpeg_quality)],
+    )
+    ok_ann, ann_buf = cv2.imencode(
+        ".jpg",
+        annotated,
+        [int(cv2.IMWRITE_JPEG_QUALITY), int(jpeg_quality)],
+    )
+    ok_mask, mask_buf = cv2.imencode(".png", feedback_mask)
+
+    # Visual overlay for Flutter: pixels outside the mask are transparent.
+    mask_overlay = np.zeros((target_h, target_w, 4), dtype=np.uint8)
+    mask_overlay[:, :, 1] = 255
+    mask_overlay[:, :, 3] = feedback_mask
+    ok_overlay, overlay_buf = cv2.imencode(".png", mask_overlay)
+
+    if not (ok_img and ok_ann and ok_mask and ok_overlay):
+        raise ValueError("Failed to encode feedback assets")
+
+    image_bytes = img_buf.tobytes()
+    annotated_bytes = ann_buf.tobytes()
+    mask_bytes = mask_buf.tobytes()
+    overlay_bytes = overlay_buf.tobytes()
+    return {
+        "image_bytes": image_bytes,
+        "annotated_bytes": annotated_bytes,
+        "mask_bytes": mask_bytes,
+        "mask_overlay_bytes": overlay_bytes,
+        "image_base64": base64.b64encode(image_bytes).decode("ascii"),
+        "annotated_base64": base64.b64encode(annotated_bytes).decode("ascii"),
+        "mask_base64": base64.b64encode(overlay_bytes).decode("ascii"),
+        "width": target_w,
+        "height": target_h,
+        "source_width": width,
+        "source_height": height,
+    }
+
+
+def normalize_mask_to_image(mask_png_bytes: bytes, image_bytes: bytes) -> bytes:
+    """Binarize and resize a submitted mask to the exact training image size."""
+    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    mask = cv2.imdecode(np.frombuffer(mask_png_bytes, np.uint8), cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        raise ValueError("Training image cannot be decoded")
+    if mask is None:
+        raise ValueError("Submitted mask cannot be decoded")
+
+    target_h, target_w = image.shape[:2]
+    if mask.shape[:2] != (target_h, target_w):
+        mask = cv2.resize(
+            mask,
+            (target_w, target_h),
+            interpolation=cv2.INTER_NEAREST,
+        )
+    _, mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    ok, out = cv2.imencode(".png", mask)
+    if not ok:
+        raise ValueError("Failed to encode normalized mask")
+    return out.tobytes()
 
 def _deg(v):
     d = v[0][0] / v[0][1]; m = v[1][0] / v[1][1]; s = v[2][0] / v[2][1]
@@ -1965,7 +2100,8 @@ async def analyze_tree(
             lean_angle_deg = round(float(180 - dev if dev > 90 else dev), 1)
     except Exception: pass
 
-    annotated_b64 = draw_mask(img.copy(), mask)
+    feedback_assets = prepare_feedback_assets(img, mask)
+    annotated_b64 = feedback_assets["annotated_base64"]
 
     gps, address = None, None
     if ENABLE_ENV_ANALYSIS:
@@ -1991,33 +2127,84 @@ async def analyze_tree(
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
         "gps": gps, "address": address, "risk": risk_data, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
-        "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg}
+        "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg},
+        "feedback_image": {
+            "width": feedback_assets["width"],
+            "height": feedback_assets["height"],
+            "source_width": feedback_assets["source_width"],
+            "source_height": feedback_assets["source_height"],
+        },
     }
 
     try:
-        supabase_upload_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/input.jpg", image_bytes)
-        supabase_upload_json(SUPABASE_BUCKET_RAW, f"{analysis_id}/meta_auto.json", meta)
-        try: supabase_upload_bytes(SUPABASE_BUCKET_RAW, f"{analysis_id}/annotated.jpg", base64.b64decode(annotated_b64))
-        except Exception: pass
-    except Exception as e: print(f"[!] Failed to upload raw sample: {e}")
+        # Keep the original upload for audit, and a resized image that exactly
+        # matches both the automatic and future user masks.
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/input_original.jpg",
+            image_bytes,
+        )
+        # Backward-compatible name for older tools.
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/input.jpg",
+            feedback_assets["image_bytes"],
+        )
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/feedback_input.jpg",
+            feedback_assets["image_bytes"],
+        )
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/annotated.jpg",
+            feedback_assets["annotated_bytes"],
+        )
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/mask_auto.png",
+            feedback_assets["mask_bytes"],
+        )
+        supabase_upload_json(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/meta_auto.json",
+            meta,
+        )
+    except Exception as e:
+        print(f"[!] Failed to upload raw sample: {e}")
 
     try:
         tmp_dir = Path("/tmp") / analysis_id
         tmp_dir.mkdir(parents=True, exist_ok=True)
-        (tmp_dir / "input.jpg").write_bytes(image_bytes)
-        try: (tmp_dir / "annotated.jpg").write_bytes(base64.b64decode(annotated_b64))
-        except Exception: pass
-        (tmp_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False))
-    except Exception as e: print(f"[!] Failed to cache in /tmp: {e}")
+        (tmp_dir / "input.jpg").write_bytes(feedback_assets["image_bytes"])
+        (tmp_dir / "feedback_input.jpg").write_bytes(
+            feedback_assets["image_bytes"]
+        )
+        (tmp_dir / "annotated.jpg").write_bytes(
+            feedback_assets["annotated_bytes"]
+        )
+        (tmp_dir / "mask_auto.png").write_bytes(
+            feedback_assets["mask_bytes"]
+        )
+        (tmp_dir / "meta.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as e:
+        print(f"[!] Failed to cache in /tmp: {e}")
 
     response = {
         "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
         "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
-        "scale_px_to_m": scale, "annotated_image_base64": annotated_b64, "gps": gps, "address": address, "risk": risk_data,
+        "scale_px_to_m": scale,
+        "original_image_base64": feedback_assets["image_base64"],
+        "annotated_image_base64": feedback_assets["annotated_base64"],
+        "mask_image_base64": feedback_assets["mask_base64"],
+        "feedback_image_width": feedback_assets["width"],
+        "feedback_image_height": feedback_assets["height"],
+        "gps": gps, "address": address, "risk": risk_data,
     }
-    try: response["original_image_base64"] = encode_jpeg_base64(img.copy(), max_side=1280, quality=72)
-    except Exception: response["original_image_base64"] = None
 
     response["server_saved"] = analysis_user is not None
     try: _save_analysis_record(response, analysis_user)
@@ -2026,106 +2213,515 @@ async def analyze_tree(
     return JSONResponse(response)
 
 
-@app.post("/feedback")
-def send_feedback(payload: dict = Body(...)):
-    analysis_id = payload.get('analysis_id') or payload.get('analysisId')
-    if not analysis_id: raise HTTPException(status_code=422, detail='analysis_id is required')
+def _validate_analysis_id(analysis_id: str) -> str:
+    value = (analysis_id or "").strip()
+    if not re.fullmatch(
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+        r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        value,
+    ):
+        raise HTTPException(status_code=422, detail="Некорректный analysis_id")
+    return value.lower()
 
-    def _b(val, default=True):
-        if val is None: return default
-        if isinstance(val, bool): return val
-        if isinstance(val, (int, float)): return bool(val)
-        if isinstance(val, str):
-            v = val.strip().lower()
-            if v in ('1','true','yes','y','ok'): return True
-            if v in ('0','false','no','n'): return False
-        return default
 
-    use_for_training = _b(payload.get('use_for_training', payload.get('useForTraining')), default=True)
-    tree_ok = _b(payload.get('tree_ok', payload.get('treeOk')), default=True)
-    stick_ok = _b(payload.get('stick_ok', payload.get('stickOk')), default=True)
-    params_ok = _b(payload.get('params_ok', payload.get('paramsOk')), default=True)
-    species_ok = _b(payload.get('species_ok', payload.get('speciesOk')), default=True)
-    correct_species = payload.get('correct_species') or payload.get('correctSpecies')
-
-    def _f(val):
-        if val is None: return None
-        if isinstance(val, (int, float)): return float(val)
-        if isinstance(val, str):
-            s = val.strip().replace(',', '.')
-            if not s or s.lower() in ('null', 'none', 'nan'): return None
-            try: return float(s)
-            except Exception: return None
+def _download_optional(bucket: str, path: str) -> bytes | None:
+    try:
+        return supabase_download_bytes(bucket, path)
+    except Exception:
         return None
 
-    corrected_height_m = _f(payload.get('corrected_height_m') or payload.get('correctedHeightM'))
-    corrected_crown_width_m = _f(payload.get('corrected_crown_width_m') or payload.get('correctedCrownWidthM'))
-    corrected_trunk_diameter_m = _f(payload.get('corrected_trunk_diameter_m') or payload.get('correctedTrunkDiameterM'))
-    corrected_scale_px_to_m = _f(payload.get('corrected_scale_px_to_m') or payload.get('scale_px_to_m_corrected'))
-    user_mask_base64 = payload.get('user_mask_base64') or payload.get('mask_base64')
 
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: raise HTTPException(status_code=500, detail="Supabase не настроен")
+def _json_from_bytes(raw: bytes | None) -> dict:
+    if not raw:
+        return {}
+    try:
+        value = json.loads(raw.decode("utf-8"))
+        return value if isinstance(value, dict) else {}
+    except Exception:
+        return {}
+
+
+def _load_feedback_artifacts(analysis_id: str) -> dict:
+    """Load feedback source files from local cache or durable RAW storage."""
     tmp_dir = Path("/tmp") / analysis_id
-    if not tmp_dir.exists(): raise HTTPException(status_code=404, detail="analysis_id не найден")
+    if tmp_dir.exists():
+        input_path = (
+            tmp_dir / "feedback_input.jpg"
+            if (tmp_dir / "feedback_input.jpg").exists()
+            else tmp_dir / "input.jpg"
+        )
+        meta_path = tmp_dir / "meta.json"
+        if input_path.exists() and meta_path.exists():
+            try:
+                return {
+                    "source": "tmp",
+                    "tmp_dir": tmp_dir,
+                    "input_bytes": input_path.read_bytes(),
+                    "annotated_bytes": (
+                        (tmp_dir / "annotated.jpg").read_bytes()
+                        if (tmp_dir / "annotated.jpg").exists()
+                        else None
+                    ),
+                    "auto_mask_bytes": (
+                        (tmp_dir / "mask_auto.png").read_bytes()
+                        if (tmp_dir / "mask_auto.png").exists()
+                        else None
+                    ),
+                    "meta": json.loads(meta_path.read_text(encoding="utf-8")),
+                }
+            except Exception as exc:
+                print(f"[!] Failed to read feedback cache {analysis_id}: {exc}")
 
-    if not use_for_training:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        return {"status": "ignored", "reason": "user_disabled_training"}
+    input_bytes = (
+        _download_optional(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/feedback_input.jpg",
+        )
+        or _download_optional(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/input.jpg",
+        )
+        or _download_optional(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/input_original.jpg",
+        )
+    )
+    meta = _json_from_bytes(
+        _download_optional(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/meta_auto.json",
+        )
+    )
+    if not input_bytes or not meta:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Анализ не найден. Исходные данные отсутствуют в кеше и "
+                "в хранилище arborscan-raw."
+            ),
+        )
 
-    try: meta = json.loads((tmp_dir / "meta.json").read_text(encoding="utf-8"))
-    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка чтения meta.json: {e}")
+    return {
+        "source": "supabase_raw",
+        "tmp_dir": tmp_dir,
+        "input_bytes": input_bytes,
+        "annotated_bytes": _download_optional(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/annotated.jpg",
+        ),
+        "auto_mask_bytes": _download_optional(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/mask_auto.png",
+        ),
+        "meta": meta,
+    }
 
-    meta.update({"tree_ok": tree_ok, "stick_ok": stick_ok, "params_ok": params_ok, "species_ok": species_ok, "correct_species": correct_species})
-    if not species_ok and correct_species: meta["species"] = correct_species
-    if corrected_height_m is not None: meta["height_m"] = corrected_height_m
-    if corrected_crown_width_m is not None: meta["crown_width_m"] = corrected_crown_width_m
-    if corrected_trunk_diameter_m is not None: meta["trunk_diameter_m"] = corrected_trunk_diameter_m
-    if corrected_scale_px_to_m is not None: meta["scale_px_to_m"] = corrected_scale_px_to_m
 
-    trust = sum([0.3 if tree_ok else 0, 0.2 if stick_ok else 0, 0.2 if params_ok else 0, 0.3 if (species_ok or correct_species) else 0])
-    meta["trust_score"] = trust
-    is_verified = (use_for_training and trust >= VERIFIED_TRUST_THRESHOLD)
+@app.post("/feedback")
+@app.post("/api/feedback")
+def send_feedback(
+    payload: dict = Body(...),
+    authorization: str | None = Header(default=None),
+):
+    analysis_id = _validate_analysis_id(
+        payload.get("analysis_id") or payload.get("analysisId") or ""
+    )
+
+    def _as_bool(value, default: bool = True) -> bool:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "y", "ok"}:
+                return True
+            if normalized in {"0", "false", "no", "n"}:
+                return False
+        return default
+
+    def _as_float(*values):
+        for value in values:
+            if value is None:
+                continue
+            if isinstance(value, (int, float)):
+                result = float(value)
+            elif isinstance(value, str):
+                normalized = value.strip().replace(",", ".")
+                if not normalized or normalized.lower() in {
+                    "null",
+                    "none",
+                    "nan",
+                }:
+                    continue
+                try:
+                    result = float(normalized)
+                except ValueError:
+                    continue
+            else:
+                continue
+            if math.isfinite(result):
+                return result
+        return None
+
+    use_for_training = _as_bool(
+        payload.get("use_for_training", payload.get("useForTraining")),
+        default=True,
+    )
+    tree_ok = _as_bool(
+        payload.get("tree_ok", payload.get("treeOk")),
+        default=True,
+    )
+    stick_ok = _as_bool(
+        payload.get("stick_ok", payload.get("stickOk")),
+        default=True,
+    )
+    params_ok = _as_bool(
+        payload.get("params_ok", payload.get("paramsOk")),
+        default=True,
+    )
+    species_ok = _as_bool(
+        payload.get("species_ok", payload.get("speciesOk")),
+        default=True,
+    )
+
+    correct_species_raw = (
+        payload.get("correct_species") or payload.get("correctSpecies")
+    )
+    correct_species = (
+        str(correct_species_raw).strip() if correct_species_raw is not None else None
+    )
+    if correct_species == "":
+        correct_species = None
+
+    corrected_height_m = _as_float(
+        payload.get("corrected_height_m"),
+        payload.get("correctedHeightM"),
+        payload.get("height_m_corrected"),
+    )
+    corrected_crown_width_m = _as_float(
+        payload.get("corrected_crown_width_m"),
+        payload.get("correctedCrownWidthM"),
+        payload.get("crown_width_m_corrected"),
+    )
+    corrected_trunk_diameter_m = _as_float(
+        payload.get("corrected_trunk_diameter_m"),
+        payload.get("correctedTrunkDiameterM"),
+        payload.get("trunk_diameter_m_corrected"),
+    )
+    corrected_scale_px_to_m = _as_float(
+        payload.get("corrected_scale_px_to_m"),
+        payload.get("correctedScalePxToM"),
+        payload.get("scale_px_to_m_corrected"),
+        payload.get("scalePxToMCorrected"),
+    )
+    user_mask_base64 = (
+        payload.get("user_mask_base64")
+        or payload.get("userMaskBase64")
+        or payload.get("mask_base64")
+        or payload.get("maskBase64")
+    )
+
+    if corrected_height_m is not None and not 0.5 <= corrected_height_m <= 100:
+        raise HTTPException(status_code=422, detail="Высота должна быть от 0,5 до 100 м")
+    if (
+        corrected_crown_width_m is not None
+        and not 0.1 <= corrected_crown_width_m <= 100
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Ширина кроны должна быть от 0,1 до 100 м",
+        )
+    if (
+        corrected_trunk_diameter_m is not None
+        and not 0.01 <= corrected_trunk_diameter_m <= 10
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Диаметр ствола должен быть от 0,01 до 10 м",
+        )
+    if corrected_scale_px_to_m is not None and corrected_scale_px_to_m <= 0:
+        raise HTTPException(status_code=422, detail="Масштаб должен быть больше нуля")
+
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=500, detail="Supabase не настроен")
+
+    resolved_token = _resolve_auth_token(
+        authorization,
+        payload.get("auth_token") or payload.get("authToken"),
+    )
+    feedback_user = _get_user_by_token(resolved_token or "")
+    verifier_role = (
+        str(feedback_user.get("role") or "user").strip().lower()
+        if feedback_user
+        else "anonymous"
+    )
+    if verifier_role not in {"admin", "user"}:
+        verifier_role = "user"
+
+    artifacts = _load_feedback_artifacts(analysis_id)
+    input_bytes: bytes = artifacts["input_bytes"]
+    annotated_bytes: bytes | None = artifacts.get("annotated_bytes")
+    meta = dict(artifacts["meta"])
+
+    existing_verified_meta = _json_from_bytes(
+        _download_optional(
+            SUPABASE_BUCKET_VERIFIED,
+            f"{analysis_id}/meta_verified.json",
+        )
+    )
+    existing_mask_bytes = (
+        _download_optional(
+            SUPABASE_BUCKET_VERIFIED,
+            f"{analysis_id}/user_mask.png",
+        )
+        or _download_optional(
+            SUPABASE_BUCKET_INPUTS,
+            f"{analysis_id}/user_mask.png",
+        )
+    )
+
+    submitted_mask_bytes = None
+    mask_text = str(user_mask_base64 or "").strip()
+    if mask_text and mask_text.lower() not in {"null", "undefined"}:
+        try:
+            submitted_mask_bytes = normalize_mask_to_image(
+                ensure_png_mask_bytes(mask_text),
+                input_bytes,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Не удалось обработать пользовательскую маску: {exc}",
+            )
+
+    final_mask_bytes = submitted_mask_bytes or existing_mask_bytes
+    if final_mask_bytes is not None:
+        final_mask_bytes = normalize_mask_to_image(final_mask_bytes, input_bytes)
+    has_user_mask = final_mask_bytes is not None
+
+    # A corrected mask is positive evidence even when the automatic mask was
+    # marked as incorrect. The same applies to an explicitly corrected species.
+    tree_component_ok = tree_ok or has_user_mask
+    species_component_ok = species_ok or bool(correct_species)
+    trust = round(
+        (0.30 if tree_component_ok else 0.0)
+        + (0.20 if stick_ok else 0.0)
+        + (0.20 if params_ok else 0.0)
+        + (0.30 if species_component_ok else 0.0),
+        3,
+    )
+
+    now_iso = _now_iso()
+    meta.update(
+        {
+            "analysis_id": analysis_id,
+            "tree_ok": tree_ok,
+            "stick_ok": stick_ok,
+            "params_ok": params_ok,
+            "species_ok": species_ok,
+            "correct_species": correct_species,
+            "has_user_mask": has_user_mask,
+            "use_for_training": use_for_training,
+            "exclude_from_training": not use_for_training,
+            "trust_score": trust,
+            "feedback_received_at": now_iso,
+            "feedback_source": artifacts["source"],
+            "verifier_role": verifier_role,
+            "verifier_user_id": (
+                feedback_user.get("id") if feedback_user else None
+            ),
+            "feedback_revision": int(
+                existing_verified_meta.get("feedback_revision", 0) or 0
+            )
+            + 1,
+        }
+    )
+
+    if not species_ok and correct_species:
+        meta["species"] = correct_species
+    if corrected_height_m is not None:
+        meta["height_m"] = corrected_height_m
+    if corrected_crown_width_m is not None:
+        meta["crown_width_m"] = corrected_crown_width_m
+    if corrected_trunk_diameter_m is not None:
+        meta["trunk_diameter_m"] = corrected_trunk_diameter_m
+    if corrected_scale_px_to_m is not None:
+        meta["scale_px_to_m"] = corrected_scale_px_to_m
+
+    is_verified = bool(
+        use_for_training and trust >= VERIFIED_TRUST_THRESHOLD
+    )
+    meta["verified"] = is_verified
+    if is_verified:
+        meta["verified_at"] = now_iso
+
+    feedback_audit = {
+        "analysis_id": analysis_id,
+        "received_at": now_iso,
+        "verifier_role": verifier_role,
+        "verifier_user_id": feedback_user.get("id") if feedback_user else None,
+        "use_for_training": use_for_training,
+        "quality": {
+            "tree_ok": tree_ok,
+            "stick_ok": stick_ok,
+            "params_ok": params_ok,
+            "species_ok": species_ok,
+        },
+        "corrections": {
+            "species": correct_species,
+            "height_m": corrected_height_m,
+            "crown_width_m": corrected_crown_width_m,
+            "trunk_diameter_m": corrected_trunk_diameter_m,
+            "scale_px_to_m": corrected_scale_px_to_m,
+        },
+        "has_user_mask": has_user_mask,
+        "trust_score": trust,
+        "verified": is_verified,
+    }
 
     try:
-        if (tmp_dir / "input.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
-        if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
+        # Durable audit is always stored, even when the user opts out of model
+        # training. Opt-out therefore means "do not train", not "discard".
+        supabase_upload_json(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/feedback.json",
+            feedback_audit,
+        )
+        supabase_upload_json(
+            SUPABASE_BUCKET_RAW,
+            f"{analysis_id}/meta_feedback.json",
+            meta,
+        )
+        if submitted_mask_bytes is not None:
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_RAW,
+                f"{analysis_id}/user_mask.png",
+                submitted_mask_bytes,
+            )
 
-        existing_has_user_mask = False
-        try: existing_has_user_mask = bool(json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json")).get("has_user_mask", False))
-        except Exception: pass
-        meta["has_user_mask"] = existing_has_user_mask
-
-        if user_mask_base64 and str(user_mask_base64).strip().lower() not in ("null", "undefined"):
-            try:
-                supabase_upload_bytes(SUPABASE_BUCKET_INPUTS, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(str(user_mask_base64)))
-                meta["has_user_mask"] = True
-            except Exception as e: print(f"[!] User mask error: {e}")
-
-        supabase_upload_json(SUPABASE_BUCKET_META, f"{analysis_id}.json", meta)
+        supabase_upload_bytes(
+            SUPABASE_BUCKET_INPUTS,
+            f"{analysis_id}/input.jpg",
+            input_bytes,
+        )
+        if annotated_bytes:
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{analysis_id}/annotated.jpg",
+                annotated_bytes,
+            )
+        if final_mask_bytes:
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_INPUTS,
+                f"{analysis_id}/user_mask.png",
+                final_mask_bytes,
+            )
+        supabase_upload_json(
+            SUPABASE_BUCKET_META,
+            f"{analysis_id}.json",
+            meta,
+        )
 
         if is_verified:
-            try:
-                supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg", (tmp_dir / "input.jpg").read_bytes())
-                if (tmp_dir / "annotated.jpg").exists(): supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg", (tmp_dir / "annotated.jpg").read_bytes())
-                if user_mask_base64:
-                    try: supabase_upload_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png", ensure_png_mask_bytes(user_mask_base64))
-                    except Exception as e: print(f"[!] Verified mask error: {e}")
-                
-                meta_verified = meta.copy()
-                meta_verified["verified"] = True
-                meta_verified["verified_at"] = datetime.utcnow().isoformat()
-                meta_verified["verifier_role"] = "admin" if not use_for_training else "user"
-                supabase_upload_json(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json", meta_verified)
-            except Exception as e: print(f"[!] Verified upload error: {e}")
-
-    except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка Supabase: {e}")
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/input.jpg",
+                input_bytes,
+            )
+            if annotated_bytes:
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/annotated.jpg",
+                    annotated_bytes,
+                )
+            if final_mask_bytes:
+                supabase_upload_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/user_mask.png",
+                    final_mask_bytes,
+                )
+            # Preserve worker/admin fields that may already exist.
+            meta_verified = dict(existing_verified_meta)
+            meta_verified.update(meta)
+            supabase_upload_json(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/meta_verified.json",
+                meta_verified,
+            )
+        elif existing_verified_meta:
+            # A later opt-out must immediately exclude an already verified
+            # sample without deleting its audit history.
+            updated_existing = dict(existing_verified_meta)
+            updated_existing.update(
+                {
+                    "use_for_training": use_for_training,
+                    "exclude_from_training": not use_for_training,
+                    "feedback_received_at": now_iso,
+                    "feedback_revision": meta["feedback_revision"],
+                }
+            )
+            supabase_upload_json(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/meta_verified.json",
+                updated_existing,
+            )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка сохранения обратной связи в Supabase: {exc}",
+        )
 
     if SUPABASE_ENABLE_QUEUE:
-        try: supabase_db_insert(SUPABASE_QUEUE_TABLE, {"analysis_id": analysis_id, "trust_score": trust, "species": meta.get("species"), "has_user_mask": meta.get("has_user_mask", False), "tree_ok": meta.get("tree_ok"), "stick_ok": meta.get("stick_ok"), "params_ok": meta.get("params_ok"), "species_ok": meta.get("species_ok")})
-        except Exception as e: print(f"[!] Queue error: {e}")
+        try:
+            supabase_db_insert(
+                SUPABASE_QUEUE_TABLE,
+                {
+                    "analysis_id": analysis_id,
+                    "trust_score": trust,
+                    "species": meta.get("species"),
+                    "has_user_mask": has_user_mask,
+                    "tree_ok": tree_ok,
+                    "stick_ok": stick_ok,
+                    "params_ok": params_ok,
+                    "species_ok": species_ok,
+                },
+            )
+        except Exception as exc:
+            print(f"[!] Queue error: {exc}")
 
-    shutil.rmtree(tmp_dir, ignore_errors=True)
-    return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
+    tmp_dir: Path = artifacts["tmp_dir"]
+    try:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    except Exception:
+        pass
+
+    if not use_for_training:
+        status = "saved_not_for_training"
+    elif is_verified:
+        status = "verified"
+    else:
+        status = "saved_pending_review"
+
+    return {
+        "status": status,
+        "analysis_id": analysis_id,
+        "trust_score": trust,
+        "verified": is_verified,
+        "use_for_training": use_for_training,
+        "has_user_mask": has_user_mask,
+        "recovered_from": artifacts["source"],
+        "corrected": {
+            "species": meta.get("species"),
+            "height_m": meta.get("height_m"),
+            "crown_width_m": meta.get("crown_width_m"),
+            "trunk_diameter_m": meta.get("trunk_diameter_m"),
+            "scale_px_to_m": meta.get("scale_px_to_m"),
+        },
+    }
+
 
 @app.get("/admin/verified-list")
 def admin_verified_list(
