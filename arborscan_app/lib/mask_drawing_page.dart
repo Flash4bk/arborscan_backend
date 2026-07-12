@@ -110,7 +110,6 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     }
   }
 
-
   Uint8List _decodeBase64(String value) {
     var normalized = value.trim();
     if (normalized.startsWith('data:')) {

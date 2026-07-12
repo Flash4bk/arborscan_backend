@@ -66,6 +66,18 @@ SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
 SUPABASE_ENABLE_QUEUE = settings.supabase_enable_queue
 
 PLANTNET_API_KEY = settings.plantnet_api_key
+PLANTNET_BASE_URL = os.getenv(
+    "PLANTNET_BASE_URL",
+    "https://my-api.plantnet.org/v2",
+).rstrip("/")
+PLANTNET_PROJECT = os.getenv("PLANTNET_PROJECT", "all").strip() or "all"
+PLANTNET_LANG = os.getenv("PLANTNET_LANG", "ru").strip() or "ru"
+PLANTNET_TIMEOUT_SEC = float(os.getenv("PLANTNET_TIMEOUT_SEC", "20"))
+PLANTNET_TOP_K = max(1, min(int(os.getenv("PLANTNET_TOP_K", "3")), 10))
+PLANTNET_MIN_SCORE = max(
+    0.0,
+    min(float(os.getenv("PLANTNET_MIN_SCORE", "0.05")), 1.0),
+)
 
 NOMINATIM_URL = settings.nominatim_base_url
 NOMINATIM_USER_AGENT = settings.nominatim_user_agent
@@ -160,7 +172,7 @@ def training_state_update(fields: dict) -> dict:
 MODEL_VERSIONS = {
     "tree_yolo": "tree_yolov8_seg_versioned",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
-    "classifier": "plantnet_api_v2",
+    "classifier": "plantnet_api_v2_auto_top3",
     "mask_refiner": "u2net_rembg_solid_v2",
 }
 BUILD_INFO = {
@@ -168,7 +180,7 @@ BUILD_INFO = {
     "build_time": os.getenv("BUILD_TIME"),
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "3.0.0"
+API_VERSION = "3.0.1"
 VERIFIED_TRUST_THRESHOLD = float(os.getenv("VERIFIED_TRUST_THRESHOLD", "0.70"))
 
 REAL_STICK_M = 1.0
@@ -1849,13 +1861,19 @@ def health(deep: bool = False):
             "model_cache_dir": str(MODEL_CACHE_DIR),
         },
         "supabase": supabase_info,
-        "plantnet": {"configured": bool(PLANTNET_API_KEY)},
+        "plantnet": (_plantnet_health_sync() if deep else {"configured": bool(PLANTNET_API_KEY), "project": PLANTNET_PROJECT, "language": PLANTNET_LANG}),
         "rembg": {
             "loaded": REMBG_SESSION is not None,
             "preload_enabled": settings.preload_rembg,
         },
         "checked_at": _utc_iso(),
     }
+
+
+@app.get("/health/plantnet")
+def health_plantnet():
+    """Check Pl@ntNet configuration and API-key validity without identifying a plant."""
+    return _plantnet_health_sync()
 
 
 @app.get("/health/models")
@@ -1883,23 +1901,245 @@ def _run_yolo_sync(img_array, conf=0.25):
         stick(img_array)[0],
     )
 
-def map_plantnet_name(raw_name: str) -> str:
-    name_lower = raw_name.lower()
-    for n in ["сосна", "ель", "дуб", "береза", "тополь", "клен", "ясень", "липа"]:
-        if n in name_lower or n.replace('е','ё') in name_lower: return n.capitalize()
-    return raw_name.capitalize()
+def _normalize_species_group(*names: str | None) -> str:
+    """Map Pl@ntNet common/scientific names to ArborScan risk groups."""
+    raw = " ".join(str(name or "") for name in names).lower().replace("ё", "е")
+    aliases = (
+        ("Сосна", ("сосна", "pinus")),
+        ("Ель", ("ель", "picea")),
+        ("Дуб", ("дуб", "quercus")),
+        ("Береза", ("береза", "betula")),
+        ("Тополь", ("тополь", "populus")),
+        ("Клен", ("клен", "acer")),
+        ("Ясень", ("ясень", "fraxinus")),
+        ("Липа", ("липа", "tilia")),
+    )
+    for group, variants in aliases:
+        if any(alias in raw for alias in variants):
+            return group
+    # Keep the historical fallback explicit. It is used only by the current
+    # beta/risk tables when a species is outside the supported groups.
+    return "Сосна"
 
-def _run_classifier_sync(crop_bgr):
-    if not PLANTNET_API_KEY:
-        return "Неизвестно"
-    ok, encoded_img = cv2.imencode(".jpg", crop_bgr)
-    if not ok: return "Неизвестно"
+
+def _plantnet_unknown(status: str, message: str | None = None) -> dict:
+    return {
+        "status": status,
+        "display_name": "Неизвестно",
+        "scientific_name": None,
+        "common_names": [],
+        "confidence": None,
+        "species_group": "Сосна",
+        "risk_group_assumed": True,
+        "top_results": [],
+        "predicted_organs": [],
+        "api_version": None,
+        "remaining_requests": None,
+        "project": PLANTNET_PROJECT,
+        "message": message,
+    }
+
+
+def _plantnet_result_item(item: dict) -> dict:
+    species = item.get("species") if isinstance(item, dict) else {}
+    if not isinstance(species, dict):
+        species = {}
+
+    common_names = species.get("commonNames") or []
+    if not isinstance(common_names, list):
+        common_names = []
+    common_names = [str(name).strip() for name in common_names if str(name).strip()]
+
+    scientific_name = (
+        species.get("scientificNameWithoutAuthor")
+        or species.get("scientificName")
+        or item.get("scientificName")
+    )
+    scientific_name = str(scientific_name).strip() if scientific_name else None
+
+    display_name = common_names[0] if common_names else scientific_name
+    display_name = display_name or "Неизвестно"
+
+    score_raw = item.get("score") if isinstance(item, dict) else None
     try:
-        r = requests.post(f"https://my-api.plantnet.org/v2/identify/all?api-key={PLANTNET_API_KEY}&lang=ru", files=[('images', ('crop.jpg', encoded_img.tobytes(), 'image/jpeg'))], data={'organs': ['habit']}, timeout=12)
-        if r.status_code == 200 and r.json().get('results'):
-            return map_plantnet_name(r.json().get('results')[0].get('species', {}).get('commonNames', [r.json().get('results')[0].get('species', {}).get('scientificNameWithoutAuthor', 'Неизвестно')])[0])
-    except Exception: pass
-    return "Неизвестно"
+        score = round(float(score_raw), 6) if score_raw is not None else None
+    except (TypeError, ValueError):
+        score = None
+
+    return {
+        "display_name": display_name,
+        "scientific_name": scientific_name,
+        "common_names": common_names[:8],
+        "confidence": score,
+        "species_group": _normalize_species_group(display_name, scientific_name),
+    }
+
+
+def _run_classifier_sync(crop_bgr) -> dict:
+    """Identify the cropped tree with Pl@ntNet and return structured data."""
+    if not PLANTNET_API_KEY:
+        return _plantnet_unknown(
+            "not_configured",
+            "PLANTNET_API_KEY is not configured",
+        )
+    if crop_bgr is None or getattr(crop_bgr, "size", 0) == 0:
+        return _plantnet_unknown("empty_crop", "Tree crop is empty")
+
+    ok, encoded_img = cv2.imencode(
+        ".jpg",
+        crop_bgr,
+        [int(cv2.IMWRITE_JPEG_QUALITY), 92],
+    )
+    if not ok:
+        return _plantnet_unknown("encode_error", "Could not encode tree crop")
+
+    endpoint = f"{PLANTNET_BASE_URL}/identify/{PLANTNET_PROJECT}"
+    params = {
+        "api-key": PLANTNET_API_KEY,
+        "lang": PLANTNET_LANG,
+        "nb-results": PLANTNET_TOP_K,
+    }
+    files = [
+        (
+            "images",
+            ("tree_crop.jpg", encoded_img.tobytes(), "image/jpeg"),
+        )
+    ]
+    # One organ value for one image. `auto` is the documented choice when
+    # the input is a whole-tree crop and no specific organ is known.
+    data = [("organs", "auto")]
+
+    started = time.perf_counter()
+    try:
+        response = requests.post(
+            endpoint,
+            params=params,
+            files=files,
+            data=data,
+            timeout=PLANTNET_TIMEOUT_SEC,
+        )
+        latency_ms = round((time.perf_counter() - started) * 1000, 1)
+
+        if response.status_code != 200:
+            body_preview = response.text[:500].replace("\n", " ")
+            print(
+                f"[PlantNet] identify failed: HTTP {response.status_code}; "
+                f"latency={latency_ms} ms; body={body_preview}"
+            )
+            return _plantnet_unknown(
+                "http_error",
+                f"Pl@ntNet returned HTTP {response.status_code}",
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            print(f"[PlantNet] invalid JSON response: {exc}")
+            return _plantnet_unknown(
+                "invalid_response",
+                "Pl@ntNet returned invalid JSON",
+            )
+
+        raw_results = payload.get("results") or []
+        if not isinstance(raw_results, list) or not raw_results:
+            print(
+                "[PlantNet] no results; "
+                f"bestMatch={payload.get('bestMatch')!r}; "
+                f"predictedOrgans={payload.get('predictedOrgans')!r}"
+            )
+            result = _plantnet_unknown(
+                "no_results",
+                "Pl@ntNet did not return species candidates",
+            )
+            result.update(
+                {
+                    "predicted_organs": payload.get("predictedOrgans") or [],
+                    "api_version": payload.get("version"),
+                    "remaining_requests": payload.get(
+                        "remainingIdentificationRequests"
+                    ),
+                    "latency_ms": latency_ms,
+                }
+            )
+            return result
+
+        top_results = [_plantnet_result_item(item) for item in raw_results[:PLANTNET_TOP_K]]
+        best = top_results[0]
+        confidence = best.get("confidence")
+        status = "ok"
+        message = None
+        if confidence is not None and confidence < PLANTNET_MIN_SCORE:
+            status = "low_confidence"
+            message = (
+                "The best Pl@ntNet score is below the configured threshold "
+                f"({confidence:.4f} < {PLANTNET_MIN_SCORE:.4f})"
+            )
+
+        result = {
+            "status": status,
+            **best,
+            "risk_group_assumed": False,
+            "top_results": top_results,
+            "predicted_organs": payload.get("predictedOrgans") or [],
+            "api_version": payload.get("version"),
+            "remaining_requests": payload.get("remainingIdentificationRequests"),
+            "project": PLANTNET_PROJECT,
+            "latency_ms": latency_ms,
+            "message": message,
+        }
+        print(
+            "[PlantNet] identified "
+            f"{result['display_name']} / {result.get('scientific_name')} "
+            f"score={result.get('confidence')} status={status} "
+            f"latency={latency_ms} ms"
+        )
+        return result
+    except requests.Timeout:
+        print(f"[PlantNet] identify timeout after {PLANTNET_TIMEOUT_SEC} s")
+        return _plantnet_unknown("timeout", "Pl@ntNet request timed out")
+    except requests.RequestException as exc:
+        print(f"[PlantNet] network error: {exc}")
+        return _plantnet_unknown("network_error", str(exc))
+    except Exception as exc:
+        print(f"[PlantNet] unexpected classifier error: {exc}")
+        return _plantnet_unknown("internal_error", str(exc))
+
+
+def _plantnet_health_sync() -> dict:
+    info = {
+        "configured": bool(PLANTNET_API_KEY),
+        "reachable": None,
+        "status": None,
+        "status_code": None,
+        "latency_ms": None,
+        "error": None,
+        "project": PLANTNET_PROJECT,
+        "language": PLANTNET_LANG,
+    }
+    if not PLANTNET_API_KEY:
+        return info
+
+    started = time.perf_counter()
+    try:
+        response = requests.get(
+            f"{PLANTNET_BASE_URL}/_status",
+            params={"api-key": PLANTNET_API_KEY},
+            timeout=min(PLANTNET_TIMEOUT_SEC, 10.0),
+        )
+        info["latency_ms"] = round((time.perf_counter() - started) * 1000, 1)
+        info["status_code"] = response.status_code
+        if response.status_code == 200:
+            payload = response.json()
+            info["status"] = payload.get("status")
+            info["reachable"] = payload.get("status") == "ok"
+        else:
+            info["reachable"] = False
+            info["error"] = f"HTTP {response.status_code}"
+    except Exception as exc:
+        info["latency_ms"] = round((time.perf_counter() - started) * 1000, 1)
+        info["reachable"] = False
+        info["error"] = str(exc)
+    return info
 
 @app.post("/analyze-tree")
 async def analyze_tree(
@@ -2020,7 +2260,12 @@ async def analyze_tree(
     trunk_vals = [np.where(mask[y] > 0)[0].max() - np.where(mask[y] > 0)[0].min() for y in range(y_max - int(0.2 * height_px), y_max) if len(np.where(mask[y] > 0)[0]) > 0]
     trunk_px = np.mean(trunk_vals) if trunk_vals else 0
 
-    species_name = await run_in_threadpool(_run_classifier_sync, img[y1_c:y2_c, x1_c:x2_c])
+    classification = await run_in_threadpool(
+        _run_classifier_sync,
+        img[y1_c:y2_c, x1_c:x2_c],
+    )
+    species_name = classification.get("display_name") or "Неизвестно"
+    species_group = classification.get("species_group") or "Сосна"
 
     # 6. МАСШТАБ И РАЗМЕРЫ (СВЯТОЙ ГРААЛЬ)
     scale = None
@@ -2053,7 +2298,7 @@ async def analyze_tree(
         elif ar_trunk_diameter_m and trunk_px > 0: scale = float(ar_trunk_diameter_m) / trunk_px; dimensions_source = "Пропорционально (по AR Стволу)"
 
     if not scale:
-        ref_h = BETA_EMPIRICAL_STATS.get(species_name, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
+        ref_h = BETA_EMPIRICAL_STATS.get(species_group, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
         if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Био. статистика ({species_name})"
 
     height_m = round(height_px * scale, 2) if scale else None
@@ -2070,9 +2315,9 @@ async def analyze_tree(
 
     if ar_trunk_diameter_m and not ar_height_m and trunk_px > 0:
         if (height_px / trunk_px) < 35:  
-            typical_s = {"Сосна": 65, "Ель": 70, "Береза": 60, "Дуб": 45, "Тополь": 55, "Клен": 50, "Ясень": 55, "Липа": 50}.get(species_name, 55)
+            typical_s = {"Сосна": 65, "Ель": 70, "Береза": 60, "Дуб": 45, "Тополь": 55, "Клен": 50, "Ясень": 55, "Липа": 50}.get(species_group, 55)
             height_m = round(float(ar_trunk_diameter_m) * typical_s, 2)
-            if not ar_crown_width_m: crown_m = round(float(ar_trunk_diameter_m) * (12 if species_name in ["Ель", "Сосна"] else 18), 2)
+            if not ar_crown_width_m: crown_m = round(float(ar_trunk_diameter_m) * (12 if species_group in ["Ель", "Сосна"] else 18), 2)
             dimensions_source = "Аллометрия (Коррекция перспективы)"
 
     if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
@@ -2109,10 +2354,10 @@ async def analyze_tree(
         if gps: address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
 
     final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
-    beta_info = estimate_beta_kg_s(species_name, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
+    beta_info = estimate_beta_kg_s(species_group, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
     
     wind_design = float(manual_wind_speed_m_s or 25.0)
-    risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_name, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
+    risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_group, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
 
     analytic_wind_model = {
         "available": True,
@@ -2122,7 +2367,7 @@ async def analyze_tree(
 
     analysis_id = str(uuid4())
     meta = {
-        "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
+        "analysis_id": analysis_id, "species": species_name, "species_group": species_group, "classification": classification, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "crown_density_ai": crown_density_ai,
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
         "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
@@ -2194,10 +2439,14 @@ async def analyze_tree(
         print(f"[!] Failed to cache in /tmp: {e}")
 
     response = {
-        "analysis_id": analysis_id, "species": species_name, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
+        "analysis_id": analysis_id, "species": species_name, "species_group": species_group, "classification": classification, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
         "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
         "scale_px_to_m": scale,
+        "classification_status": classification.get("status"),
+        "species_scientific_name": classification.get("scientific_name"),
+        "species_confidence": classification.get("confidence"),
+        "species_top_results": classification.get("top_results", []),
         "original_image_base64": feedback_assets["image_base64"],
         "annotated_image_base64": feedback_assets["annotated_base64"],
         "mask_image_base64": feedback_assets["mask_base64"],

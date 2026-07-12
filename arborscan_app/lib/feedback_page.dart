@@ -4,15 +4,15 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
 import 'app_theme.dart';
 import 'mask_drawing_page.dart';
 import 'stick_page.dart';
 
-/// Экран проверки результата анализа.
+/// Проверка и корректировка одного анализа.
 ///
-/// Важное правило этапа 3: этот экран сам выполняет единственный POST /feedback
-/// и возвращает на предыдущий экран уже подтверждённый ответ backend. Это
-/// исключает прежнюю двойную отправку одного и того же feedback.
+/// Экран самостоятельно выполняет единственный POST /feedback и возвращает
+/// уже сохранённый backend-ответ. Это исключает двойную отправку данных.
 class FeedbackPage extends StatefulWidget {
   final String baseUrl;
   final String? authToken;
@@ -30,13 +30,13 @@ class FeedbackPage extends StatefulWidget {
 
   const FeedbackPage({
     super.key,
-    required this.baseUrl,
+    this.baseUrl = ApiConfig.baseUrl,
+    this.authToken,
     required this.analysisId,
     required this.originalImageBase64,
-    required this.species,
-    this.authToken,
     this.annotatedImageBase64,
     this.maskImageBase64,
+    required this.species,
     this.heightM,
     this.crownWidthM,
     this.trunkDiameterM,
@@ -118,7 +118,10 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
   bool _parametersUnchanged() {
     return _sameNumber(_parseNumber(_heightController.text), widget.heightM) &&
-        _sameNumber(_parseNumber(_crownController.text), widget.crownWidthM) &&
+        _sameNumber(
+          _parseNumber(_crownController.text),
+          widget.crownWidthM,
+        ) &&
         _sameNumber(
           _parseNumber(_trunkController.text),
           widget.trunkDiameterM,
@@ -154,6 +157,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
         builder: (_) => MaskDrawingPage(
           originalImageBase64: widget.originalImageBase64,
           aiMaskBase64: widget.maskImageBase64,
+          initialMaskBase64: _userMaskBase64,
         ),
       ),
     );
@@ -164,8 +168,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
     setState(() {
       _userMaskBase64 = mask;
-      // false означает: исходная AI-маска была исправлена. Backend отдельно
-      // учитывает наличие корректирующей пользовательской маски.
       _treeOk = false;
     });
   }
@@ -192,7 +194,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
   String _responseMessage(Map<String, dynamic> response) {
     switch (response['status']?.toString()) {
       case 'verified':
-        return 'Исправления сохранены. Пример доступен для обучающего набора.';
+        return 'Исправления сохранены. Пример доступен для обучения.';
       case 'saved_pending_review':
         return 'Исправления сохранены и ожидают проверки.';
       case 'saved_not_for_training':
@@ -204,9 +206,10 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
   String _extractServerError(http.Response response) {
     try {
-      final decoded = jsonDecode(response.body);
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       if (decoded is Map) {
-        final detail = decoded['detail'] ?? decoded['error'] ?? decoded['message'];
+        final detail =
+            decoded['detail'] ?? decoded['error'] ?? decoded['message'];
         if (detail != null) return detail.toString();
       }
     } catch (_) {}
@@ -229,8 +232,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Вы отметили маску как неверную. Нарисуйте корректную маску либо '
-            'отключите использование примера в обучении.',
+            'Вы отметили маску как неверную. Нарисуйте корректную маску '
+            'либо отключите использование примера в обучении.',
           ),
         ),
       );
@@ -259,6 +262,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
     try {
       final headers = <String, String>{
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       };
       final token = widget.authToken?.trim();
       if (token != null && token.isNotEmpty) {
@@ -281,7 +285,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
         return;
       }
 
-      final decoded = jsonDecode(response.body);
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       final result = decoded is Map<String, dynamic>
           ? decoded
           : Map<String, dynamic>.from(decoded as Map);
@@ -313,20 +317,20 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Проверка анализа'),
+        title: const Text('ПОДТВЕРЖДЕНИЕ'),
         actions: [
           if (_isSending)
             const Padding(
               padding: EdgeInsets.all(14),
               child: SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
           else
             IconButton(
-              tooltip: 'Сохранить',
+              tooltip: 'Отправить',
               icon: const Icon(Icons.done_all),
               onPressed: _sendFeedback,
             ),
@@ -335,100 +339,68 @@ class _FeedbackPageState extends State<FeedbackPage> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           children: [
+            if (previewBytes != null) ...[
+              GlassPanel(
+                padding: EdgeInsets.zero,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: AspectRatio(
+                    aspectRatio: 4 / 3,
+                    child: Image.memory(previewBytes, fit: BoxFit.cover),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
             Ui.paddedCard(
               context,
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.fact_check_outlined),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Проверьте результат. Исправления сохраняются в '
-                          'Supabase и не зависят от временного кеша Railway.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: AppTheme.muted),
-                        ),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.verified_outlined,
+                    color: AppTheme.primary,
                   ),
-                  if (previewBytes != null) ...[
-                    const SizedBox(height: 14),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: AspectRatio(
-                        aspectRatio: 4 / 3,
-                        child: Image.memory(previewBytes, fit: BoxFit.cover),
-                      ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Проверьте результат анализа и при необходимости '
+                      'внесите корректировки. После отправки данные могут '
+                      'использоваться для улучшения модели.',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: AppTheme.muted),
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
 
-            Ui.sectionTitle(context, 'Контур и масштаб'),
+            Ui.sectionTitle(context, 'Инструменты'),
             Ui.paddedCard(
               context,
-              child: Column(
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ActionCard(
-                          title: 'Маска дерева',
-                          icon: Icons.gesture,
-                          statusText: _userMaskBase64 != null
-                              ? 'Исправлена вручную'
-                              : (_treeOk ? 'Подтверждена' : 'Требует правки'),
-                          statusOk: _treeOk || _userMaskBase64 != null,
-                          onTap: _openMaskEditor,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _ActionCard(
-                          title: 'Масштаб',
-                          icon: Icons.straighten,
-                          statusText: _stickOk ? 'Подтверждён' : 'Исправлен',
-                          statusOk: _stickOk,
-                          onTap: _openStickEditor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Исходная маска ИИ верна'),
-                    subtitle: Text(
-                      _userMaskBase64 != null
-                          ? 'Сохранена новая пользовательская маска.'
-                          : 'Выключите и нарисуйте новый контур, если ИИ ошибся.',
+                  Expanded(
+                    child: _ActionCard(
+                      title: 'Маска',
+                      icon: Icons.auto_fix_high,
+                      statusOk: _treeOk,
+                      onTap: _openMaskEditor,
                     ),
-                    value: _treeOk,
-                    onChanged: _isSending
-                        ? null
-                        : (value) => setState(() => _treeOk = value),
                   ),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Масштаб определён верно'),
-                    subtitle: Text(
-                      _userScale == null
-                          ? 'Масштаб отсутствует.'
-                          : 'Текущее значение: '
-                              '${_userScale!.toStringAsFixed(8)} м/px',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ActionCard(
+                      title: 'Масштаб',
+                      icon: Icons.straighten,
+                      statusOk: _stickOk,
+                      onTap: _openStickEditor,
                     ),
-                    value: _stickOk,
-                    onChanged: _isSending
-                        ? null
-                        : (value) => setState(() => _stickOk = value),
                   ),
                 ],
               ),
@@ -443,15 +415,17 @@ class _FeedbackPageState extends State<FeedbackPage> {
                   Row(
                     children: [
                       Ui.badge(
-                        text: speciesOk ? 'Без изменений' : 'Исправлен',
-                        color: speciesOk ? AppTheme.success : AppTheme.warning,
+                        text: speciesOk ? 'Ок' : 'Изменено',
+                        color: speciesOk
+                            ? AppTheme.success
+                            : AppTheme.warning,
                         icon: speciesOk ? Icons.check_circle : Icons.edit,
                       ),
                       const Spacer(),
                       Flexible(
                         child: Text(
                           'Исходно: ${widget.species}',
-                          textAlign: TextAlign.end,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -460,13 +434,14 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _speciesController,
+                    enabled: !_isSending,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
                       labelText: 'Вид дерева',
-                      helperText: 'Можно указать вид, отсутствующий в коротком списке.',
+                      hintText: 'Введите определённый вид',
                     ),
                     validator: (value) => (value ?? '').trim().isEmpty
                         ? 'Укажите вид дерева'
@@ -477,7 +452,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
               ),
             ),
 
-            Ui.sectionTitle(context, 'Размеры дерева'),
+            Ui.sectionTitle(context, 'Параметры'),
             Ui.paddedCard(
               context,
               child: Column(
@@ -485,13 +460,15 @@ class _FeedbackPageState extends State<FeedbackPage> {
                   Row(
                     children: [
                       Ui.badge(
-                        text: paramsOk ? 'Без изменений' : 'Исправлены',
-                        color: paramsOk ? AppTheme.success : AppTheme.warning,
+                        text: paramsOk ? 'Ок' : 'Изменено',
+                        color: paramsOk
+                            ? AppTheme.success
+                            : AppTheme.warning,
                         icon: paramsOk ? Icons.check_circle : Icons.tune,
                       ),
                       const Spacer(),
                       Text(
-                        'м',
+                        'Масштаб: ${_userScale?.toStringAsFixed(6) ?? '—'}',
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
@@ -500,68 +477,40 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  _numField(
                     controller: _heightController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(labelText: 'Высота, м'),
-                    validator: (value) => _validateRange(
-                      value,
-                      label: 'Высота',
-                      min: 0.5,
-                      max: 100,
-                    ),
-                    onChanged: (_) => setState(() {}),
+                    label: 'Высота, м',
+                    min: 0.5,
+                    max: 100,
                   ),
                   const SizedBox(height: 10),
-                  TextFormField(
+                  _numField(
                     controller: _crownController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Ширина кроны, м',
-                    ),
-                    validator: (value) => _validateRange(
-                      value,
-                      label: 'Ширина кроны',
-                      min: 0.1,
-                      max: 100,
-                    ),
-                    onChanged: (_) => setState(() {}),
+                    label: 'Ширина кроны, м',
+                    min: 0.1,
+                    max: 100,
                   ),
                   const SizedBox(height: 10),
-                  TextFormField(
+                  _numField(
                     controller: _trunkController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Диаметр ствола, м',
-                    ),
-                    validator: (value) => _validateRange(
-                      value,
-                      label: 'Диаметр ствола',
-                      min: 0.01,
-                      max: 10,
-                    ),
-                    onChanged: (_) => setState(() {}),
+                    label: 'Диаметр ствола, м',
+                    min: 0.01,
+                    max: 10,
                   ),
                 ],
               ),
             ),
 
-            Ui.sectionTitle(context, 'Использование данных'),
+            Ui.sectionTitle(context, 'Датасет для обучения'),
             Ui.paddedCard(
               context,
-              child: SwitchListTile.adaptive(
+              child: SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Разрешить использовать для обучения'),
+                activeColor: AppTheme.primary,
+                title: const Text('Использовать для обучения'),
                 subtitle: Text(
-                  _useForTraining
-                      ? 'После проверки пример сможет попасть в обучающий набор.'
-                      : 'Исправления сохранятся, но пример будет исключён из обучения.',
+                  'Если выключить, данные сохранятся, но не попадут в '
+                  'обучающий набор.',
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
@@ -574,18 +523,43 @@ class _FeedbackPageState extends State<FeedbackPage> {
               ),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _isSending ? null : _sendFeedback,
-              icon: const Icon(Icons.cloud_upload_outlined),
-              label: Text(_isSending ? 'Сохранение…' : 'Сохранить проверку'),
+              icon: _isSending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
+                    )
+                  : const Icon(Icons.done_all, color: Colors.black),
+              label: Text(
+                _isSending ? 'ОТПРАВКА...' : 'ПОДТВЕРДИТЬ И ОТПРАВИТЬ',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
+                backgroundColor: AppTheme.primary,
+                minimumSize: const Size.fromHeight(54),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
               ),
             ),
             const SizedBox(height: 10),
             OutlinedButton(
-              onPressed: _isSending ? null : () => Navigator.of(context).pop(),
+              onPressed: _isSending
+                  ? null
+                  : () => Navigator.of(context).maybePop(),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
               child: const Text('Отмена'),
             ),
           ],
@@ -593,18 +567,43 @@ class _FeedbackPageState extends State<FeedbackPage> {
       ),
     );
   }
+
+  Widget _numField({
+    required TextEditingController controller,
+    required String label,
+    required double min,
+    required double max,
+  }) {
+    return TextFormField(
+      controller: controller,
+      enabled: !_isSending,
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: false,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: '—',
+      ),
+      validator: (value) => _validateRange(
+        value,
+        label: label,
+        min: min,
+        max: max,
+      ),
+      onChanged: (_) => setState(() {}),
+    );
+  }
 }
 
 class _ActionCard extends StatelessWidget {
   final String title;
-  final String statusText;
   final IconData icon;
   final bool statusOk;
   final VoidCallback onTap;
 
   const _ActionCard({
     required this.title,
-    required this.statusText,
     required this.icon,
     required this.statusOk,
     required this.onTap,
@@ -613,15 +612,16 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = statusOk ? AppTheme.success : AppTheme.warning;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.07),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withOpacity(0.25)),
+          color: color.withOpacity(0.07),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -630,21 +630,17 @@ class _ActionCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               title,
-              textAlign: TextAlign.center,
               style: Theme.of(context)
                   .textTheme
                   .titleSmall
                   ?.copyWith(fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Text(
-              statusText,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
+              statusOk ? 'Ок' : 'Изменено',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: color,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
             ),
           ],

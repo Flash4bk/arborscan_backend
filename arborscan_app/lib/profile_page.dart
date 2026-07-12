@@ -123,7 +123,9 @@ class _ProfilePageState extends State<ProfilePage> {
         : jsonDecode(utf8.decode(res.bodyBytes));
     final data = decoded is Map<String, dynamic>
         ? decoded
-        : (decoded is Map ? decoded.cast<String, dynamic>() : <String, dynamic>{});
+        : (decoded is Map
+            ? decoded.cast<String, dynamic>()
+            : <String, dynamic>{});
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception(
@@ -151,7 +153,9 @@ class _ProfilePageState extends State<ProfilePage> {
         : jsonDecode(utf8.decode(res.bodyBytes));
     final data = decoded is Map<String, dynamic>
         ? decoded
-        : (decoded is Map ? decoded.cast<String, dynamic>() : <String, dynamic>{});
+        : (decoded is Map
+            ? decoded.cast<String, dynamic>()
+            : <String, dynamic>{});
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception(
@@ -168,6 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.remove(_expiresAtKey);
     await prefs.setBool(_loggedInKey, false);
     await prefs.setBool(_adminFlagKey, false);
+    await prefs.setString(_roleKey, 'user');
 
     if (!mounted) return;
     setState(() {

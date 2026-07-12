@@ -41,7 +41,8 @@ class _AppRootState extends State<AppRoot> {
   void _handleAuthChanged() {
     if (!mounted) return;
     setState(() {
-      // Пересоздаём только экран анализа, чтобы он перечитал роль и токен.
+      // Пересоздаём только экран анализа, чтобы он перечитал роль и токен,
+      // не затрагивая дизайн и состояние остальных вкладок.
       _analyzePage = ArborScanPage(key: UniqueKey());
     });
   }
