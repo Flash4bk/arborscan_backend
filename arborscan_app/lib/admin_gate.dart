@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Compact admin entry block shown on the Home screen.
-/// This widget does NOT navigate by itself (no page imports) to avoid build issues.
-/// Navigation is handled by callbacks from main.dart.
+/// Блок входа в административные инструменты.
+///
+/// Флаг [isAdmin] используется только для отображения интерфейса. Реальные
+/// права при открытии панели повторно проверяет backend по Bearer-токену.
 class AdminGate extends StatelessWidget {
   final bool isAdmin;
-
-  /// Open admin tools panel (models, training, etc.)
   final VoidCallback onOpenAdminPanel;
-
-  /// Open feedback / correction flow for the last analysis.
   final VoidCallback onOpenFeedback;
 
   const AdminGate({
@@ -22,7 +19,7 @@ class AdminGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final colors = theme.colorScheme;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -34,29 +31,40 @@ class AdminGate extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  isAdmin ? Icons.admin_panel_settings : Icons.lock_outline,
-                  color: isAdmin ? const Color(0xFF1565C0) : cs.onSurfaceVariant,
+                  isAdmin
+                      ? Icons.admin_panel_settings
+                      : Icons.lock_outline,
+                  color: isAdmin
+                      ? const Color(0xFF1565C0)
+                      : colors.onSurfaceVariant,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isAdmin ? 'Admin Mode' : 'Admin tools',
+                    'Административные инструменты',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: isAdmin ? const Color(0xFFE8F3FF) : const Color(0xFF1A2B3A),
+                    color: isAdmin
+                        ? const Color(0xFFE8F3FF)
+                        : const Color(0xFFEFEFEF),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     isAdmin ? 'ADMIN' : 'LOCKED',
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: isAdmin ? const Color(0xFF0D47A1) : const Color(0xFFB8C4CC),
+                      color: isAdmin
+                          ? const Color(0xFF0D47A1)
+                          : colors.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -65,22 +73,21 @@ class AdminGate extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               isAdmin
-                  ? 'Доступны инструменты администратора и правка анализов.'
-                  : 'Включите режим администратора в Настройках, чтобы открыть инструменты.',
+                  ? 'Роль получена из серверного профиля. При открытии панели '
+                      'backend ещё раз проверит токен и права.'
+                  : 'Административный доступ отсутствует.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
+                color: colors.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 14),
-
-            // Buttons
             Row(
               children: [
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: isAdmin ? onOpenAdminPanel : null,
                     icon: const Icon(Icons.tune),
-                    label: const Text('Admin panel'),
+                    label: const Text('Админ-панель'),
                   ),
                 ),
                 const SizedBox(width: 12),

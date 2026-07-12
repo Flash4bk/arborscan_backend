@@ -17,12 +17,34 @@ class AppRoot extends StatefulWidget {
 class _AppRootState extends State<AppRoot> {
   int _index = 0;
 
-  late final List<Widget> _pages = const [
-    ArborScanPage(),
-    HistoryTabPage(),
-    MapPage(),
-    ProfilePage(),
-  ];
+  late Widget _analyzePage;
+  late final Widget _historyPage;
+  late final Widget _mapPage;
+  late final Widget _profilePage;
+
+  List<Widget> get _pages => [
+        _analyzePage,
+        _historyPage,
+        _mapPage,
+        _profilePage,
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    _analyzePage = ArborScanPage(key: UniqueKey());
+    _historyPage = const HistoryTabPage();
+    _mapPage = const MapPage();
+    _profilePage = ProfilePage(onAuthChanged: _handleAuthChanged);
+  }
+
+  void _handleAuthChanged() {
+    if (!mounted) return;
+    setState(() {
+      // Пересоздаём только экран анализа, чтобы он перечитал роль и токен.
+      _analyzePage = ArborScanPage(key: UniqueKey());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -11,7 +11,12 @@ import 'app_theme.dart';
 import 'api_config.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final VoidCallback? onAuthChanged;
+
+  const ProfilePage({
+    super.key,
+    this.onAuthChanged,
+  });
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -77,36 +82,82 @@ class _ProfilePageState extends State<ProfilePage> {
     return Uri.parse('${ApiConfig.baseUrl}$path').replace(queryParameters: query);
   }
 
+  Future<Map<String, String>> _requestHeaders({
+    bool jsonBody = false,
+    bool useAuth = false,
+  }) async {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      if (jsonBody) 'Content-Type': 'application/json',
+    };
+
+    if (useAuth) {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey)?.trim() ?? _token.trim();
+      if (token.isEmpty) {
+        throw Exception('Сессия отсутствует. Войдите снова.');
+      }
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
   Future<Map<String, dynamic>> _postJson(
     String path,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic>? body, {
+    bool useAuth = false,
+  }) async {
     final res = await http
         .post(
           _uri(path),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
+          headers: await _requestHeaders(
+            jsonBody: body != null,
+            useAuth: useAuth,
+          ),
+          body: body == null ? null : jsonEncode(body),
         )
         .timeout(const Duration(seconds: 15));
 
-    final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    final decoded = res.bodyBytes.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(utf8.decode(res.bodyBytes));
+    final data = decoded is Map<String, dynamic>
+        ? decoded
+        : (decoded is Map ? decoded.cast<String, dynamic>() : <String, dynamic>{});
+
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('HTTP ${res.statusCode}: ${data['detail']?.toString() ?? 'Ошибка сервера'}');
+      throw Exception(
+        'HTTP ${res.statusCode}: '
+        '${data['detail']?.toString() ?? 'Ошибка сервера'}',
+      );
     }
     return data;
   }
 
   Future<Map<String, dynamic>> _getJson(
-    String path,
-    Map<String, String> query,
-  ) async {
+    String path, {
+    Map<String, String>? query,
+    bool useAuth = false,
+  }) async {
     final res = await http
-        .get(_uri(path, query))
+        .get(
+          _uri(path, query),
+          headers: await _requestHeaders(useAuth: useAuth),
+        )
         .timeout(const Duration(seconds: 15));
 
-    final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    final decoded = res.bodyBytes.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(utf8.decode(res.bodyBytes));
+    final data = decoded is Map<String, dynamic>
+        ? decoded
+        : (decoded is Map ? decoded.cast<String, dynamic>() : <String, dynamic>{});
+
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('HTTP ${res.statusCode}: ${data['detail']?.toString() ?? 'Ошибка сервера'}');
+      throw Exception(
+        'HTTP ${res.statusCode}: '
+        '${data['detail']?.toString() ?? 'Ошибка сервера'}',
+      );
     }
     return data;
   }
@@ -133,6 +184,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _lastAnalysis = null;
       _statusText = message;
     });
+    widget.onAuthChanged?.call();
   }
 
   Future<void> _loadProfile() async {
@@ -155,7 +207,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (token.isNotEmpty) {
       try {
-        final data = await _getJson('/auth/me', {'token': token});
+        final data = await _getJson('/auth/me', useAuth: true);
         await _applyAuthData(data, tokenFromResponse: token);
         await _loadStats();
         if (!mounted) return;
@@ -226,6 +278,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _passwordController.clear();
     });
 
+    widget.onAuthChanged?.call();
     await _loadStats();
   }
 
@@ -316,10 +369,20 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _logout() async {
+    try {
+      if (_token.isNotEmpty) {
+        await _postJson('/auth/logout', null, useAuth: true);
+      }
+    } catch (_) {
+      // Локальный выход должен работать даже при недоступном сервере.
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_loggedInKey, false);
     await prefs.setBool(_adminFlagKey, false);
+    await prefs.setString(_roleKey, 'user');
     await prefs.remove(_tokenKey);
+    await prefs.remove(_expiresAtKey);
 
     if (!mounted) return;
     setState(() {
@@ -336,6 +399,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _avgRisk = null;
       _lastAnalysis = null;
     });
+    widget.onAuthChanged?.call();
     _snack('Вы вышли из профиля.');
   }
 
@@ -345,11 +409,13 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.remove(_expiresAtKey);
     await prefs.setBool(_loggedInKey, false);
     await prefs.setBool(_adminFlagKey, false);
+    await prefs.setString(_roleKey, 'user');
 
     if (!mounted) return;
     setState(() {
       _loggedIn = false;
       _isAdmin = false;
+      _role = 'user';
       _token = '';
       _statusText = 'Локальная сессия очищена.';
       _avatarUrl = '';
@@ -359,6 +425,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _avgRisk = null;
       _lastAnalysis = null;
     });
+    widget.onAuthChanged?.call();
     _snack('Локальная сессия очищена. Аккаунт на сервере не удалён.');
   }
 
@@ -404,7 +471,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadStats() async {
     if (_token.isEmpty) return;
     try {
-      final data = await _getJson('/profile/stats', {'token': _token});
+      final data = await _getJson('/profile/stats', useAuth: true);
       final stats = (data['stats'] as Map?)?.cast<String, dynamic>() ?? {};
       final user = (data['user'] as Map?)?.cast<String, dynamic>() ?? {};
 

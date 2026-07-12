@@ -8,13 +8,14 @@ import time
 import threading
 import hashlib
 import secrets
+import math
 import cv2
 import numpy as np
 import requests
 import torch
 from ultralytics import YOLO
 from PIL import Image, ExifTags
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form, Header, Depends
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
 from uuid import uuid4
@@ -25,6 +26,8 @@ from collections import deque
 from typing import Optional, Dict, Any, List, Tuple
 
 from rembg import remove, new_session
+
+from config import settings
 
 try:
     from google.oauth2 import id_token as google_id_token
@@ -37,161 +40,818 @@ except Exception:
 # CONFIG
 # -------------------------------------
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+settings.ensure_runtime_dirs()
+
+PROJECT_ROOT = settings.project_root
+MODEL_DIR = settings.model_dir
+MODEL_CACHE_DIR = settings.model_cache_dir
+
+SUPABASE_URL = settings.supabase_url
+SUPABASE_SERVICE_KEY = settings.supabase_service_key
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print("[!] Warning: SUPABASE_URL or SUPABASE_SERVICE_KEY not set.")
+    print("[!] Warning: SUPABASE_URL or Supabase service key is not set.")
 
-SUPABASE_BUCKET_INPUTS = "arborscan-inputs"
-SUPABASE_BUCKET_PRED = "arborscan-predictions"
-SUPABASE_BUCKET_META = "arborscan-meta"
-SUPABASE_BUCKET_VERIFIED = "arborscan-verified"
-SUPABASE_BUCKET_RAW = "arborscan-raw"
-SUPABASE_BUCKET_MODELS = os.getenv("SUPABASE_BUCKET_MODELS", "arborscan-models")
+SUPABASE_BUCKET_INPUTS = settings.supabase_bucket_inputs
+SUPABASE_BUCKET_PRED = settings.supabase_bucket_predictions
+SUPABASE_BUCKET_META = settings.supabase_bucket_meta
+SUPABASE_BUCKET_VERIFIED = settings.supabase_bucket_verified
+SUPABASE_BUCKET_RAW = settings.supabase_bucket_raw
+SUPABASE_BUCKET_MODELS = settings.supabase_bucket_models
 
-SUPABASE_DB_BASE = SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
+SUPABASE_DB_BASE = (
+    SUPABASE_URL.rstrip("/") + "/rest/v1" if SUPABASE_URL else None
+)
 SUPABASE_QUEUE_TABLE = "arborscan_feedback_queue"
-SUPABASE_ENABLE_QUEUE = os.getenv("SUPABASE_ENABLE_QUEUE", "false").lower() == "true"
+SUPABASE_ENABLE_QUEUE = settings.supabase_enable_queue
 
-PLANTNET_API_KEY = os.getenv("PLANTNET_API_KEY", "2b10s2QVGCWyalEeU1xv2nOKO")
+PLANTNET_API_KEY = settings.plantnet_api_key
 
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
-NOMINATIM_USER_AGENT = os.getenv("NOMINATIM_USER_AGENT", "arborscan-backend/1.0")
-ENABLE_ENV_ANALYSIS = os.getenv("ENABLE_ENV_ANALYSIS", "true").lower() == "true"
+NOMINATIM_URL = settings.nominatim_base_url
+NOMINATIM_USER_AGENT = settings.nominatim_user_agent
+ENABLE_ENV_ANALYSIS = settings.enable_environmental_analysis
+
 
 def _sb_headers(json_ct: bool = True) -> dict:
-    h = {"apikey": SUPABASE_SERVICE_KEY or "", "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}" if SUPABASE_SERVICE_KEY else ""}
-    if json_ct: h["Content-Type"] = "application/json"
-    return h
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY or "",
+        "Authorization": (
+            f"Bearer {SUPABASE_SERVICE_KEY}" if SUPABASE_SERVICE_KEY else ""
+        ),
+    }
+    if json_ct:
+        headers["Content-Type"] = "application/json"
+    return headers
+
+
+def _supabase_is_configured() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_KEY and SUPABASE_DB_BASE)
+
 
 def training_state_get() -> dict:
-    if not SUPABASE_DB_BASE: raise RuntimeError("Supabase DB is not configured")
-    resp = requests.get(f"{SUPABASE_DB_BASE}/training_state?id=eq.1&select=*", headers=_sb_headers(json_ct=False), timeout=30)
-    if resp.status_code >= 400: raise RuntimeError(f"training_state_get error: {resp.text}")
-    rows = resp.json()
+    if not _supabase_is_configured():
+        raise RuntimeError("Supabase DB is not configured")
+
+    response = requests.get(
+        f"{SUPABASE_DB_BASE}/training_state?id=eq.1&select=*",
+        headers=_sb_headers(json_ct=False),
+        timeout=30,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"training_state_get error {response.status_code}: {response.text}"
+        )
+
+    rows = response.json()
     return rows[0] if rows else {}
 
-def training_state_ensure_row():
-    if training_state_get(): return
-    payload = {"id": 1, "retrain_requested": False, "training_in_progress": False, "last_model_version": 0, "active_model_version": 0}
-    requests.post(f"{SUPABASE_DB_BASE}/training_state", headers={**_sb_headers(), "Prefer": "return=representation"}, data=json.dumps(payload), timeout=30)
+
+def training_state_ensure_row(default_active_version: int = 0) -> dict:
+    if not _supabase_is_configured():
+        return {}
+
+    state = training_state_get()
+    if state:
+        return state
+
+    payload = {
+        "id": 1,
+        "retrain_requested": False,
+        "training_in_progress": False,
+        "last_model_version": int(default_active_version),
+        "active_model_version": int(default_active_version),
+    }
+    response = requests.post(
+        f"{SUPABASE_DB_BASE}/training_state",
+        headers={**_sb_headers(), "Prefer": "return=representation"},
+        data=json.dumps(payload),
+        timeout=30,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"training_state_ensure_row error {response.status_code}: "
+            f"{response.text}"
+        )
+
+    rows = response.json()
+    return rows[0] if rows else payload
+
 
 def training_state_update(fields: dict) -> dict:
-    if not SUPABASE_DB_BASE: return fields
-    resp = requests.patch(f"{SUPABASE_DB_BASE}/training_state?id=eq.1", headers={**_sb_headers(), "Prefer": "return=representation"}, data=json.dumps(fields), timeout=30)
-    rows = resp.json()
+    if not _supabase_is_configured():
+        raise RuntimeError("Supabase DB is not configured")
+
+    response = requests.patch(
+        f"{SUPABASE_DB_BASE}/training_state?id=eq.1",
+        headers={**_sb_headers(), "Prefer": "return=representation"},
+        data=json.dumps(fields),
+        timeout=30,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"training_state_update error {response.status_code}: "
+            f"{response.text}"
+        )
+
+    rows = response.json()
     return rows[0] if rows else fields
 
+
 MODEL_VERSIONS = {
-    "tree_yolo": "tree_yolov8_seg_v1.2.0",
+    "tree_yolo": "tree_yolov8_seg_versioned",
     "stick_yolo": "stick_yolov8_det_v1.0.3",
     "classifier": "plantnet_api_v2",
-    "mask_refiner": "u2net_rembg_solid_v2" 
+    "mask_refiner": "u2net_rembg_solid_v2",
 }
-BUILD_INFO = {"git_commit": os.getenv("GIT_COMMIT", "unknown"), "build_time": os.getenv("BUILD_TIME")}
+BUILD_INFO = {
+    "git_commit": os.getenv("GIT_COMMIT", "unknown"),
+    "build_time": os.getenv("BUILD_TIME"),
+}
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "2.6.4" 
+API_VERSION = "2.9.0"
 VERIFIED_TRUST_THRESHOLD = 0.0
 
 REAL_STICK_M = 1.0
 CLASS_NAMES_RU = ["Береза", "Дуб", "Ель", "Сосна", "Тополь"]
 
-print("[*] Loading YOLO models...")
-tree_model = None  
-stick_model = YOLO("models/stick_model.pt")
-print("[*] YOLO Models loaded.")
-REMBG_SESSION = None
+
+# =============================================
+# SUPABASE STORAGE HELPERS
+# =============================================
 
 def supabase_upload_bytes(bucket: str, path: str, data: bytes):
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: return
-    requests.post(SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}", headers={"Authorization": f"Bearer {SUPABASE_SERVICE_KEY}", "Content-Type": "application/octet-stream", "x-upsert": "true"}, data=data, timeout=30)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase Storage is not configured")
+
+    response = requests.post(
+        SUPABASE_URL.rstrip("/") + f"/storage/v1/object/{bucket}/{path}",
+        headers={
+            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+            "apikey": SUPABASE_SERVICE_KEY,
+            "Content-Type": "application/octet-stream",
+            "x-upsert": "true",
+        },
+        data=data,
+        timeout=60,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Supabase upload error {response.status_code}: {response.text}"
+        )
+
 
 def supabase_upload_json(bucket: str, path: str, obj: dict):
-    supabase_upload_bytes(bucket, path, json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8"))
+    supabase_upload_bytes(
+        bucket,
+        path,
+        json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8"),
+    )
 
-def supabase_list_objects(bucket: str, prefix: str = ""):
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: return []
-    resp = requests.post(SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}", headers=_sb_headers(), json={"prefix": prefix, "limit": 200, "offset": 0, "sortBy": {"column": "name", "order": "desc"}}, timeout=15)
-    return resp.json()
+
+def supabase_list_objects(
+    bucket: str,
+    prefix: str = "",
+    *,
+    page_size: int = 1000,
+    max_items: Optional[int] = None,
+) -> list[dict]:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase Storage is not configured")
+
+    page_size = max(1, min(int(page_size), 1000))
+    offset = 0
+    items: list[dict] = []
+
+    while True:
+        response = requests.post(
+            SUPABASE_URL.rstrip("/") + f"/storage/v1/object/list/{bucket}",
+            headers=_sb_headers(),
+            json={
+                "prefix": prefix,
+                "limit": page_size,
+                "offset": offset,
+                "sortBy": {"column": "name", "order": "desc"},
+            },
+            timeout=30,
+        )
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Supabase list error {response.status_code}: {response.text}"
+            )
+
+        page = response.json()
+        if not isinstance(page, list):
+            raise RuntimeError("Supabase list returned a non-list response")
+
+        items.extend(page)
+        if max_items is not None and len(items) >= max_items:
+            return items[:max_items]
+        if len(page) < page_size:
+            return items
+        offset += page_size
+
 
 def supabase_download_bytes(bucket: str, path: str) -> bytes:
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY: raise RuntimeError("Supabase is not configured")
-    resp = requests.get(SUPABASE_URL.rstrip("/") + f"/storage/v1/object/authenticated/{bucket}/{path}", headers=_sb_headers(False), timeout=60)
-    return resp.content
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise RuntimeError("Supabase Storage is not configured")
+
+    response = requests.get(
+        SUPABASE_URL.rstrip("/")
+        + f"/storage/v1/object/authenticated/{bucket}/{path}",
+        headers=_sb_headers(False),
+        timeout=settings.model_download_timeout_sec,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Supabase download error {response.status_code}: {response.text}"
+        )
+    if not response.content:
+        raise RuntimeError(f"Supabase returned an empty object: {bucket}/{path}")
+    return response.content
+
+
+# =============================================
+# MODEL MANAGER
+# =============================================
 
 TREE_MODEL: Optional[YOLO] = None
 TREE_MODEL_VERSION: Optional[int] = None
-MODEL_LOCK = threading.Lock()
+TREE_MODEL_PATH: Optional[str] = None
+TREE_MODEL_SOURCE: Optional[str] = None
+TREE_MODEL_LOADED_AT: Optional[str] = None
+
+stick_model: Optional[YOLO] = None
+STICK_MODEL_PATH: Optional[str] = None
+STICK_MODEL_SOURCE: Optional[str] = None
+STICK_MODEL_LOADED_AT: Optional[str] = None
+
+MODEL_LOCK = threading.RLock()
+REMBG_LOCK = threading.Lock()
+REMBG_SESSION = None
+
 _MODEL_LAST_CHECK_TS = 0.0
-_MODEL_CHECK_INTERVAL_SEC = float(os.getenv("MODEL_CHECK_INTERVAL_SEC", "2.0"))
+_MODEL_CHECK_INTERVAL_SEC = settings.model_check_interval_sec
+_MODEL_LAST_ERROR: Optional[str] = None
+_STICK_MODEL_LAST_ERROR: Optional[str] = None
 
-def _local_model_path(version: int) -> str:
-    cache_dir = os.getenv("MODEL_CACHE_DIR", "/tmp/models")
-    Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    return str(Path(cache_dir) / f"model_v{version}.pt")
 
-def _download_model_if_needed(version: int) -> str:
-    local_path = _local_model_path(version)
-    if os.path.exists(local_path): return local_path
-    with open(local_path, "wb") as f: f.write(supabase_download_bytes(SUPABASE_BUCKET_MODELS, f"model_v{version}.pt"))
-    return local_path
+def _utc_iso() -> str:
+    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_model_file(
+    path: Path,
+    *,
+    expected_sha256: Optional[str] = None,
+    label: str = "model",
+) -> dict:
+    path = path.resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"{label} file does not exist: {path}")
+    if not path.is_file():
+        raise RuntimeError(f"{label} path is not a file: {path}")
+
+    size = path.stat().st_size
+    if size < settings.model_min_size_bytes:
+        raise RuntimeError(
+            f"{label} is too small ({size} bytes): {path}. "
+            "The file may be incomplete or contain an HTTP error response."
+        )
+
+    actual_sha256 = None
+    if expected_sha256:
+        actual_sha256 = _sha256_file(path)
+        if actual_sha256.lower() != expected_sha256.lower():
+            raise RuntimeError(
+                f"{label} SHA-256 mismatch for {path}: "
+                f"expected {expected_sha256}, got {actual_sha256}"
+            )
+
+    return {
+        "path": str(path),
+        "size_bytes": size,
+        "sha256": actual_sha256,
+    }
+
+
+def _load_yolo_checked(
+    path: Path,
+    *,
+    expected_task: Optional[str],
+    expected_sha256: Optional[str],
+    label: str,
+) -> tuple[YOLO, dict]:
+    file_info = _validate_model_file(
+        path,
+        expected_sha256=expected_sha256,
+        label=label,
+    )
+    model = YOLO(str(path))
+    task = getattr(model, "task", None)
+    if expected_task and task and task != expected_task:
+        raise RuntimeError(
+            f"{label} has task '{task}', expected '{expected_task}': {path}"
+        )
+    file_info["task"] = task
+    return model, file_info
+
+
+def _tree_model_filename(version: int) -> str:
+    return f"model_v{int(version)}.pt"
+
+
+def _bundled_tree_candidates(version: int) -> list[Path]:
+    candidates = [MODEL_DIR / _tree_model_filename(version)]
+    if version == 0:
+        candidates.extend(
+            [
+                MODEL_DIR / "tree_model.pt",
+                MODEL_DIR / "base.pt",
+            ]
+        )
+    return candidates
+
+
+def _cache_tree_path(version: int) -> Path:
+    MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    return MODEL_CACHE_DIR / _tree_model_filename(version)
+
+
+def _basic_model_file_is_valid(path: Path) -> bool:
+    try:
+        _validate_model_file(path, label="model")
+        return True
+    except Exception:
+        return False
+
+
+def _download_to_cache(
+    *,
+    bucket: str,
+    object_name: str,
+    destination: Path,
+    expected_sha256: Optional[str],
+    label: str,
+) -> Path:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    payload = supabase_download_bytes(bucket, object_name)
+    if len(payload) < settings.model_min_size_bytes:
+        raise RuntimeError(
+            f"Downloaded {label} is too small ({len(payload)} bytes): "
+            f"{bucket}/{object_name}"
+        )
+
+    temporary = destination.with_name(
+        f".{destination.name}.{uuid4().hex}.download"
+    )
+    try:
+        with temporary.open("wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+
+        _validate_model_file(
+            temporary,
+            expected_sha256=expected_sha256,
+            label=label,
+        )
+        temporary.replace(destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink(missing_ok=True)
+
+    return destination
+
+
+def _resolve_tree_model_path(
+    version: int,
+    *,
+    allow_download: bool = True,
+) -> tuple[Path, str]:
+    version = int(version)
+    expected_sha256 = settings.tree_model_sha256(version)
+
+    for candidate in _bundled_tree_candidates(version):
+        if candidate.exists():
+            _validate_model_file(
+                candidate,
+                expected_sha256=expected_sha256,
+                label=f"tree model v{version}",
+            )
+            return candidate.resolve(), "bundled"
+
+    cache_path = _cache_tree_path(version)
+    if cache_path.exists():
+        try:
+            _validate_model_file(
+                cache_path,
+                expected_sha256=expected_sha256,
+                label=f"cached tree model v{version}",
+            )
+            return cache_path.resolve(), "cache"
+        except Exception:
+            cache_path.unlink(missing_ok=True)
+
+    if not allow_download:
+        raise FileNotFoundError(
+            f"Tree model v{version} is not present in {MODEL_DIR} "
+            f"or {MODEL_CACHE_DIR}"
+        )
+
+    remote_candidates = [_tree_model_filename(version)]
+    if version == 0:
+        remote_candidates.extend(["tree_model.pt", "base.pt"])
+
+    errors: list[str] = []
+    for object_name in remote_candidates:
+        try:
+            path = _download_to_cache(
+                bucket=SUPABASE_BUCKET_MODELS,
+                object_name=object_name,
+                destination=cache_path,
+                expected_sha256=expected_sha256,
+                label=f"tree model v{version}",
+            )
+            return path.resolve(), "supabase"
+        except Exception as exc:
+            errors.append(f"{object_name}: {exc}")
+
+    raise RuntimeError(
+        f"Tree model v{version} is unavailable. " + " | ".join(errors)
+    )
+
+
+def _resolve_stick_model_path(
+    *,
+    allow_download: bool = True,
+) -> tuple[Path, str]:
+    candidates = [settings.stick_model_path]
+    explicit = os.getenv("STICK_MODEL_PATH")
+    if explicit:
+        candidates.insert(0, Path(explicit).expanduser().resolve())
+
+    for candidate in candidates:
+        if candidate.exists():
+            _validate_model_file(
+                candidate,
+                expected_sha256=settings.stick_model_sha256,
+                label="stick model",
+            )
+            return candidate.resolve(), "bundled"
+
+    cache_path = MODEL_CACHE_DIR / settings.stick_model_filename
+    if cache_path.exists():
+        try:
+            _validate_model_file(
+                cache_path,
+                expected_sha256=settings.stick_model_sha256,
+                label="cached stick model",
+            )
+            return cache_path.resolve(), "cache"
+        except Exception:
+            cache_path.unlink(missing_ok=True)
+
+    if not allow_download:
+        raise FileNotFoundError(
+            f"Stick model is not present in {MODEL_DIR} or {MODEL_CACHE_DIR}"
+        )
+
+    path = _download_to_cache(
+        bucket=SUPABASE_BUCKET_MODELS,
+        object_name=settings.stick_model_object,
+        destination=cache_path,
+        expected_sha256=settings.stick_model_sha256,
+        label="stick model",
+    )
+    return path.resolve(), "supabase"
+
+
+def _discover_local_tree_versions() -> set[int]:
+    versions: set[int] = set()
+    for directory in (MODEL_DIR, MODEL_CACHE_DIR):
+        if not directory.exists():
+            continue
+        for path in directory.glob("model_v*.pt"):
+            match = re.fullmatch(r"model_v(\d+)\.pt", path.name)
+            if match and _basic_model_file_is_valid(path):
+                versions.add(int(match.group(1)))
+
+    if any(
+        _basic_model_file_is_valid(path)
+        for path in (MODEL_DIR / "tree_model.pt", MODEL_DIR / "base.pt")
+        if path.exists()
+    ):
+        versions.add(0)
+    return versions
+
+
+def _discover_remote_tree_versions() -> set[int]:
+    versions: set[int] = set()
+    if not _supabase_is_configured():
+        return versions
+    for item in supabase_list_objects(SUPABASE_BUCKET_MODELS):
+        name = (item.get("name") or "").split("/")[-1]
+        match = re.fullmatch(r"model_v(\d+)\.pt", name)
+        if match:
+            versions.add(int(match.group(1)))
+    return versions
+
+
+def _fallback_active_model_version() -> int:
+    configured = int(settings.active_model_version)
+    local_versions = _discover_local_tree_versions()
+
+    if configured in local_versions or configured > 0:
+        return configured
+    if settings.auto_select_latest_local_model and local_versions:
+        return max(local_versions)
+    if 0 in local_versions:
+        return 0
+    return configured
+
 
 def _get_active_model_version() -> int:
-    return int(training_state_get().get("active_model_version") or 0)
-
-def list_available_model_versions() -> list[dict]:
-    versions: set[int] = set()
     try:
-        for obj in supabase_list_objects(SUPABASE_BUCKET_MODELS):
-            mm = re.search(r"model_v(\d+)\.pt$", (obj.get("name") or "").split("/")[-1])
-            if mm: versions.add(int(mm.group(1)))
-    except Exception: pass
-    env_hint = os.getenv("AVAILABLE_MODEL_VERSIONS", "").strip()
-    if env_hint:
-        for part in env_hint.split(","):
-            if part.strip():
-                try: versions.add(int(part.strip()))
-                except ValueError: pass
-    for p in Path("/tmp/models").glob("model_v*.pt"):
-        mm = re.search(r"model_v(\d+)\.pt$", p.name)
-        if mm: versions.add(int(mm.group(1)))
-    if Path("models").exists():
-        for p in Path("models").glob("model_v*.pt"):
-            mm = re.search(r"model_v(\d+)\.pt$", p.name)
-            if mm: versions.add(int(mm.group(1)))
-    active = _get_active_model_version()
-    versions.add(active)
-    return [{"version": v, "is_active": v == active} for v in sorted(versions)]
+        state = training_state_get()
+        raw = state.get("active_model_version")
+        if raw is not None:
+            version = int(raw)
+            if version != 0:
+                return version
+            if 0 in _discover_local_tree_versions():
+                return 0
+    except Exception:
+        pass
+    return _fallback_active_model_version()
 
-def reload_tree_model(force: bool = False):
-    global TREE_MODEL, TREE_MODEL_VERSION, _MODEL_LAST_CHECK_TS
+
+def _bootstrap_training_state() -> int:
+    fallback_version = _fallback_active_model_version()
+    if not _supabase_is_configured():
+        return fallback_version
+
+    state = training_state_ensure_row(fallback_version)
+    current = int(state.get("active_model_version") or 0)
+
+    if current == 0 and 0 not in _discover_local_tree_versions():
+        if fallback_version > 0:
+            state = training_state_update(
+                {"active_model_version": int(fallback_version)}
+            )
+            current = int(state.get("active_model_version") or fallback_version)
+    return current if current >= 0 else fallback_version
+
+
+def _load_tree_model_candidate(version: int) -> tuple[YOLO, Path, str, dict]:
+    path, source = _resolve_tree_model_path(version, allow_download=True)
+    model, info = _load_yolo_checked(
+        path,
+        expected_task=settings.tree_model_task,
+        expected_sha256=settings.tree_model_sha256(version),
+        label=f"tree model v{version}",
+    )
+    return model, path, source, info
+
+
+def reload_tree_model(
+    force: bool = False,
+    *,
+    requested_version: Optional[int] = None,
+) -> dict:
+    global TREE_MODEL, TREE_MODEL_VERSION, TREE_MODEL_PATH
+    global TREE_MODEL_SOURCE, TREE_MODEL_LOADED_AT
+    global _MODEL_LAST_CHECK_TS, _MODEL_LAST_ERROR
+
     now = time.time()
-    if not force and (now - _MODEL_LAST_CHECK_TS) < _MODEL_CHECK_INTERVAL_SEC: return
+    if (
+        requested_version is None
+        and not force
+        and (now - _MODEL_LAST_CHECK_TS) < _MODEL_CHECK_INTERVAL_SEC
+    ):
+        return _tree_model_runtime_info()
     _MODEL_LAST_CHECK_TS = now
-    v = _get_active_model_version()
-    if not force and TREE_MODEL is not None and TREE_MODEL_VERSION == v: return
 
-    if v == 0:
-        local_fallback = "models/tree_model.pt"
-        if os.path.exists(local_fallback):
-            TREE_MODEL = YOLO(local_fallback)
-            TREE_MODEL_VERSION = 0
-            return
-        try:
-            TREE_MODEL = YOLO(_download_model_if_needed(0))
-            TREE_MODEL_VERSION = 0
-            return
-        except Exception as e: raise RuntimeError(f"No tree model available (v0). {e}")
+    version = (
+        int(requested_version)
+        if requested_version is not None
+        else _get_active_model_version()
+    )
+    if (
+        not force
+        and TREE_MODEL is not None
+        and TREE_MODEL_VERSION == version
+    ):
+        return _tree_model_runtime_info()
 
-    TREE_MODEL = YOLO(_download_model_if_needed(v))
-    TREE_MODEL_VERSION = v
+    try:
+        candidate, path, source, info = _load_tree_model_candidate(version)
+    except Exception as exc:
+        _MODEL_LAST_ERROR = str(exc)
+        if TREE_MODEL is not None:
+            print(
+                f"[!] Could not reload requested tree model v{version}; "
+                f"continuing with loaded v{TREE_MODEL_VERSION}: {exc}"
+            )
+            return _tree_model_runtime_info()
+        raise
+
+    # The currently working model is replaced only after the new model
+    # has been fully read and validated by Ultralytics.
+    TREE_MODEL = candidate
+    TREE_MODEL_VERSION = version
+    TREE_MODEL_PATH = str(path)
+    TREE_MODEL_SOURCE = source
+    TREE_MODEL_LOADED_AT = _utc_iso()
+    _MODEL_LAST_ERROR = None
+
+    print(
+        f"[*] Tree model loaded: v{version}, source={source}, "
+        f"path={path}, size={info['size_bytes']}"
+    )
+    return _tree_model_runtime_info()
+
+
+def load_stick_model(force: bool = False) -> dict:
+    global stick_model, STICK_MODEL_PATH, STICK_MODEL_SOURCE
+    global STICK_MODEL_LOADED_AT, _STICK_MODEL_LAST_ERROR
+
+    if stick_model is not None and not force:
+        return _stick_model_runtime_info()
+
+    try:
+        path, source = _resolve_stick_model_path(allow_download=True)
+        candidate, info = _load_yolo_checked(
+            path,
+            expected_task=settings.stick_model_task,
+            expected_sha256=settings.stick_model_sha256,
+            label="stick model",
+        )
+    except Exception as exc:
+        _STICK_MODEL_LAST_ERROR = str(exc)
+        raise
+
+    stick_model = candidate
+    STICK_MODEL_PATH = str(path)
+    STICK_MODEL_SOURCE = source
+    STICK_MODEL_LOADED_AT = _utc_iso()
+    _STICK_MODEL_LAST_ERROR = None
+
+    print(
+        f"[*] Stick model loaded: source={source}, path={path}, "
+        f"size={info['size_bytes']}"
+    )
+    return _stick_model_runtime_info()
+
 
 def get_tree_model() -> YOLO:
     with MODEL_LOCK:
         reload_tree_model(force=False)
-        if TREE_MODEL is None: reload_tree_model(force=True)
+        if TREE_MODEL is None:
+            reload_tree_model(force=True)
+        if TREE_MODEL is None:
+            raise RuntimeError("Tree model is not loaded")
         return TREE_MODEL
+
+
+def get_stick_model() -> YOLO:
+    with MODEL_LOCK:
+        if stick_model is None:
+            load_stick_model(force=True)
+        if stick_model is None:
+            raise RuntimeError("Stick model is not loaded")
+        return stick_model
+
+
+def activate_tree_model(version: int) -> dict:
+    version = int(version)
+    with MODEL_LOCK:
+        candidate, path, source, info = _load_tree_model_candidate(version)
+
+        # Persist the version only after the file has been validated and
+        # Ultralytics has successfully created a model object from it.
+        if _supabase_is_configured():
+            training_state_ensure_row(version)
+            training_state_update({"active_model_version": version})
+
+        global TREE_MODEL, TREE_MODEL_VERSION, TREE_MODEL_PATH
+        global TREE_MODEL_SOURCE, TREE_MODEL_LOADED_AT, _MODEL_LAST_ERROR
+        TREE_MODEL = candidate
+        TREE_MODEL_VERSION = version
+        TREE_MODEL_PATH = str(path)
+        TREE_MODEL_SOURCE = source
+        TREE_MODEL_LOADED_AT = _utc_iso()
+        _MODEL_LAST_ERROR = None
+
+        print(
+            f"[*] Tree model activated: v{version}, source={source}, "
+            f"path={path}, size={info['size_bytes']}"
+        )
+        return _tree_model_runtime_info()
+
+
+def list_available_model_versions() -> list[dict]:
+    sources: dict[int, set[str]] = {}
+
+    for version in _discover_local_tree_versions():
+        sources.setdefault(version, set()).add("local")
+
+    try:
+        for version in _discover_remote_tree_versions():
+            sources.setdefault(version, set()).add("supabase")
+    except Exception:
+        pass
+
+    active = _get_active_model_version()
+    if active not in sources:
+        sources.setdefault(active, set()).add("configured")
+
+    result = []
+    for version in sorted(sources):
+        local_path = None
+        local_size = None
+        try:
+            path, source = _resolve_tree_model_path(
+                version,
+                allow_download=False,
+            )
+            local_path = str(path)
+            local_size = path.stat().st_size
+            sources[version].add(source)
+        except Exception:
+            pass
+
+        result.append(
+            {
+                "version": version,
+                "is_active": version == active,
+                "is_loaded": version == TREE_MODEL_VERSION,
+                "sources": sorted(sources[version]),
+                "local_path": local_path,
+                "size_bytes": local_size,
+            }
+        )
+    return result
+
+
+def _tree_model_runtime_info() -> dict:
+    size = None
+    if TREE_MODEL_PATH:
+        try:
+            size = Path(TREE_MODEL_PATH).stat().st_size
+        except Exception:
+            pass
+    return {
+        "loaded": TREE_MODEL is not None,
+        "version": TREE_MODEL_VERSION,
+        "path": TREE_MODEL_PATH,
+        "source": TREE_MODEL_SOURCE,
+        "size_bytes": size,
+        "loaded_at": TREE_MODEL_LOADED_AT,
+        "last_error": _MODEL_LAST_ERROR,
+    }
+
+
+def _stick_model_runtime_info() -> dict:
+    size = None
+    if STICK_MODEL_PATH:
+        try:
+            size = Path(STICK_MODEL_PATH).stat().st_size
+        except Exception:
+            pass
+    return {
+        "loaded": stick_model is not None,
+        "path": STICK_MODEL_PATH,
+        "source": STICK_MODEL_SOURCE,
+        "size_bytes": size,
+        "loaded_at": STICK_MODEL_LOADED_AT,
+        "last_error": _STICK_MODEL_LAST_ERROR,
+    }
+
+
+def get_rembg_session():
+    global REMBG_SESSION
+    if REMBG_SESSION is not None:
+        return REMBG_SESSION
+    with REMBG_LOCK:
+        if REMBG_SESSION is None:
+            print("[*] Loading rembg U-2-Net model...")
+            REMBG_SESSION = new_session("u2net")
+            remove(
+                np.zeros((10, 10, 3), dtype=np.uint8),
+                session=REMBG_SESSION,
+                only_mask=True,
+            )
+            print("[*] rembg loaded and warmed up.")
+    return REMBG_SESSION
+
 
 def _strip_data_url(b64: str) -> str:
     if not b64: return b64
@@ -353,6 +1013,7 @@ def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_spee
     cat = "низкий" if index < 0.4 else "средний" if index < 0.7 else "высокий"
     return {"index": index, "category": cat, "explanation": expl}, f_n, l_m, m_nm, safety_factor
 
+
 class FeedbackRequest(BaseModel):
     analysis_id: str; use_for_training: bool; tree_ok: bool; stick_ok: bool; params_ok: bool; species_ok: bool
     correct_species: str | None = None; correct_height_m: float | None = None; correct_crown_width_m: float | None = None
@@ -361,182 +1022,717 @@ class FeedbackRequest(BaseModel):
 class AdminSetTrainingRequest(BaseModel):
     use_for_training: bool | None = None; enabled: bool | None = None; include: bool | None = None; value: bool | None = None
 
-class AuthRegisterRequest(BaseModel): name: str; email: str; password: str
-class AuthLoginRequest(BaseModel): email: str; password: str
-class AuthRoleRequest(BaseModel): token: str; role: str; admin_code: str | None = None
-class AuthGoogleRequest(BaseModel): id_token: str; email: str | None = None; name: str | None = None; photo_url: str | None = None
+class AuthRegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
 
-app = FastAPI(title="ArborScan API v2.6.4")
+
+class AuthLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthGoogleRequest(BaseModel):
+    id_token: str
+    email: str | None = None
+    name: str | None = None
+    photo_url: str | None = None
+
+
+app = FastAPI(title="ArborScan API v2.9 (Protected Admin API)")
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
-AUTH_ADMIN_CODE = os.getenv("ARBORSCAN_ADMIN_CODE", "8426")
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com")
+GOOGLE_CLIENT_ID = os.getenv(
+    "GOOGLE_CLIENT_ID",
+    "946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com",
+)
 
-def _now_iso() -> str: return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
-def _hash_password(password: str, salt_hex: str | None = None) -> tuple[str, str]:
-    if salt_hex is None: salt_hex = secrets.token_bytes(16).hex()
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), 120_000).hex()
+def _now_iso() -> str:
+    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+
+def _hash_password(
+    password: str,
+    salt_hex: str | None = None,
+) -> tuple[str, str]:
+    if salt_hex is None:
+        salt_hex = secrets.token_bytes(16).hex()
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        bytes.fromhex(salt_hex),
+        120_000,
+    ).hex()
     return digest, salt_hex
 
+
 def _user_public(row: dict) -> dict:
-    data = {"id": row.get("id"), "name": row.get("name"), "email": row.get("email"), "role": row.get("role"), "created_at": row.get("created_at")}
-    if "provider" in row: data["provider"] = row["provider"]
-    if "avatar_url" in row: data["avatar_url"] = row["avatar_url"]
+    data = {
+        "id": row.get("id"),
+        "name": row.get("name"),
+        "email": row.get("email"),
+        "role": row.get("role") or "user",
+        "created_at": row.get("created_at"),
+    }
+    if "provider" in row:
+        data["provider"] = row.get("provider")
+    if "avatar_url" in row:
+        data["avatar_url"] = row.get("avatar_url")
     return data
 
+
+def _db_json(
+    method: str,
+    path: str,
+    *,
+    params: dict | None = None,
+    json_body: dict | list | None = None,
+    prefer: str | None = None,
+    timeout: int = 15,
+):
+    if not SUPABASE_DB_BASE:
+        raise RuntimeError("Supabase database is not configured")
+
+    headers = _sb_headers()
+    if prefer:
+        headers["Prefer"] = prefer
+
+    response = requests.request(
+        method=method,
+        url=f"{SUPABASE_DB_BASE}/{path.lstrip('/')}",
+        headers=headers,
+        params=params,
+        json=json_body,
+        timeout=timeout,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Supabase DB error {response.status_code} for {path}: "
+            f"{response.text}"
+        )
+    if response.status_code == 204 or not response.content:
+        return None
+    return response.json()
+
+
 def _create_session(user_id: str) -> dict:
-    if not SUPABASE_DB_BASE: raise RuntimeError("Supabase is not configured.")
-    token = secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(48)
     created_at = _now_iso()
-    expires_at = (datetime.utcnow() + timedelta(days=AUTH_TOKEN_TTL_DAYS)).isoformat(timespec="seconds") + "Z"
-    requests.post(f"{SUPABASE_DB_BASE}/auth_sessions", headers=_sb_headers(), json={"token": token, "user_id": user_id, "created_at": created_at, "expires_at": expires_at}, timeout=10)
+    expires_at = (
+        datetime.utcnow() + timedelta(days=AUTH_TOKEN_TTL_DAYS)
+    ).isoformat(timespec="seconds") + "Z"
+
+    _db_json(
+        "POST",
+        "auth_sessions",
+        json_body={
+            "token": token,
+            "user_id": user_id,
+            "created_at": created_at,
+            "expires_at": expires_at,
+        },
+        prefer="return=minimal",
+    )
     return {"token": token, "expires_at": expires_at}
 
-def _get_user_by_token(token: str) -> dict | None:
-    if not token or not SUPABASE_DB_BASE: return None
-    rows = requests.get(f"{SUPABASE_DB_BASE}/auth_sessions?token=eq.{token}&expires_at=gt.{_now_iso()}&select=*,users(*)", headers=_sb_headers(), timeout=10).json()
-    return rows[0].get("users") if rows else None
 
-def _email_norm(email: str) -> str: return (email or "").strip().lower()
+def _get_user_by_token(token: str) -> dict | None:
+    token = (token or "").strip()
+    if not token or not SUPABASE_DB_BASE:
+        return None
+
+    try:
+        rows = _db_json(
+            "GET",
+            "auth_sessions",
+            params={
+                "token": f"eq.{token}",
+                "expires_at": f"gt.{_now_iso()}",
+                "select": "token,user_id,expires_at,users(*)",
+                "limit": "1",
+            },
+            timeout=10,
+        )
+    except Exception as exc:
+        print(f"[!] Session lookup failed: {exc}")
+        return None
+
+    if not rows:
+        return None
+
+    user = rows[0].get("users")
+    if isinstance(user, list):
+        user = user[0] if user else None
+    return user if isinstance(user, dict) else None
+
+
+def _extract_bearer_token(authorization: str | None) -> str | None:
+    value = (authorization or "").strip()
+    if not value:
+        return None
+    parts = value.split(None, 1)
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+    token = parts[1].strip()
+    return token or None
+
+
+def _resolve_auth_token(
+    authorization: str | None,
+    query_token: str | None = None,
+) -> str | None:
+    return _extract_bearer_token(authorization) or (query_token or "").strip() or None
+
+
+async def require_authenticated_user(
+    authorization: str | None = Header(default=None),
+) -> dict:
+    token = _extract_bearer_token(authorization)
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Требуется авторизация.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = _get_user_by_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Сессия отсутствует или истекла.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+async def require_admin(
+    user: dict = Depends(require_authenticated_user),
+) -> dict:
+    if (user.get("role") or "user").strip().lower() != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Доступ разрешён только администратору.",
+        )
+    return user
+
+
+def _email_norm(email: str) -> str:
+    return (email or "").strip().lower()
+
 
 @app.post("/auth/register")
 async def auth_register(payload: AuthRegisterRequest):
-    if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
-    name, email, password = payload.name.strip(), _email_norm(payload.email), payload.password
-    if requests.get(f"{SUPABASE_DB_BASE}/users?email=eq.{email}", headers=_sb_headers(), timeout=10).json(): raise HTTPException(status_code=409, detail="Exists")
+    if not SUPABASE_DB_BASE:
+        raise HTTPException(status_code=500, detail="Database disabled")
+
+    name = payload.name.strip()
+    email = _email_norm(payload.email)
+    password = payload.password
+
+    if len(name) < 2:
+        raise HTTPException(status_code=422, detail="Имя слишком короткое.")
+    if "@" not in email or len(email) > 254:
+        raise HTTPException(status_code=422, detail="Некорректный email.")
+    if len(password) < 4:
+        raise HTTPException(status_code=422, detail="Пароль слишком короткий.")
+
+    existing = _db_json(
+        "GET",
+        "users",
+        params={"email": f"eq.{email}", "select": "id", "limit": "1"},
+    )
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="Пользователь с такой почтой уже существует.",
+        )
+
     password_hash, salt = _hash_password(password)
-    user_id, now = str(uuid4()), _now_iso()
-    requests.post(f"{SUPABASE_DB_BASE}/users", headers=_sb_headers(), json={"id": user_id, "name": name, "email": email, "password_hash": password_hash, "salt": salt, "role": "user", "created_at": now, "updated_at": now}, timeout=10)
+    user_id = str(uuid4())
+    now = _now_iso()
+    created = _db_json(
+        "POST",
+        "users",
+        json_body={
+            "id": user_id,
+            "name": name,
+            "email": email,
+            "password_hash": password_hash,
+            "salt": salt,
+            "role": "user",
+            "created_at": now,
+            "updated_at": now,
+        },
+        prefer="return=representation",
+    )
+    user = created[0] if created else None
+    if not user:
+        raise HTTPException(status_code=500, detail="Не удалось создать профиль.")
+
     session = _create_session(user_id)
-    user_rows = requests.get(f"{SUPABASE_DB_BASE}/users?id=eq.{user_id}", headers=_sb_headers(), timeout=10).json()
-    return {"ok": True, "user": _user_public(user_rows[0]), "token": session["token"], "expires_at": session["expires_at"]}
+    return {
+        "ok": True,
+        "user": _user_public(user),
+        "token": session["token"],
+        "expires_at": session["expires_at"],
+    }
+
 
 @app.post("/auth/login")
 async def auth_login(payload: AuthLoginRequest):
-    email, password = _email_norm(payload.email), payload.password
-    rows = requests.get(f"{SUPABASE_DB_BASE}/users?email=eq.{email}", headers=_sb_headers(), timeout=10).json()
-    if not rows: raise HTTPException(status_code=401, detail="Error")
+    email = _email_norm(payload.email)
+    rows = _db_json(
+        "GET",
+        "users",
+        params={"email": f"eq.{email}", "select": "*", "limit": "1"},
+    )
+    if not rows:
+        raise HTTPException(status_code=401, detail="Неверная почта или пароль.")
+
     user = rows[0]
-    expected, _ = _hash_password(password, user["salt"])
-    if not secrets.compare_digest(expected, user["password_hash"]): raise HTTPException(status_code=401, detail="Error")
+    try:
+        expected, _ = _hash_password(payload.password, user["salt"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Неверная почта или пароль.")
+
+    if not secrets.compare_digest(expected, user.get("password_hash") or ""):
+        raise HTTPException(status_code=401, detail="Неверная почта или пароль.")
+
     session = _create_session(user["id"])
-    return {"ok": True, "user": _user_public(user), "token": session["token"], "expires_at": session["expires_at"]}
+    return {
+        "ok": True,
+        "user": _user_public(user),
+        "token": session["token"],
+        "expires_at": session["expires_at"],
+    }
+
 
 @app.post("/auth/google")
 async def auth_google(payload: AuthGoogleRequest):
-    if not SUPABASE_DB_BASE: raise HTTPException(status_code=500, detail="Database disabled")
-    if not google_id_token or not GOOGLE_CLIENT_ID: raise HTTPException(status_code=500, detail="Google Auth is not configured")
-    try: info = google_id_token.verify_oauth2_token(payload.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
-    except Exception as e: raise HTTPException(status_code=401, detail=f"Google error: {e}")
-    sub, email = str(info.get("sub") or ""), _email_norm(str(info.get("email") or payload.email or ""))
-    name = str(info.get("name") or payload.name or email.split("@")[0] or "Google user").strip()
+    if not SUPABASE_DB_BASE:
+        raise HTTPException(status_code=500, detail="Database disabled")
+    if not google_id_token or not GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=500,
+            detail="Google Auth is not configured",
+        )
+
+    try:
+        info = google_id_token.verify_oauth2_token(
+            payload.id_token,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"Google error: {exc}")
+
+    sub = str(info.get("sub") or "")
+    email = _email_norm(str(info.get("email") or payload.email or ""))
+    if not sub or not email:
+        raise HTTPException(status_code=401, detail="Google не вернул данные аккаунта.")
+
+    name = str(
+        info.get("name")
+        or payload.name
+        or email.split("@")[0]
+        or "Google user"
+    ).strip()
     avatar_url = str(info.get("picture") or payload.photo_url or "")
     now = _now_iso()
-    rows = requests.get(f"{SUPABASE_DB_BASE}/users?or=(google_sub.eq.{sub},email.eq.{email})", headers=_sb_headers(), timeout=10).json()
+
+    rows = _db_json(
+        "GET",
+        "users",
+        params={
+            "or": f"(google_sub.eq.{sub},email.eq.{email})",
+            "select": "*",
+            "limit": "1",
+        },
+    )
+
     if not rows:
         user_id = str(uuid4())
         password_hash, salt = _hash_password(secrets.token_urlsafe(24))
-        requests.post(f"{SUPABASE_DB_BASE}/users", headers=_sb_headers(), json={"id": user_id, "name": name, "email": email, "password_hash": password_hash, "salt": salt, "role": "user", "created_at": now, "updated_at": now, "provider": "google", "google_sub": sub, "avatar_url": avatar_url}, timeout=10)
-        user = requests.get(f"{SUPABASE_DB_BASE}/users?id=eq.{user_id}", headers=_sb_headers(), timeout=10).json()[0]
+        created = _db_json(
+            "POST",
+            "users",
+            json_body={
+                "id": user_id,
+                "name": name,
+                "email": email,
+                "password_hash": password_hash,
+                "salt": salt,
+                "role": "user",
+                "created_at": now,
+                "updated_at": now,
+                "provider": "google",
+                "google_sub": sub,
+                "avatar_url": avatar_url,
+            },
+            prefer="return=representation",
+        )
+        user = created[0]
     else:
         user = rows[0]
-        resp = requests.patch(f"{SUPABASE_DB_BASE}/users?id=eq.{user['id']}", headers={**_sb_headers(), "Prefer": "return=representation"}, json={"name": name or user.get("name"), "provider": "google", "google_sub": sub or user.get("google_sub"), "avatar_url": avatar_url or user.get("avatar_url"), "updated_at": now}, timeout=10)
-        user = resp.json()[0]
+        updated = _db_json(
+            "PATCH",
+            "users",
+            params={"id": f"eq.{user['id']}"},
+            json_body={
+                "name": name or user.get("name"),
+                "provider": "google",
+                "google_sub": sub or user.get("google_sub"),
+                "avatar_url": avatar_url or user.get("avatar_url"),
+                "updated_at": now,
+            },
+            prefer="return=representation",
+        )
+        user = updated[0] if updated else user
+
     session = _create_session(user["id"])
-    return {"ok": True, "user": _user_public(user), "token": session["token"], "expires_at": session["expires_at"]}
+    return {
+        "ok": True,
+        "user": _user_public(user),
+        "token": session["token"],
+        "expires_at": session["expires_at"],
+    }
+
 
 @app.get("/auth/me")
-async def auth_me(token: str):
-    user = _get_user_by_token(token)
-    if not user: raise HTTPException(status_code=401, detail="Expired")
+async def auth_me(
+    token: str | None = None,
+    authorization: str | None = Header(default=None),
+):
+    resolved = _resolve_auth_token(authorization, token)
+    user = _get_user_by_token(resolved or "")
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Сессия отсутствует или истекла.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return {"ok": True, "user": _user_public(user)}
 
+
+@app.post("/auth/logout")
+async def auth_logout(
+    authorization: str | None = Header(default=None),
+    user: dict = Depends(require_authenticated_user),
+):
+    del user
+    token = _extract_bearer_token(authorization)
+    if token:
+        _db_json(
+            "DELETE",
+            "auth_sessions",
+            params={"token": f"eq.{token}"},
+            prefer="return=minimal",
+        )
+    return {"ok": True}
+
+
 @app.post("/auth/set-role")
-async def auth_set_role(payload: AuthRoleRequest):
-    user = _get_user_by_token(payload.token)
-    if not user: raise HTTPException(status_code=401, detail="Error")
-    role = (payload.role or "").strip().lower()
-    if role == "admin" and payload.admin_code != AUTH_ADMIN_CODE: raise HTTPException(status_code=403, detail="Error")
-    resp = requests.patch(f"{SUPABASE_DB_BASE}/users?id=eq.{user['id']}", headers={**_sb_headers(), "Prefer": "return=representation"}, json={"role": role, "updated_at": _now_iso()}, timeout=10)
-    return {"ok": True, "user": _user_public(resp.json()[0])}
+async def auth_set_role_disabled():
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "Самостоятельная смена роли отключена. "
+            "Роль администратора назначается в таблице users доверенным оператором."
+        ),
+    )
+
 
 def _save_analysis_record(response: dict, user: dict | None):
-    if not SUPABASE_DB_BASE: return
+    if not SUPABASE_DB_BASE:
+        return
     risk = response.get("risk") or {}
     beta = response.get("beta") or {}
     analytic_out = (response.get("analytic_wind_model") or {}).get("outputs") or {}
     gps = response.get("gps") or {}
     payload = {
-        "id": response.get("analysis_id"), "user_id": user.get("id") if user else None,
-        "created_at": _now_iso(), "species": response.get("species"),
-        "risk_index": risk.get("index"), "risk_category": risk.get("category"),
-        "height_m": response.get("height_m"), "crown_width_m": response.get("crown_width_m"), "trunk_diameter_m": response.get("trunk_diameter_m"),
-        "beta_kg_s": beta.get("beta_kg_s"), "base_moment_nm": analytic_out.get("base_moment_nm"), "center_of_load_m": analytic_out.get("center_of_load_m"),
-        "lat": gps.get("lat"), "lon": gps.get("lon"), "address": response.get("address"), "response_json": response
+        "id": response.get("analysis_id"),
+        "user_id": user.get("id") if user else None,
+        "created_at": _now_iso(),
+        "species": response.get("species"),
+        "risk_index": risk.get("index"),
+        "risk_category": risk.get("category"),
+        "height_m": response.get("height_m"),
+        "crown_width_m": response.get("crown_width_m"),
+        "trunk_diameter_m": response.get("trunk_diameter_m"),
+        "beta_kg_s": beta.get("beta_kg_s"),
+        "base_moment_nm": analytic_out.get("base_moment_nm"),
+        "center_of_load_m": analytic_out.get("center_of_load_m"),
+        "lat": gps.get("lat"),
+        "lon": gps.get("lon"),
+        "address": response.get("address"),
+        "response_json": response,
     }
-    requests.post(f"{SUPABASE_DB_BASE}/analyses", headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"}, json=payload, timeout=10)
+    try:
+        _db_json(
+            "POST",
+            "analyses",
+            json_body=payload,
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
+    except Exception as exc:
+        print(f"[!] Failed to save analysis row: {exc}")
+
 
 def _analysis_summary(row: dict) -> dict:
     return {
-        "analysis_id": row.get("id"), "created_at": row.get("created_at"), "species": row.get("species"),
-        "risk_index": row.get("risk_index"), "risk_category": row.get("risk_category"),
-        "height_m": row.get("height_m"), "crown_width_m": row.get("crown_width_m"), "trunk_diameter_m": row.get("trunk_diameter_m"),
-        "lat": row.get("lat"), "lon": row.get("lon"), "address": row.get("address"),
+        "analysis_id": row.get("id"),
+        "created_at": row.get("created_at"),
+        "species": row.get("species"),
+        "risk_index": row.get("risk_index"),
+        "risk_category": row.get("risk_category"),
+        "height_m": row.get("height_m"),
+        "crown_width_m": row.get("crown_width_m"),
+        "trunk_diameter_m": row.get("trunk_diameter_m"),
+        "lat": row.get("lat"),
+        "lon": row.get("lon"),
+        "address": row.get("address"),
     }
+
 
 @app.get("/analyses/my")
-async def analyses_my(token: str, limit: int = 100):
-    user = _get_user_by_token(token)
-    if not user: raise HTTPException(status_code=401, detail="Error")
-    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc&limit={max(1, min(int(limit), 500))}", headers=_sb_headers(), timeout=10)
-    return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
+async def analyses_my(
+    token: str | None = None,
+    limit: int = 100,
+    authorization: str | None = Header(default=None),
+):
+    resolved = _resolve_auth_token(authorization, token)
+    user = _get_user_by_token(resolved or "")
+    if not user:
+        raise HTTPException(status_code=401, detail="Сессия отсутствует или истекла.")
+
+    rows = _db_json(
+        "GET",
+        "analyses",
+        params={
+            "user_id": f"eq.{user['id']}",
+            "order": "created_at.desc",
+            "limit": str(max(1, min(int(limit), 500))),
+            "select": "*",
+        },
+    )
+    return {"ok": True, "items": [_analysis_summary(row) for row in rows or []]}
+
 
 @app.get("/analyses/{analysis_id}")
-async def analyses_get(analysis_id: str, token: str):
-    user = _get_user_by_token(token)
-    if not user: raise HTTPException(status_code=401, detail="Error")
-    rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?id=eq.{analysis_id}", headers=_sb_headers(), timeout=10).json()
-    if not rows: raise HTTPException(status_code=404, detail="Error")
-    if rows[0].get("user_id") != user["id"] and user.get("role") != "admin": raise HTTPException(status_code=403, detail="Error")
-    return {"ok": True, "analysis": rows[0].get("response_json")}
+async def analyses_get(
+    analysis_id: str,
+    token: str | None = None,
+    authorization: str | None = Header(default=None),
+):
+    resolved = _resolve_auth_token(authorization, token)
+    user = _get_user_by_token(resolved or "")
+    if not user:
+        raise HTTPException(status_code=401, detail="Сессия отсутствует или истекла.")
+
+    rows = _db_json(
+        "GET",
+        "analyses",
+        params={"id": f"eq.{analysis_id}", "select": "*", "limit": "1"},
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Анализ не найден.")
+
+    row = rows[0]
+    if row.get("user_id") != user["id"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Нет доступа к этому анализу.")
+    return {"ok": True, "analysis": row.get("response_json")}
+
+
+@app.get("/admin/me")
+async def admin_me(admin: dict = Depends(require_admin)):
+    return {"ok": True, "user": _user_public(admin)}
+
 
 @app.get("/admin/analyses")
-async def admin_analyses(token: str, limit: int = 200):
-    user = _get_user_by_token(token)
-    if not user or user.get("role") != "admin": raise HTTPException(status_code=403, detail="Нужна роль администратора")
-    limit = max(1, min(int(limit), 1000))
-    resp = requests.get(f"{SUPABASE_DB_BASE}/analyses?order=created_at.desc&limit={limit}", headers=_sb_headers(), timeout=10)
-    return {"ok": True, "items": [_analysis_summary(r) for r in resp.json()]}
+async def admin_analyses(
+    limit: int = 200,
+    admin: dict = Depends(require_admin),
+):
+    del admin
+    rows = _db_json(
+        "GET",
+        "analyses",
+        params={
+            "order": "created_at.desc",
+            "limit": str(max(1, min(int(limit), 1000))),
+            "select": "*",
+        },
+    )
+    return {"ok": True, "items": [_analysis_summary(row) for row in rows or []]}
+
 
 @app.get("/profile/stats")
-async def profile_stats(token: str):
-    user = _get_user_by_token(token)
-    if not user: raise HTTPException(status_code=401, detail="Error")
-    rows = requests.get(f"{SUPABASE_DB_BASE}/analyses?user_id=eq.{user['id']}&order=created_at.desc", headers=_sb_headers(), timeout=10).json()
-    risks = [r.get("risk_index") for r in rows if isinstance(r.get("risk_index"), (int, float))]
+async def profile_stats(
+    token: str | None = None,
+    authorization: str | None = Header(default=None),
+):
+    resolved = _resolve_auth_token(authorization, token)
+    user = _get_user_by_token(resolved or "")
+    if not user:
+        raise HTTPException(status_code=401, detail="Сессия отсутствует или истекла.")
+
+    rows = _db_json(
+        "GET",
+        "analyses",
+        params={
+            "user_id": f"eq.{user['id']}",
+            "order": "created_at.desc",
+            "select": "*",
+        },
+    ) or []
+    risks = [
+        row.get("risk_index")
+        for row in rows
+        if isinstance(row.get("risk_index"), (int, float))
+    ]
     return {
-        "ok": True, "user": _user_public(user),
+        "ok": True,
+        "user": _user_public(user),
         "stats": {
-            "total_analyses": len(rows), "with_geo": sum(1 for r in rows if r.get("lat") is not None),
-            "high_risk_count": sum(1 for r in rows if r.get("risk_category") == "высокий"),
-            "avg_risk": sum(risks) / len(risks) if risks else None, "last_analysis": _analysis_summary(rows[0]) if rows else None
-        }
+            "total_analyses": len(rows),
+            "with_geo": sum(1 for row in rows if row.get("lat") is not None),
+            "high_risk_count": sum(
+                1 for row in rows if row.get("risk_category") == "высокий"
+            ),
+            "avg_risk": sum(risks) / len(risks) if risks else None,
+            "last_analysis": _analysis_summary(rows[0]) if rows else None,
+        },
     }
+
 
 TRAINING_EVENTS = deque(maxlen=int(os.getenv("TRAINING_EVENTS_MAXLEN", "200")))
 
+
+def log_training_event(
+    level: str,
+    message: str,
+    data: dict | None = None,
+) -> None:
+    event = {
+        "ts": _now_iso(),
+        "level": (level or "INFO").upper(),
+        "message": message,
+        "data": data or {},
+    }
+    TRAINING_EVENTS.append(event)
+    print(
+        f"[TRAINING_EVENT] {event['ts']} {event['level']}: "
+        f"{event['message']} {event['data']}"
+    )
+
+
+
 @app.on_event("startup")
 def _startup_load_models():
+    print(f"[*] ArborScan API {API_VERSION} startup")
+    print(f"[*] Project root: {PROJECT_ROOT}")
+    print(f"[*] Model directory: {MODEL_DIR}")
+    print(f"[*] Model cache directory: {MODEL_CACHE_DIR}")
+
     try:
-        training_state_ensure_row()
-        with MODEL_LOCK: reload_tree_model(force=True)
-        global REMBG_SESSION
-        print("[*] Loading rembg (U-2-Net) model for ultra-sharp masks...")
-        REMBG_SESSION = new_session("u2net")
-        remove(np.zeros((10, 10, 3), dtype=np.uint8), session=REMBG_SESSION, only_mask=True)
-        print("[*] rembg loaded and warmed up.")
-    except Exception as e: print(f"[!] Startup failed: {e}")
+        selected_version = _bootstrap_training_state()
+        print(f"[*] Selected active tree model version: v{selected_version}")
+    except Exception as exc:
+        selected_version = _fallback_active_model_version()
+        print(
+            "[!] Could not initialize training_state; "
+            f"using local/env version v{selected_version}: {exc}"
+        )
+
+    try:
+        with MODEL_LOCK:
+            load_stick_model(force=True)
+            reload_tree_model(
+                force=True,
+                requested_version=selected_version,
+            )
+    except Exception as exc:
+        # The process remains alive so /health can report the exact cause.
+        # /analyze-tree will return an error until the model issue is fixed.
+        print(f"[!] Model startup failed: {exc}")
+
+    if settings.preload_rembg:
+        try:
+            get_rembg_session()
+        except Exception as exc:
+            print(f"[!] rembg preload failed: {exc}")
+
+@app.get("/health")
+def health(deep: bool = False):
+    supabase_info = {
+        "configured": _supabase_is_configured(),
+        "reachable": None,
+        "error": None,
+    }
+    if deep and _supabase_is_configured():
+        started = time.perf_counter()
+        try:
+            state = training_state_get()
+            supabase_info.update(
+                {
+                    "reachable": True,
+                    "latency_ms": round(
+                        (time.perf_counter() - started) * 1000,
+                        1,
+                    ),
+                    "active_model_version": state.get(
+                        "active_model_version"
+                    ),
+                }
+            )
+        except Exception as exc:
+            supabase_info.update(
+                {
+                    "reachable": False,
+                    "error": str(exc),
+                }
+            )
+
+    tree_info = _tree_model_runtime_info()
+    stick_info = _stick_model_runtime_info()
+    models_ready = bool(tree_info["loaded"] and stick_info["loaded"])
+
+    return {
+        "status": "ok" if models_ready else "degraded",
+        "api_version": API_VERSION,
+        "schema_version": SCHEMA_VERSION,
+        "build": BUILD_INFO,
+        "models_ready": models_ready,
+        "tree_model": tree_info,
+        "stick_model": stick_info,
+        "available_tree_models": list_available_model_versions(),
+        "paths": {
+            "project_root": str(PROJECT_ROOT),
+            "model_dir": str(MODEL_DIR),
+            "model_cache_dir": str(MODEL_CACHE_DIR),
+        },
+        "supabase": supabase_info,
+        "plantnet": {"configured": bool(PLANTNET_API_KEY)},
+        "rembg": {
+            "loaded": REMBG_SESSION is not None,
+            "preload_enabled": settings.preload_rembg,
+        },
+        "checked_at": _utc_iso(),
+    }
+
+
+@app.get("/health/models")
+def health_models():
+    return {
+        "tree_model": _tree_model_runtime_info(),
+        "stick_model": _stick_model_runtime_info(),
+        "available_tree_models": list_available_model_versions(),
+        "configured_active_model_version": _get_active_model_version(),
+        "loaded_active_model_version": TREE_MODEL_VERSION,
+    }
+
 
 def normalize_address_ru(address: str | None) -> str | None:
     if not address: return address
@@ -545,7 +1741,12 @@ def normalize_address_ru(address: str | None) -> str | None:
     return address
 
 def _run_yolo_sync(img_array, conf=0.25):
-    return get_tree_model()(img_array, imgsz=1024, retina_masks=True, conf=conf)[0], stick_model(img_array)[0]
+    tree = get_tree_model()
+    stick = get_stick_model()
+    return (
+        tree(img_array, imgsz=1024, retina_masks=True, conf=conf)[0],
+        stick(img_array)[0],
+    )
 
 def map_plantnet_name(raw_name: str) -> str:
     name_lower = raw_name.lower()
@@ -554,6 +1755,8 @@ def map_plantnet_name(raw_name: str) -> str:
     return raw_name.capitalize()
 
 def _run_classifier_sync(crop_bgr):
+    if not PLANTNET_API_KEY:
+        return "Неизвестно"
     ok, encoded_img = cv2.imencode(".jpg", crop_bgr)
     if not ok: return "Неизвестно"
     try:
@@ -572,6 +1775,7 @@ async def analyze_tree(
     ar_crown_width_m: Optional[float] = Form(None),
     ar_trunk_diameter_m: Optional[float] = Form(None),
     manual_scale: Optional[float] = Form(None),
+    camera_distance_m: Optional[float] = Form(None), # <--- ДОБАВЛЕНА ДИСТАНЦИЯ (ОПТИКА)
     manual_beta_kg_s: Optional[float] = Form(None),
     crown_density_factor: Optional[float] = Form(None),
     manual_wind_speed_m_s: Optional[float] = Form(None),
@@ -610,27 +1814,30 @@ async def analyze_tree(
         idx = -1
         for i, m in enumerate(tree_res.masks.data):
             tmp_mask = cv2.resize((m.cpu().numpy() > 0.5).astype(np.uint8) * 255, (W, H), interpolation=cv2.INTER_NEAREST)
-            if smooth_k > 1: tmp_mask = cv2.morphologyEx(tmp_mask, cv2.MORPH_CLOSE, kernel)
+            if smooth_k > 1:
+                tmp_mask = cv2.morphologyEx(tmp_mask, cv2.MORPH_CLOSE, kernel)
             masks.append(tmp_mask)
             
             if tap_x is not None and tap_y is not None:
                 check_y = min(max(int(target_y), 0), H - 1)
                 check_x = min(max(int(target_x), 0), W - 1)
-                if tmp_mask[check_y, check_x] > 0: idx = i 
+                if tmp_mask[check_y, check_x] > 0:
+                    idx = i 
                     
             x1_t, y1_t, x2_t, y2_t = tree_res.boxes.xyxy[i].cpu().numpy()
             dist = (((x1_t+x2_t)/2.0) - target_x)**2 + (((y1_t+y2_t)/2.0) - target_y)**2
             distances.append(dist)
 
-        if idx == -1 and distances: idx = int(np.argmin(distances))
+        if idx == -1 and distances:
+            idx = int(np.argmin(distances))
             
         yolo_mask = masks[idx]
-        try: x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
+        try:
+            x1, y1, x2, y2 = map(int, tree_res.boxes.xyxy[idx].cpu().numpy())
         except Exception:
             ys_tmp, xs_tmp = np.where(yolo_mask > 0)
             x1, y1, x2, y2 = xs_tmp.min(), ys_tmp.min(), xs_tmp.max(), ys_tmp.max()
 
-    # --- ИСПРАВЛЕНИЕ: КООРДИНАТЫ CROP ВЫНЕСЕНЫ ИЗ IF-БЛОКА ---
     margin = 30
     x1_c, y1_c = max(0, x1 - margin), max(0, y1 - margin)
     x2_c, y2_c = min(W, x2 + margin), min(H, y2 + margin)
@@ -640,7 +1847,12 @@ async def analyze_tree(
     if use_rembg:
         try:
             crop_bgr = img[y1_c:y2_c, x1_c:x2_c]
-            def _refine_mask_sync(crop): return remove(crop, session=REMBG_SESSION, only_mask=True)
+            def _refine_mask_sync(crop):
+                return remove(
+                    crop,
+                    session=get_rembg_session(),
+                    only_mask=True,
+                )
             refined_crop_mask = await run_in_threadpool(_refine_mask_sync, crop_bgr)
             
             if len(refined_crop_mask.shape) == 3: refined_crop_mask = refined_crop_mask[:, :, 0]
@@ -652,7 +1864,8 @@ async def analyze_tree(
             
             final_mask = np.zeros((H, W), dtype=np.uint8)
             final_mask[y1_c:y2_c, x1_c:x2_c] = solid_crop_mask
-            if smooth_k > 1: final_mask = cv2.morphologyEx(cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel), cv2.MORPH_CLOSE, kernel)
+            if smooth_k > 1:
+                final_mask = cv2.morphologyEx(cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel), cv2.MORPH_CLOSE, kernel)
             mask = final_mask
         except Exception: mask = yolo_mask
     else:
@@ -674,12 +1887,26 @@ async def analyze_tree(
 
     species_name = await run_in_threadpool(_run_classifier_sync, img[y1_c:y2_c, x1_c:x2_c])
 
+    # 6. МАСШТАБ И РАЗМЕРЫ (СВЯТОЙ ГРААЛЬ)
     scale = None
     dimensions_source = "Неизвестно"
 
     if manual_scale and float(manual_scale) > 0:
         scale = float(manual_scale); dimensions_source = "Пользовательский маркер"
     
+    # --- НОВЫЙ БЛОК: ОПТИЧЕСКОЕ ВЫЧИСЛЕНИЕ МАСШТАБА ---
+    if not scale and camera_distance_m and float(camera_distance_m) > 0:
+        # Угол обзора современных смартфонов ~ 60-65 градусов по вертикали
+        # Для гарантии берем 60 градусов (1.047 рад)
+        fov_v_rad = 1.047
+        dist = float(camera_distance_m)
+        # Реальная высота всего кадра в метрах на этом расстоянии
+        visible_world_height_m = 2.0 * dist * math.tan(fov_v_rad / 2.0)
+        # Масштаб: сколько метров в 1 пикселе
+        scale = visible_world_height_m / H
+        dimensions_source = f"Оптика (Дистанция {dist}м)"
+    # ----------------------------------------------------
+
     if not scale and len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
         stick_h = best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item()
@@ -692,13 +1919,12 @@ async def analyze_tree(
 
     if not scale:
         ref_h = BETA_EMPIRICAL_STATS.get(species_name, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
-        if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Статистика ({species_name} ≈ {ref_h}м)"
+        if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Био. статистика ({species_name})"
 
     height_m = round(height_px * scale, 2) if scale else None
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
 
-    # ОБЯЗАТЕЛЬНО ИНИЦИАЛИЗИРУЕМ ЭТИ ПЕРЕМЕННЫЕ
     height_m_ai = height_m
     crown_m_ai = crown_m
     trunk_m_ai = trunk_m
@@ -717,7 +1943,6 @@ async def analyze_tree(
     if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
         if not manual_scale and "Аллометрия" not in dimensions_source: dimensions_source = "Введено пользователем"
 
-    # И ЭТИ ТОЖЕ
     ar_measurements = {"height_m": height_m if ar_height_m else None, "crown_width_m": crown_m if ar_crown_width_m else None, "trunk_diameter_m": trunk_m if ar_trunk_diameter_m else None}
     measurement_sources = {"height_m": "ar" if ar_height_m else "image", "crown_width_m": "ar" if ar_crown_width_m else "image", "trunk_diameter_m": "ar" if ar_trunk_diameter_m else "image"}
 
@@ -902,75 +2127,273 @@ def send_feedback(payload: dict = Body(...)):
     shutil.rmtree(tmp_dir, ignore_errors=True)
     return {"status": "ok", "analysis_id": analysis_id, "trust_score": trust}
 
-
 @app.get("/admin/verified-list")
-def admin_verified_list(include_used: bool = False):
-    try: objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
-    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
-    analysis_ids = sorted({obj["name"].split("/")[0] for obj in objects})
+def admin_verified_list(
+    include_used: bool = False,
+    admin: dict = Depends(require_admin),
+):
+    del admin
+    try:
+        objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    analysis_ids = sorted(
+        {
+            obj["name"].split("/")[0]
+            for obj in objects
+            if obj.get("name")
+        }
+    )
     results = []
-    for aid in analysis_ids:
+    for analysis_id in analysis_ids:
         try:
-            meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{aid}/meta_verified.json"))
-            if (not include_used) and meta.get("used_for_training") is True: continue
-            results.append({"analysis_id": aid, "species": meta.get("species"), "risk_category": meta.get("risk", {}).get("category"), "trust_score": meta.get("trust_score"), "verified": meta.get("verified", True), "verified_at": meta.get("verified_at"), "exclude_from_training": meta.get("exclude_from_training", False) == True, "has_user_mask": meta.get("has_user_mask", False) == True, "used_for_training": meta.get("used_for_training", False) == True})
-        except Exception: continue
+            meta = json.loads(
+                supabase_download_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/meta_verified.json",
+                )
+            )
+            if not include_used and meta.get("used_for_training") is True:
+                continue
+            results.append(
+                {
+                    "analysis_id": analysis_id,
+                    "species": meta.get("species"),
+                    "risk_category": (meta.get("risk") or {}).get("category"),
+                    "trust_score": meta.get("trust_score"),
+                    "verified": meta.get("verified", True),
+                    "verified_at": meta.get("verified_at"),
+                    "exclude_from_training": (
+                        meta.get("exclude_from_training", False) is True
+                    ),
+                    "has_user_mask": meta.get("has_user_mask", False) is True,
+                    "used_for_training": (
+                        meta.get("used_for_training", False) is True
+                    ),
+                }
+            )
+        except Exception:
+            continue
     return {"count": len(results), "items": results}
 
 
 @app.post("/admin/verified/{analysis_id}/set-training")
-def admin_set_training_flag(analysis_id: str, req: AdminSetTrainingRequest):
-    flag = next((v for v in (req.use_for_training, req.enabled, req.include, req.value) if v is not None), None)
-    if flag is None: raise HTTPException(status_code=400, detail="Missing boolean flag")
-    def _load_json(path):
-        try: return json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, path).decode("utf-8"))
-        except Exception: return {}
-    for path in [f"{analysis_id}/meta.json", f"{analysis_id}/meta_verified.json"]:
+def admin_set_training_flag(
+    analysis_id: str,
+    req: AdminSetTrainingRequest,
+    admin: dict = Depends(require_admin),
+):
+    del admin
+    flag = next(
+        (
+            value
+            for value in (
+                req.use_for_training,
+                req.enabled,
+                req.include,
+                req.value,
+            )
+            if value is not None
+        ),
+        None,
+    )
+    if flag is None:
+        raise HTTPException(status_code=400, detail="Missing boolean flag")
+
+    def _load_json(path: str) -> dict:
+        try:
+            return json.loads(
+                supabase_download_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    path,
+                ).decode("utf-8")
+            )
+        except Exception:
+            return {}
+
+    for path in (
+        f"{analysis_id}/meta.json",
+        f"{analysis_id}/meta_verified.json",
+    ):
         data = _load_json(path)
-        data.update({"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag})
+        data.update(
+            {
+                "analysis_id": analysis_id,
+                "use_for_training": bool(flag),
+                "exclude_from_training": not bool(flag),
+                "training_flag_updated_at": _now_iso(),
+            }
+        )
         supabase_upload_json(SUPABASE_BUCKET_VERIFIED, path, data)
-    return {"analysis_id": analysis_id, "use_for_training": flag, "exclude_from_training": not flag}
+
+    log_training_event(
+        "INFO",
+        "Администратор изменил включение примера в датасет",
+        {"analysis_id": analysis_id, "include": bool(flag)},
+    )
+    return {
+        "analysis_id": analysis_id,
+        "use_for_training": bool(flag),
+        "exclude_from_training": not bool(flag),
+    }
 
 
 @app.get("/admin/analysis/{analysis_id}")
-def admin_get_analysis(analysis_id: str):
+def admin_get_analysis(
+    analysis_id: str,
+    admin: dict = Depends(require_admin),
+):
+    del admin
     try:
-        input_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/input.jpg")
-        annotated_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/annotated.jpg")
-        try: user_mask_img = supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/user_mask.png")
-        except Exception: user_mask_img = None
-        meta = json.loads(supabase_download_bytes(SUPABASE_BUCKET_VERIFIED, f"{analysis_id}/meta_verified.json"))
-    except Exception as e: raise HTTPException(status_code=404, detail=f"Analysis not found: {e}")
+        input_img = supabase_download_bytes(
+            SUPABASE_BUCKET_VERIFIED,
+            f"{analysis_id}/input.jpg",
+        )
+        annotated_img = supabase_download_bytes(
+            SUPABASE_BUCKET_VERIFIED,
+            f"{analysis_id}/annotated.jpg",
+        )
+        try:
+            user_mask_img = supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/user_mask.png",
+            )
+        except Exception:
+            user_mask_img = None
+
+        try:
+            tree_pred = json.loads(
+                supabase_download_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/tree_pred.json",
+                )
+            )
+        except Exception:
+            tree_pred = {}
+
+        try:
+            stick_pred = json.loads(
+                supabase_download_bytes(
+                    SUPABASE_BUCKET_VERIFIED,
+                    f"{analysis_id}/stick_pred.json",
+                )
+            )
+        except Exception:
+            stick_pred = {}
+
+        meta = json.loads(
+            supabase_download_bytes(
+                SUPABASE_BUCKET_VERIFIED,
+                f"{analysis_id}/meta_verified.json",
+            )
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Analysis not found: {exc}",
+        )
 
     return {
         "analysis_id": analysis_id,
-        "images": {"input_base64": base64.b64encode(input_img).decode("utf-8"), "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"), "user_mask_base64": base64.b64encode(user_mask_img).decode("utf-8") if user_mask_img else None},
-        "tree_pred": {}, "stick_pred": {}, "meta": meta,
+        "images": {
+            "input_base64": base64.b64encode(input_img).decode("utf-8"),
+            "annotated_base64": base64.b64encode(annotated_img).decode("utf-8"),
+            "user_mask_base64": (
+                base64.b64encode(user_mask_img).decode("utf-8")
+                if user_mask_img
+                else None
+            ),
+        },
+        "tree_pred": tree_pred,
+        "stick_pred": stick_pred,
+        "meta": meta,
     }
 
 
 @app.get("/admin/training-status")
-def admin_training_status():
+def admin_training_status(admin: dict = Depends(require_admin)):
+    del admin
     training_state_ensure_row()
     state = training_state_get()
-    return {"active_model_version": state.get("active_model_version", 0), "last_model_version": state.get("last_model_version", 0), "training_in_progress": state.get("training_in_progress", False), "retrain_requested": state.get("retrain_requested", False)}
+    return {
+        "active_model_version": state.get("active_model_version", 0),
+        "last_model_version": state.get("last_model_version", 0),
+        "training_in_progress": state.get("training_in_progress", False),
+        "retrain_requested": state.get("retrain_requested", False),
+        "last_error": state.get("last_error"),
+        "training_started_at": state.get("training_started_at"),
+        "training_completed_at": state.get("training_completed_at"),
+    }
+
+
+@app.get("/admin/training-events")
+def admin_training_events(
+    limit: int = 15,
+    admin: dict = Depends(require_admin),
+):
+    del admin
+    normalized_limit = max(1, min(int(limit), 200))
+    events = list(TRAINING_EVENTS)[-normalized_limit:]
+    return {"events": list(reversed(events))}
+
 
 @app.post("/admin/set-active-model")
-async def admin_set_active_model(payload: dict = Body(...)):
-    training_state_ensure_row()
-    v = int(payload.get('version') or payload.get('model_version') or payload.get('active_model_version') or 0)
-    try: supabase_download_bytes(SUPABASE_BUCKET_MODELS, f"model_v{v}.pt")
-    except Exception as e: raise HTTPException(status_code=400, detail=f"Model not found: {e}")
-    training_state_update({"active_model_version": v})
-    with MODEL_LOCK: reload_tree_model(force=True)
-    return {"status": "ok", "active_model_version": v}
+async def admin_set_active_model(
+    payload: dict = Body(...),
+    admin: dict = Depends(require_admin),
+):
+    del admin
+    raw_version = (
+        payload.get("version")
+        if payload.get("version") is not None
+        else payload.get("model_version")
+    )
+    if raw_version is None:
+        raw_version = payload.get("active_model_version")
+    if raw_version is None:
+        raise HTTPException(status_code=422, detail="Missing model version")
+
+    try:
+        version = int(raw_version)
+        model_info = await run_in_threadpool(activate_tree_model, version)
+    except Exception as exc:
+        log_training_event(
+            "ERROR",
+            "Не удалось активировать модель",
+            {"version": raw_version, "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model v{raw_version} could not be activated: {exc}",
+        )
+
+    log_training_event(
+        "INFO",
+        "Активная модель изменена",
+        {"version": version},
+    )
+    return {
+        "status": "ok",
+        "active_model_version": version,
+        "model": model_info,
+    }
+
 
 @app.post("/admin/request-retrain")
-def admin_request_retrain():
+def admin_request_retrain(admin: dict = Depends(require_admin)):
+    del admin
     training_state_ensure_row()
     training_state_update({"retrain_requested": True})
+    log_training_event("INFO", "Администратор запросил переобучение")
     return {"status": "ok", "retrain_requested": True}
 
+
 @app.get("/admin/models")
-def admin_models():
-    return {"models": list_available_model_versions(), "active_model_version": _get_active_model_version()}
+def admin_models(admin: dict = Depends(require_admin)):
+    del admin
+    return {
+        "models": list_available_model_versions(),
+        "active_model_version": _get_active_model_version(),
+    }
+

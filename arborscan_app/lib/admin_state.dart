@@ -1,22 +1,25 @@
 import 'package:flutter/foundation.dart';
 
+/// Локальное представление роли пользователя.
+///
+/// Оно не выдаёт права самостоятельно: роль должна приходить от backend.
 class AdminState extends ChangeNotifier {
-  bool _isAdmin = false;
+  String _role = 'user';
 
-  bool get isAdmin => _isAdmin;
+  String get role => _role;
+  bool get isAdmin => _role == 'admin';
 
-  void enable() {
-    _isAdmin = true;
+  void applyServerRole(String? role) {
+    final normalized = (role ?? 'user').trim().toLowerCase();
+    final nextRole = normalized == 'admin' ? 'admin' : 'user';
+    if (_role == nextRole) return;
+    _role = nextRole;
     notifyListeners();
   }
 
-  void disable() {
-    _isAdmin = false;
-    notifyListeners();
-  }
-
-  void toggle() {
-    _isAdmin = !_isAdmin;
+  void clear() {
+    if (_role == 'user') return;
+    _role = 'user';
     notifyListeners();
   }
 }

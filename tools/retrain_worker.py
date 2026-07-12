@@ -8,12 +8,15 @@ import argparse
 import subprocess
 import random
 import re
+import hashlib
+import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Tuple, Optional, Dict, Any
 
 import requests
 from supabase import create_client
+from ultralytics import YOLO
 
 # -----------------------------
 # Defaults / env knobs
@@ -36,6 +39,10 @@ SELECTION_SEED = os.getenv("SELECTION_SEED", "")
 
 # If true, only include samples with complete AR (points_count >= required_points)
 REQUIRE_AR_COMPLETE = os.getenv("REQUIRE_AR_COMPLETE", "0") == "1"
+
+MODEL_MIN_SIZE_BYTES = int(os.getenv("MODEL_MIN_SIZE_BYTES", "1000000"))
+VERIFY_MODEL_UPLOAD = os.getenv("VERIFY_MODEL_UPLOAD", "true").lower() in {"1", "true", "yes", "on"}
+EXPECTED_TREE_TASK = os.getenv("TREE_MODEL_TASK", "segment")
 
 
 # -----------------------------
@@ -202,8 +209,6 @@ def discover_new_samples(bucket_verified: str, max_samples: Optional[int] = None
             continue
         if REQUIRE_AR_COMPLETE and not ar_complete(meta):
             continue
-        if REQUIRE_AR_COMPLETE and not ar_complete(meta):
-            continue
         if meta.get("used_for_training", False):
             continue
         results.append((aid, meta))
@@ -277,80 +282,308 @@ def diagnose_candidates(bucket_verified: str, max_examples: int = 20) -> dict:
     return {"counts": counts, "examples": examples}
 
 # -----------------------------
-# Model versions: real existing + next free >= (max+1)
+# Model paths, validation and versions
 # -----------------------------
+def resolve_project_layout() -> Tuple[Path, Path, Path]:
+    """Return (script_dir, project_root, models_dir).
+
+    The worker may be located either in the project root or in project/tools.
+    MODEL_DIR always has priority so the API and the worker can use exactly
+    the same directory.
+    """
+    script_dir = Path(__file__).resolve().parent
+
+    explicit_root = os.getenv("PROJECT_ROOT")
+    if explicit_root:
+        project_root = Path(explicit_root).expanduser().resolve()
+    elif (script_dir / "server.py").exists():
+        project_root = script_dir
+    elif (script_dir.parent / "server.py").exists():
+        project_root = script_dir.parent
+    else:
+        project_root = script_dir
+
+    explicit_models = os.getenv("MODEL_DIR")
+    models_dir = (
+        Path(explicit_models).expanduser().resolve()
+        if explicit_models
+        else (project_root / "models").resolve()
+    )
+    return script_dir, project_root, models_dir
+
+
+def model_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def expected_model_sha256(version: int) -> Optional[str]:
+    raw = os.getenv(f"MODEL_V{int(version)}_SHA256")
+    return raw.strip().lower() if raw and raw.strip() else None
+
+
+def validate_model_file(
+    path: Path,
+    *,
+    label: str,
+    expected_sha256: Optional[str] = None,
+    load_with_ultralytics: bool = False,
+) -> Dict[str, Any]:
+    path = path.resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"{label} does not exist: {path}")
+    if not path.is_file():
+        raise RuntimeError(f"{label} is not a file: {path}")
+
+    size = path.stat().st_size
+    if size < MODEL_MIN_SIZE_BYTES:
+        raise RuntimeError(
+            f"{label} is too small ({size} bytes): {path}. "
+            "The file may be incomplete or contain an HTTP error response."
+        )
+
+    sha256 = model_sha256(path)
+    if expected_sha256 and sha256.lower() != expected_sha256.lower():
+        raise RuntimeError(
+            f"{label} SHA-256 mismatch: expected {expected_sha256}, "
+            f"got {sha256}"
+        )
+
+    task = None
+    if load_with_ultralytics:
+        model = YOLO(str(path))
+        task = getattr(model, "task", None)
+        if EXPECTED_TREE_TASK and task and task != EXPECTED_TREE_TASK:
+            raise RuntimeError(
+                f"{label} task is '{task}', expected '{EXPECTED_TREE_TASK}'"
+            )
+        del model
+
+    return {
+        "path": str(path),
+        "size_bytes": size,
+        "sha256": sha256,
+        "task": task,
+    }
+
+
+def atomic_write_bytes(destination: Path, content: bytes) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(
+        f".{destination.name}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        with temporary.open("wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink(missing_ok=True)
+
+
 def _existing_versions_local(models_dir: Path) -> set[int]:
-    s: set[int] = set()
+    versions: set[int] = set()
     if not models_dir.exists():
-        return s
-    for p in models_dir.glob("model_v*.pt"):
-        m = re.match(r"model_v(\d+)\.pt$", p.name)
-        if m:
-            s.add(int(m.group(1)))
-    return s
+        return versions
+
+    for path in models_dir.glob("model_v*.pt"):
+        match = re.fullmatch(r"model_v(\d+)\.pt", path.name)
+        if not match:
+            continue
+        version = int(match.group(1))
+        try:
+            validate_model_file(
+                path,
+                label=f"local model v{version}",
+                expected_sha256=expected_model_sha256(version),
+            )
+            versions.add(version)
+        except Exception as exc:
+            log(f"[!] Ignoring invalid local model {path}: {exc}")
+    return versions
+
 
 def _existing_versions_bucket(bucket_models: str) -> set[int]:
-    s: set[int] = set()
+    versions: set[int] = set()
     offset = 0
     while True:
-        objs = storage_list_objects(bucket_models, prefix="", limit=1000, offset=offset)
-        if not objs:
+        objects = storage_list_objects(
+            bucket_models,
+            prefix="",
+            limit=1000,
+            offset=offset,
+        )
+        if not objects:
             break
-        for o in objs:
-            name = (o.get("name") or "").split("/")[-1]
-            m = re.match(r"model_v(\d+)\.pt$", name)
-            if m:
-                s.add(int(m.group(1)))
-        if len(objs) < 1000:
+        for item in objects:
+            name = (item.get("name") or "").split("/")[-1]
+            match = re.fullmatch(r"model_v(\d+)\.pt", name)
+            if match:
+                versions.add(int(match.group(1)))
+        if len(objects) < 1000:
             break
         offset += 1000
-    return s
+    return versions
+
 
 def ensure_models_dir(models_dir: Path) -> None:
     models_dir.mkdir(parents=True, exist_ok=True)
+
 
 def get_base_model_path(models_dir: Path, base_version: int) -> Path:
     if base_version <= 0:
         return models_dir / "base.pt"
     return models_dir / f"model_v{base_version}.pt"
 
-def ensure_base_model_local(*, models_dir: Path, bucket_models: str, base_version: int) -> Path:
+
+def _download_and_validate_model(
+    *,
+    bucket_models: str,
+    remote_name: str,
+    destination: Path,
+    label: str,
+    expected_sha256: Optional[str],
+) -> Path:
+    content = storage_download_bytes(bucket_models, remote_name)
+    if len(content) < MODEL_MIN_SIZE_BYTES:
+        raise RuntimeError(
+            f"Downloaded {label} is too small ({len(content)} bytes): "
+            f"{bucket_models}/{remote_name}"
+        )
+
+    atomic_write_bytes(destination, content)
+    try:
+        validate_model_file(
+            destination,
+            label=label,
+            expected_sha256=expected_sha256,
+            load_with_ultralytics=True,
+        )
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+
+    log(
+        f"[✓] Downloaded and validated {label}: "
+        f"{bucket_models}/{remote_name} -> {destination}"
+    )
+    return destination
+
+
+def ensure_base_model_local(
+    *,
+    models_dir: Path,
+    bucket_models: str,
+    base_version: int,
+) -> Path:
     ensure_models_dir(models_dir)
     base_path = get_base_model_path(models_dir, base_version)
-    if base_path.exists():
-        return base_path
-
-    if base_version > 0:
-        remote_name = f"model_v{base_version}.pt"
-        content = storage_download_bytes(bucket_models, remote_name)
-        base_path.write_bytes(content)
-        log(f"[✓] Downloaded base model from bucket '{bucket_models}': {remote_name} -> {base_path}")
-        return base_path
-
-    for candidate in ["base.pt", "yolov8n-seg.pt", "yolov8s-seg.pt", "yolov8m-seg.pt"]:
-        try:
-            content = storage_download_bytes(bucket_models, candidate)
-            base_path.write_bytes(content)
-            log(f"[✓] Downloaded base model from bucket '{bucket_models}': {candidate} -> {base_path}")
-            return base_path
-        except Exception:
-            pass
-
-    raise RuntimeError(
-        f"Base model not found: {base_path}. "
-        f"Put yolov8*-seg.pt into {models_dir}/base.pt or upload base.pt (or yolov8n-seg.pt) to bucket {bucket_models}."
+    expected_hash = (
+        expected_model_sha256(base_version) if base_version > 0 else None
     )
 
-def compute_versions(models_dir: Path, bucket_models: str) -> Tuple[int, int, set[int]]:
+    if base_path.exists():
+        try:
+            validate_model_file(
+                base_path,
+                label=f"base model v{base_version}",
+                expected_sha256=expected_hash,
+                load_with_ultralytics=True,
+            )
+            return base_path
+        except Exception as exc:
+            log(f"[!] Local base model is invalid and will be replaced: {exc}")
+            base_path.unlink(missing_ok=True)
+
+    if base_version > 0:
+        return _download_and_validate_model(
+            bucket_models=bucket_models,
+            remote_name=f"model_v{base_version}.pt",
+            destination=base_path,
+            label=f"base model v{base_version}",
+            expected_sha256=expected_hash,
+        )
+
+    errors: List[str] = []
+    for candidate in (
+        "base.pt",
+        "yolov8n-seg.pt",
+        "yolov8s-seg.pt",
+        "yolov8m-seg.pt",
+    ):
+        try:
+            return _download_and_validate_model(
+                bucket_models=bucket_models,
+                remote_name=candidate,
+                destination=base_path,
+                label="base segmentation model",
+                expected_sha256=None,
+            )
+        except Exception as exc:
+            errors.append(f"{candidate}: {exc}")
+
+    raise RuntimeError(
+        f"Base model not found or invalid: {base_path}. "
+        f"Checked bucket '{bucket_models}': {' | '.join(errors)}"
+    )
+
+
+def compute_versions(
+    models_dir: Path,
+    bucket_models: str,
+) -> Tuple[int, int, set[int]]:
     local_set = _existing_versions_local(models_dir)
     bucket_set = _existing_versions_bucket(bucket_models)
     existing = set(local_set) | set(bucket_set)
 
     base_version = max(existing) if existing else 0
-    cand = base_version + 1
-    while cand in existing:
-        cand += 1
-    return base_version, cand, existing
+    new_version = base_version + 1
+    while new_version in existing:
+        new_version += 1
+    return base_version, new_version, existing
+
+
+def diagnose_models(models_dir: Path, bucket_models: str) -> Dict[str, Any]:
+    local_versions = sorted(_existing_versions_local(models_dir))
+    try:
+        remote_versions = sorted(_existing_versions_bucket(bucket_models))
+        remote_error = None
+    except Exception as exc:
+        remote_versions = []
+        remote_error = str(exc)
+
+    files = []
+    for version in local_versions:
+        path = models_dir / f"model_v{version}.pt"
+        try:
+            info = validate_model_file(
+                path,
+                label=f"model v{version}",
+                expected_sha256=expected_model_sha256(version),
+            )
+            info["version"] = version
+            files.append(info)
+        except Exception as exc:
+            files.append(
+                {
+                    "version": version,
+                    "path": str(path),
+                    "error": str(exc),
+                }
+            )
+
+    return {
+        "models_dir": str(models_dir),
+        "local_versions": local_versions,
+        "remote_versions": remote_versions,
+        "remote_error": remote_error,
+        "files": files,
+    }
 
 # -----------------------------
 # Dataset export (manifest-based)
@@ -428,15 +661,67 @@ def run_yolo_train(*, base_model: Path, data_yaml: Path, epochs: int, imgsz: int
     return best
 
 def save_new_model(best_pt: Path, models_dir: Path, new_version: int) -> Path:
-    dst = models_dir / f"model_v{new_version}.pt"
-    tmp = models_dir / f".model_v{new_version}.pt.tmp"
-    shutil.copy2(best_pt, tmp)
-    tmp.replace(dst)
-    return dst
+    validate_model_file(
+        best_pt,
+        label="training result best.pt",
+        load_with_ultralytics=True,
+    )
+
+    destination = models_dir / f"model_v{new_version}.pt"
+    temporary = models_dir / f".model_v{new_version}.{uuid.uuid4().hex}.tmp"
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        shutil.copy2(best_pt, temporary)
+        validate_model_file(
+            temporary,
+            label=f"new model v{new_version}",
+            load_with_ultralytics=True,
+        )
+        temporary.replace(destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink(missing_ok=True)
+
+    validate_model_file(
+        destination,
+        label=f"saved model v{new_version}",
+        load_with_ultralytics=True,
+    )
+    return destination
+
 
 def upload_model_to_bucket(bucket_models: str, model_path: Path) -> None:
-    storage_upload_bytes(bucket_models, model_path.name, model_path.read_bytes(), "application/octet-stream")
-    log(f"[✓] Uploaded model to bucket: {bucket_models}/{model_path.name}")
+    local_info = validate_model_file(
+        model_path,
+        label=f"model upload {model_path.name}",
+        load_with_ultralytics=True,
+    )
+    storage_upload_bytes(
+        bucket_models,
+        model_path.name,
+        model_path.read_bytes(),
+        "application/octet-stream",
+    )
+
+    if VERIFY_MODEL_UPLOAD:
+        remote_content = storage_download_bytes(bucket_models, model_path.name)
+        remote_hash = hashlib.sha256(remote_content).hexdigest()
+        if len(remote_content) != local_info["size_bytes"]:
+            raise RuntimeError(
+                f"Uploaded model size mismatch for {model_path.name}: "
+                f"local={local_info['size_bytes']}, remote={len(remote_content)}"
+            )
+        if remote_hash != local_info["sha256"]:
+            raise RuntimeError(
+                f"Uploaded model SHA-256 mismatch for {model_path.name}: "
+                f"local={local_info['sha256']}, remote={remote_hash}"
+            )
+
+    log(
+        f"[✓] Uploaded and verified model: "
+        f"{bucket_models}/{model_path.name}"
+    )
 
 # -----------------------------
 # Mark samples used
@@ -516,17 +801,36 @@ def main():
     parser.add_argument("--interval", type=int, default=DEFAULT_INTERVAL_SEC)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--max-samples", type=int, default=None)
+    parser.add_argument("--diagnose-models", action="store_true")
     args = parser.parse_args()
 
-    tools_dir = Path(__file__).resolve().parent
-    project_root = tools_dir.parent
-    models_dir = project_root / "models"
-    runs_segment_dir = tools_dir / "runs" / "segment"
-    dataset_dir = tools_dir / "dataset_yolov8"
-    manifest_in_path = tools_dir / "manifest_in.json"
+    tools_dir, project_root, models_dir = resolve_project_layout()
+    runs_segment_dir = Path(
+        os.getenv("TRAIN_RUNS_DIR", str(project_root / "runs" / "segment"))
+    ).expanduser().resolve()
+    dataset_dir = Path(
+        os.getenv("TRAIN_DATASET_DIR", str(project_root / "dataset_yolov8"))
+    ).expanduser().resolve()
+    manifest_in_path = Path(
+        os.getenv("TRAIN_MANIFEST_PATH", str(project_root / "manifest_in.json"))
+    ).expanduser().resolve()
 
     ensure_models_dir(models_dir)
     runs_segment_dir.mkdir(parents=True, exist_ok=True)
+
+    log(f"[*] Script directory: {tools_dir}")
+    log(f"[*] Project root: {project_root}")
+    log(f"[*] Shared model directory: {models_dir}")
+
+    if args.diagnose_models:
+        print(
+            json.dumps(
+                diagnose_models(models_dir, args.bucket_models),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return
 
     supabase = make_supabase()
 

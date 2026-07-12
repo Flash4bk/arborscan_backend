@@ -2,13 +2,53 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class AdminApiException implements Exception {
+  final int? statusCode;
+  final String message;
+
+  const AdminApiException(this.message, {this.statusCode});
+
+  bool get isUnauthorized => statusCode == 401;
+  bool get isForbidden => statusCode == 403;
+
+  @override
+  String toString() => message;
+}
+
+class AdminIdentity {
+  final String id;
+  final String name;
+  final String email;
+  final String role;
+
+  const AdminIdentity({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
+  });
+
+  factory AdminIdentity.fromJson(Map<String, dynamic> json) {
+    return AdminIdentity(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      role: (json['role'] ?? 'user').toString(),
+    );
+  }
+}
 
 class TrainingStatus {
   final bool isTraining;
+  final bool retrainRequested;
   final int? activeModelVersion;
   final int? lastTrainedVersion;
+  final String? lastError;
+  final String? trainingStartedAt;
+  final String? trainingCompletedAt;
 
-  // Compatibility aliases for older/newer UI code.
   bool get training => isTraining;
   int? get activeModel => activeModelVersion;
   int? get lastTrained => lastTrainedVersion;
@@ -16,22 +56,46 @@ class TrainingStatus {
 
   const TrainingStatus({
     required this.isTraining,
+    required this.retrainRequested,
     required this.activeModelVersion,
     required this.lastTrainedVersion,
+    required this.lastError,
+    required this.trainingStartedAt,
+    required this.trainingCompletedAt,
   });
 
   factory TrainingStatus.fromJson(Map<String, dynamic> json) {
-    int? asInt(dynamic v) {
-      if (v == null) return null;
-      if (v is int) return v;
-      if (v is num) return v.toInt();
-      return int.tryParse(v.toString());
+    int? asInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value.toString());
+    }
+
+    bool asBool(dynamic value) {
+      if (value is bool) return value;
+      final normalized = value?.toString().trim().toLowerCase();
+      return normalized == 'true' || normalized == '1';
     }
 
     return TrainingStatus(
-      isTraining: (json['is_training'] ?? json['training'] ?? false) == true,
-      activeModelVersion: asInt(json['active_model_version'] ?? json['active_model']),
-      lastTrainedVersion: asInt(json['last_trained_version'] ?? json['last_trained']),
+      isTraining: asBool(
+        json['training_in_progress'] ??
+            json['is_training'] ??
+            json['training'],
+      ),
+      retrainRequested: asBool(json['retrain_requested']),
+      activeModelVersion: asInt(
+        json['active_model_version'] ?? json['active_model'],
+      ),
+      lastTrainedVersion: asInt(
+        json['last_model_version'] ??
+            json['last_trained_version'] ??
+            json['last_trained'],
+      ),
+      lastError: json['last_error']?.toString(),
+      trainingStartedAt: json['training_started_at']?.toString(),
+      trainingCompletedAt: json['training_completed_at']?.toString(),
     );
   }
 }
@@ -50,13 +114,17 @@ class TrainingEvent {
   });
 
   factory TrainingEvent.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic> asMap(dynamic value) {
+      if (value is Map<String, dynamic>) return value;
+      if (value is Map) return value.cast<String, dynamic>();
+      return <String, dynamic>{};
+    }
+
     return TrainingEvent(
       ts: (json['ts'] ?? json['time'] ?? '').toString(),
       level: (json['level'] ?? 'INFO').toString(),
       message: (json['message'] ?? '').toString(),
-      meta: (json['meta'] is Map<String, dynamic>)
-          ? (json['meta'] as Map<String, dynamic>)
-          : <String, dynamic>{},
+      meta: asMap(json['data'] ?? json['meta']),
     );
   }
 }
@@ -65,161 +133,272 @@ class ModelsResponse {
   final List<int> models;
   final int? activeModelVersion;
 
-  const ModelsResponse({required this.models, required this.activeModelVersion});
+  const ModelsResponse({
+    required this.models,
+    required this.activeModelVersion,
+  });
 
   factory ModelsResponse.fromJson(Map<String, dynamic> json) {
     final raw = json['models'];
-    final List<int> versions = [];
+    final versions = <int>[];
     int? activeFromItems;
+
     if (raw is List) {
-      for (final v in raw) {
-        // Backend may return either:
-        // - [1,2,3]
-        // - [{"version":1,"is_active":true}, ...]
-        if (v is num) {
-          versions.add(v.toInt());
+      for (final item in raw) {
+        if (item is num) {
+          versions.add(item.toInt());
           continue;
         }
-        if (v is Map) {
-          final verVal = v['version'] ?? v['model_version'] ?? v['id'];
-          final ver = verVal == null ? null : int.tryParse(verVal.toString());
-          if (ver != null) {
-            versions.add(ver);
-            final isActive = v['is_active'] ?? v['isActive'] ?? v['active'];
-            if (isActive == true) activeFromItems = ver;
+        if (item is Map) {
+          final value = item['version'] ?? item['model_version'] ?? item['id'];
+          final version = value == null ? null : int.tryParse(value.toString());
+          if (version != null) {
+            versions.add(version);
+            final isActive =
+                item['is_active'] ?? item['isActive'] ?? item['active'];
+            if (isActive == true) activeFromItems = version;
           }
           continue;
         }
-        final parsed = int.tryParse(v.toString());
-        if (parsed != null) versions.add(parsed);
+        final version = int.tryParse(item.toString());
+        if (version != null) versions.add(version);
       }
     }
-    versions.sort();
-    final unique = <int>{};
-    final deduped = <int>[];
-    for (final v in versions) {
-      if (unique.add(v)) deduped.add(v);
-    }
 
-    int? active;
-    final av = json['active_model_version'] ?? json['active_model'];
-    if (av != null) {
-      active = int.tryParse(av.toString());
-    } else {
-      active = activeFromItems;
-    }
+    final deduplicated = versions.toSet().toList()..sort();
+    final activeRaw = json['active_model_version'] ?? json['active_model'];
+    final active = activeRaw == null
+        ? activeFromItems
+        : int.tryParse(activeRaw.toString());
 
-    return ModelsResponse(models: deduped, activeModelVersion: active);
+    return ModelsResponse(
+      models: deduplicated,
+      activeModelVersion: active,
+    );
   }
 }
 
 class AdminService {
+  static const String _tokenKey = 'arborscan_auth_token';
+
   final String baseUrl;
+  final Future<String?> Function()? tokenProvider;
 
-  const AdminService({required this.baseUrl});
+  const AdminService({
+    required this.baseUrl,
+    this.tokenProvider,
+  });
 
-  Uri _u(String path, [Map<String, dynamic>? q]) {
-    final p = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$baseUrl$p').replace(
-      queryParameters: q?.map((k, v) => MapEntry(k, v.toString())),
+  Uri _uri(String path, [Map<String, dynamic>? query]) {
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$baseUrl$normalizedPath').replace(
+      queryParameters: query?.map(
+        (key, value) => MapEntry(key, value.toString()),
+      ),
     );
   }
 
-  Future<TrainingStatus> getTrainingStatus() async {
-    final r = await http
-        .get(_u('/admin/training-status'))
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: training-status');
+  Future<String> _loadToken() async {
+    final supplied = await tokenProvider?.call();
+    if (supplied != null && supplied.trim().isNotEmpty) {
+      return supplied.trim();
     }
-    return TrainingStatus.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+
+    final preferences = await SharedPreferences.getInstance();
+    final token = preferences.getString(_tokenKey)?.trim() ?? '';
+    if (token.isEmpty) {
+      throw const AdminApiException(
+        'Сначала войдите в профиль администратора.',
+        statusCode: 401,
+      );
+    }
+    return token;
+  }
+
+  Future<Map<String, String>> _headers({bool jsonBody = false}) async {
+    final token = await _loadToken();
+    return <String, String>{
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+      if (jsonBody) 'Content-Type': 'application/json',
+    };
+  }
+
+  Map<String, dynamic> _decodeObject(http.Response response) {
+    if (response.bodyBytes.isEmpty) return <String, dynamic>{};
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return decoded.cast<String, dynamic>();
+    return <String, dynamic>{};
+  }
+
+  Never _throwResponse(http.Response response, String operation) {
+    String detail = '';
+    try {
+      final decoded = _decodeObject(response);
+      detail = (decoded['detail'] ?? decoded['message'] ?? '').toString();
+    } catch (_) {
+      detail = utf8.decode(response.bodyBytes, allowMalformed: true).trim();
+    }
+
+    if (response.statusCode == 401) {
+      throw const AdminApiException(
+        'Сессия отсутствует или истекла. Войдите снова.',
+        statusCode: 401,
+      );
+    }
+    if (response.statusCode == 403) {
+      throw const AdminApiException(
+        'У текущего профиля нет прав администратора.',
+        statusCode: 403,
+      );
+    }
+
+    throw AdminApiException(
+      detail.isEmpty
+          ? 'Ошибка $operation: HTTP ${response.statusCode}.'
+          : 'Ошибка $operation: $detail',
+      statusCode: response.statusCode,
+    );
+  }
+
+  Future<http.Response> _get(
+    String path, {
+    Map<String, dynamic>? query,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final response = await http
+        .get(
+          _uri(path, query),
+          headers: await _headers(),
+        )
+        .timeout(timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _throwResponse(response, path);
+    }
+    return response;
+  }
+
+  Future<http.Response> _post(
+    String path, {
+    Map<String, dynamic>? body,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final response = await http
+        .post(
+          _uri(path),
+          headers: await _headers(jsonBody: body != null),
+          body: body == null ? null : jsonEncode(body),
+        )
+        .timeout(timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _throwResponse(response, path);
+    }
+    return response;
+  }
+
+  Future<AdminIdentity> verifyAdminAccess() async {
+    final response = await _get('/admin/me');
+    final data = _decodeObject(response);
+    final rawUser = data['user'];
+    if (rawUser is! Map) {
+      throw const AdminApiException(
+        'Сервер не вернул данные администратора.',
+      );
+    }
+    return AdminIdentity.fromJson(rawUser.cast<String, dynamic>());
+  }
+
+  Future<TrainingStatus> getTrainingStatus() async {
+    final response = await _get('/admin/training-status');
+    return TrainingStatus.fromJson(_decodeObject(response));
   }
 
   Future<List<TrainingEvent>> getTrainingEvents({int limit = 15}) async {
-    final r = await http
-        .get(_u('/admin/training-events', {'limit': limit}))
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: training-events');
-    }
-    final decoded = jsonDecode(r.body);
-    final eventsRaw = (decoded is Map<String, dynamic>) ? decoded['events'] : null;
-    final List<TrainingEvent> events = [];
-    if (eventsRaw is List) {
-      for (final e in eventsRaw) {
-        if (e is Map<String, dynamic>) events.add(TrainingEvent.fromJson(e));
+    final response = await _get(
+      '/admin/training-events',
+      query: {'limit': limit},
+    );
+    final data = _decodeObject(response);
+    final rawEvents = data['events'];
+    final events = <TrainingEvent>[];
+    if (rawEvents is List) {
+      for (final raw in rawEvents) {
+        if (raw is Map<String, dynamic>) {
+          events.add(TrainingEvent.fromJson(raw));
+        } else if (raw is Map) {
+          events.add(TrainingEvent.fromJson(raw.cast<String, dynamic>()));
+        }
       }
     }
     return events;
   }
 
   Future<ModelsResponse> getModels() async {
-    final r = await http.get(_u('/admin/models')).timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: models');
-    }
-    return ModelsResponse.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+    final response = await _get('/admin/models');
+    return ModelsResponse.fromJson(_decodeObject(response));
   }
 
   Future<void> setActiveModel(int modelVersion) async {
-    final r = await http
-        .post(
-          _u('/admin/set-active-model'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'model_version': modelVersion}),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: set-active-model');
-    }
+    await _post(
+      '/admin/set-active-model',
+      body: {'model_version': modelVersion},
+      timeout: const Duration(seconds: 120),
+    );
   }
 
   Future<void> requestTraining() async {
-    final r = await http.post(_u('/admin/request-retrain')).timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: request-retrain');
-    }
+    await _post('/admin/request-retrain');
   }
 
-  // =====================
-  // Training dataset (verified samples)
-  // =====================
-
-  Future<List<VerifiedItem>> getVerifiedList() async {
-    final r = await http.get(_u('/admin/verified-list')).timeout(const Duration(seconds: 45));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: verified-list');
-    }
-    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
-    final raw = decoded['items'];
-    final List<VerifiedItem> out = [];
-    if (raw is List) {
-      for (final it in raw) {
-        if (it is Map<String, dynamic>) out.add(VerifiedItem.fromJson(it));
+  Future<List<VerifiedItem>> getVerifiedList({bool includeUsed = false}) async {
+    final response = await _get(
+      '/admin/verified-list',
+      query: {'include_used': includeUsed},
+      timeout: const Duration(seconds: 45),
+    );
+    final data = _decodeObject(response);
+    final rawItems = data['items'];
+    final items = <VerifiedItem>[];
+    if (rawItems is List) {
+      for (final raw in rawItems) {
+        if (raw is Map<String, dynamic>) {
+          items.add(VerifiedItem.fromJson(raw));
+        } else if (raw is Map) {
+          items.add(VerifiedItem.fromJson(raw.cast<String, dynamic>()));
+        }
       }
     }
-    return out;
+    return items;
   }
 
   Future<VerifiedAnalysis> getVerifiedAnalysis(String analysisId) async {
-    final r = await http.get(_u('/admin/analysis/$analysisId')).timeout(const Duration(seconds: 90));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: analysis/$analysisId');
-    }
-    return VerifiedAnalysis.fromJson(jsonDecode(r.body) as Map<String, dynamic>);
+    final response = await _get(
+      '/admin/analysis/$analysisId',
+      timeout: const Duration(seconds: 90),
+    );
+    return VerifiedAnalysis.fromJson(_decodeObject(response));
   }
 
-  Future<void> setTrainingInclude(String analysisId, {required bool include}) async {
-    final r = await http
-        .post(
-          _u('/admin/verified/$analysisId/set-training'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'include': include}),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 200) {
-      throw Exception('HTTP ${r.statusCode}: set-training');
-    }
+  Future<void> setTrainingInclude(
+    String analysisId, {
+    required bool include,
+  }) async {
+    await _post(
+      '/admin/verified/$analysisId/set-training',
+      body: {'include': include},
+    );
+  }
+
+  Future<void> verifyExample(
+    String analysisId,
+    dynamic points,
+    dynamic closed,
+  ) async {
+    throw const AdminApiException(
+      'Старая операция verifyExample не поддерживается. '
+      'Используйте страницу датасета и подтверждённые маски.',
+    );
   }
 }
 
@@ -227,6 +406,8 @@ class VerifiedItem {
   final String analysisId;
   final bool verified;
   final bool excludeFromTraining;
+  final bool hasUserMask;
+  final bool usedForTraining;
   final String? species;
   final String? riskCategory;
   final num? trustScore;
@@ -236,6 +417,8 @@ class VerifiedItem {
     required this.analysisId,
     required this.verified,
     required this.excludeFromTraining,
+    this.hasUserMask = false,
+    this.usedForTraining = false,
     required this.species,
     required this.riskCategory,
     required this.trustScore,
@@ -246,9 +429,19 @@ class VerifiedItem {
     return VerifiedItem(
       analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
       verified: (json['verified'] ?? true) == true,
-      excludeFromTraining: (json['exclude_from_training'] ?? json['excludeFromTraining'] ?? false) == true,
+      excludeFromTraining:
+          (json['exclude_from_training'] ??
+                  json['excludeFromTraining'] ??
+                  false) ==
+              true,
+      hasUserMask:
+          (json['has_user_mask'] ?? json['hasUserMask'] ?? false) == true,
+      usedForTraining:
+          (json['used_for_training'] ?? json['usedForTraining'] ?? false) ==
+              true,
       species: json['species']?.toString(),
-      riskCategory: json['risk_category']?.toString() ?? json['riskCategory']?.toString(),
+      riskCategory:
+          json['risk_category']?.toString() ?? json['riskCategory']?.toString(),
       trustScore: json['trust_score'] as num?,
       verifiedAt: json['verified_at']?.toString(),
     );
@@ -275,19 +468,41 @@ class VerifiedAnalysis {
   });
 
   factory VerifiedAnalysis.fromJson(Map<String, dynamic> json) {
-    final images = (json['images'] is Map) ? (json['images'] as Map) : const {};
-    final inputB64 = (images['input_base64'] ?? '').toString();
-    final annotatedB64 = (images['annotated_base64'] ?? '').toString();
-    final userMaskB64 = (images['user_mask_base64'] ?? images['user_mask_png_base64'] ?? '').toString();
+    final rawImages = json['images'];
+    final images = rawImages is Map
+        ? rawImages.cast<String, dynamic>()
+        : <String, dynamic>{};
+
+    Uint8List decodeRequired(String value, String fieldName) {
+      if (value.isEmpty) {
+        throw AdminApiException('В ответе отсутствует изображение $fieldName.');
+      }
+      return base64Decode(value);
+    }
+
+    final inputBase64 = (images['input_base64'] ?? '').toString();
+    final annotatedBase64 = (images['annotated_base64'] ?? '').toString();
+    final userMaskBase64 =
+        (images['user_mask_base64'] ??
+                images['user_mask_png_base64'] ??
+                '')
+            .toString();
+
+    Map<String, dynamic> asMap(dynamic value) {
+      if (value is Map<String, dynamic>) return value;
+      if (value is Map) return value.cast<String, dynamic>();
+      return <String, dynamic>{};
+    }
 
     return VerifiedAnalysis(
       analysisId: (json['analysis_id'] ?? json['analysisId'] ?? '').toString(),
-      inputImage: base64Decode(inputB64),
-      annotatedImage: base64Decode(annotatedB64),
-      userMaskImage: userMaskB64.isNotEmpty ? base64Decode(userMaskB64) : null,
-      meta: (json['meta'] is Map<String, dynamic>) ? (json['meta'] as Map<String, dynamic>) : <String, dynamic>{},
-      treePred: (json['tree_pred'] is Map<String, dynamic>) ? (json['tree_pred'] as Map<String, dynamic>) : <String, dynamic>{},
-      stickPred: (json['stick_pred'] is Map<String, dynamic>) ? (json['stick_pred'] as Map<String, dynamic>) : <String, dynamic>{},
+      inputImage: decodeRequired(inputBase64, 'input_base64'),
+      annotatedImage: decodeRequired(annotatedBase64, 'annotated_base64'),
+      userMaskImage:
+          userMaskBase64.isEmpty ? null : base64Decode(userMaskBase64),
+      meta: asMap(json['meta']),
+      treePred: asMap(json['tree_pred']),
+      stickPred: asMap(json['stick_pred']),
     );
   }
 }
