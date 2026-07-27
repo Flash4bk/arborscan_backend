@@ -105,7 +105,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   String? _gpsStatusText;
   bool _lastGpsOk = false;
   
-  double? _lastArMeters;
+  double? _cameraDistanceM; // Дистанция от смартфона до дерева
   double? _arHeightM;
   double? _arCrownWidthM;
   double? _arTrunkDiameterM;
@@ -331,10 +331,11 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       if (picked == null) return;
       setState(() {
         _imageFile = File(picked.path);
-        _imageSource = source; // Сохраняем источник фото
+        _imageSource = source; 
         _annotatedImageBytes = null;
         _result = null;
         _error = null;
+        _cameraDistanceM = null; // Сбрасываем дистанцию
         _arHeightM = null;
         _arCrownWidthM = null;
         _arTrunkDiameterM = null;
@@ -353,6 +354,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         _arHeightM = result.heightMeters ?? result.distanceMeters;
         _arCrownWidthM = result.crownWidthMeters;
         _arTrunkDiameterM = result.trunkDiameterMeters;
+        _cameraDistanceM = null;
         _manualScale = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -370,7 +372,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
 
   void _onAnalyzeTap() {
     if (_imageFile == null) return;
-    if (_arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null) {
+    if (_arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null || _cameraDistanceM != null || _manualScale != null) {
       _analyze();
     } else {
       _showScaleOptionsModal();
@@ -409,7 +411,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
             _ScaleOptionBtn(
               icon: Icons.straighten,
               title: "Знаю один размер",
-              subtitle: "Например, толщину ствола или высоту",
+              subtitle: "Дистанцию (по дальномеру) или высоту",
               onTap: () {
                 Navigator.pop(ctx);
                 _showSingleSizeInputDialog();
@@ -445,7 +447,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   }
 
   void _showSingleSizeInputDialog() {
-    String selectedType = 'trunk'; 
+    String selectedType = 'distance'; 
     final ctrl = TextEditingController();
 
     showDialog(
@@ -466,6 +468,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
                     dropdownColor: AppTheme.surface2,
                     decoration: const InputDecoration(labelText: 'Что вы можете оценить?'),
                     items: const [
+                      DropdownMenuItem(value: 'distance', child: Text('Дистанция до дерева (м)')),
                       DropdownMenuItem(value: 'trunk', child: Text('Толщина ствола (м)')),
                       DropdownMenuItem(value: 'height', child: Text('Высота дерева (м)')),
                       DropdownMenuItem(value: 'crown', child: Text('Ширина кроны (м)')),
@@ -478,7 +481,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
                       labelText: 'Значение в метрах',
-                      hintText: 'Например, 0.4',
+                      hintText: 'Например, 15',
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -493,6 +496,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
                         final val = double.tryParse(ctrl.text.replaceAll(',', '.'));
                         if (val != null && val > 0) {
                           setState(() {
+                            if (selectedType == 'distance') _cameraDistanceM = val;
                             if (selectedType == 'trunk') _arTrunkDiameterM = val;
                             if (selectedType == 'height') _arHeightM = val;
                             if (selectedType == 'crown') _arCrownWidthM = val;
@@ -523,7 +527,6 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
       final uri = Uri.parse(_apiUrl);
       final request = http.MultipartRequest('POST', uri);
       
-      // ИСПРАВЛЕНИЕ: Берем GPS телефона ТОЛЬКО если фото сделано на камеру
       if (_imageSource == ImageSource.camera) {
         final locationResult = await LocationService.getCurrentPositionDetailed();
         final pos = locationResult.position;
@@ -541,6 +544,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
         request.fields['auth_token'] = token;
       }
 
+      if (_cameraDistanceM != null) request.fields['camera_distance_m'] = _cameraDistanceM!.toStringAsFixed(3);
       if (_arHeightM != null) request.fields['ar_height_m'] = _arHeightM!.toStringAsFixed(3);
       if (_arCrownWidthM != null) request.fields['ar_crown_width_m'] = _arCrownWidthM!.toStringAsFixed(3);
       if (_arTrunkDiameterM != null) request.fields['ar_trunk_diameter_m'] = _arTrunkDiameterM!.toStringAsFixed(3);
@@ -586,7 +590,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
           scale: (data['scale_px_to_m'] as num?)?.toDouble(),
           riskIndex: ((data['risk'] ?? {})['index'] as num?)?.toDouble(),
           riskCategory: (data['risk'] ?? {})['category'],
-          lat: data['gps']?['lat'], // Берем GPS с бэкенда (так как он может вытянуть EXIF)
+          lat: data['gps']?['lat'],
           lon: data['gps']?['lon'],
           address: data['address']?.toString(),
           imageBase64: '',
@@ -963,7 +967,7 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
   }
 
   Widget _buildArMeasurementsCard() {
-    final hasAny = _arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null || _manualScale != null;
+    final hasAny = _arHeightM != null || _arCrownWidthM != null || _arTrunkDiameterM != null || _manualScale != null || _cameraDistanceM != null;
     return GlassPanel(
       border: Border.all(color: hasAny ? AppTheme.primary : AppTheme.primary.withOpacity(0.2), width: hasAny ? 2 : 1),
       boxShadow: hasAny ? [BoxShadow(color: AppTheme.primary.withOpacity(0.2), blurRadius: 20)] : null,
@@ -976,10 +980,14 @@ class _ArborScanPageState extends State<ArborScanPage> with SingleTickerProvider
               const SizedBox(width: 12),
               const Expanded(child: Text('AR-ИЗМЕРЕНИЯ', style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: 1.5))),
               if (hasAny)
-                IconButton(icon: const Icon(Icons.refresh, color: AppTheme.muted), onPressed: () => setState((){ _arHeightM=null; _arCrownWidthM=null; _arTrunkDiameterM=null; _manualScale=null; }))
+                IconButton(icon: const Icon(Icons.refresh, color: AppTheme.muted), onPressed: () => setState((){ _arHeightM=null; _arCrownWidthM=null; _arTrunkDiameterM=null; _manualScale=null; _cameraDistanceM=null; }))
             ],
           ),
           const SizedBox(height: 16),
+          if (_cameraDistanceM != null) ...[
+            Text('Дистанция до дерева: ${_cameraDistanceM!.toStringAsFixed(1)} м', style: const TextStyle(color: AppTheme.primary2, fontWeight: FontWeight.w900, fontSize: 16)),
+            const SizedBox(height: 16),
+          ],
           Row(
             children: [
               _ArStat('ВЫСОТА', _arHeightM),

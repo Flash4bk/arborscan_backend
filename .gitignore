@@ -24,3 +24,4 @@ ios/build/
 *.apk
 *.aab
 *.so
+.tmp.driveupload/

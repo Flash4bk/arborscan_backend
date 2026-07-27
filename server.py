@@ -1095,18 +1095,74 @@ BETA_EMPIRICAL_STATS = {
 
 def _clamp(x: float, lo: float, hi: float) -> float: return max(lo, min(hi, x))
 
-def estimate_beta_kg_s(species: str, height_m, manual_beta_kg_s=None, crown_density_factor=1.0) -> dict:
-    stats = BETA_EMPIRICAL_STATS.get(species, BETA_EMPIRICAL_STATS["Сосна"])
+def calculate_physical_beta(
+    species: str,
+    crown_area_m2: Optional[float],
+    height_m: Optional[float],
+    crown_density_factor: float = 1.0,
+    manual_beta_kg_s: Optional[float] = None
+) -> dict:
+    """
+    Честный физический расчет коэффициента сопротивления (beta) на основе площади 
+    кроны из маски и принципов аэродинамики (Скрещивание SIA и Borisevich 2021).
+    """
     if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
-        value = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
-        return {"beta_kg_s": value, "beta_max_scenario": value, "method": "manual", "source": "Введено вручную", "input": {"manual_beta_kg_s": float(manual_beta_kg_s)}}
-    h, density = float(height_m or 0), float(crown_density_factor or 1.0)
+        val = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
+        return {"beta_kg_s": val, "beta_max_scenario": val, "method": "manual", "source": "Введено вручную", "input": {"manual_beta_kg_s": float(manual_beta_kg_s)}}
+
+    h = float(height_m or 0)
+    density = float(crown_density_factor or 1.0)
+
+    # 1. Если есть честная площадь кроны -> считаем физику!
+    if crown_area_m2 and crown_area_m2 > 0:
+        rho = 1.225 # Плотность воздуха кг/м3
+        c_d = 0.8   # Аэродинамический коэффициент кроны (средний)
+        v_ref = 25.0 # Референсная скорость для калибровки беты (ураган)
+        
+        # Коэффициент сжатия кроны на ветру (Streamlining - K_streamline).
+        # Чем плотнее крона (density -> 1.0), тем ХУЖЕ она сжимается (сохраняет до 60% площади на ветру).
+        # Чем реже крона (density -> 0.1), тем ЛУЧШЕ она сжимается (теряет до 80% площади, K -> 0.2).
+        # Это идеально коррелирует с графиками из Borisevich 2021 (Fig. 10).
+        k_streamline = 0.2 + (_clamp(density, 0.1, 1.0) * 0.4)
+
+        # Вывод беты:
+        # Из классической аэродинамики: F = 0.5 * rho * (A * K) * C_d * v^2
+        # Из эмпирической модели (Borisevich): F = beta * v
+        # Приравниваем: beta * v = 0.5 * rho * (A * K) * C_d * v^2  =>  beta = 0.5 * rho * A * K * C_d * v
+        beta_expected = 0.5 * rho * crown_area_m2 * k_streamline * c_d * v_ref
+        
+        # Худший сценарий (например, зимний шторм или обледенение, крона почти не сжимается, K = 0.8)
+        beta_max = 0.5 * rho * crown_area_m2 * 0.8 * c_d * v_ref
+
+        return {
+            "beta_kg_s": round(beta_expected, 2),
+            "beta_max_scenario": round(beta_max, 2),
+            "crown_area_m2": round(crown_area_m2, 2),
+            "method": "physics_area_based",
+            "source": "Физ. расчет по площади (SIA + Borisevich)",
+            "input": {
+                "crown_area_m2": round(crown_area_m2, 2),
+                "k_streamline": round(k_streamline, 2),
+                "density": round(density, 2)
+            }
+        }
+
+    # 2. Если площади нет (не удалось получить масштаб) -> используем старую подгонку (Fallback)
+    stats = BETA_EMPIRICAL_STATS.get(species, BETA_EMPIRICAL_STATS["Сосна"])
     if h <= 0:
         return {"beta_kg_s": stats["mean"], "beta_max_scenario": stats["max"], "method": "species_default", "source": "Статистическое среднее", "input": {"species": species}}
+
     height_ratio = h / stats["ref_height"]
     beta_expected = _clamp(stats["mean"] * (height_ratio ** 1.5) * density, 5.0, stats["max"] * 1.5)
     beta_max_scenario = _clamp(beta_expected * 1.88, beta_expected, stats["max"] * 1.5)
-    return {"beta_kg_s": round(beta_expected, 2), "beta_max_scenario": round(beta_max_scenario, 2), "method": "empirical_borisevich_2021", "source": "Полевая статистика (Borisevich 2021)", "input": {"species": species, "height_m": h, "crown_density_factor": density}}
+    return {
+        "beta_kg_s": round(beta_expected, 2),
+        "beta_max_scenario": round(beta_max_scenario, 2),
+        "method": "empirical_borisevich_2021",
+        "source": "Аллометрическая подгонка (без площади)",
+        "input": {"species": species, "height_m": h, "crown_density_factor": density}
+    }
+
 
 def slenderness_score(height_m, diameter_m):
     if not diameter_m or diameter_m <= 0: return 0.0, 0.0
@@ -2251,6 +2307,9 @@ async def analyze_tree(
     if len(ys) == 0: return JSONResponse({"error": "Ошибка контура"}, status_code=400)
     y_min, y_max = ys.min(), ys.max()
     height_px = y_max - y_min
+    
+    # ЧЕСТНАЯ ПЛОЩАДЬ В ПИКСЕЛЯХ
+    mask_pixels = int(np.sum(mask > 0))
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
@@ -2274,7 +2333,7 @@ async def analyze_tree(
     if manual_scale and float(manual_scale) > 0:
         scale = float(manual_scale); dimensions_source = "Пользовательский маркер"
     
-    # --- НОВЫЙ БЛОК: ОПТИЧЕСКОЕ ВЫЧИСЛЕНИЕ МАСШТАБА ---
+    # --- ОПТИЧЕСКОЕ ВЫЧИСЛЕНИЕ МАСШТАБА ---
     if not scale and camera_distance_m and float(camera_distance_m) > 0:
         # Угол обзора современных смартфонов ~ 60-65 градусов по вертикали
         # Для гарантии берем 60 градусов (1.047 рад)
@@ -2304,6 +2363,7 @@ async def analyze_tree(
     height_m = round(height_px * scale, 2) if scale else None
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
+    crown_area_m2 = round(mask_pixels * (scale ** 2), 2) if scale else None
 
     height_m_ai = height_m
     crown_m_ai = crown_m
@@ -2354,7 +2414,15 @@ async def analyze_tree(
         if gps: address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
 
     final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
-    beta_info = estimate_beta_kg_s(species_group, height_m, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
+    
+    # ВЫЗОВ НОВОГО ФИЗИЧЕСКОГО МЕТОДА РАСЧЕТА
+    beta_info = calculate_physical_beta(
+        species=species_group, 
+        crown_area_m2=crown_area_m2, 
+        height_m=height_m, 
+        crown_density_factor=final_crown_density, 
+        manual_beta_kg_s=manual_beta_kg_s
+    )
     
     wind_design = float(manual_wind_speed_m_s or 25.0)
     risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_group, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
@@ -2370,7 +2438,7 @@ async def analyze_tree(
         "analysis_id": analysis_id, "species": species_name, "species_group": species_group, "classification": classification, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "crown_density_ai": crown_density_ai,
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
-        "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
+        "dimensions_source": dimensions_source, "crown_area_m2": crown_area_m2, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
         "gps": gps, "address": address, "risk": risk_data, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
         "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg},
         "feedback_image": {
@@ -2382,14 +2450,11 @@ async def analyze_tree(
     }
 
     try:
-        # Keep the original upload for audit, and a resized image that exactly
-        # matches both the automatic and future user masks.
         supabase_upload_bytes(
             SUPABASE_BUCKET_RAW,
             f"{analysis_id}/input_original.jpg",
             image_bytes,
         )
-        # Backward-compatible name for older tools.
         supabase_upload_bytes(
             SUPABASE_BUCKET_RAW,
             f"{analysis_id}/input.jpg",
@@ -2441,7 +2506,7 @@ async def analyze_tree(
     response = {
         "analysis_id": analysis_id, "species": species_name, "species_group": species_group, "classification": classification, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
-        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
+        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "crown_area_m2": crown_area_m2, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
         "scale_px_to_m": scale,
         "classification_status": classification.get("status"),
         "species_scientific_name": classification.get("scientific_name"),
@@ -3241,4 +3306,3 @@ def admin_models(admin: dict = Depends(require_admin)):
         "models": list_available_model_versions(),
         "active_model_version": _get_active_model_version(),
     }
-
