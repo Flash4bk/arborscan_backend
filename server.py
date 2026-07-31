@@ -180,7 +180,7 @@ BUILD_INFO = {
     "build_time": os.getenv("BUILD_TIME"),
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "3.0.1"
+API_VERSION = "3.0.2"
 VERIFIED_TRUST_THRESHOLD = float(os.getenv("VERIFIED_TRUST_THRESHOLD", "0.70"))
 
 REAL_STICK_M = 1.0
@@ -1082,87 +1082,49 @@ SPECIES_STRENGTH_MPA = {
     "Клен": 50.0, "Ясень": 55.0, "Липа": 35.0,
 }
 
-BETA_EMPIRICAL_STATS = {
-    "Сосна": {"mean": 47.7, "min": 25.5, "max": 90.0, "ref_height": 20.0},
-    "Ель": {"mean": 60.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
-    "Береза": {"mean": 52.0, "min": 25.0, "max": 90.0, "ref_height": 20.0},
-    "Дуб": {"mean": 65.0, "min": 35.0, "max": 110.0, "ref_height": 20.0},
-    "Тополь": {"mean": 58.0, "min": 30.0, "max": 100.0, "ref_height": 25.0},
-    "Клен": {"mean": 55.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
-    "Ясень": {"mean": 55.0, "min": 30.0, "max": 100.0, "ref_height": 20.0},
-    "Липа": {"mean": 50.0, "min": 25.0, "max": 90.0, "ref_height": 20.0},
+# Аэродинамический коэффициент породы (кг / (с * м^2))
+# Отражает плотность листвы/хвои и её сопротивление ветру на 1 кв. метр.
+SPECIES_AERO_FACTOR = {
+    "Сосна": 4.5,
+    "Ель": 5.5,     # У ели крона плотнее, парусность выше
+    "Береза": 4.0,  # Лиственные лучше обтекаются ветром
+    "Дуб": 5.8,     # Густая, жесткая крона
+    "Тополь": 4.2,
+    "Клен": 4.8,
+    "Ясень": 4.5,
+    "Липа": 4.6,
+}
+
+SPECIES_REF_HEIGHT = {
+    "Сосна": 20.0, "Ель": 20.0, "Береза": 20.0, "Дуб": 20.0, "Тополь": 25.0,
+    "Клен": 20.0, "Ясень": 20.0, "Липа": 20.0,
 }
 
 def _clamp(x: float, lo: float, hi: float) -> float: return max(lo, min(hi, x))
 
-def calculate_physical_beta(
-    species: str,
-    crown_area_m2: Optional[float],
-    height_m: Optional[float],
-    crown_density_factor: float = 1.0,
-    manual_beta_kg_s: Optional[float] = None
-) -> dict:
-    """
-    Честный физический расчет коэффициента сопротивления (beta) на основе площади 
-    кроны из маски и принципов аэродинамики (Скрещивание SIA и Borisevich 2021).
-    """
+def estimate_beta_kg_s_exact(species: str, crown_area_m2: float, manual_beta_kg_s=None, crown_density_factor=1.0) -> dict:
+    """Точный расчет беты на основе реальной площади кроны с фотографии."""
     if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
-        val = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
-        return {"beta_kg_s": val, "beta_max_scenario": val, "method": "manual", "source": "Введено вручную", "input": {"manual_beta_kg_s": float(manual_beta_kg_s)}}
+        value = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
+        return {"beta_kg_s": value, "beta_max_scenario": value, "method": "manual", "source": "Введено вручную", "input": {"manual_beta_kg_s": float(manual_beta_kg_s)}}
+    
+    # Берем аэродинамический коэффициент породы, по умолчанию 4.5
+    c_aero = SPECIES_AERO_FACTOR.get(species, 4.5)
+    
+    # Физическая формула: Бета = Аэродинамический коэфф * Площадь проекции * Плотность (пористость)
+    beta_expected = c_aero * crown_area_m2 * float(crown_density_factor or 1.0)
+    beta_expected = max(5.0, beta_expected) # Минимальный порог
+    
+    # Худший сценарий (жесткая крона, которая не сгибается под ветром)
+    beta_max_scenario = beta_expected * 1.5
 
-    h = float(height_m or 0)
-    density = float(crown_density_factor or 1.0)
-
-    # 1. Если есть честная площадь кроны -> считаем физику!
-    if crown_area_m2 and crown_area_m2 > 0:
-        rho = 1.225 # Плотность воздуха кг/м3
-        c_d = 0.8   # Аэродинамический коэффициент кроны (средний)
-        v_ref = 25.0 # Референсная скорость для калибровки беты (ураган)
-        
-        # Коэффициент сжатия кроны на ветру (Streamlining - K_streamline).
-        # Чем плотнее крона (density -> 1.0), тем ХУЖЕ она сжимается (сохраняет до 60% площади на ветру).
-        # Чем реже крона (density -> 0.1), тем ЛУЧШЕ она сжимается (теряет до 80% площади, K -> 0.2).
-        # Это идеально коррелирует с графиками из Borisevich 2021 (Fig. 10).
-        k_streamline = 0.2 + (_clamp(density, 0.1, 1.0) * 0.4)
-
-        # Вывод беты:
-        # Из классической аэродинамики: F = 0.5 * rho * (A * K) * C_d * v^2
-        # Из эмпирической модели (Borisevich): F = beta * v
-        # Приравниваем: beta * v = 0.5 * rho * (A * K) * C_d * v^2  =>  beta = 0.5 * rho * A * K * C_d * v
-        beta_expected = 0.5 * rho * crown_area_m2 * k_streamline * c_d * v_ref
-        
-        # Худший сценарий (например, зимний шторм или обледенение, крона почти не сжимается, K = 0.8)
-        beta_max = 0.5 * rho * crown_area_m2 * 0.8 * c_d * v_ref
-
-        return {
-            "beta_kg_s": round(beta_expected, 2),
-            "beta_max_scenario": round(beta_max, 2),
-            "crown_area_m2": round(crown_area_m2, 2),
-            "method": "physics_area_based",
-            "source": "Физ. расчет по площади (SIA + Borisevich)",
-            "input": {
-                "crown_area_m2": round(crown_area_m2, 2),
-                "k_streamline": round(k_streamline, 2),
-                "density": round(density, 2)
-            }
-        }
-
-    # 2. Если площади нет (не удалось получить масштаб) -> используем старую подгонку (Fallback)
-    stats = BETA_EMPIRICAL_STATS.get(species, BETA_EMPIRICAL_STATS["Сосна"])
-    if h <= 0:
-        return {"beta_kg_s": stats["mean"], "beta_max_scenario": stats["max"], "method": "species_default", "source": "Статистическое среднее", "input": {"species": species}}
-
-    height_ratio = h / stats["ref_height"]
-    beta_expected = _clamp(stats["mean"] * (height_ratio ** 1.5) * density, 5.0, stats["max"] * 1.5)
-    beta_max_scenario = _clamp(beta_expected * 1.88, beta_expected, stats["max"] * 1.5)
     return {
         "beta_kg_s": round(beta_expected, 2),
         "beta_max_scenario": round(beta_max_scenario, 2),
-        "method": "empirical_borisevich_2021",
-        "source": "Аллометрическая подгонка (без площади)",
-        "input": {"species": species, "height_m": h, "crown_density_factor": density}
+        "method": "pixel_area_integration",
+        "source": "Вычислено по попиксельной маске (Computer Vision)",
+        "input": {"species": species, "crown_area_m2": round(crown_area_m2, 2), "c_aero": c_aero}
     }
-
 
 def slenderness_score(height_m, diameter_m):
     if not diameter_m or diameter_m <= 0: return 0.0, 0.0
@@ -1174,26 +1136,35 @@ def slenderness_score(height_m, diameter_m):
     else: score = 0.0
     return S, score
 
-def bending_stress_score(species, height_m, trunk_diameter_m, beta_kg_s, wind_speed):
-    if not all([height_m, trunk_diameter_m, beta_kg_s]) or trunk_diameter_m <= 0: return 99.0, 0.0, [], 0.0, 0.0, 0.0
+def bending_stress_score(species, trunk_diameter_m, beta_kg_s, wind_speed, lever_arm_m):
+    if not all([trunk_diameter_m, beta_kg_s, lever_arm_m]) or trunk_diameter_m <= 0: 
+        return 99.0, 0.0, [], 0.0, lever_arm_m or 0.0, 0.0
+    
     expl = []
     design_wind_speed = float(wind_speed) if wind_speed and wind_speed > 0 else 25.0
     force_n = beta_kg_s * design_wind_speed
-    lever_arm_m = height_m * 0.5 
+    
+    # Считаем точный момент излома: Сила * Реальное расстояние от земли до центра масс кроны
     bending_moment_nm = force_n * lever_arm_m
+    
     w_m3 = (3.14159 * (trunk_diameter_m ** 3)) / 32.0
     stress_mpa = (bending_moment_nm / w_m3) / 1_000_000.0
     limit_mpa = SPECIES_STRENGTH_MPA.get(species, 40.0) 
     safety_factor = limit_mpa / stress_mpa if stress_mpa > 0 else 99.0
 
-    expl.append(f"Расчетный ветер: {design_wind_speed:.1f} м/с. Момент у основания: {bending_moment_nm/1000:.1f} кН·м")
+    expl.append(f"Расчетный ветер: {design_wind_speed:.1f} м/с. Реальное плечо рычага: {lever_arm_m:.1f} м. Момент у основания: {bending_moment_nm/1000:.1f} кН·м")
     expl.append(f"Напряжение в стволе: {stress_mpa:.1f} МПа (Предел для '{species}': {limit_mpa} МПа)")
-    if safety_factor < 1.0: expl.append(f"КРИТИЧЕСКИЙ РИСК ИЗЛОМА! Запас прочности: {safety_factor:.2f}"); score = 1.0
-    elif safety_factor < 1.5: expl.append(f"Низкий запас прочности ({safety_factor:.2f}). Риск поломки ствола."); score = 0.7
-    else: expl.append(f"Ствол выдержит ветер. Запас прочности: {safety_factor:.2f}"); score = 0.1
+    
+    if safety_factor < 1.0: 
+        expl.append(f"КРИТИЧЕСКИЙ РИСК ИЗЛОМА! Запас прочности: {safety_factor:.2f}"); score = 1.0
+    elif safety_factor < 1.5: 
+        expl.append(f"Низкий запас прочности ({safety_factor:.2f}). Риск поломки ствола."); score = 0.7
+    else: 
+        expl.append(f"Ствол выдержит ветер. Запас прочности: {safety_factor:.2f}"); score = 0.1
+        
     return safety_factor, score, expl, force_n, lever_arm_m, bending_moment_nm
 
-def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_speed):
+def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_speed, lever_arm_m):
     expl = []
     lean_score = 0.0
     if lean_angle_deg > 15.0:
@@ -1208,7 +1179,7 @@ def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_spee
         expl.append(f"Стройность H/D: {S:.1f} ({state})")
 
     beta = beta_info.get("beta_max_scenario") or beta_info.get("beta_kg_s") or 0
-    safety_factor, wind_score_val, wind_expl, f_n, l_m, m_nm = bending_stress_score(species, height, diameter, beta, wind_speed)
+    safety_factor, wind_score_val, wind_expl, f_n, l_m, m_nm = bending_stress_score(species, diameter, beta, wind_speed, lever_arm_m)
     expl.extend(wind_expl)
 
     index = max(lean_score, s_score, wind_score_val) + 0.1 * (lean_score + s_score + wind_score_val)
@@ -2041,6 +2012,12 @@ def _run_classifier_sync(crop_bgr) -> dict:
     if crop_bgr is None or getattr(crop_bgr, "size", 0) == 0:
         return _plantnet_unknown("empty_crop", "Tree crop is empty")
 
+    # --- ОТЛАДКА: Сохраняем кроп, чтобы посмотреть, что реально отправляется ---
+    debug_path = Path("/tmp/plantnet_debug_crop.jpg")
+    cv2.imwrite(str(debug_path), crop_bgr)
+    print(f"[*] Debug crop saved to {debug_path} (Size: {crop_bgr.shape})")
+    # -------------------------------------------------------------------------
+
     ok, encoded_img = cv2.imencode(
         ".jpg",
         crop_bgr,
@@ -2307,9 +2284,6 @@ async def analyze_tree(
     if len(ys) == 0: return JSONResponse({"error": "Ошибка контура"}, status_code=400)
     y_min, y_max = ys.min(), ys.max()
     height_px = y_max - y_min
-    
-    # ЧЕСТНАЯ ПЛОЩАДЬ В ПИКСЕЛЯХ
-    mask_pixels = int(np.sum(mask > 0))
 
     crown_width_px = 0
     for y in range(y_min, y_min + int(0.7 * height_px)):
@@ -2333,7 +2307,7 @@ async def analyze_tree(
     if manual_scale and float(manual_scale) > 0:
         scale = float(manual_scale); dimensions_source = "Пользовательский маркер"
     
-    # --- ОПТИЧЕСКОЕ ВЫЧИСЛЕНИЕ МАСШТАБА ---
+    # --- НОВЫЙ БЛОК: ОПТИЧЕСКОЕ ВЫЧИСЛЕНИЕ МАСШТАБА ---
     if not scale and camera_distance_m and float(camera_distance_m) > 0:
         # Угол обзора современных смартфонов ~ 60-65 градусов по вертикали
         # Для гарантии берем 60 градусов (1.047 рад)
@@ -2357,13 +2331,12 @@ async def analyze_tree(
         elif ar_trunk_diameter_m and trunk_px > 0: scale = float(ar_trunk_diameter_m) / trunk_px; dimensions_source = "Пропорционально (по AR Стволу)"
 
     if not scale:
-        ref_h = BETA_EMPIRICAL_STATS.get(species_group, BETA_EMPIRICAL_STATS["Сосна"])["ref_height"]
+        ref_h = SPECIES_REF_HEIGHT.get(species_group, 20.0)
         if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Био. статистика ({species_name})"
 
     height_m = round(height_px * scale, 2) if scale else None
     crown_m = round(crown_width_px * scale, 2) if scale else None
     trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
-    crown_area_m2 = round(mask_pixels * (scale ** 2), 2) if scale else None
 
     height_m_ai = height_m
     crown_m_ai = crown_m
@@ -2413,19 +2386,52 @@ async def analyze_tree(
         gps = {"lat": float(lat), "lon": float(lon)} if (lat and lon) else extract_gps(image_bytes)
         if gps: address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
 
+    # ---------------------------------------------------------
+    # НОВЫЙ БЛОК: ФИЗИКА ПО ПИКСЕЛЯМ МАСКИ
+    # ---------------------------------------------------------
+    real_crown_area_m2 = 0.0
+    lever_arm_m = (height_m or 0) * 0.5  # Фолбэк
+    
+    try:
+        # 1. Выделяем крону (отсекаем нижние 15% маски, считая их голым стволом)
+        crown_mask = mask.copy()
+        trunk_split_y = int(y_max - 0.15 * height_px)
+        crown_mask[trunk_split_y:, :] = 0
+        
+        # 2. Вычисляем точную площадь кроны в пикселях
+        crown_area_px = cv2.countNonZero(crown_mask)
+        
+        # 3. Находим ЦЕНТР МАСС (центроид) кроны с помощью моментов
+        M = cv2.moments(crown_mask)
+        if M["m00"] > 0:
+            cY_px = int(M["m01"] / M["m00"])
+        else:
+            cY_px = int(y_min + height_px * 0.4) # Фолбэк на 40% от верхушки
+            
+        # 4. Расстояние от основания (земли) до центра масс в пикселях
+        lever_arm_px = y_max - cY_px
+        
+        # Переводим в реальные метры, если известен масштаб
+        if scale and scale > 0:
+            real_crown_area_m2 = crown_area_px * (scale ** 2)
+            lever_arm_m = lever_arm_px * scale
+    except Exception as e:
+        print(f"[Physics] Ошибка расчета площади кроны: {e}")
+
+    # Если масштаб не определен, делаем грубую прикидку по высоте
+    if real_crown_area_m2 == 0 and height_m and crown_m:
+        real_crown_area_m2 = height_m * crown_m * 0.6
+    # ---------------------------------------------------------
+
     final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
     
-    # ВЫЗОВ НОВОГО ФИЗИЧЕСКОГО МЕТОДА РАСЧЕТА
-    beta_info = calculate_physical_beta(
-        species=species_group, 
-        crown_area_m2=crown_area_m2, 
-        height_m=height_m, 
-        crown_density_factor=final_crown_density, 
-        manual_beta_kg_s=manual_beta_kg_s
-    )
+    # ВЫЧИСЛЯЕМ БЕТУ НА ОСНОВЕ ПЛОЩАДИ, а не среднего значения!
+    beta_info = estimate_beta_kg_s_exact(species_group, real_crown_area_m2, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
     
     wind_design = float(manual_wind_speed_m_s or 25.0)
-    risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_group, height_m, trunk_m, lean_angle_deg, beta_info, wind_design)
+    
+    # ВЫЧИСЛЯЕМ РИСК НА ОСНОВЕ РЕАЛЬНОГО РЫЧАГА (ЦЕНТРА МАСС)
+    risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_group, height_m, trunk_m, lean_angle_deg, beta_info, wind_design, lever_arm_m)
 
     analytic_wind_model = {
         "available": True,
@@ -2438,7 +2444,7 @@ async def analyze_tree(
         "analysis_id": analysis_id, "species": species_name, "species_group": species_group, "classification": classification, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "crown_density_ai": crown_density_ai,
         "lean_angle_deg": lean_angle_deg, "ar_measurements": ar_measurements, "measurement_sources": measurement_sources,
-        "dimensions_source": dimensions_source, "crown_area_m2": crown_area_m2, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
+        "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model, "scale_px_to_m": scale,
         "gps": gps, "address": address, "risk": risk_data, "model_versions": MODEL_VERSIONS, "build": BUILD_INFO, "schema_version": SCHEMA_VERSION, "api_version": API_VERSION,
         "ai_settings": {"conf": conf_val, "smoothness": smooth_k, "use_rembg": use_rembg},
         "feedback_image": {
@@ -2450,11 +2456,14 @@ async def analyze_tree(
     }
 
     try:
+        # Keep the original upload for audit, and a resized image that exactly
+        # matches both the automatic and future user masks.
         supabase_upload_bytes(
             SUPABASE_BUCKET_RAW,
             f"{analysis_id}/input_original.jpg",
             image_bytes,
         )
+        # Backward-compatible name for older tools.
         supabase_upload_bytes(
             SUPABASE_BUCKET_RAW,
             f"{analysis_id}/input.jpg",
@@ -2506,7 +2515,7 @@ async def analyze_tree(
     response = {
         "analysis_id": analysis_id, "species": species_name, "species_group": species_group, "classification": classification, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
         "height_m_ai": height_m_ai, "crown_width_m_ai": crown_m_ai, "trunk_diameter_m_ai": trunk_m_ai, "ar_measurements": ar_measurements,
-        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "crown_area_m2": crown_area_m2, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
+        "measurement_sources": measurement_sources, "dimensions_source": dimensions_source, "beta": beta_info, "analytic_wind_model": analytic_wind_model,
         "scale_px_to_m": scale,
         "classification_status": classification.get("status"),
         "species_scientific_name": classification.get("scientific_name"),
