@@ -180,7 +180,7 @@ BUILD_INFO = {
     "build_time": os.getenv("BUILD_TIME"),
 }
 SCHEMA_VERSION = "1.0.0"
-API_VERSION = "3.0.2"
+API_VERSION = "3.0.3"
 VERIFIED_TRUST_THRESHOLD = float(os.getenv("VERIFIED_TRUST_THRESHOLD", "0.70"))
 
 REAL_STICK_M = 1.0
@@ -296,6 +296,9 @@ stick_model: Optional[YOLO] = None
 STICK_MODEL_PATH: Optional[str] = None
 STICK_MODEL_SOURCE: Optional[str] = None
 STICK_MODEL_LOADED_AT: Optional[str] = None
+
+COCO_MODEL: Optional[YOLO] = None
+COCO_LOCK = threading.RLock()
 
 MODEL_LOCK = threading.RLock()
 REMBG_LOCK = threading.Lock()
@@ -722,6 +725,13 @@ def load_stick_model(force: bool = False) -> dict:
     )
     return _stick_model_runtime_info()
 
+def get_coco_model() -> YOLO:
+    global COCO_MODEL
+    with COCO_LOCK:
+        if COCO_MODEL is None:
+            # YOLOv8n (COCO) весит всего 6 МБ, скачается автоматически при первом вызове
+            COCO_MODEL = YOLO("yolov8n.pt")
+    return COCO_MODEL
 
 def get_tree_model() -> YOLO:
     with MODEL_LOCK:
@@ -1070,6 +1080,39 @@ def extract_gps(image_bytes):
         if gps_info[3] == "W": lon = -lon
         return {"lat": lat, "lon": lon}
     except Exception: return None
+
+# --- НОВЫЙ БЛОК: ИЗВЛЕЧЕНИЕ ДИСТАНЦИИ ИЗ EXIF ---
+def extract_exif_scale(image_bytes: bytes, image_height_px: int):
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        exif_data = img._getexif()
+        if not exif_data: return None, None
+        
+        tags = {ExifTags.TAGS.get(k, k): v for k, v in exif_data.items()}
+        
+        subj_dist = tags.get('SubjectDistance')
+        focal_35mm = tags.get('FocalLengthIn35mmFilm')
+        
+        if subj_dist and focal_35mm:
+            # Парсинг специфичных форматов (IFDRational, tuple и т.д.)
+            if hasattr(subj_dist, 'numerator') and hasattr(subj_dist, 'denominator'):
+                dist_m = float(subj_dist.numerator) / float(subj_dist.denominator) if subj_dist.denominator else 0
+            elif isinstance(subj_dist, tuple):
+                dist_m = float(subj_dist[0]) / float(subj_dist[1]) if len(subj_dist) > 1 and subj_dist[1] else 0
+            else:
+                dist_m = float(subj_dist)
+                
+            focal_mm = float(focal_35mm)
+            
+            if dist_m > 0 and focal_mm > 0:
+                # В портретной ориентации высота сенсора 35мм эквивалента равна 36мм
+                visible_height_m = dist_m * 36.0 / focal_mm
+                scale = visible_height_m / image_height_px
+                return scale, f"Оптика (EXIF: D={dist_m:.1f}м, F={focal_mm:.0f}мм)"
+    except Exception as e:
+        print(f"[EXIF] Ошибка извлечения дистанции: {e}")
+    return None, None
+# ------------------------------------------------
 
 def reverse_geocode(lat, lon):
     try:
@@ -1823,6 +1866,7 @@ def _startup_load_models():
     try:
         with MODEL_LOCK:
             load_stick_model(force=True)
+            # COCO-модель будет загружена лениво при первом запросе
             reload_tree_model(
                 force=True,
                 requested_version=selected_version,
@@ -1881,6 +1925,7 @@ def health(deep: bool = False):
         "models_ready": models_ready,
         "tree_model": tree_info,
         "stick_model": stick_info,
+        "coco_model_loaded": COCO_MODEL is not None,
         "available_tree_models": list_available_model_versions(),
         "paths": {
             "project_root": str(PROJECT_ROOT),
@@ -1920,13 +1965,17 @@ def normalize_address_ru(address: str | None) -> str | None:
     for src, dst in replacements.items(): address = address.replace(src, dst)
     return address
 
+# --- ОБНОВЛЕНО: Добавлен COCO детектор (поиск людей и машин) ---
 def _run_yolo_sync(img_array, conf=0.25):
     tree = get_tree_model()
     stick = get_stick_model()
+    coco = get_coco_model()
     return (
-        tree(img_array, imgsz=1024, retina_masks=True, conf=conf)[0],
-        stick(img_array)[0],
+        tree(img_array, imgsz=1024, retina_masks=True, conf=conf, verbose=False)[0],
+        stick(img_array, verbose=False)[0],
+        coco(img_array, classes=[0, 2], conf=0.35, verbose=False)[0] # 0 = человек, 2 = автомобиль
     )
+# -----------------------------------------------------------------
 
 def _normalize_species_group(*names: str | None) -> str:
     """Map Pl@ntNet common/scientific names to ArborScan risk groups."""
@@ -2183,7 +2232,7 @@ async def analyze_tree(
     ar_crown_width_m: Optional[float] = Form(None),
     ar_trunk_diameter_m: Optional[float] = Form(None),
     manual_scale: Optional[float] = Form(None),
-    camera_distance_m: Optional[float] = Form(None), # <--- ДОБАВЛЕНА ДИСТАНЦИЯ (ОПТИКА)
+    camera_distance_m: Optional[float] = Form(None),
     manual_beta_kg_s: Optional[float] = Form(None),
     crown_density_factor: Optional[float] = Form(None),
     manual_wind_speed_m_s: Optional[float] = Form(None),
@@ -2202,7 +2251,10 @@ async def analyze_tree(
     H, W = img.shape[:2]
 
     conf_val = max(0.05, min(0.95, float(ai_conf))) if ai_conf else 0.25
-    tree_res, stick_res = await run_in_threadpool(_run_yolo_sync, img, conf_val)
+    
+    # --- ОБНОВЛЕНО: Получаем результаты сразу трех нейросетей ---
+    tree_res, stick_res, coco_res = await run_in_threadpool(_run_yolo_sync, img, conf_val)
+    # -------------------------------------------------------------
     
     masks = []
     distances = []
@@ -2300,39 +2352,70 @@ async def analyze_tree(
     species_name = classification.get("display_name") or "Неизвестно"
     species_group = classification.get("species_group") or "Сосна"
 
-    # 6. МАСШТАБ И РАЗМЕРЫ (СВЯТОЙ ГРААЛЬ)
+    # =========================================================
+    # БЛОК МАСШТАБА: УМНАЯ АВТО-КАЛИБРОВКА (EXIF + YOLO COCO)
+    # =========================================================
     scale = None
     dimensions_source = "Неизвестно"
 
+    # 1. Если пользователь сам нарисовал линию на экране
     if manual_scale and float(manual_scale) > 0:
         scale = float(manual_scale); dimensions_source = "Пользовательский маркер"
     
-    # --- НОВЫЙ БЛОК: ОПТИЧЕСКОЕ ВЫЧИСЛЕНИЕ МАСШТАБА ---
+    # 2. НОВЫЙ МЕТОД: Читаем лазерный фокус (дистанцию) прямо из EXIF метаданных фото
+    if not scale:
+        exif_scale, exif_source = extract_exif_scale(image_bytes, H)
+        if exif_scale and exif_scale > 0:
+            scale = exif_scale
+            dimensions_source = exif_source
+
+    # 3. Резервный метод: оптическая дальность, переданная с телефона 
     if not scale and camera_distance_m and float(camera_distance_m) > 0:
-        # Угол обзора современных смартфонов ~ 60-65 градусов по вертикали
-        # Для гарантии берем 60 градусов (1.047 рад)
         fov_v_rad = 1.047
         dist = float(camera_distance_m)
-        # Реальная высота всего кадра в метрах на этом расстоянии
         visible_world_height_m = 2.0 * dist * math.tan(fov_v_rad / 2.0)
-        # Масштаб: сколько метров в 1 пикселе
         scale = visible_world_height_m / H
         dimensions_source = f"Оптика (Дистанция {dist}м)"
-    # ----------------------------------------------------
+        
+    # 4. НОВЫЙ МЕТОД: Авто-Эталон. YOLO ищет людей или машины в кадре
+    if not scale and len(coco_res.boxes) > 0:
+        best_person_h = 0
+        best_car_h = 0
+        for box in coco_res.boxes:
+            cls_id = int(box.cls[0].item())
+            h_px = box.xyxy[0][3].item() - box.xyxy[0][1].item()
+            # Берем самого крупного человека/машину в кадре
+            if cls_id == 0 and h_px > best_person_h:
+                best_person_h = h_px
+            elif cls_id == 2 and h_px > best_car_h:
+                best_car_h = h_px
+                
+        # Человек/машина должны занимать хотя бы 5% от высоты кадра, чтобы масштаб не исказился
+        if best_person_h > (H * 0.05): 
+            scale = 1.7 / best_person_h # Средний рост человека 1.7 м
+            dimensions_source = "Авто-эталон (Силуэт человека 1.7м)"
+        elif best_car_h > (H * 0.05):
+            scale = 1.5 / best_car_h # Средняя высота легкового авто 1.5 м
+            dimensions_source = "Авто-эталон (Автомобиль 1.5м)"
 
+    # 5. Классическая палка (Stick YOLO)
     if not scale and len(stick_res.boxes) > 0:
         best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
         stick_h = best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item()
-        if stick_h > 10: scale = REAL_STICK_M / stick_h; dimensions_source = "Авто-маркер (AI)"
+        if stick_h > 10: scale = REAL_STICK_M / stick_h; dimensions_source = "Авто-маркер (Палка 1м)"
     
+    # 6. Если в кадре нет ни людей, ни машин, ни палки, ни EXIF — берем замеры AR
     if not scale:
         if ar_height_m and height_px > 0: scale = float(ar_height_m) / height_px; dimensions_source = "Пропорционально (по AR Высоте)"
         elif ar_crown_width_m and crown_width_px > 0: scale = float(ar_crown_width_m) / crown_width_px; dimensions_source = "Пропорционально (по AR Кроне)"
         elif ar_trunk_diameter_m and trunk_px > 0: scale = float(ar_trunk_diameter_m) / trunk_px; dimensions_source = "Пропорционально (по AR Стволу)"
 
+    # 7. Самый последний запасной вариант — средняя высота по породе
     if not scale:
         ref_h = SPECIES_REF_HEIGHT.get(species_group, 20.0)
         if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Био. статистика ({species_name})"
+
+    # =========================================================
 
     height_m = round(height_px * scale, 2) if scale else None
     crown_m = round(crown_width_px * scale, 2) if scale else None
