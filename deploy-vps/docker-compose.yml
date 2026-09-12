@@ -1,0 +1,68 @@
+name: arborscan
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy-vps/Dockerfile
+    container_name: arborscan-api
+    restart: unless-stopped
+    init: true
+
+    # Secrets are deliberately kept OUTSIDE the Git repository.
+    env_file:
+      - /etc/arborscan/arborscan.env
+
+    environment:
+      PROJECT_ROOT: /app
+      MODEL_DIR: /app/models
+      MODEL_CACHE_DIR: /tmp/arborscan-models
+      HOME: /home/arborscan
+      U2NET_HOME: /home/arborscan/.u2net
+
+      # Avoid CPU oversubscription on a 6-vCPU VPS.
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      OPENBLAS_NUM_THREADS: "4"
+
+    # FastAPI is reachable only from the VPS itself for now.
+    # We will put Nginx/Caddy + HTTPS in front after health checks pass.
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    volumes:
+      # Current Git models: model_v1.pt, model_v2.pt, model_v4.pt, stick_model.pt
+      - ../models:/app/models:ro
+
+      # Persistent writable caches outside the repository.
+      - /var/lib/arborscan/model-cache:/tmp/arborscan-models
+      - /var/lib/arborscan/u2net:/home/arborscan/.u2net
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    pids_limit: 512
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=8).read()"
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+
+    stop_grace_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

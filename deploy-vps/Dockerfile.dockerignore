@@ -1,0 +1,52 @@
+# This file applies specifically to deploy-vps/Dockerfile.
+
+# Git / IDE
+.git
+.github
+.idea
+.vs
+.vscode
+
+# Python caches
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+
+# Flutter/mobile source is not part of the backend API image
+arborscan_app
+arborscan_app_backup_working
+
+# Training pipeline and large training artifacts run separately
+tools
+
+# Model weights stay on the host and are bind-mounted read-only.
+models
+*.pt
+*.pth
+*.onnx
+*.tflite
+
+# VPS deployment/runtime directories
+deploy-vps
+runtime
+
+# Repo leftovers / local artifacts
+backup.diff
+git
+*.log
+*.tmp
+*.bak
+.tmp.driveupload
+
+# OS files
+.DS_Store
+Thumbs.db
