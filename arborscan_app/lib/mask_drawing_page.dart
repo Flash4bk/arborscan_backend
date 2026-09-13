@@ -9,12 +9,14 @@ class MaskDrawingPage extends StatefulWidget {
   final String? originalImageBase64;
   final String? initialMaskBase64;
   final String? aiMaskBase64;
+  final List<Offset>? initialPoints;
 
   const MaskDrawingPage({
     Key? key,
     this.originalImageBase64,
     this.initialMaskBase64,
     this.aiMaskBase64,
+    this.initialPoints,
   }) : super(key: key);
 
   @override
@@ -35,6 +37,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   bool _closed = false;
   bool _finishing = false;
   Size? _drawSize;
+  bool _initialPointsApplied = false;
 
   void _setFinishing(bool v) {
     if (!mounted) return;
@@ -50,7 +53,81 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   Offset? _tapDownScene;
 
   bool _popScheduled = false;
-  bool _showingPreview = false;
+  final List<_ContourSnapshot> _undoHistory = [];
+  _ContourSnapshot? _dragBefore;
+  bool _dragMoved = false;
+
+  _ContourSnapshot _snapshot() => _ContourSnapshot(
+        _points.map((p) => Offset(p.dx / _drawSize!.width,
+            p.dy / _drawSize!.height)).toList(), _closed);
+
+  void _remember(_ContourSnapshot snapshot) {
+    _undoHistory.add(snapshot);
+    if (_undoHistory.length > 100) _undoHistory.removeAt(0);
+  }
+
+  void _restore(_ContourSnapshot snapshot) {
+    _points
+      ..clear()
+      ..addAll(snapshot.points.map((p) => Offset(
+          p.dx * _drawSize!.width, p.dy * _drawSize!.height)));
+    _closed = snapshot.closed;
+  }
+
+  void _undo() {
+    if (_undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty) return;
+    setState(() => _restore(_undoHistory.removeLast()));
+  }
+
+  void _setClosed(bool value) {
+    if (_closed == value || _finishing || _activePointers.isNotEmpty) return;
+    setState(() {
+      _remember(_snapshot());
+      _closed = value;
+    });
+  }
+
+  Offset _clampToImage(Offset point) => Offset(
+      point.dx.clamp(0.0, _drawSize!.width).toDouble(),
+      point.dy.clamp(0.0, _drawSize!.height).toDouble());
+
+  bool _insideImage(Offset point) => point.dx >= 0 && point.dy >= 0 &&
+      point.dx <= _drawSize!.width && point.dy <= _drawSize!.height;
+
+  // Insert on the nearest edge, including the closing edge.
+  void _insertOnEdge(Offset point) {
+    double bestDistance = 14.0 / _scale;
+    int? edge;
+    Offset? projected;
+    for (int i = 0; i < _points.length; i++) {
+      final a = _points[i];
+      final b = _points[(i + 1) % _points.length];
+      final delta = b - a;
+      final lengthSquared = delta.dx * delta.dx + delta.dy * delta.dy;
+      if (lengthSquared == 0) continue;
+      final t = (((point.dx - a.dx) * delta.dx +
+          (point.dy - a.dy) * delta.dy) / lengthSquared).clamp(0.0, 1.0).toDouble();
+      final candidate = a + delta * t;
+      final distance = (point - candidate).distance;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        edge = i;
+        projected = candidate;
+      }
+    }
+    if (edge == null || projected == null) return;
+    setState(() {
+      _remember(_snapshot());
+      _points.insert(edge! + 1, _clampToImage(projected!));
+    });
+  }
+
+  void _cancelDrag() {
+    if (_dragBefore != null && _dragMoved) _restore(_dragBefore!);
+    _dragBefore = null;
+    _dragMoved = false;
+    _dragIndex = null;
+  }
 
   /// Safe wrapper around Navigator.pop to avoid Flutter assertion
   /// `!_debugLocked` when a pop is triggered while the Navigator is
@@ -122,6 +199,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   Future<void> _loadImage() async {
     final codec = await ui.instantiateImageCodec(_imageBytes);
     final frame = await codec.getNextFrame();
+    codec.dispose();
+    if (!mounted) { frame.image.dispose(); return; }
     setState(() {
       _image = frame.image;
       _imageSize = Size(frame.image.width.toDouble(), frame.image.height.toDouble());
@@ -133,6 +212,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       final aiMaskBytes = _decodeBase64(widget.aiMaskBase64!);
       final codec = await ui.instantiateImageCodec(aiMaskBytes);
       final frame = await codec.getNextFrame();
+      codec.dispose();
+      if (!mounted) { frame.image.dispose(); return; }
       setState(() {
         _aiMaskImage = frame.image;
       });
@@ -146,7 +227,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       final maskBytes = _decodeBase64(widget.initialMaskBase64!);
       final codec = await ui.instantiateImageCodec(maskBytes);
       final frame = await codec.getNextFrame();
-      if (!mounted) return;
+      codec.dispose();
+      if (!mounted) { frame.image.dispose(); return; }
       setState(() {
         _initialMaskImage = frame.image;
       });
@@ -425,7 +507,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           .toImage(_imageSize!.width.toInt(), _imageSize!.height.toInt());
 
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
-      if (!mounted || bytes == null) {
+      if (!mounted) return;
+      if (bytes == null) {
         setState(() => _finishing = false);
         return;
       }
@@ -467,7 +550,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
     if (!_closed) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Сначала замкните контур (кнопка "Замкнуть" или тап по первой точки).')),
+        const SnackBar(content: Text('Сначала замкните контур (кнопка "Замкнуть" или касание первой точки).')),
       );
       return;
     }
@@ -564,24 +647,20 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
             IconButton(
               tooltip: 'Замкнуть контур',
               icon: const Icon(Icons.link),
-              onPressed: _points.length >= 3
-                  ? () => setState(() => _closed = true)
+              onPressed: _points.length >= 3 && !_finishing
+                  ? () => _setClosed(true)
                   : null,
             ),
             IconButton(
               tooltip: 'Открыть контур',
               icon: const Icon(Icons.link_off),
-              onPressed: _closed ? () => setState(() => _closed = false) : null,
+              onPressed: _closed && !_finishing ? () => _setClosed(false) : null,
             ),
             IconButton(
-              tooltip: 'Undo',
+              tooltip: 'Отменить последнее действие',
               icon: const Icon(Icons.undo),
-              onPressed: _points.isEmpty
-                  ? null
-                  : () => setState(() {
-                        _points.removeLast();
-                        if (_points.length < 3) _closed = false;
-                      }),
+              onPressed: _undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty
+                  ? null : _undo,
             ),
             IconButton(
               tooltip: 'Сброс зума',
@@ -602,7 +681,26 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
               _imageSize!.height * fitScale,
             );
 
+            final previousSize = _drawSize;
+            if (previousSize != null && previousSize != drawSize) {
+              for (int i = 0; i < _points.length; i++) {
+                _points[i] = Offset(_points[i].dx / previousSize.width * drawSize.width,
+                    _points[i].dy / previousSize.height * drawSize.height);
+              }
+            }
             _drawSize = drawSize;
+            if (!_initialPointsApplied) {
+              _initialPointsApplied = true;
+              final initial = widget.initialPoints;
+              if (initial != null && initial.length >= 3 && initial.every((p) =>
+                  p.dx.isFinite && p.dy.isFinite && p.dx >= 0 && p.dx <= 1 && p.dy >= 0 && p.dy <= 1)) {
+                _points.addAll(initial.map((p) => Offset(p.dx * drawSize.width, p.dy * drawSize.height)));
+                _closed = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() {});
+                });
+              }
+            }
 
             return Stack(
               children: [
@@ -613,103 +711,104 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                     child: Listener(
                       behavior: HitTestBehavior.translucent,
                       onPointerDown: (e) {
+                        if (_finishing) return;
                         _activePointers.add(e.pointer);
-
-                        if (_activePointers.length >= 2) {
-                          _inPinch = true;
-                          _dragIndex = null;
-                          _primaryPointer = null;
-                          _resetTapState();
-                          return;
-                        }
-
-                        _primaryPointer = e.pointer;
-                        final scene = _toScene(e.localPosition);
-                        final hit = _hitTest(scene);
-                        if (hit != null) {
-                          _dragIndex = hit;
-                          _resetTapState();
-                          return;
-                        }
-
-                        if (_closed) {
-                          _resetTapState();
-                          return;
-                        }
-
-                        _tapCandidate = true;
-                        _tapDownLocal = e.localPosition;
-                        _tapDownScene = scene;
-                      },
-                      onPointerMove: (e) {
-                        if (_primaryPointer != e.pointer) return;
-
-                        final scene = _toScene(e.localPosition);
-
-                        if (_dragIndex != null) {
+                        if (_activePointers.length >= 2 || _inPinch) {
                           setState(() {
-                            _points[_dragIndex!] = scene;
+                            _inPinch = true;
+                            _cancelDrag();
+                            _primaryPointer = null;
+                            _resetTapState();
                           });
                           return;
                         }
-
-                        if (_tapCandidate && _tapDownLocal != null) {
-                          final localDist =
-                              (e.localPosition - _tapDownLocal!).distance;
-                          if (localDist > _tapSlopPx) {
+                        _primaryPointer = e.pointer;
+                        final scene = _toScene(e.localPosition);
+                        _tapDownLocal = e.localPosition;
+                        _tapDownScene = scene;
+                        final hit = _hitTest(scene);
+                        if (hit != null) {
+                          setState(() {
+                            _dragIndex = hit;
+                            _dragBefore = _snapshot();
+                            _dragMoved = false;
                             _tapCandidate = false;
-                          }
+                          });
+                          return;
                         }
+                        _tapCandidate = _insideImage(scene);
+                      },
+                      onPointerMove: (e) {
+                        if (_finishing || _inPinch || _primaryPointer != e.pointer) return;
+                        final distance = _tapDownLocal == null ? 0.0 :
+                            (e.localPosition - _tapDownLocal!).distance;
+                        if (_dragIndex != null) {
+                          if (!_dragMoved && distance <= _tapSlopPx) return;
+                          setState(() {
+                            _dragMoved = true;
+                            _points[_dragIndex!] = _clampToImage(_toScene(e.localPosition));
+                          });
+                          return;
+                        }
+                        if (distance > _tapSlopPx) _tapCandidate = false;
                       },
                       onPointerUp: (e) {
+                        final wasPinch = _inPinch;
                         _activePointers.remove(e.pointer);
-
-                        if (_activePointers.isEmpty) {
-                          _inPinch = false;
-                        }
-
-                        if (_primaryPointer == e.pointer) {
-                          if (_tapCandidate &&
-                              !_inPinch &&
-                              !_closed &&
-                              _tapDownScene != null &&
-                              _tapDownLocal != null) {
-                            final tapLocal = _tapDownLocal!;
-
-                            if (_isCloseTapToFirstPoint(tapLocal: tapLocal)) {
-                              setState(() {
+                        if (_primaryPointer == e.pointer && !wasPinch && !_finishing) {
+                          if (_dragIndex != null) {
+                            setState(() {
+                              if (_dragMoved && _dragBefore != null) {
+                                _remember(_dragBefore!);
+                              } else if (_dragIndex == 0 && !_closed && _points.length >= 3) {
+                                _remember(_snapshot());
                                 _closed = true;
-                              });
+                              }
+                            });
+                          } else if (_tapCandidate && _tapDownScene != null) {
+                            if (_closed) {
+                              _insertOnEdge(_tapDownScene!);
                             } else {
                               setState(() {
-                                _points.add(_tapDownScene!);
+                                _remember(_snapshot());
+                                if (_isCloseTapToFirstPoint(tapLocal: e.localPosition)) {
+                                  _closed = true;
+                                } else {
+                                  _points.add(_clampToImage(_tapDownScene!));
+                                }
                               });
                             }
                           }
-
+                        }
+                        setState(() {
+                          if (_activePointers.isEmpty) _inPinch = false;
+                          _dragBefore = null;
+                          _dragMoved = false;
                           _dragIndex = null;
                           _primaryPointer = null;
                           _resetTapState();
-                        }
+                        });
                       },
                       onPointerCancel: (e) {
                         _activePointers.remove(e.pointer);
-                        if (_activePointers.isEmpty) _inPinch = false;
-                        _dragIndex = null;
-                        _primaryPointer = null;
-                        _resetTapState();
+                        setState(() {
+                          _cancelDrag();
+                          if (_activePointers.isEmpty) _inPinch = false;
+                          _primaryPointer = null;
+                          _resetTapState();
+                        });
                       },
                       child: InteractiveViewer(
                         transformationController: _controller,
                         minScale: 1,
-                        maxScale: 6,
-                        panEnabled: _dragIndex == null,
+                        maxScale: 10,
+                        panEnabled: _dragIndex == null || _inPinch,
                         scaleEnabled: true,
                         child: CustomPaint(
                           size: drawSize,
                           painter: _EnhancedMaskPainter(
                             image: _image!,
-                            points: _points,
+                            points: List<Offset>.unmodifiable(_points),
                             closed: _closed,
                             aiMaskImage: _aiMaskImage,
                             initialMaskImage: _initialMaskImage,
@@ -769,6 +868,16 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
             );
           },
         ),
+        bottomNavigationBar: const SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Text(
+              'Точки можно перетаскивать. После замыкания коснитесь линии, '
+              'чтобы добавить точку. Два пальца — масштаб и перемещение.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ),
         floatingActionButton: _finishing
             ? FloatingActionButton.extended(
                 onPressed: null,
@@ -790,6 +899,13 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       ),
     );
   }
+}
+
+class _ContourSnapshot {
+  final List<Offset> points;
+  final bool closed;
+  _ContourSnapshot(List<Offset> points, this.closed)
+      : points = List<Offset>.unmodifiable(points);
 }
 
 class _EnhancedMaskPainter extends CustomPainter {
@@ -895,6 +1011,7 @@ class _EnhancedMaskPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _EnhancedMaskPainter oldDelegate) =>
+      oldDelegate.image != image ||
       oldDelegate.points != points ||
       oldDelegate.closed != closed ||
       oldDelegate.aiMaskImage != aiMaskImage ||
