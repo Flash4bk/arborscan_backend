@@ -742,30 +742,75 @@ def mark_samples_used_for_training(bucket_verified: str, samples_new: List[Tuple
 # Selection + manifest
 # -----------------------------
 def build_selection(*, bucket_verified: str, new_samples: List[Tuple[str, dict]]) -> Dict[str, Any]:
-    new_ids = [aid for aid, _ in new_samples]
-    replay_k = int(min(MAX_REPLAY, max(0, (len(new_ids) * REPLAY_RATIO + 0.999999))))  # ceil
-    replay_samples = discover_replay_samples(bucket_verified, replay_k)
-    replay_ids = [aid for aid, _ in replay_samples]
+    """Deduplicate exact image bytes before splitting; exporter validates masks."""
+    if not 0 < TRAIN_SPLIT < 1:
+        raise RuntimeError("TRAIN_SPLIT must be strictly between 0 and 1.")
+    if REPLAY_RATIO < 0 or MAX_REPLAY < 0:
+        raise RuntimeError("REPLAY_RATIO and MAX_REPLAY must be non-negative.")
 
+    seen_ids = set()
+    seen_hashes = {}
+    dropped = []
+    hashes = {}
+
+    def unique(samples, origin):
+        kept = []
+        for aid, _ in sorted(samples, key=lambda item: item[0]):
+            if aid in seen_ids:
+                continue
+            if aid in {".", ".."} or not re.fullmatch(r"[A-Za-z0-9._-]{1,160}", aid):
+                raise RuntimeError("Unsafe analysis ID in selection.")
+            seen_ids.add(aid)
+            raw = storage_download_bytes(bucket_verified, f"{aid}/input.jpg")
+            if not raw:
+                raise RuntimeError(f"Empty input image: {aid}")
+            digest = hashlib.sha256(raw).hexdigest()
+            if digest in seen_hashes:
+                dropped.append({"id": aid, "origin": origin,
+                                "reason": "exact_image_duplicate_before_split",
+                                "duplicate_of": seen_hashes[digest]})
+                continue
+            seen_hashes[digest] = aid
+            hashes[aid] = digest
+            kept.append(aid)
+        return kept
+
+    new_ids = unique(new_samples, "new")
+    replay_pool = discover_replay_samples(bucket_verified, MAX_REPLAY)
+    replay_unique = unique(replay_pool, "replay")
+    replay_k = min(MAX_REPLAY, int(len(new_ids) * REPLAY_RATIO + 0.999999))
+    # Fill a minimal technical split when the configured pool permits it.
+    replay_k = min(MAX_REPLAY, max(replay_k, 2 - len(new_ids)))
+    rng = random.Random(SELECTION_SEED or "arborscan-selection-v2")
+    rng.shuffle(replay_unique)
+    replay_ids = replay_unique[:replay_k]
     all_ids = new_ids + replay_ids
     if len(all_ids) < 2:
-        raise RuntimeError("Not enough samples (new + replay) to train (need at least 2).")
-
-    rng = random.Random()
-    if SELECTION_SEED:
-        rng.seed(SELECTION_SEED + "|split|" + str(len(all_ids)))
-    ids_shuffled = all_ids[:]
-    rng.shuffle(ids_shuffled)
-
-    split_idx = max(1, int(len(ids_shuffled) * TRAIN_SPLIT))
-    split_idx = min(split_idx, len(ids_shuffled) - 1)
-
+        raise RuntimeError(
+            f"Selection blocked: only {len(all_ids)} unique images after exact "
+            f"deduplication; removed {len(dropped)} duplicates. Need at least "
+            "2 for a technical split. Add distinct verified images or review "
+            "the replay limit. This minimum is not an accuracy criterion."
+        )
+    rng.shuffle(all_ids)
+    split_idx = min(max(1, int(len(all_ids) * TRAIN_SPLIT)), len(all_ids) - 1)
+    train_ids = all_ids[:split_idx]
+    val_ids = all_ids[split_idx:]
+    # Ensure an incremental run actually has new training data.
+    if new_ids and not set(train_ids).intersection(new_ids):
+        new_val_index = next(i for i, aid in enumerate(val_ids) if aid in new_ids)
+        train_ids[-1], val_ids[new_val_index] = val_ids[new_val_index], train_ids[-1]
     return {
         "new_ids": new_ids,
         "replay_ids": replay_ids,
-        "train_ids": ids_shuffled[:split_idx],
-        "val_ids": ids_shuffled[split_idx:],
+        "train_ids": train_ids,
+        "val_ids": val_ids,
+        "pre_split_dropped_ids": dropped,
+        "image_hashes": {aid: hashes[aid] for aid in all_ids},
+        "split_seed": SELECTION_SEED or "arborscan-selection-v2",
+        "validation_scope": "current_export_only_not_independent_holdout",
     }
+
 
 def write_manifest_in(*, path: Path, dataset_version: int, bucket_verified: str, base_model_version: int, new_model_version: int, selection: Dict[str, Any]) -> None:
     obj = {
@@ -802,7 +847,15 @@ def main():
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--diagnose-models", action="store_true")
+    parser.add_argument("--diagnose-selection", action="store_true",
+                        help="Read candidate images and print selection; no training or uploads")
     args = parser.parse_args()
+
+    if args.diagnose_selection:
+        samples = discover_new_samples(args.bucket_verified, max_samples=args.max_samples)
+        selection = build_selection(bucket_verified=args.bucket_verified, new_samples=samples)
+        print(json.dumps(selection, ensure_ascii=False, indent=2))
+        return
 
     tools_dir, project_root, models_dir = resolve_project_layout()
     runs_segment_dir = Path(
@@ -907,6 +960,20 @@ def main():
             if not out_manifest.exists() or not out_yaml.exists():
                 raise RuntimeError("export_yolov8_dataset.py did not produce manifest.json/data.yaml")
 
+            exported = json.loads(out_manifest.read_text(encoding="utf-8"))
+            if exported.get("export", {}).get("integrity", {}).get("validated") is not True:
+                raise RuntimeError("Exporter did not confirm dataset integrity; training blocked.")
+            exported_train_ids = set(exported["selection"]["train_ids"])
+            samples_actually_trained = [
+                (aid, meta) for aid, meta in new_samples if aid in exported_train_ids
+            ]
+
+            if not samples_actually_trained:
+                raise RuntimeError(
+                    "Training blocked: no new samples survived export into train. "
+                    "Review masks, duplicates and selection; add valid new images."
+                )
+
             snapshot_paths = upload_dataset_snapshot(
                 bucket_datasets=args.bucket_datasets,
                 dataset_version=new_version,
@@ -931,7 +998,7 @@ def main():
             log(f"[✓] Saved new model: {new_model_path}")
             upload_model_to_bucket(args.bucket_models, new_model_path)
 
-            mark_samples_used_for_training(args.bucket_verified, new_samples, new_version)
+            mark_samples_used_for_training(args.bucket_verified, samples_actually_trained, new_version)
 
             max_after = max(existing | {new_version}) if existing else new_version
 
