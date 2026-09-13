@@ -185,6 +185,49 @@ def _contour_to_polygon(contour: np.ndarray) -> Optional[np.ndarray]:
     return None
 
 
+# Fidelity is measured against the whole binary source mask, including holes
+# and disconnected regions, after serializing and parsing the actual label.
+MIN_MASK_POLYGON_IOU = 0.995
+
+
+def _faithful_polygon(contour, mask, *, width, height):
+    source = mask > 127
+    perimeter = float(cv2.arcLength(contour, True))
+    best_iou = 0.0
+    for fraction in (0.002, 0.001, 0.0005, 0.00025, 0.0001, 0.0):
+        candidate = (cv2.approxPolyDP(contour, fraction * perimeter, True)
+                     if fraction else contour)
+        points = np.asarray(candidate).reshape(-1, 2).astype(np.float64)
+        if len(points) < 3 or not np.isfinite(points).all():
+            continue
+        if abs(cv2.contourArea(points.astype(np.float32))) <= 0:
+            continue
+        line = _yolo_segmentation_line(
+            CLASS_ID_TREE, points, width=width, height=height)
+        normalized = np.array([float(v) for v in line.split()[1:]]).reshape(-1, 2)
+        pixels = np.rint(normalized * [width, height]).astype(np.int32)
+        raster = np.zeros(mask.shape, dtype=np.uint8)
+        cv2.fillPoly(raster, [pixels], 1)
+        result = raster.astype(bool)
+        intersection = int(np.count_nonzero(source & result))
+        union = int(np.count_nonzero(source | result))
+        iou = intersection / union if union else 0.0
+        best_iou = max(best_iou, iou)
+        if iou >= MIN_MASK_POLYGON_IOU:
+            return points, line, {
+                "mask_polygon_iou": iou,
+                "simplification_epsilon_px": fraction * perimeter,
+                "source_mask_foreground_px": int(np.count_nonzero(source)),
+                "mask_pixels_lost": int(np.count_nonzero(source & ~result)),
+                "mask_pixels_added": int(np.count_nonzero(result & ~source)),
+            }
+    raise ValueError(
+        f"Full source mask cannot be represented faithfully by one polygon: "
+        f"best_iou={best_iou:.6f}, required={MIN_MASK_POLYGON_IOU}. "
+        "Review holes, disconnected regions or degenerate contours."
+    )
+
+
 def _normalize_polygon(
     points: np.ndarray,
     *,
@@ -601,24 +644,11 @@ def export_from_manifest(
                 detail=f"min_mask_area={min_mask_area}",
             )
 
-        polygon = _contour_to_polygon(contour)
-        if polygon is None:
-            return drop(aid, split, "mask_polygon_invalid")
-
         try:
-            label_line = _yolo_segmentation_line(
-                CLASS_ID_TREE,
-                polygon,
-                width=width,
-                height=height,
-            )
-        except Exception as exc:
-            return drop(
-                aid,
-                split,
-                "label_generation_failed",
-                detail=str(exc),
-            )
+            polygon, label_line, fidelity = _faithful_polygon(
+                contour, mask, width=width, height=height)
+        except ValueError as exc:
+            return drop(aid, split, "mask_polygon_fidelity_failed", detail=str(exc))
 
         # ------------------------- persist -----------------------
         image_path = out_dir / "images" / split / f"{aid}.jpg"
@@ -647,6 +677,7 @@ def export_from_manifest(
                 "width": int(width),
                 "height": int(height),
                 "polygon_points": int(polygon.shape[0]),
+                **fidelity,
                 "mask_area_px": float(cv2.contourArea(contour)),
             }
         )
@@ -664,7 +695,8 @@ def export_from_manifest(
     selection["val_ids"] = kept["val"]
     selection["dropped_ids"] = dropped
 
-    manifest.setdefault("policy", {})["min_mask_area"] = float(min_mask_area)
+    manifest.setdefault("policy", {})["min_mask_polygon_iou"] = MIN_MASK_POLYGON_IOU
+    manifest["policy"]["min_mask_area"] = float(min_mask_area)
     manifest["policy"]["exact_image_dedup"] = "sha256"
     manifest["policy"]["mask_dimension_policy"] = "must_match_image"
     manifest["policy"]["label_format"] = (
