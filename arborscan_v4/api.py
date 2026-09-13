@@ -363,3 +363,8 @@ async def analyze_tree_v4(
         warnings=list(dict.fromkeys(warnings)),
         persisted=False,
     )
+
+
+# Private contour submissions, isolated from verified training data.
+from .corrections_api import router as corrections_router
+app.include_router(corrections_router)
