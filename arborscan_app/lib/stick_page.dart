@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 
 class StickPage extends StatefulWidget {
   final String originalImageBase64;
@@ -19,19 +20,16 @@ class StickPage extends StatefulWidget {
 
 class _StickPageState extends State<StickPage> {
   late Uint8List _imageBytes;
-
   final TransformationController _controller = TransformationController();
 
-  /// две точки палки (низ и верх)
+  /// Две точки линии
   final List<Offset> _points = [];
 
   int? _dragIndex;
   bool _lockPan = false;
-
   Offset? _downScenePos;
   bool _moved = false;
 
-  static const double _pointRadius = 3;
   static const double _hitRadius = 18;
   static const double _moveThreshold = 4;
 
@@ -41,7 +39,6 @@ class _StickPageState extends State<StickPage> {
     _imageBytes = base64Decode(widget.originalImageBase64);
   }
 
-  /// перевод координат экрана → координаты сцены (с учётом зума)
   Offset _scene(Offset local) {
     return _controller.toScene(local);
   }
@@ -54,8 +51,6 @@ class _StickPageState extends State<StickPage> {
     }
     return null;
   }
-
-  // ================= POINTER EVENTS =================
 
   void _onPointerDown(PointerDownEvent e) {
     final scenePos = _scene(e.localPosition);
@@ -107,28 +102,9 @@ class _StickPageState extends State<StickPage> {
     _lockPan = false;
   }
 
-  // ================= LOGIC =================
-
   double? _lengthPx() {
     if (_points.length != 2) return null;
     return (_points[0] - _points[1]).distance;
-  }
-
-  double? _scalePxToM() {
-    final len = _lengthPx();
-    if (len == null || len <= 0) return null;
-    return 1 / len;
-  }
-
-  void _apply() {
-    final scale = _scalePxToM();
-    if (scale == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Поставьте 2 точки на палке (1 м)')),
-      );
-      return;
-    }
-    Navigator.pop(context, scale);
   }
 
   void _clear() {
@@ -139,58 +115,175 @@ class _StickPageState extends State<StickPage> {
     });
   }
 
-  // ================= UI =================
+  // --- НОВЫЙ БЛОК: Запрашиваем реальную длину у пользователя ---
+  Future<void> _apply() async {
+    final lenPx = _lengthPx();
+    if (lenPx == null || lenPx <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Поставьте 2 точки, чтобы отметить объект')),
+      );
+      return;
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    final length = _lengthPx();
-    final scale = _scalePxToM();
+    final ctrl = TextEditingController();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Коррекция палки'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _clear,
-          ),
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _apply,
-          ),
-        ],
-      ),
-      body: Listener(
-        onPointerDown: _onPointerDown,
-        onPointerMove: _onPointerMove,
-        onPointerUp: _onPointerUp,
-        child: InteractiveViewer(
-          transformationController: _controller,
-          minScale: 1,
-          maxScale: 8,
-          panEnabled: !_lockPan,
-          scaleEnabled: true,
-          boundaryMargin: const EdgeInsets.all(200),
-          child: Stack(
+    final realLengthM = await showDialog<double>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GlassPanel(
+          radius: 24,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Image.memory(_imageBytes, fit: BoxFit.contain),
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _StickPainter(points: _points),
-                ),
+              const Text(
+                "РАЗМЕР ОБЪЕКТА",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: 2),
               ),
+              const SizedBox(height: 12),
+              const Text(
+                "Какова реальная длина выделенного вами отрезка?",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.muted, fontSize: 13, height: 1.3),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: ctrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Длина в метрах',
+                  hintText: 'Например, 1.8 (рост человека)',
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, null),
+                      child: const Text('ОТМЕНА'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: AppTheme.primary),
+                      onPressed: () {
+                        final val = double.tryParse(ctrl.text.replaceAll(',', '.'));
+                        if (val != null && val > 0) {
+                          Navigator.pop(ctx, val);
+                        } else {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Введите корректное число больше нуля')),
+                          );
+                        }
+                      },
+                      child: const Text('ГОТОВО', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                ],
+              )
             ],
           ),
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Text(
-          length == null
-              ? 'Поставьте 2 точки по палке (1 м)'
-              : 'Длина: ${length.toStringAsFixed(1)} px\n'
-                'Масштаб: ${scale!.toStringAsFixed(6)} м/px',
-          textAlign: TextAlign.center,
+    );
+
+    if (realLengthM != null && realLengthM > 0) {
+      // Вычисляем точный масштаб: сколько метров в 1 пикселе
+      final scale = realLengthM / lenPx;
+      Navigator.pop(context, scale);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final length = _lengthPx();
+
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: const Text('Универсальная линейка', style: TextStyle(fontSize: 18, letterSpacing: 1.0)),
+        actions: [
+          IconButton(
+            tooltip: 'Сбросить',
+            icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+            onPressed: _clear,
+          ),
+          IconButton(
+            tooltip: 'Применить',
+            icon: const Icon(Icons.check, color: AppTheme.primary),
+            onPressed: _apply,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: AppTheme.surface3.withOpacity(0.3),
+            child: Row(
+              children: const [
+                Icon(Icons.info_outline, color: AppTheme.primary2, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Проведите линию по любому объекту (человек, забор, скамейка), размер которого вы знаете.',
+                    style: TextStyle(color: AppTheme.muted, fontSize: 12, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Listener(
+              onPointerDown: _onPointerDown,
+              onPointerMove: _onPointerMove,
+              onPointerUp: _onPointerUp,
+              child: InteractiveViewer(
+                transformationController: _controller,
+                minScale: 1,
+                maxScale: 8,
+                panEnabled: !_lockPan,
+                scaleEnabled: true,
+                boundaryMargin: const EdgeInsets.all(200),
+                child: Stack(
+                  children: [
+                    Image.memory(_imageBytes, fit: BoxFit.contain),
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _StickPainter(points: _points),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FilledButton.icon(
+            onPressed: length == null ? null : _apply,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              disabledBackgroundColor: AppTheme.surface3,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            icon: Icon(Icons.straighten, color: length == null ? AppTheme.muted : Colors.black),
+            label: Text(
+              length == null ? 'ОТМЕТЬТЕ 2 ТОЧКИ' : 'ВВЕСТИ РАЗМЕР И ПРИМЕНИТЬ',
+              style: TextStyle(
+                color: length == null ? AppTheme.muted : Colors.black,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -205,18 +298,26 @@ class _StickPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
-      ..color = Colors.red
-      ..strokeWidth = 2.5
+      ..color = AppTheme.primary
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    final dotPaint = Paint()..color = Colors.red;
+    final dotPaint = Paint()..color = AppTheme.primary2;
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.5)
+      ..strokeWidth = 5.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
 
     if (points.length == 2) {
+      canvas.drawLine(points[0], points[1], shadowPaint); // Тень для контраста
       canvas.drawLine(points[0], points[1], linePaint);
     }
 
     for (final pt in points) {
-      canvas.drawCircle(pt, 3, dotPaint);
+      canvas.drawCircle(pt, 5, Paint()..color = Colors.black);
+      canvas.drawCircle(pt, 4, dotPaint);
     }
   }
 
