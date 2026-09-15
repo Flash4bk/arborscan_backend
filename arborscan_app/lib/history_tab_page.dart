@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_theme.dart';
+import 'saved_corrections_page.dart';
 import 'map_page.dart';
 import 'api_config.dart';
 import 'analysis_report_page.dart'; // Нужно для перехода в отчет
@@ -231,6 +232,15 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ИСТОРИЯ', style: TextStyle(letterSpacing: 1.5)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: TextButton.icon(
+            icon: const Icon(Icons.layers_outlined),
+            label: const Text('Сохранённые контуры'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const SavedCorrectionsPage())),
+          ),
+        ),
         actions: [
           IconButton(tooltip: 'Обновить', icon: const Icon(Icons.refresh, color: AppTheme.primary), onPressed: _load),
           IconButton(

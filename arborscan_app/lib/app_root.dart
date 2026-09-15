@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'analyze_page.dart';
 import 'app_theme.dart';
+import 'corrections_service.dart';
 import 'history_tab_page.dart';
 import 'map_page.dart';
 import 'profile_page.dart';
@@ -39,6 +40,7 @@ class _AppRootState extends State<AppRoot> {
   }
 
   void _handleAuthChanged() {
+    CorrectionsService.authChanges.value++;
     if (!mounted) return;
     setState(() {
       // Пересоздаём только экран анализа, чтобы он перечитал роль и токен,
