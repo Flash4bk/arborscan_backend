@@ -15,6 +15,11 @@ import numpy as np
 import requests
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
+try:
+    from .correction_workflow import WorkflowStore, validate_editor, overlay
+except ImportError:
+    from correction_workflow import WorkflowStore, validate_editor, overlay
 
 router = APIRouter(prefix="/v4/corrections", tags=["contour corrections"])
 MAX_IMAGE = 15 * 1024 * 1024
@@ -131,7 +136,7 @@ def _summary(record):
         "image_sha256", "mask_sha256", "width", "height")}
 
 
-def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes):
+def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes, editor_state=None, parent_id=None):
     analysis_id = _uuid(analysis_id)
     # Inspect headers before allocating decoded image arrays.
     from PIL import Image, UnidentifiedImageError
@@ -157,7 +162,11 @@ def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes):
         raise HTTPException(422, "Mask is empty or covers the whole image")
     image_hash = hashlib.sha256(image_bytes).hexdigest()
     mask_hash = hashlib.sha256(mask_bytes).hexdigest()
+    state = validate_editor(editor_state, int(image.shape[1]), int(image.shape[0])) if editor_state is not None else None
     revision = hashlib.sha256((analysis_id + ":" + image_hash + ":" + mask_hash).encode()).hexdigest()
+    if state is not None:
+        revision = hashlib.sha256(json.dumps([analysis_id, image_hash, mask_hash, state, parent_id],
+            sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
     key = f"{analysis_id}_{revision}.json"
     record = {
         "schema_version": 1, "owner_id": owner, "analysis_id": analysis_id,
@@ -169,7 +178,102 @@ def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes):
         "original_image_base64": base64.b64encode(image_bytes).decode(),
         "mask_png_base64": base64.b64encode(mask_bytes).decode(),
     }
+    if state is not None:
+        store = WorkflowStore(_config)
+        store.ready()
+        if parent_id:
+            parent = _get(owner, parent_id)
+            if parent['analysis_id'] != analysis_id or parent['image_sha256'] != image_hash:
+                raise HTTPException(422, 'Parent must refer to the same original image and analysis')
+            _ensure_metadata(store, owner, parent_id, parent)
+        record.update(schema_version=2, editor_state=state, parent_id=parent_id,
+                      original_ref={'image_sha256':image_hash}, review_status='draft')
+        record = _put(owner, key, record)
+        metadata = store.transition('register', owner, key, analysis=analysis_id,
+                                    image=image_hash, parent=parent_id)
+        return {'saved':True, 'correction_id':key, **_summary(overlay(record, metadata)),
+                'workflow_version':1, 'parent_id':parent_id}
     return {"saved": True, "correction_id": key, **_summary(_put(owner, key, record))}
+
+
+def _ensure_metadata(store, owner, key, record):
+    metadata = store.get(owner, key)
+    if metadata: return metadata
+    if record.get('schema_version') == 2:
+        # An unregistered blob may be left after a conflicting or timed-out save.
+        raise HTTPException(409, 'Revision not committed; retry its original save request')
+    return store.transition('legacy', owner, key, analysis=record['analysis_id'], image=record['image_sha256'])
+
+
+def current_admin(owner: str = Depends(current_user)):
+    url, headers, _ = _config()
+    try:
+        res = requests.get(url+'/rest/v1/users', headers=headers,
+                           params={'id':'eq.'+owner,'select':'role','limit':'1'}, timeout=15)
+        if res.status_code != 200: raise HTTPException(503, 'Role service unavailable')
+        rows = res.json()
+        if not rows or str(rows[0].get('role','')).strip().lower() != 'admin':
+            raise HTTPException(403, 'Admin required')
+    except (requests.RequestException, ValueError):
+        raise HTTPException(503, 'Role service unavailable') from None
+    return owner
+
+
+@router.get('/workflow/capabilities')
+def capabilities(owner: str = Depends(current_user)):
+    WorkflowStore(_config).ready()
+    return {'workflow_version':1, 'editor_version':1, 'owner_id':owner}
+
+
+@router.post('/workflow')
+async def save_workflow(analysis_id: str = Form(...), image: UploadFile = File(...),
+                        mask: UploadFile = File(...), editor_state: str = Form(...),
+                        parent_id: str | None = Form(default=None), owner: str = Depends(current_user)):
+    raw_image = await image.read(MAX_IMAGE+1)
+    raw_mask = await mask.read(MAX_MASK+1)
+    if len(raw_image)>MAX_IMAGE or len(raw_mask)>MAX_MASK:
+        raise HTTPException(413, 'Photo or mask exceeds upload size limit')
+    if not raw_image or not raw_mask: raise HTTPException(422, 'Photo and mask required')
+    if parent_id and not KEY_RE.fullmatch(parent_id): raise HTTPException(422, 'Invalid parent')
+    return await run_in_threadpool(_validate_and_save, owner, analysis_id, raw_image, raw_mask, editor_state, parent_id)
+
+
+@router.post('/{correction_id}/submit')
+def submit(correction_id: str, owner: str = Depends(current_user)):
+    record = _get(owner, correction_id)
+    store = WorkflowStore(_config)
+    _ensure_metadata(store, owner, correction_id, record)
+    return overlay(record, store.transition('submit', owner, correction_id)) | {'correction_id':correction_id}
+
+
+@router.get('/workflow/queue')
+def moderation_queue(offset: int = 0, admin: str = Depends(current_admin)):
+    if offset < 0: raise HTTPException(422, 'Invalid offset')
+    return WorkflowStore(_config).queue(offset)
+
+
+@router.get('/workflow/review/{owner_id}/{correction_id}')
+def review_detail(owner_id: str, correction_id: str, admin: str = Depends(current_admin)):
+    owner_id = _uuid(owner_id)
+    record = _get(owner_id, correction_id)
+    metadata = WorkflowStore(_config).get(owner_id, correction_id)
+    if not metadata: raise HTTPException(404, 'Revision not submitted')
+    return overlay(record, metadata) | {'correction_id':correction_id}
+
+
+class Decision(BaseModel):
+    decision: str = Field(max_length=20)
+    reason: str = Field(default='', max_length=2000)
+
+
+@router.post('/workflow/review/{owner_id}/{correction_id}')
+def decide(owner_id: str, correction_id: str, decision: Decision, admin: str = Depends(current_admin)):
+    owner_id = _uuid(owner_id)
+    if not KEY_RE.fullmatch(correction_id): raise HTTPException(422, 'Invalid correction')
+    if decision.decision not in ('accepted','rejected') or (decision.decision=='rejected' and not decision.reason.strip()):
+        raise HTTPException(422, 'Rejection requires a reason')
+    return WorkflowStore(_config).transition('decide', owner_id, correction_id,
+        actor=admin, decision=decision.decision, reason=decision.reason.strip())
 
 
 @router.post("")
@@ -209,4 +313,12 @@ def list_corrections(offset: int = 0, owner: str = Depends(current_user)):
 @router.get("/{correction_id}")
 def get_correction(correction_id: str, owner: str = Depends(current_user)):
     record = _get(owner, correction_id)
+    try:
+        metadata = WorkflowStore(_config).get(owner, correction_id)
+        if metadata: record = overlay(record, metadata)
+        elif record.get('schema_version') == 2: raise HTTPException(409, 'Revision save not committed')
+    except HTTPException as exc:
+        if exc.status_code != 503: raise
+        if record.get('schema_version') == 2: raise
+        record = {**record, 'workflow_available':False}
     return {"correction_id": correction_id, **record}
