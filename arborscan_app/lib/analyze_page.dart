@@ -34,7 +34,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
   bool _openingAr = false;
   String? _error;
 
-  String get _apiUrl => '${ApiConfig.v4BaseUrl}/v4/analyze-tree';
+  String get _apiUrl => ApiConfig.v4('/v4/analyze-tree').toString();
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -217,7 +217,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
         text.contains('Failed host lookup') ||
         text.contains('SocketException')) {
       return 'Не удалось подключиться к Unified Analysis v4. '
-          'Для локального debug-подключения проверьте SSH tunnel и adb reverse.';
+          '${ApiConfig.connectionHint(ApiConfig.v4BaseUrl)}';
     }
     if (text.contains('TimeoutException')) {
       return 'Анализ превысил допустимое время ожидания.';
@@ -849,8 +849,8 @@ class _DebugEndpointCard extends StatelessWidget {
           'Alpha / подключение',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
-        subtitle: const Text(
-          'В production этот блок можно убрать после перехода на HTTPS.',
+        subtitle: Text(
+          Uri.parse(url).scheme == 'https' ? 'Подключение по HTTPS' : 'Подключение к настроенному серверу',
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
@@ -860,7 +860,7 @@ class _DebugEndpointCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Для debug APK через USB: SSH tunnel на ПК + adb reverse tcp:8001 tcp:8001.',
+            ApiConfig.connectionHint(url),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppTheme.muted,
                 ),

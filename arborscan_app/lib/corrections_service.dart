@@ -70,8 +70,7 @@ class CorrectionsService {
     }
   }
 
-  Uri _uri([String suffix = '']) => Uri.parse(
-    '${ApiConfig.v4BaseUrl.replaceFirst(RegExp(r"/+$"), "")}/v4/corrections$suffix');
+  Uri _uri([String suffix = '']) => ApiConfig.v4('/v4/corrections$suffix');
 
   Future<void> save({required String token, required String analysisId,
     required Uint8List image, required Uint8List mask}) async {

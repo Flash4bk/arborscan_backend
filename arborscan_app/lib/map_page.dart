@@ -167,7 +167,7 @@ class _MapPageState extends State<MapPage> {
       if (token.isEmpty) return const [];
 
       // Используем ApiConfig
-      final uri = Uri.parse('${ApiConfig.baseUrl}/analyses/my').replace(
+      final uri = ApiConfig.v3('/analyses/my').replace(
         queryParameters: {'token': token, 'limit': '200'},
       );
       final res = await http.get(uri).timeout(const Duration(seconds: 12));

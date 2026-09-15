@@ -79,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Uri _uri(String path, [Map<String, String>? query]) {
-    return Uri.parse('${ApiConfig.baseUrl}$path').replace(queryParameters: query);
+    return ApiConfig.v3(path).replace(queryParameters: query);
   }
 
   Future<Map<String, String>> _requestHeaders({
@@ -562,7 +562,7 @@ class _ProfilePageState extends State<ProfilePage> {
       clipBehavior: Clip.antiAlias,
       child: hasAvatar
           ? Image.network(
-              _avatarUrl,
+              ApiConfig.imageUrl(_avatarUrl),
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => const Icon(
                 Icons.account_circle,

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api_config.dart';
 
 class AdminApiException implements Exception {
   final int? statusCode;
@@ -190,8 +191,7 @@ class AdminService {
   });
 
   Uri _uri(String path, [Map<String, dynamic>? query]) {
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
-    return Uri.parse('$baseUrl$normalizedPath').replace(
+    return ApiConfig.endpoint(baseUrl, path).replace(
       queryParameters: query?.map(
         (key, value) => MapEntry(key, value.toString()),
       ),

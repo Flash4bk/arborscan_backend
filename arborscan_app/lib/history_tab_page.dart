@@ -177,7 +177,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_tokenKey) ?? '';
       
-      final uri = Uri.parse('${ApiConfig.baseUrl}/analyses/${item.analysisId}').replace(queryParameters: {'token': token});
+      final uri = ApiConfig.v3('/analyses/${Uri.encodeComponent(item.analysisId)}').replace(queryParameters: {'token': token});
       final res = await http.get(uri).timeout(const Duration(seconds: 15));
       
       if (!mounted) return;

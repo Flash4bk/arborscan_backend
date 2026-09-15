@@ -271,7 +271,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
       final response = await http
           .post(
-            Uri.parse('${widget.baseUrl}/feedback'),
+            ApiConfig.endpoint(widget.baseUrl, '/feedback'),
             headers: headers,
             body: jsonEncode(body),
           )

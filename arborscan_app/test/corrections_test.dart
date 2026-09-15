@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:arborscan_app/corrections_service.dart';
+import 'package:arborscan_app/api_config.dart';
 import 'package:arborscan_app/saved_corrections_page.dart';
 import 'package:arborscan_app/unified_analysis_report_page.dart';
 import 'package:arborscan_app/unified_analysis_models.dart';
@@ -22,7 +23,7 @@ void main() {
   test('multipart preserves original bytes, fields and bearer header', () async {
     final client = _MultipartClient();
     await save(CorrectionsService(clientFactory: () => client));
-    expect(client.request!.url.path, '/v4/corrections');
+    expect(client.request!.url, ApiConfig.v4('/v4/corrections'));
     expect(client.request!.headers['Authorization'], 'Bearer alice');
     expect(client.request!.fields, {'analysis_id': 'analysis-id'});
     expect(client.request!.files.map((f) => f.field), ['image', 'mask']);
