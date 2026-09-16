@@ -108,7 +108,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
             ),
             const SizedBox(height: 10),
             _MetricCard(
-              title: 'DBH ствола',
+              title: result.trunkDiameter.standard == 'dbh_1_3m' ? 'DBH ствола' : 'Диаметр ствола',
               icon: Icons.circle_outlined,
               metric: result.trunkDiameter,
               valueDigits: 3,
@@ -116,12 +116,17 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
             ),
             const SizedBox(height: 18),
             const _SectionTitle(
-              title: 'Качество измерения',
+              title: 'Диагностика исходных данных',
               subtitle:
-                  'Показывает качество исходных данных, а не «уверенность» в выдуманном числе.',
+                  'Баллы ниже — инженерные эвристики, не точность и не доверительный интервал измерения.',
             ),
             const SizedBox(height: 10),
             _QualityCard(result: result),
+            const Card(child:Padding(padding:EdgeInsets.all(16),child:Column(
+              crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Text('β — коэффициент сопротивления, кг/с',style:TextStyle(fontWeight:FontWeight.bold)),
+                Text('Пока не определён. Фото, маска и AR-размеры не задают β однозначно. Нужны положения элементов дерева во времени, массы, упругость и проверенная динамическая модель.'),
+              ]))),
             const SizedBox(height: 18),
             const _SectionTitle(
               title: 'Механическая оценка и риск',
@@ -154,7 +159,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
     case 'measured':
       return (
         'Измерение завершено',
-        'Метрические размеры получены из AR и/или проверенной калибровки.',
+        'Показаны отдельные AR-размеры и/или оценки по эталону. Полевая точность ещё не подтверждена.',
         Icons.check_circle_outline,
         AppTheme.success,
       );
@@ -376,7 +381,7 @@ class _MetricCard extends StatelessWidget {
                       ),
                       Ui.badge(
                         text:
-                            'Качество ${(metric.confidence * 100).toStringAsFixed(0)}%',
+                            'Эвристический балл ${metric.confidence.toStringAsFixed(2)}',
                         color: _qualityColor(metric.confidence),
                         icon: Icons.verified_outlined,
                       ),
@@ -385,7 +390,7 @@ class _MetricCard extends StatelessWidget {
                   if (value == null && metric.valuePx != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'CV-геометрия: ${metric.valuePx!.toStringAsFixed(1)} px. Для перевода в метры нужен AR или физический эталон.',
+                      'Диагностическая геометрия маски: ${metric.valuePx!.toStringAsFixed(1)} px. Нужны явные границы измеряемой части и физический эталон. AR не задаёт масштаб фото.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppTheme.muted,
                             height: 1.35,
@@ -431,7 +436,7 @@ class _QualityCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '${(value * 100).toStringAsFixed(0)}%',
+                  value.toStringAsFixed(2),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: _qualityColor(value),
@@ -464,13 +469,13 @@ class _QualityCard extends StatelessWidget {
               children: [
                 Ui.badge(
                   text:
-                      'Сегментация ${(result.segmentationConfidence * 100).toStringAsFixed(0)}%',
+                      'Оценка модели ${result.segmentationConfidence.toStringAsFixed(2)}',
                   color: _qualityColor(result.segmentationConfidence),
                   icon: Icons.auto_awesome_motion_outlined,
                 ),
                 Ui.badge(
                   text: result.calibrationAvailable
-                      ? 'Масштаб ${(result.calibrationConfidence * 100).toStringAsFixed(0)}%'
+                      ? 'Эвристика масштаба ${result.calibrationConfidence.toStringAsFixed(2)}'
                       : 'Масштаб отсутствует',
                   color: result.calibrationAvailable
                       ? _qualityColor(result.calibrationConfidence)

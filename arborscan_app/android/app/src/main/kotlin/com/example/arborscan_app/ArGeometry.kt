@@ -144,6 +144,15 @@ object ArGeometry {
         if (angle <= 1e-5 || angle >= Math.PI / 2.0) return null
 
         val cameraMid = midpoint(leftCamera, rightCamera)
+        val axis = horizontalUnit(base - cameraMid) ?: return null
+        val left = horizontalUnit(leftDirection) ?: return null
+        val right = horizontalUnit(rightDirection) ?: return null
+        // Edges must face and straddle the selected trunk axis. Angular span
+        // alone would accept two arbitrary rays pointing away from the tree.
+        if (left.dot(axis) <= 0.0 || right.dot(axis) <= 0.0) return null
+        val sideLeft = axis.x * left.z - axis.z * left.x
+        val sideRight = axis.x * right.z - axis.z * right.x
+        if (sideLeft * sideRight > 0.0) return null
         val distance = horizontalDistance(cameraMid, base)
         if (!distance.isFinite() || distance <= 0.0) return null
 
@@ -154,7 +163,7 @@ object ArGeometry {
             diameterM = diameter,
             cameraToAxisM = distance,
             angularSpanRad = angle,
-            cameraTranslationM = horizontalDistance(leftCamera, rightCamera),
+            cameraTranslationM = (leftCamera - rightCamera).norm(),
         )
     }
 

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
@@ -21,6 +22,9 @@ class StickPage extends StatefulWidget {
 class _StickPageState extends State<StickPage> {
   late Uint8List _imageBytes;
   final TransformationController _controller = TransformationController();
+  Size? _imageSize;
+  Size _displaySize = Size.zero;
+  String? _error;
 
   /// Две точки линии
   final List<Offset> _points = [];
@@ -37,15 +41,41 @@ class _StickPageState extends State<StickPage> {
   void initState() {
     super.initState();
     _imageBytes = base64Decode(widget.originalImageBase64);
+    _decode();
+  }
+
+  Future<void> _decode() async {
+    try {
+      final codec = await ui.instantiateImageCodec(_imageBytes);
+      final frame = await codec.getNextFrame();
+      final size =
+          Size(frame.image.width.toDouble(), frame.image.height.toDouble());
+      frame.image.dispose();
+      codec.dispose();
+      if (mounted) setState(() => _imageSize = size);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Не удалось открыть изображение.');
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Offset _scene(Offset local) {
-    return _controller.toScene(local);
+    // Listener is inside the transformed image: Flutter already inverses zoom.
+    // Persist points in ORIGINAL oriented pixels, not viewport pixels.
+    return Offset(
+        (local.dx / _displaySize.width).clamp(0, 1) * _imageSize!.width,
+        (local.dy / _displaySize.height).clamp(0, 1) * _imageSize!.height);
   }
 
   int? _hitPoint(Offset scenePos) {
     for (int i = 0; i < _points.length; i++) {
-      if ((scenePos - _points[i]).distance <= _hitRadius) {
+      if ((scenePos - _points[i]).distance <=
+          _hitRadius * _imageSize!.width / _displaySize.width) {
         return i;
       }
     }
@@ -67,7 +97,7 @@ class _StickPageState extends State<StickPage> {
     final scenePos = _scene(e.localPosition);
     final dist = (scenePos - _downScenePos!).distance;
 
-    if (dist > _moveThreshold) {
+    if (dist > _moveThreshold * _imageSize!.width / _displaySize.width) {
       _moved = true;
     }
 
@@ -120,7 +150,8 @@ class _StickPageState extends State<StickPage> {
     final lenPx = _lengthPx();
     if (lenPx == null || lenPx <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Поставьте 2 точки, чтобы отметить объект')),
+        const SnackBar(
+            content: Text('Поставьте 2 точки, чтобы отметить объект')),
       );
       return;
     }
@@ -138,18 +169,24 @@ class _StickPageState extends State<StickPage> {
             children: [
               const Text(
                 "РАЗМЕР ОБЪЕКТА",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primary, letterSpacing: 2),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.primary,
+                    letterSpacing: 2),
               ),
               const SizedBox(height: 12),
               const Text(
                 "Какова реальная длина выделенного вами отрезка?",
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.muted, fontSize: 13, height: 1.3),
+                style:
+                    TextStyle(color: AppTheme.muted, fontSize: 13, height: 1.3),
               ),
               const SizedBox(height: 20),
               TextField(
                 controller: ctrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Длина в метрах',
                   hintText: 'Например, 1.8 (рост человека)',
@@ -168,18 +205,25 @@ class _StickPageState extends State<StickPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: AppTheme.primary),
+                      style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.primary),
                       onPressed: () {
-                        final val = double.tryParse(ctrl.text.replaceAll(',', '.'));
-                        if (val != null && val > 0) {
+                        final val =
+                            double.tryParse(ctrl.text.replaceAll(',', '.'));
+                        if (val != null && val.isFinite && val > 0) {
                           Navigator.pop(ctx, val);
                         } else {
                           ScaffoldMessenger.of(ctx).showSnackBar(
-                            const SnackBar(content: Text('Введите корректное число больше нуля')),
+                            const SnackBar(
+                                content: Text(
+                                    'Введите корректное число больше нуля')),
                           );
                         }
                       },
-                      child: const Text('ГОТОВО', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
+                      child: const Text('ГОТОВО',
+                          style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w900)),
                     ),
                   ),
                 ],
@@ -190,8 +234,9 @@ class _StickPageState extends State<StickPage> {
       ),
     );
 
-    if (realLengthM != null && realLengthM > 0) {
-      // Вычисляем точный масштаб: сколько метров в 1 пикселе
+    if (!mounted) return;
+    if (realLengthM != null && realLengthM.isFinite && realLengthM > 0) {
+      // Metres per original oriented pixel under the stated capture assumptions.
       final scale = realLengthM / lenPx;
       Navigator.pop(context, scale);
     }
@@ -204,7 +249,8 @@ class _StickPageState extends State<StickPage> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Универсальная линейка', style: TextStyle(fontSize: 18, letterSpacing: 1.0)),
+        title: const Text('Универсальная линейка',
+            style: TextStyle(fontSize: 18, letterSpacing: 1.0)),
         actions: [
           IconButton(
             tooltip: 'Сбросить',
@@ -229,37 +275,62 @@ class _StickPageState extends State<StickPage> {
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Проведите линию по любому объекту (человек, забор, скамейка), размер которого вы знаете.',
-                    style: TextStyle(color: AppTheme.muted, fontSize: 12, height: 1.3),
+                    'Отметьте известную высоту. Эталон должен быть рядом с деревом на той же глубине. Перспектива и наклон камеры ограничивают метод.',
+                    style: TextStyle(
+                        color: AppTheme.muted, fontSize: 12, height: 1.3),
                   ),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: Listener(
-              onPointerDown: _onPointerDown,
-              onPointerMove: _onPointerMove,
-              onPointerUp: _onPointerUp,
-              child: InteractiveViewer(
-                transformationController: _controller,
-                minScale: 1,
-                maxScale: 8,
-                panEnabled: !_lockPan,
-                scaleEnabled: true,
-                boundaryMargin: const EdgeInsets.all(200),
-                child: Stack(
-                  children: [
-                    Image.memory(_imageBytes, fit: BoxFit.contain),
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _StickPainter(points: _points),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            child: _imageSize == null
+                ? Center(
+                    child: _error == null
+                        ? const CircularProgressIndicator()
+                        : Text(_error!))
+                : LayoutBuilder(builder: (context, constraints) {
+                    _displaySize = applyBoxFit(
+                            BoxFit.contain, _imageSize!, constraints.biggest)
+                        .destination;
+                    return Center(
+                        child: InteractiveViewer(
+                            transformationController: _controller,
+                            minScale: 1,
+                            maxScale: 8,
+                            panEnabled: !_lockPan,
+                            child: SizedBox(
+                                width: _displaySize.width,
+                                height: _displaySize.height,
+                                child: Listener(
+                                  key:
+                                      const ValueKey('legacy-reference-canvas'),
+                                  onPointerDown: _onPointerDown,
+                                  onPointerMove: _onPointerMove,
+                                  onPointerUp: _onPointerUp,
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Image.memory(_imageBytes,
+                                          fit: BoxFit.contain),
+                                      Positioned.fill(
+                                        child: CustomPaint(
+                                          painter: _StickPainter(
+                                              points: _points
+                                                  .map((p) => Offset(
+                                                      p.dx /
+                                                          _imageSize!.width *
+                                                          _displaySize.width,
+                                                      p.dy /
+                                                          _imageSize!.height *
+                                                          _displaySize.height))
+                                                  .toList()),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ))));
+                  }),
           ),
         ],
       ),
@@ -272,9 +343,11 @@ class _StickPageState extends State<StickPage> {
               backgroundColor: AppTheme.primary,
               disabledBackgroundColor: AppTheme.surface3,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
             ),
-            icon: Icon(Icons.straighten, color: length == null ? AppTheme.muted : Colors.black),
+            icon: Icon(Icons.straighten,
+                color: length == null ? AppTheme.muted : Colors.black),
             label: Text(
               length == null ? 'ОТМЕТЬТЕ 2 ТОЧКИ' : 'ВВЕСТИ РАЗМЕР И ПРИМЕНИТЬ',
               style: TextStyle(

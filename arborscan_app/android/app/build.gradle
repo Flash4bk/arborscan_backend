@@ -37,6 +37,7 @@ android {
 }
 
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
     // Sceneform (maintained fork). IMPORTANT: artifactId is "ux", NOT "sceneform-ux".
     implementation "com.gorisse.thomas.sceneform:sceneform:1.23.0"
     implementation "com.gorisse.thomas.sceneform:core:1.23.0"

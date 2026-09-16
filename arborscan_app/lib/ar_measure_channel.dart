@@ -77,13 +77,11 @@ class ArMeasureResult {
         ? crownRaw
         : null;
 
-    final distanceRaw = _asDouble(json['distance_m']);
-    final distance = distanceRaw != null && distanceRaw.isFinite && distanceRaw > 0
-        ? distanceRaw
-        : height;
+    final distance = _requiredPositive(json, 'distance_m');
 
-    final quality =
-        (_asDouble(json['quality']) ?? 0.0).clamp(0.0, 1.0).toDouble();
+    final rawQuality = _asDouble(json['quality']) ?? 0.0;
+    if (!rawQuality.isFinite) throw const FormatException('Неконечная диагностика AR.');
+    final quality = rawQuality.clamp(0.0, 1.0).toDouble();
     final warningsRaw = json['warnings'];
     final warnings = warningsRaw is List
         ? warningsRaw.map((e) => e.toString()).toList(growable: false)
@@ -123,10 +121,8 @@ class ArMeasureResult {
     }
   }
 
-  /// ArborScan Unified Analysis v4 receives AR height + validated DBH.
-  /// Crown is intentionally omitted: backend derives it from the CV mask using
-  /// the AR height calibration, so crown becomes CV + AR rather than a manual
-  /// left/right AR span.
+  /// Direct spatial height and diameter at the recorded measurement height.
+  /// Crown is not measured here; AR height does not calibrate photo width.
   Map<String, String> toV4FormFields() {
     final height = heightMeters;
     final trunk = trunkDiameterMeters;

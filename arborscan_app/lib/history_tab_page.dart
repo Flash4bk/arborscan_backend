@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_theme.dart';
 import 'saved_corrections_page.dart';
+import 'reference_measurement_page.dart';
 import 'map_page.dart';
 import 'api_config.dart';
 import 'analysis_report_page.dart'; // Нужно для перехода в отчет
@@ -243,6 +244,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         ),
         actions: [
           IconButton(tooltip: 'Обновить', icon: const Icon(Icons.refresh, color: AppTheme.primary), onPressed: _load),
+          IconButton(tooltip: 'Измерения по эталону', icon: const Icon(Icons.straighten),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferenceHistoryPage()))),
           IconButton(
             tooltip: 'Очистить всё',
             icon: const Icon(Icons.delete_outline, color: AppTheme.danger),

@@ -12,6 +12,8 @@ import 'app_theme.dart';
 import 'ar_measure_channel.dart';
 import 'unified_analysis_models.dart';
 import 'unified_analysis_report_page.dart';
+import 'reference_measurement_page.dart';
+import 'package:crypto/crypto.dart';
 
 class ArborScanPage extends StatefulWidget {
   const ArborScanPage({super.key});
@@ -28,6 +30,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
   File? _imageFile;
   ImageSource? _imageSource;
   ArMeasureResult? _arResult;
+  String? _arPhotoHash;
   UnifiedAnalysisResult? _lastResult;
 
   bool _loading = false;
@@ -47,6 +50,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
         _imageFile = File(picked.path);
         _imageSource = source;
         _arResult = null;
+        _arPhotoHash = null;
         _lastResult = null;
         _error = null;
       });
@@ -58,18 +62,29 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
   Future<void> _openAr() async {
     if (_openingAr) return;
-
-    setState(() {
-      _openingAr = true;
-      _error = null;
-    });
-
+    if (_imageFile == null) {
+      setState(() => _error = 'Сначала выберите фото дерева, затем измерьте именно это дерево в AR.');
+      return;
+    }
+    setState(() { _openingAr = true; _error = null; });
     try {
+    final selectedImage = _imageFile!;
+    final boundHash = sha256.convert(await selectedImage.readAsBytes()).toString();
+    if (!mounted) return;
+    final sameTree = await showDialog<bool>(context:context,builder:(c)=>AlertDialog(
+      title:const Text('Связать AR с выбранным фото'),
+      content:const Text('Измеряйте то же дерево, которое выбрано на фото. Приложение не проверяет это автоматически. AR сохраняет отдельные пространственные размеры и не задаёт масштаб фотографии.'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Отмена')),
+        TextButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Это то же дерево'))]));
+    if(sameTree!=true || !mounted)return;
+
       final result = await ArMeasureChannel.openArMeasure();
       if (!mounted || result == null) return;
+      if (_imageFile != selectedImage) throw const FormatException('Фото изменилось. Повторите AR для выбранного дерева.');
 
       setState(() {
         _arResult = result;
+        _arPhotoHash = boundHash;
         _lastResult = null;
       });
 
@@ -77,8 +92,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
         SnackBar(
           content: Text(
             'AR готов: H ${result.heightMeters!.toStringAsFixed(2)} м · '
-            'DBH ${result.trunkDiameterMeters!.toStringAsFixed(3)} м · '
-            '${result.statusLabelRu}. Крона будет рассчитана по фото.',
+            'Диаметр ствола ${result.trunkDiameterMeters!.toStringAsFixed(3)} м · '
+            '${result.statusLabelRu}. Крона отдельно не измерена.',
           ),
         ),
       );
@@ -102,11 +117,19 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
     try {
       final request = http.MultipartRequest('POST', Uri.parse(_apiUrl));
+      final prefs = await SharedPreferences.getInstance();
+      final sessionToken = prefs.getString('arborscan_auth_token');
+      if (sessionToken != null && sessionToken.isNotEmpty) request.headers['Authorization'] = 'Bearer $sessionToken';
       request.fields['include_images'] = 'true';
 
       final ar = _arResult;
       if (ar != null) {
+        if (_arPhotoHash != sha256.convert(await imageFile.readAsBytes()).toString()) {
+          throw const FormatException('AR относится к другому фото. Повторите измерение.');
+        }
         request.fields.addAll(ar.toV4FormFields());
+        request.fields['ar_photo_sha256'] = _arPhotoHash!;
+        request.fields['ar_same_tree_confirmed'] = 'true';
       }
 
       request.files.add(
@@ -125,6 +148,13 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       if (decoded is! Map) {
         throw const FormatException('Сервер вернул некорректный JSON');
+      }
+      if (ar != null && decoded['measurement_method_version'] != 1) {
+        final measures = decoded['measurements'];
+        if (measures is Map) {
+          measures['crown_width'] = {'value_m':null,'value_px':null,
+            'source':'unavailable','confidence':0.0,'notes':['old_api_ar_photo_scale_not_validated']};
+        }
       }
 
       final result = UnifiedAnalysisResult.fromJson(
@@ -178,6 +208,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
         'imageBase64': '',
         'timestamp': DateTime.now().toIso8601String(),
         'analysisId': result.analysisId,
+        'ar_provenance': _arResult == null ? null : {'photo_sha256':_arPhotoHash,
+          'association':'user_confirmed_same_tree','measurement':_arResult!.raw},
       };
 
       final newRow = jsonEncode(historyRow);
@@ -267,12 +299,15 @@ class _ArborScanPageState extends State<ArborScanPage> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
             const _IntroCard(),
+            OutlinedButton.icon(onPressed:_loading?null:()=>Navigator.of(context).push(
+              MaterialPageRoute(builder:(_)=>const ReferenceMeasurementPage())),
+              icon:const Icon(Icons.straighten),label:const Text('По известному объекту')),
             const SizedBox(height: 16),
             _StepHeader(
               number: '1',
               title: 'Фотография дерева',
               subtitle:
-                  'Фото используется для сегментации, геометрии и определения породы. Фото и AR можно выполнять в любом порядке.',
+                  'Выберите фото, затем при необходимости измерьте то же дерево в AR.',
               done: _imageFile != null,
             ),
             const SizedBox(height: 8),
@@ -288,7 +323,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
               number: '2',
               title: 'AR-измерение',
               subtitle:
-                  'Можно запускать независимо от фото. Помощник подбирает позицию; AR измеряет высоту и DBH, а крона затем рассчитывается по фото через CV + AR-масштаб.',
+                  'AR оценивает высоту в вертикальной плоскости и диаметр приблизительно цилиндрического ствола. Это отдельные размеры, не масштаб фото. Наклон дерева ограничивает метод.',
               done: _arResult != null,
               optional: true,
             ),
@@ -609,7 +644,7 @@ class _ArCard extends StatelessWidget {
           children: [
             if (ar == null) ...[
               Text(
-                'Measurement Coach оценивает позицию и стабильность. AR даёт физическую высоту и DBH, а крона рассчитывается по фотографии.',
+                'AR использует плоскость дерева и приближение цилиндрического ствола. Статус описывает условия, а не точность. Крона отдельно не измеряется.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.muted,
                       height: 1.4,
@@ -644,7 +679,7 @@ class _ArCard extends StatelessWidget {
                     icon: Icons.height,
                   ),
                   Ui.badge(
-                    text: 'DBH ${ar.trunkDiameterMeters!.toStringAsFixed(3)} м',
+                    text: 'Диаметр ${ar.trunkDiameterMeters!.toStringAsFixed(3)} м',
                     color: AppTheme.success,
                     icon: Icons.circle_outlined,
                   ),
@@ -659,8 +694,8 @@ class _ArCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'DBH измерен на высоте ${ar.trunkMeasurementHeightMeters!.toStringAsFixed(2)} м. '
-                'Крона будет вычислена как CV + AR-масштаб по измеренной высоте.${ar.dbhRepeatSpreadMeters != null ? ' Разброс DBH: ${(ar.dbhRepeatSpreadMeters! * 1000).toStringAsFixed(0)} мм.' : ''}',
+                'Диаметр измерен на высоте ${ar.trunkMeasurementHeightMeters!.toStringAsFixed(2)} м. '
+                'Масштаб фото по AR не переносится. ${ar.dbhRepeatSpreadMeters != null ? ' Разброс DBH: ${(ar.dbhRepeatSpreadMeters! * 1000).toStringAsFixed(0)} мм.' : ''}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.muted,
                     ),

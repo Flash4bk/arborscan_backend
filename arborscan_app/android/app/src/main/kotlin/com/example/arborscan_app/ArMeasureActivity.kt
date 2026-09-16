@@ -35,9 +35,9 @@ import kotlin.math.abs
  *
  * Changes from alpha 1:
  *  - geometric Measurement Coach before height and DBH;
- *  - height keeps the validated fixed-plane ray method;
- *  - crown is no longer manually measured in AR: backend derives it from CV
- *    using the AR height scale;
+ *  - height uses a fixed-plane ray method; field accuracy is unvalidated;
+ *  - crown is not measured in AR; no scale is transferred to photo widths
+ *    without a separate image calibration;
  *  - DBH uses cylindrical tangent-ray geometry, 3 repeats and median;
  *  - movement between left/right DBH edges is quality-gated;
  *  - user-facing "94% quality" is removed. We expose diagnostic statuses
@@ -184,8 +184,20 @@ class ArMeasureActivity : AppCompatActivity() {
         wasTracking = tracking
 
         if (!tracking) {
+            if (basePoint != null) {
+                clearBase()
+                currentStep = MeasureStep.BASE
+                updateUi()
+            }
             btnPlace.isEnabled = false
             tvStatus.text = "AR-трекинг потерян. Двигайте телефон медленно и дайте ARCore восстановиться."
+            return
+        }
+        if (baseAnchorNode?.anchor?.trackingState?.let { it != TrackingState.TRACKING } == true) {
+            clearBase()
+            currentStep = MeasureStep.BASE
+            updateUi()
+            tvStatus.text = "Привязка основания потеряна. Повторно отметьте землю у дерева."
             return
         }
 
@@ -696,7 +708,7 @@ class ArMeasureActivity : AppCompatActivity() {
             }
             MeasureStep.REVIEW -> {
                 tvStep.text = "ПРОВЕРКА ИЗМЕРЕНИЙ"
-                tvHint.text = "Крона будет рассчитана по фото через CV + AR-масштаб"
+                tvHint.text = "Ширина кроны требует отдельного измерения на фото"
                 btnPlace.text = "Сохранить"
                 updateReviewText()
             }
@@ -713,8 +725,8 @@ class ArMeasureActivity : AppCompatActivity() {
         tvRealtime.visibility = View.VISIBLE
         tvRealtime.text = buildString {
             append("Высота  %.2f м\n".format(finalHeightM ?: 0.0))
-            append("DBH      %.3f м\n".format(finalTrunkDiameterM ?: 0.0))
-            append("Крона    CV + AR после фото\n")
+            append("Диаметр  %.3f м на высоте %.2f м\n".format(finalTrunkDiameterM ?: 0.0, dbhMeasuredHeightM ?: 0.0))
+            append("Крона    не измерена\n")
             append("DBH разброс  %.0f мм".format((dbhRepeatSpreadM ?: 0.0) * 1000.0))
         }
         tvStatus.text = buildString {
@@ -739,7 +751,11 @@ class ArMeasureActivity : AppCompatActivity() {
         val internalQuality = diagnostics.getDouble("internal_quality")
 
         val json = JSONObject()
-            .put("schema_version", "ar_measurement_v3")
+            .put("schema_version", "ar_measurement_v4")
+            .put("session_id", java.util.UUID.randomUUID().toString())
+            .put("captured_at_ms", System.currentTimeMillis())
+            .put("coordinate_system", "arcore_world_m_y_up")
+            .put("quality_interpretation", "engineering_heuristic_not_accuracy")
             .put("height_m", finiteOrNull(height))
             .put("crown_width_m", JSONObject.NULL)
             .put("trunk_diameter_m", finiteOrNull(trunk))
@@ -888,7 +904,7 @@ class ArMeasureActivity : AppCompatActivity() {
         return JSONObject()
             .put("height_method", "fixed_vertical_tree_plane_ray_intersection_v1")
             .put("dbh_method", "cylindrical_tangent_rays_median_v2")
-            .put("crown_method", "not_measured_in_ar_use_cv_plus_ar_height_scale")
+            .put("crown_method", "not_measured_requires_explicit_photo_calibration")
             .put("base", vec(basePoint))
             .put("base_camera", vec(baseFixCamera))
             .put("plane_normal", vec(plane?.normal))
@@ -902,8 +918,9 @@ class ArMeasureActivity : AppCompatActivity() {
         val centerY = view.height / 2f
         for (hit in frame.hitTest(centerX, centerY)) {
             val trackable = hit.trackable
-            if (trackable is Plane && trackable.isPoseInPolygon(hit.hitPose)) return hit
-            if (trackable is Point && trackable.orientationMode == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL) return hit
+            if (trackable is Plane && trackable.type == Plane.Type.HORIZONTAL_UPWARD_FACING &&
+                trackable.trackingState == TrackingState.TRACKING &&
+                trackable.isPoseInPolygon(hit.hitPose)) return hit
         }
         return null
     }
