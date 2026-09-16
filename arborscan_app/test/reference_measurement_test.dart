@@ -164,7 +164,8 @@ void main() {
     final folder = (await tester
         .runAsync(() => Directory.systemTemp.createTemp('reference-test-')))!;
     final store = ContourDrafts(directory: () async => folder);
-    final r = measure(2);
+    final r = ReferenceMeasurement.fromJson({...measure(2).toJson(),'width':100,'height':200});
+    final original = (await tester.runAsync(() => File('test/fixtures/reference_exif6.jpg').readAsBytes()))!;
     final data = {
       'version': 1,
       'width': r.width,
@@ -184,7 +185,7 @@ void main() {
       'tree': ReferenceMeasurement.encode(r.tree),
       'crown': ReferenceMeasurement.encode(r.crown)
     };
-    await tester.runAsync(() async => store.save(owner, 'sample', data, photo));
+    await tester.runAsync(() async => store.save(owner, 'sample', data, original));
     Future<void> open() async {
       await tester.pumpWidget(MaterialApp(
           home: ReferenceMeasurementPage(
@@ -212,6 +213,11 @@ void main() {
     await tester.runAsync(() async {
       expect(await store.load(other, 'sample'), isNull);
     });
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(() => store.save(owner,'sample',{...data,'width':999},original));
+    await open();
+    expect(find.textContaining('Размеры фото не соответствуют разметке'),findsOneWidget);
+    expect(find.text('Сохранить отчёт на устройстве'),findsNothing);
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(() async => folder.delete(recursive: true));
   });

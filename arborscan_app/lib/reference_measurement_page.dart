@@ -17,12 +17,42 @@ ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
         '${(await getApplicationSupportDirectory()).path}/reference-measurements-v1'));
 
+Future<Size> referenceImageSize(Uint8List bytes) async {
+  if (bytes.length > 15 * 1024 * 1024) {
+    throw const FormatException('Фото больше 15 МБ.');
+  }
+  final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+  try {
+    final descriptor = await ui.ImageDescriptor.encoded(buffer);
+    try {
+      if (descriptor.width * descriptor.height > 25000000) {
+        throw const FormatException('Фото больше 25 МП.');
+      }
+      final codec = await descriptor.instantiateCodec();
+      try {
+        final frame = await codec.getNextFrame();
+        final size =
+            Size(frame.image.width.toDouble(), frame.image.height.toDouble());
+        frame.image.dispose();
+        return size;
+      } finally {
+        codec.dispose();
+      }
+    } finally {
+      descriptor.dispose();
+    }
+  } finally {
+    buffer.dispose();
+  }
+}
+
 class ReferenceMeasurementPage extends StatefulWidget {
   final String? draftId;
   final CorrectionsService? service;
   final ContourDrafts? drafts;
+  final Future<Uint8List?> Function()? pickPhoto;
   const ReferenceMeasurementPage(
-      {super.key, this.draftId, this.service, this.drafts});
+      {super.key, this.draftId, this.service, this.drafts, this.pickPhoto});
   @override
   State<ReferenceMeasurementPage> createState() =>
       _ReferenceMeasurementPageState();
@@ -35,6 +65,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   String? _token, _owner, _id, _error;
   String _unit = 'm';
   bool _busy = true, _invalid = false, _plane = false;
+  bool _saved = false;
   Uint8List? _image;
   int _width = 0, _height = 0;
   Map<String, dynamic>? _outline;
@@ -86,6 +117,12 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           throw const FormatException(
               'Фото не соответствует сохранённой разметке.');
         }
+        final size = await referenceImageSize(d['image']);
+        await _guard();
+        if (size.width != d['width'] || size.height != d['height']) {
+          throw const FormatException(
+              'Размеры фото не соответствуют разметке.');
+        }
         _image = d['image'];
         _width = d['width'];
         _height = d['height'];
@@ -96,8 +133,10 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         _reference = ReferenceMeasurement.decode(d['reference']);
         _tree = ReferenceMeasurement.decode(d['tree']);
         _crown = ReferenceMeasurement.decode(d['crown']);
+        _saved = true;
       }
     } catch (e) {
+      _image = null;
       _error = '$e';
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -124,15 +163,27 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           'reference': ReferenceMeasurement.encode(_reference),
           'tree': ReferenceMeasurement.encode(_tree),
           'crown': ReferenceMeasurement.encode(_crown),
+          'report': _result == null
+              ? null
+              : {
+                  'method': 'known_object_segment_v1',
+                  'height_m': _result!.heightM,
+                  'crown_width_m': _result!.crownM,
+                  'dbh_m': null,
+                  'beta_kg_s': null,
+                },
           'saved_at': DateTime.now().toUtc().toIso8601String()
         },
         _image!);
+    await _guard();
+    if (mounted) setState(() => _saved = true);
   }
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy || _invalid) return;
     setState(() {
       _busy = true;
+      _saved = false;
       _error = null;
     });
     try {
@@ -148,37 +199,22 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   }
 
   Future<void> _pick() async {
-    final photo = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (photo == null) return;
-    final bytes = await photo.readAsBytes();
-    if (bytes.length > 15 * 1024 * 1024) {
-      throw const FormatException('Фото больше 15 МБ.');
-    }
-    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-    final descriptor = await ui.ImageDescriptor.encoded(buffer);
-    if (descriptor.width * descriptor.height > 25000000) {
-      descriptor.dispose();
-      buffer.dispose();
-      throw const FormatException('Фото больше 25 МП.');
-    }
-    final codec = await descriptor.instantiateCodec();
-    final frame = await codec.getNextFrame();
-    try {
-      await _guard();
-      _width = frame.image.width;
-      _height = frame.image.height;
-      _image = bytes;
-    } finally {
-      frame.image.dispose();
-      codec.dispose();
-      descriptor.dispose();
-      buffer.dispose();
-    }
+    final bytes = widget.pickPhoto != null
+        ? await widget.pickPhoto!()
+        : await (await ImagePicker().pickImage(source: ImageSource.gallery))
+            ?.readAsBytes();
+    if (bytes == null) return;
+    final size = await referenceImageSize(bytes);
+    await _guard();
+    _width = size.width.toInt();
+    _height = size.height.toInt();
+    _image = bytes;
     _id = 'reference-${DateTime.now().microsecondsSinceEpoch}';
     _outline = null;
     _reference = [];
     _tree = [];
     _crown = [];
+    _plane = false;
   }
 
   Future<void> _line(String kind, String title) async {
@@ -193,7 +229,9 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 image: _image!,
                 width: _width,
                 height: _height,
-                title: title,
+                title: kind == 'reference'
+                    ? '$title: ${_length.text} ${_unit == 'm' ? 'м' : 'см'}'
+                    : title,
                 initial: points,
                 sessionToken: _token)));
     await _guard();
@@ -209,6 +247,9 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
 
   ReferenceMeasurement? get _result {
     if (_outline?['closed'] != true) return null;
+    if (_outline?['width'] != _width || _outline?['height'] != _height) {
+      return null;
+    }
     try {
       return ReferenceMeasurement(
           width: _width,
@@ -284,7 +325,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                   decoration: const InputDecoration(
                       labelText: 'Реальная высота эталона'),
                   onChanged: (_) {
-                    setState(() {});
+                    setState(() => _saved = false);
                     _save().catchError((Object e) {
                       if (mounted) setState(() => _error = '$e');
                     });
@@ -361,12 +402,16 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 Text('Ширина кроны: ${result.crownM.toStringAsFixed(2)} м'),
                 const Text(
                     'DBH не измерен. β (кг/с) не определяется по одному фото: нужны динамический эксперимент и модель.'),
+                FilledButton(
+                    onPressed: _busy ? null : () => _run(() async {}),
+                    child: const Text('Сохранить отчёт на устройстве')),
                 OutlinedButton(
                     onPressed: () => _run(_export),
                     child: const Text('Экспорт результата и разметки')),
               ],
               const Text(
-                  'Разметка автоматически сохраняется на устройстве в вашем аккаунте. AR и исходный отчёт не перезаписываются.'),
+                  'Разметка и отчёт хранятся только на этом устройстве, отдельно для вашего аккаунта. Синхронизации с сервером и другим телефоном нет. AR и исходный отчёт не перезаписываются.'),
+              if (_saved) const Text('Сохранено на этом устройстве'),
             ],
           ],
         ]));
