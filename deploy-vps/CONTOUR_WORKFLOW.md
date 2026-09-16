@@ -1,9 +1,119 @@
-# Цикл работы с контурами (не развёрнут)
+# Цикл работы с контурами
 
 Проверенный HTTPS-коммит `be8485b963f6579feb559d5fc938959fff320d84` включён
 в `main` через fast-forward и отправлен. Новая функциональность находится только
-в `codex/contour-workflow`. Описанные ниже команды развёртывания **не выполнялись**.
-Существующие контейнеры, private bucket и production DB не изменялись.
+в `codex/contour-workflow`. API v4 развёрнут 2026-09-16; фактические результаты
+и точные команды отката приведены ниже. Ручной сценарий телефона ожидает ответа
+пользователя и не считается пройденным.
+
+## Фактически выполнено 2026-09-16
+
+Аудит охватил полный diff `main...106d6f7`, включая `26b936f`, `aec1d2e`,
+`106d6f7`: backend/RPC, Flutter, тесты, экспортный барьер и документацию.
+Исправления `51c80b8`: readiness проверяет атомарно установленный version RPC,
+ошибка размеров редактора сохраняется при rebuild, вложенный JSON возвращает
+422 вместо 500. Добавлены регрессионные тесты и проверка повторного выполнения
+SQL с сохранением решений и реальным отказом запросов роли authenticated.
+
+**Развёрнутый код:** `5af8dd1435db289007afaa39368018f35c7ce8d4`.
+Образ: `arborscan-api-v4:contour-5af8dd1`.
+Docker image ID: `sha256:09a5719dc38204f90fd3806c51500e8c923ad88dbf04b41420cedc104bc98022`.
+Worktree: `/home/arborscan/contour-5af8dd1` (detached exact commit).
+Основной checkout `/opt/arborscan` остался чистым на
+`5d8176a22fddd6634c266a1ed09f1845019065c5`; reset/stash/перезапись не применялись.
+Контейнер `arborscan-api-v4` healthy, startup complete, модель загружена.
+V3, Nginx, TLS, модель и зависимости работающего runtime не менялись.
+Коэффициент β, AR, эталон и обучение не входят в эту выкладку.
+
+**Резервная копия до миграции:** `/home/arborscan/contour-backup-20260916/`,
+каталог 0700, файлы 0600, в том числе `arborscan.env` (содержимое не выводилось),
+`docker-compose.v4.yml`, `contours.tar`. Архив содержит оба исходных immutable
+объекта, SHA-256 manifest и отметку об отсутствии contour_revisions на момент
+снимка. Архив перечитан, все хеши сверены. SHA-256 архива:
+`be7f42e7f679a10e7441db935f3275307101b441610cea92b150b19e4134b77b`.
+После индексирования оба оригинальных JSON снова сверены с архивом:
+байт-в-байт одинаковые, eligible_for_training=false.
+`backup_contours.py` предназначен именно для первого rollout: при наличии
+таблицы он останавливается и требует полноценный snapshot DB, а не выдаёт
+частичную выгрузку за резервную копию. Будущие обновления требуют нового backup.
+
+**Выполнено пользователем:** migration `001_contour_workflow.sql` целиком
+в production Supabase SQL Editor; SELECT contour_workflow_version() вернул 1.
+**Проверено агентом:** production PostgREST RPC вернул 1, таблица доступна
+service_role; users.id имеет тип uuid, role — text. Прямого SQL-доступа у агента
+не было. Повтор DDL и проверки ACL выполнялись в локальном PGlite, не в production.
+В production проведён реальный конкурентный тест двух сохранений через HTTPS:
+один ребёнок создан, второй запрос получил 409.
+
+Индексатор: dry-run scanned=2/candidates=2; --apply indexed=2;
+повтор --apply indexed=0. Старые записи получили submitted, без решений,
+без изменения private blobs и без допуска к обучению.
+
+**Автоматические проверки агента:**
+
+- После исправлений: 14 относящихся backend-тестов локально; 17 тестов workflow,
+  legacy и экспорта в отдельном контейнере на Python 3.11 с runtime кандидата.
+  Тестовые зависимости ставились только в /tmp одноразового контейнера.
+- 19 Flutter-тестов workflow/сохранения/истории; regression размера — успешно.
+- flutter analyze: 107 замечаний, 0 errors, 7 warnings, 100 info; новых нет.
+  Это прежние диагностики; exit code 1 не обозначается как чистый анализатор.
+- flutter build apk --debug без dart-define — успешно. Код Flutter соответствует
+  развёрнутому коммиту (после сборки менялся только Dockerfile).
+- APK SHA-256 `e817ed96cb378bfcf6996e73d136bcb1f3396ac6697e7fb1b4f47af83682531c`.
+  `adb install -r` на S24 Ultra R5CY40HNVCP вернул Success, данные не очищались.
+  Открытие с иконки и сценарий UI поручены пользователю, результата пока нет.
+- Оба публичных HTTPS health: status=ok со штатной проверкой сертификата.
+  GET corrections/capabilities/queue без токена: 401.
+- `smoke_contour_workflow.py` через публичный HTTPS: новые синтетические аккаунты,
+  обычная регистрация и Bearer; отдельному тестовому аккаунту назначена admin-роль
+  только на время проверки. Проверены старый PNG, сохранение состояния, повтор,
+  чужой владелец 404, обычный пользователь 403, отклонение/причина, принятие,
+  повтор решения, конфликт решений и конкурентных правок, accepted → draft.
+  Все синтетические аккаунты, сессии, metadata и blobs удалены после проверки.
+  Реальные решения не изменялись. Этот скрипт выполняет записи: не запускать
+  как автоматический healthcheck. Не выводит токены и тела ответов.
+
+Новые/существующие замечания: две прежние deprecation-диагностики FastAPI/Starlette
+testclient. Docker выдаёт новый lint InvalidDefaultArgInFrom для обязательного
+BASE_IMAGE без значения по умолчанию: значение явно передано и проверено.
+Обычная сборка через Dockerfile.v4 начала скачивать новые зависимости и не была
+использована для выкладки; итоговый образ построен поверх прежнего runtime.
+
+Точное обновление, уже выполненное после backup и миграции:
+
+```bash
+docker build --build-arg BASE_IMAGE=arborscan-api-v4:before-contour-20260916 \
+  --label org.opencontainers.image.revision=5af8dd1435db289007afaa39368018f35c7ce8d4 \
+  -f /home/arborscan/contour-5af8dd1/deploy-vps/Dockerfile.v4-contour \
+  -t arborscan-api-v4:contour-5af8dd1 /home/arborscan/contour-5af8dd1
+docker compose -p arborscan-v4 \
+  -f /home/arborscan/contour-5af8dd1/deploy-vps/docker-compose.v4.yml \
+  -f /home/arborscan/contour-backup-20260916/candidate.yml \
+  up -d --no-build --no-deps api-v4
+```
+
+candidate.yml задаёт image arborscan-api-v4:contour-5af8dd1 и абсолютный mount
+`/opt/arborscan/models:/app/models:ro`; это исключает ошибку относительного пути
+models при использовании отдельного worktree.
+
+**Подготовленный откат (не выполнялся):**
+
+```bash
+docker compose -p arborscan-v4 \
+  -f /home/arborscan/contour-backup-20260916/docker-compose.v4.yml \
+  -f /home/arborscan/contour-backup-20260916/rollback.yml \
+  up -d --no-build --no-deps --force-recreate api-v4
+curl --fail https://31.57.170.88/api/v4/health
+curl --fail https://31.57.170.88/api/v3/health
+```
+
+rollback.yml уже сохранён, фиксирует абсолютный mount models и образ
+`arborscan-api-v4:before-contour-20260916`, ID
+`sha256:ea81e3b4c9176b51e916a2a54ecbf7bcd6875c29a7a0e287e98c5bc6b0526d09`.
+Таблица и новые blobs сохраняются; аддитивная миграция старому API не мешает.
+Не восстанавливать старый архив поверх новых контуров при обычном откате.
+Новый клиент сообщает о недоступности workflow и сохраняет локальный черновик.
+Полный сценарий ручной проверки приведён далее; ожидается подтверждение пользователя.
 
 ## Данные и переходы
 
@@ -145,23 +255,18 @@ UUID владельца сохраняется при штатной автор�
 bucket. Выполните migration как владелец DB через Supabase SQL Editor или psql.
 Не выдавайте RPC/таблицу anon/authenticated. Никакие секреты не передавайте в чат.
 
-На VPS из каталога отдельного checkout этой ветки (путь выберите по своей установке):
+Для этой установки используйте точные команды и пути из раздела фактической
+выкладки выше. Для следующего коммита создайте новый detached worktree, новый
+backup и отдельный тег образа. Не переключайте основной checkout и не собирайте
+обновлённые зависимости для этого изменения. Перед будущей миграцией получите
+полноценный snapshot существующей таблицы средствами PostgreSQL/Supabase.
+Индексатор запускается отдельно:
 
 ```bash
-git fetch origin codex/contour-workflow
-git switch --detach origin/codex/contour-workflow
-# DATABASE_URL задаётся локально оператором безопасным способом, не печатать.
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f deploy-vps/migrations/001_contour_workflow.sql
-docker image tag arborscan-api-v4 arborscan-api-v4:before-contour-workflow
-docker compose -f deploy-vps/docker-compose.v4.yml build api-v4
-docker compose -f deploy-vps/docker-compose.v4.yml up -d --no-deps api-v4
-curl --fail https://31.57.170.88/api/v4/health
-# Индексатор читает существующие server credentials внутри контейнера, не выводя их.
-docker compose -f deploy-vps/docker-compose.v4.yml exec -T api-v4 python -m arborscan_v4.index_legacy_contours
-# После проверки количества кандидатов:
-docker compose -f deploy-vps/docker-compose.v4.yml exec -T api-v4 python -m arborscan_v4.index_legacy_contours --apply
+docker exec arborscan-api-v4 python -m arborscan_v4.index_legacy_contours
+# Только после резервной копии и проверки dry-run:
+docker exec arborscan-api-v4 python -m arborscan_v4.index_legacy_contours --apply
 ```
-
 Индексатор по умолчанию только читает; --apply импортирует старые записи в очередь
 submitted. Повтор безопасен, принятие существующей записи не сбрасывается. Он
 выводит только счётчики, не токены, владельцев или содержимое изображений.
@@ -197,9 +302,7 @@ $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 Аддитивная миграция не мешает старому API; откат DDL не требуется.
 
 ```bash
-docker image tag arborscan-api-v4:before-contour-workflow arborscan-api-v4
-docker compose -f deploy-vps/docker-compose.v4.yml up -d --no-build --no-deps --force-recreate api-v4
-curl --fail https://31.57.170.88/api/v4/health
+# Используйте точный compose rollback из раздела фактической выкладки выше.
 ```
 
 Новый клиент после отката показывает недоступность workflow и сохраняет локальные
@@ -208,7 +311,7 @@ curl --fail https://31.57.170.88/api/v4/health
 подписи, без uninstall/clear-data. Ревизии/черновики не удаляйте; после возврата
 workflow они снова доступны.
 
-## Выполненные локальные проверки
+## Проверки первоначальной реализации (до аудита и выкладки)
 
 - Backend: `pytest tests_v4 -q` — 32 passed (включая экспортный барьер и индексатор).
 - Реальная SQL-миграция на изолированном PGlite/PostgreSQL: роли, переходы,
