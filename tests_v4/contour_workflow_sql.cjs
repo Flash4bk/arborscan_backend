@@ -42,6 +42,15 @@ const path = require('node:path');
   const rights=await db.query(`select has_table_privilege('authenticated','contour_revisions','SELECT') as read,
     has_function_privilege('anon','contour_transition(text,uuid,text,uuid,text,text,uuid,text,text)','EXECUTE') as rpc`);
   assert.equal(rights.rows[0].read,false); assert.equal(rights.rows[0].rpc,false);
+  // Rerunning the real migration preserves records, decisions and privileges.
+  await db.exec(fs.readFileSync(path.join(__dirname,'../deploy-vps/migrations/001_contour_workflow.sql'),'utf8'));
+  assert.deepEqual(await call('decide','one',null,admin,'accepted'),accepted);
+  assert.equal((await db.query('select contour_workflow_version() as v')).rows[0].v,1);
+  await db.exec('set role authenticated');
+  await assert.rejects(db.query('select * from contour_revisions'));
+  await assert.rejects(db.query('select contour_workflow_version()'));
+  await assert.rejects(call('submit','two'));
+  await db.exec('reset role');
   // Two queued writes cannot silently create competing children.
   const races=await Promise.allSettled([call('register','four-a','three'),call('register','four-b','three')]);
   assert.equal(races.filter(r=>r.status==='fulfilled').length,1);

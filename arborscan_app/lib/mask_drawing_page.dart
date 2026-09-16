@@ -616,6 +616,11 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    if (widget.editorState != null && (widget.editorState!.width != _imageSize!.width ||
+        widget.editorState!.height != _imageSize!.height)) {
+      return Scaffold(appBar: AppBar(title: const Text('Редактор контура')),
+        body: const Center(child: Text('Размеры состояния не совпадают с оригиналом. Откройте исходное фото.')));
+    }
 
     final canConfirm = _closed && _points.length >= 3 && !_finishing;
 
@@ -724,10 +729,6 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
             if (!_initialPointsApplied) {
               _initialPointsApplied = true;
               final initial = widget.editorState?.points ?? widget.initialPoints;
-              if (widget.editorState != null && (widget.editorState!.width != _imageSize!.width ||
-                  widget.editorState!.height != _imageSize!.height)) {
-                return const Center(child: Text('Размеры состояния не совпадают с оригиналом. Откройте исходное фото.'));
-              }
               if (initial != null && initial.every((p) =>
                   p.dx.isFinite && p.dy.isFinite && p.dx >= 0 && p.dx <= 1 && p.dy >= 0 && p.dy <= 1)) {
                 _points.addAll(initial.map((p) => Offset(p.dx * drawSize.width, p.dy * drawSize.height)));

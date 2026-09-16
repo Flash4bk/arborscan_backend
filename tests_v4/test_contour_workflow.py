@@ -114,3 +114,20 @@ def test_store_maps_transaction_conflict_without_leaking_response():
             WorkflowStore(lambda:('https://example.invalid',{},'private')).transition('register',OWNER,'id')
     assert caught.value.status_code==409
     assert 'private' not in caught.value.detail
+
+
+def test_ready_requires_completed_migration_rpc():
+    store = WorkflowStore(lambda: ('https://example.invalid', {}, 'private'))
+    with patch.object(store, 'request', return_value=0):
+        with pytest.raises(HTTPException) as caught:
+            store.ready()
+        assert caught.value.status_code == 503
+    with patch.object(store, 'request', return_value=1) as request:
+        store.ready()
+        request.assert_called_once_with('POST', 'rpc/contour_workflow_version', json={})
+
+
+def test_deep_editor_json_returns_validation_error():
+    with pytest.raises(HTTPException) as caught:
+        validate_editor('[' * 2000 + '0' + ']' * 2000, 48, 64)
+    assert caught.value.status_code == 422

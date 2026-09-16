@@ -78,5 +78,11 @@ begin
 end $$;
 revoke all on function public.contour_transition(text,uuid,text,uuid,text,text,uuid,text,text) from public,anon,authenticated;
 grant execute on function public.contour_transition(text,uuid,text,uuid,text,text,uuid,text,text) to service_role;
+-- Published atomically with the table, indexes and transition RPC. A table-only
+-- probe would incorrectly advertise support after an incomplete manual setup.
+create or replace function public.contour_workflow_version()
+returns integer language sql stable set search_path = public, pg_temp as $$ select 1 $$;
+revoke all on function public.contour_workflow_version() from public,anon,authenticated;
+grant execute on function public.contour_workflow_version() to service_role;
 notify pgrst, 'reload schema';
 commit;

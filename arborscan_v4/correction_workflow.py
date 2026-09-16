@@ -31,7 +31,7 @@ def validate_editor(raw, width, height):
         if len({(p['x'],p['y']) for p in points}) < 3:
             raise ValueError()
         return state
-    except (TypeError, ValueError, KeyError):
+    except (TypeError, ValueError, KeyError, RecursionError, OverflowError):
         raise HTTPException(422, 'Invalid editor state or image coordinates') from None
 
 
@@ -55,7 +55,8 @@ class WorkflowStore:
             raise HTTPException(503, 'Contour workflow is unavailable') from None
 
     def ready(self):
-        self.request('GET', 'contour_revisions', params={'select':'correction_id','limit':'0'})
+        if self.request('POST', 'rpc/contour_workflow_version', json={}) != 1:
+            raise HTTPException(503, 'Contour workflow migration is not ready')
 
     def get(self, owner, key):
         rows = self.request('GET', 'contour_revisions', params={

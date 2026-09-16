@@ -32,6 +32,22 @@ void main() {
     expect(() => ContourEditorState.fromJson({...editor(),'points':[{'x':double.nan,'y':0}]}),throwsFormatException);
   });
 
+  testWidgets('mismatched editor dimensions stay blocked across rebuilds', (tester) async {
+    Widget page() => MaterialApp(home: MaskDrawingPage(
+      originalImageBase64: base64Encode(image),
+      editorState: const ContourEditorState(width:2, height:1, closed:false, points:[])));
+    await tester.pumpWidget(page());
+    await tester.runAsync(() async => Future<void>.delayed(const Duration(milliseconds:100)));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Размеры состояния не совпадают'), findsOneWidget);
+    await tester.binding.setSurfaceSize(const Size(700,900));
+    await tester.pumpWidget(page());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Размеры состояния не совпадают'), findsOneWidget);
+    expect(find.byType(InteractiveViewer), findsNothing);
+    await tester.binding.setSurfaceSize(null);
+  });
+
   test('disk draft survives service recreation and is owner isolated', () async {
     final folder=await Directory.systemTemp.createTemp('arbor-drafts-test-');
     try {
