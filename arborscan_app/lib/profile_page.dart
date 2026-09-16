@@ -9,6 +9,8 @@ import 'onboarding_page.dart';
 
 import 'app_theme.dart';
 import 'api_config.dart';
+import 'admin_panel_page.dart';
+import 'saved_corrections_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onAuthChanged;
@@ -831,6 +833,21 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 14),
+                if (_isAdmin && _loggedIn) ...[
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AdminPanelPage(baseUrl: ApiConfig.baseUrl))),
+                    icon: const Icon(Icons.admin_panel_settings_outlined),
+                    label: const Text('Админ-панель'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SavedCorrectionsPage(adminQueue: true))),
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: const Text('Проверка контуров'),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 Row(
                   children: [
                     Expanded(
