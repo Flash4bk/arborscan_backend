@@ -46,6 +46,8 @@ class CalibrationRequest:
     ar_trunk_diameter_m: Optional[float] = None
     ar_trunk_measurement_height_m: Optional[float] = None
     ar_quality: Optional[float] = None
+    ar_photo_matches: bool = False
+    crown_width_px: Optional[float] = None
 
     # Explicit photo calibration.  ``manual_scale`` is kept for compatibility
     # with the current Flutter app.  New UI should prefer reference_length_*.
@@ -222,122 +224,38 @@ def resolve_calibration(
 
     manual = _positive(request.manual_scale_px_to_m)
     if manual is not None:
-        if manual > 1.0:
-            notes.append("manual_scale_px_to_m_is_implausibly_large")
-        else:
-            candidates.append(
-                ScaleCandidate(
-                    source="legacy_manual_scale",
-                    px_to_m=manual,
-                    confidence=0.75,
-                )
+        candidates.append(
+            ScaleCandidate(
+                source="legacy_manual_scale",
+                px_to_m=manual,
+                confidence=0.75,
             )
+        )
 
     ref_m = _positive(request.reference_length_m)
     ref_px = _positive(request.reference_length_px)
     if ref_m is not None and ref_px is not None:
-        ref_scale = ref_m / ref_px
+        ref_scale = _positive(ref_m / ref_px)
         same_plane = request.reference_same_plane is True
-        candidates.append(
+        if same_plane and ref_scale is not None:
+            candidates.append(
             ScaleCandidate(
                 source="reference_object",
                 px_to_m=ref_scale,
-                confidence=0.95 if same_plane else 0.82,
+                confidence=0.95,
             )
-        )
+            )
         if not same_plane:
             notes.append("reference_depth_relative_to_tree_not_confirmed")
 
-    ar_quality = _clamp01(request.ar_quality if request.ar_quality is not None else 0.85)
-    ar_height = _positive(request.ar_height_m)
-    if ar_height is not None and geometry.tree_height_px > _EPS:
-        candidates.append(
-            ScaleCandidate(
-                source="ar_height_calibration",
-                px_to_m=ar_height / geometry.tree_height_px,
-                confidence=min(0.90, ar_quality),
-            )
-        )
-
-    ar_crown = _positive(request.ar_crown_width_m)
-    if ar_crown is not None and geometry.crown_width_px > _EPS:
-        candidates.append(
-            ScaleCandidate(
-                source="ar_crown_calibration",
-                px_to_m=ar_crown / geometry.crown_width_px,
-                confidence=min(0.82, ar_quality),
-            )
-        )
-
+    # A world-space height does not establish a uniform image-plane scale.
+    # In particular a tilted camera foreshortens height differently from width.
     if not candidates:
-        return CalibrationResult(
-            px_to_m=None,
-            source=None,
-            confidence=0.0,
-            candidates=[],
-            notes=notes,
-        )
-
-    explicit = [c for c in candidates if c.source in {"reference_object", "legacy_manual_scale"}]
-    ar_candidates = [c for c in candidates if c.source.startswith("ar_")]
-
-    # A verified reference/manual scale wins because it is a direct photo
-    # calibration.  AR candidates still cross-check it and can emit warnings.
-    if explicit:
-        chosen = sorted(explicit, key=lambda c: c.confidence, reverse=True)[0]
-        conflicts = []
-        for other in ar_candidates:
-            rel = abs(other.px_to_m - chosen.px_to_m) / max(chosen.px_to_m, other.px_to_m, _EPS)
-            if rel > 0.25:
-                conflicts.append(other.source)
-        if conflicts:
-            notes.append("calibration_crosscheck_conflict:" + ",".join(conflicts))
-        return CalibrationResult(
-            px_to_m=chosen.px_to_m,
-            source=chosen.source,
-            confidence=chosen.confidence * (0.85 if conflicts else 1.0),
-            conflict=bool(conflicts),
-            candidates=candidates,
-            notes=notes,
-        )
-
-    # If both AR height and crown define a scale, they should agree.  If they
-    # disagree strongly, keep the direct AR dimensions but do NOT derive the
-    # remaining metric from a contradictory photo scale.
-    if len(ar_candidates) >= 2:
-        values = [c.px_to_m for c in ar_candidates]
-        spread = (max(values) - min(values)) / max(max(values), _EPS)
-        if spread > 0.20:
-            notes.append(f"ar_scale_conflict:{spread:.3f}")
-            return CalibrationResult(
-                px_to_m=None,
-                source=None,
-                confidence=0.0,
-                conflict=True,
-                candidates=candidates,
-                notes=notes,
-            )
-
-        weights = np.array([max(c.confidence, 0.01) for c in ar_candidates], dtype=float)
-        vals = np.array(values, dtype=float)
-        scale = float(np.average(vals, weights=weights))
-        confidence = min(c.confidence for c in ar_candidates)
-        return CalibrationResult(
-            px_to_m=scale,
-            source="ar_fused_calibration",
-            confidence=confidence,
-            candidates=candidates,
-            notes=notes,
-        )
-
-    chosen = ar_candidates[0]
-    return CalibrationResult(
-        px_to_m=chosen.px_to_m,
-        source=chosen.source,
-        confidence=chosen.confidence,
-        candidates=candidates,
-        notes=notes,
-    )
+        return CalibrationResult(None, None, 0.0, notes=notes + [
+            'explicit_photo_reference_required_ar_is_not_a_photo_scale'])
+    chosen = next((c for c in candidates if c.source == 'reference_object'), candidates[0])
+    return CalibrationResult(chosen.px_to_m, chosen.source, chosen.confidence,
+                             candidates=candidates, notes=notes)
 
 
 def _derived_source(scale_source: Optional[str]) -> str:
@@ -370,7 +288,7 @@ def fuse_measurements(
         else 0.85
     )
 
-    ar_h = _positive(calibration_request.ar_height_m)
+    ar_h = _positive(calibration_request.ar_height_m) if calibration_request.ar_photo_matches else None
     if ar_h is not None:
         height = MeasurementResult(
             value_m=round(ar_h, 3),
@@ -396,7 +314,8 @@ def fuse_measurements(
             notes=("absolute_scale_required_for_metres",),
         )
 
-    ar_c = _positive(calibration_request.ar_crown_width_m)
+    ar_c = _positive(calibration_request.ar_crown_width_m) if calibration_request.ar_photo_matches else None
+    crown_px = _positive(calibration_request.crown_width_px)
     if ar_c is not None:
         crown = MeasurementResult(
             value_m=round(ar_c, 3),
@@ -405,10 +324,10 @@ def fuse_measurements(
             confidence=min(0.86, ar_quality),
             notes=("direct_ar_measurement",),
         )
-    elif calibration.available:
+    elif calibration.available and crown_px is not None:
         crown = MeasurementResult(
-            value_m=round(geometry.crown_width_px * calibration.px_to_m, 3),
-            value_px=geometry.crown_width_px,
+            value_m=round(crown_px * calibration.px_to_m, 3),
+            value_px=crown_px,
             source=_derived_source(calibration.source),
             confidence=_clamp01(min(seg_conf, calibration.confidence) * 0.85),
             notes=("weak_perspective_assumption",),
@@ -419,13 +338,13 @@ def fuse_measurements(
             value_px=geometry.crown_width_px,
             source="vision",
             confidence=seg_conf * 0.9,
-            notes=("absolute_scale_required_for_metres",),
+            notes=("whole_tree_mask_does_not_identify_crown_boundary",),
         )
 
-    ar_t = _positive(calibration_request.ar_trunk_diameter_m)
+    ar_t = _positive(calibration_request.ar_trunk_diameter_m) if calibration_request.ar_photo_matches else None
     ar_t_height = _positive(calibration_request.ar_trunk_measurement_height_m)
     if ar_t is not None:
-        standard = "dbh_1_3m" if ar_t_height is not None and abs(ar_t_height - 1.3) <= 0.08 else None
+        standard = "dbh_1_3m" if ar_t_height is not None and abs(ar_t_height - 1.3) < 1e-9 else None
         notes = ["direct_ar_measurement"]
         if standard is None:
             notes.append("measurement_height_is_not_confirmed_as_dbh_1_3m")
@@ -442,7 +361,7 @@ def fuse_measurements(
         dbh_px = _positive(calibration_request.dbh_width_px)
         dbh_h = _positive(calibration_request.dbh_measurement_height_m)
         if dbh_px is not None and calibration.available:
-            standard = "dbh_1_3m" if dbh_h is not None and abs(dbh_h - 1.3) <= 0.08 else None
+            standard = "dbh_1_3m" if dbh_h is not None and abs(dbh_h - 1.3) < 1e-9 else None
             trunk = MeasurementResult(
                 value_m=round(dbh_px * calibration.px_to_m, 4),
                 value_px=dbh_px,

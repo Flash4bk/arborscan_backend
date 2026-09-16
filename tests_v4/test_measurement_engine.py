@@ -35,7 +35,7 @@ class MeasurementEngineTests(unittest.TestCase):
 
     def test_manual_scale_derives_height_and_crown_but_not_dbh(self):
         geom = compute_pixel_geometry(self.make_mask())
-        req = CalibrationRequest(manual_scale_px_to_m=0.01)
+        req = CalibrationRequest(manual_scale_px_to_m=0.01, crown_width_px=100)
         cal = resolve_calibration(geom, req)
         fused = fuse_measurements(geom, req, cal, 0.9)
         self.assertAlmostEqual(fused.height.value_m, 2.01, places=3)
@@ -43,22 +43,21 @@ class MeasurementEngineTests(unittest.TestCase):
         self.assertIsNone(fused.trunk_diameter.value_m)
         self.assertEqual(fused.status, "partial_measurement")
 
-    def test_ar_height_calibrates_photo_and_keeps_height_direct(self):
+    def test_ar_height_remains_direct_without_inventing_photo_scale(self):
         geom = compute_pixel_geometry(self.make_mask())
-        req = CalibrationRequest(ar_height_m=20.1, ar_quality=0.9)
+        req = CalibrationRequest(ar_height_m=20.1, ar_quality=0.9, ar_photo_matches=True)
         cal = resolve_calibration(geom, req)
-        self.assertTrue(cal.available)
-        self.assertEqual(cal.source, "ar_height_calibration")
+        self.assertFalse(cal.available)
         fused = fuse_measurements(geom, req, cal, 0.92)
         self.assertAlmostEqual(fused.height.value_m, 20.1, places=3)
         self.assertEqual(fused.height.source, "ar")
-        self.assertIsNotNone(fused.crown_width.value_m)
+        self.assertIsNone(fused.crown_width.value_m)
 
     def test_conflicting_ar_scales_do_not_invent_third_measurement(self):
         geom = compute_pixel_geometry(self.make_mask())
-        req = CalibrationRequest(ar_height_m=20.0, ar_crown_width_m=30.0, ar_quality=0.9)
+        req = CalibrationRequest(ar_height_m=20.0, ar_crown_width_m=30.0, ar_quality=0.9, ar_photo_matches=True)
         cal = resolve_calibration(geom, req)
-        self.assertTrue(cal.conflict)
+        self.assertFalse(cal.conflict)
         self.assertFalse(cal.available)
         fused = fuse_measurements(geom, req, cal, 0.9)
         self.assertEqual(fused.height.value_m, 20.0)

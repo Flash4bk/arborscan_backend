@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import math
 from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import uuid4
@@ -19,6 +21,7 @@ from .measurement_engine import (
     resolve_calibration,
 )
 from .plantnet_service import PlantNetClient
+from .measurement_image import decode_oriented_rgb
 from .schema import (
     AnalysisStatus,
     BoundingBox,
@@ -155,6 +158,9 @@ async def analyze_tree_v4(
     ar_trunk_diameter_m: Optional[float] = Form(None),
     ar_trunk_measurement_height_m: Optional[float] = Form(None),
     ar_quality: Optional[float] = Form(None),
+    ar_photo_sha256: Optional[str] = Form(None),
+    ar_same_tree_confirmed: bool = Form(False),
+    crown_width_px: Optional[float] = Form(None),
     manual_scale: Optional[float] = Form(None),
     reference_length_m: Optional[float] = Form(None),
     reference_length_px: Optional[float] = Form(None),
@@ -165,7 +171,7 @@ async def analyze_tree_v4(
     include_images: bool = Form(True),
 ):
     analysis_id = str(uuid4())
-    image_bytes = await file.read()
+    image_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Empty image upload")
     if len(image_bytes) > MAX_UPLOAD_BYTES:
@@ -174,11 +180,28 @@ async def analyze_tree_v4(
             detail=f"Image exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit",
         )
 
-    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    # Bound decoded allocation and normalize EXIF before any pixel coordinates.
+    from PIL import Image, UnidentifiedImageError
+    try:
+        image = cv2.cvtColor(decode_oriented_rgb(image_bytes), cv2.COLOR_RGB2BGR)
+    except ValueError:
+        raise HTTPException(413, 'Image resolution exceeds 25 megapixels') from None
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError):
+        raise HTTPException(400, 'Image cannot be decoded') from None
+    for value in (ar_height_m, ar_crown_width_m, ar_trunk_diameter_m,
+                  ar_trunk_measurement_height_m, manual_scale, reference_length_m,
+                  reference_length_px, dbh_width_px, dbh_measurement_height_m, crown_width_px):
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            raise HTTPException(422, 'Dimensions must be finite and positive')
+    if ar_quality is not None and (not math.isfinite(ar_quality) or not 0 <= ar_quality <= 1):
+        raise HTTPException(422, 'Invalid AR diagnostic weight')
     if image is None:
         raise HTTPException(status_code=400, detail="Image cannot be decoded")
 
     warnings = []
+    ar_matches = ar_same_tree_confirmed and ar_photo_sha256 == hashlib.sha256(image_bytes).hexdigest()
+    if any(v is not None for v in (ar_height_m, ar_crown_width_m, ar_trunk_diameter_m)) and not ar_matches:
+        warnings.append('ar_not_bound_to_this_photo_direct_dimensions_ignored')
     if camera_distance_m is not None:
         warnings.append(
             "camera_distance_m_not_used_without_calibrated_intrinsics_and_pose"
@@ -242,6 +265,8 @@ async def analyze_tree_v4(
         ar_trunk_diameter_m=ar_trunk_diameter_m,
         ar_trunk_measurement_height_m=ar_trunk_measurement_height_m,
         ar_quality=ar_quality,
+        ar_photo_matches=ar_matches,
+        crown_width_px=crown_width_px,
         manual_scale_px_to_m=manual_scale,
         reference_length_m=reference_length_m,
         reference_length_px=reference_length_px,

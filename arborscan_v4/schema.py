@@ -113,6 +113,7 @@ class MeasurementsInfo(BaseModel):
 
 
 class QualityInfo(BaseModel):
+    interpretation: str = 'engineering_heuristic_not_metrological_accuracy'
     overall: float
     status: str
     segmentation: float
@@ -134,6 +135,10 @@ class ImagePayload(BaseModel):
 
 
 class UnifiedAnalysisResponse(BaseModel):
+    measurement_method_version: int = 1
+    beta: dict = Field(default_factory=lambda: {
+        'value_kg_s': None, 'method': None, 'available': False,
+        'reason': 'dynamic_experiment_and_validated_forward_model_required'})
     analysis_id: str
     api_version: str
     schema_version: str
