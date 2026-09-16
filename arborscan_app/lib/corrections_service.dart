@@ -9,7 +9,8 @@ import 'api_config.dart';
 
 class CorrectionException implements Exception {
   final String message;
-  const CorrectionException(this.message);
+  final int? statusCode;
+  const CorrectionException(this.message, {this.statusCode});
   @override
   String toString() => message;
 }
@@ -51,10 +52,18 @@ class CorrectionsService {
         throw const CorrectionException('Сессия изменилась. Откройте экран заново.');
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
-        throw const CorrectionException('Нет доступа. Войдите в профиль снова.');
+        throw CorrectionException('Нет доступа. Войдите в профиль снова.', statusCode: response.statusCode);
+      }
+      if (response.statusCode == 409) {
+        throw const CorrectionException('Ревизия уже изменилась. Откройте актуальную запись; ваш черновик сохранён.', statusCode: 409);
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw CorrectionException('Ошибка сервера (${response.statusCode}). Повторите попытку.');
+        if ((request.url.path.contains('/workflow') || request.url.path.endsWith('/submit')) &&
+            [404,405,503].contains(response.statusCode)) {
+          throw CorrectionException('Ревизии и модерация пока недоступны на сервере. Обычное сохранение PNG остаётся доступно.',
+            statusCode:response.statusCode);
+        }
+        throw CorrectionException('Ошибка сервера (${response.statusCode}). Повторите попытку.', statusCode: response.statusCode);
       }
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       if (data is! Map<String, dynamic>) throw const FormatException();
@@ -71,6 +80,64 @@ class CorrectionsService {
   }
 
   Uri _uri([String suffix = '']) => ApiConfig.v4('/v4/corrections$suffix');
+
+  Future<bool> workflowAvailable(String token) async {
+    try {
+      final data = await _send(http.Request('GET', _uri('/workflow/capabilities')), token);
+      return data['workflow_version'] == 1;
+    } on CorrectionException catch (e) {
+      if (e.statusCode == 404 || e.statusCode == 405 || e.statusCode == 503) return false;
+      rethrow;
+    }
+  }
+
+  Future<String> owner(String token) async {
+    await checkSession(token);
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('arborscan_user_id');
+    if (cached != null && cached.isNotEmpty) return cached;
+    final data = await _send(http.Request('GET', ApiConfig.v3('/auth/me')), token);
+    final id = (data['user'] as Map?)?['id'];
+    if (id is! String || !RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)) {
+      throw const CorrectionException('Войдите снова, чтобы сохранить личный черновик.');
+    }
+    await checkSession(token);
+    await prefs.setString('arborscan_user_id', id);
+    return id;
+  }
+
+  Future<Map<String, dynamic>> saveRevision({required String token, required String analysisId,
+    required Uint8List image, required Uint8List mask, required Map<String, dynamic> editorState,
+    String? parentId}) async {
+    final request = http.MultipartRequest('POST', _uri('/workflow'))
+      ..fields['analysis_id'] = analysisId
+      ..fields['editor_state'] = jsonEncode(editorState)
+      ..files.add(http.MultipartFile.fromBytes('image', image, filename: 'original.jpg'))
+      ..files.add(http.MultipartFile.fromBytes('mask', mask, filename: 'mask.png'));
+    if (parentId != null) request.fields['parent_id'] = parentId;
+    final data = await _send(request, token);
+    if (data['saved'] != true || data['workflow_version'] != 1 || data['correction_id'] is! String) {
+      throw const CorrectionException('Сервер не подтвердил сохранение ревизии. Черновик сохранён.');
+    }
+    return data;
+  }
+
+  Future<Map<String, dynamic>> record(String token, String id, {String? ownerId}) =>
+    _send(http.Request('GET', _uri(ownerId == null ? '/${Uri.encodeComponent(id)}'
+      : '/workflow/review/${Uri.encodeComponent(ownerId)}/${Uri.encodeComponent(id)}')), token);
+
+  Future<Map<String, dynamic>> submit(String token, String id) =>
+    _send(http.Request('POST', _uri('/${Uri.encodeComponent(id)}/submit')), token);
+
+  Future<Map<String, dynamic>> queue(String token, int offset) =>
+    _send(http.Request('GET', _uri('/workflow/queue').replace(queryParameters: {'offset':'$offset'})), token);
+
+  Future<void> decide(String token, String ownerId, String id, String decision, String reason) async {
+    final request = http.Request('POST', _uri('/workflow/review/${Uri.encodeComponent(ownerId)}/${Uri.encodeComponent(id)}'))
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({'decision':decision, 'reason':reason});
+    await _send(request, token);
+  }
 
   Future<void> save({required String token, required String analysisId,
     required Uint8List image, required Uint8List mask}) async {

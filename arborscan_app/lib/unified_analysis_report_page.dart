@@ -1,11 +1,10 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 import 'corrections_service.dart';
-import 'mask_drawing_page.dart';
+import 'contour_workspace_page.dart';
 import 'unified_analysis_models.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
@@ -27,100 +26,15 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
 class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   UnifiedAnalysisResult get result => widget.result;
   Uint8List? get fallbackImageBytes => widget.fallbackImageBytes;
-  Uint8List? _draftMask;
-  List<Offset>? _draftPoints;
   bool _editing = false;
-  bool _saving = false;
-  bool _saved = false;
-  String? _saveError;
-  late final Future<String> _session;
-  late final _corrections = widget.correctionsService ?? CorrectionsService();
-
-  @override
-  void initState() {
-    super.initState();
-    _session = CorrectionsService.currentToken();
-    CorrectionsService.authChanges.addListener(_authChanged);
-  }
-
-  void _authChanged() {
-    if (mounted) setState(() { _saved = false; });
-  }
-
-  @override
-  void dispose() {
-    CorrectionsService.authChanges.removeListener(_authChanged);
-    super.dispose();
-  }
-
-  Future<void> _saveContour() async {
-    if (_saving || _editing || _draftMask == null || _saved) return;
-    setState(() { _saving = true; _saveError = null; });
-    try {
-      await _corrections.save(token: await _session,
-        analysisId: result.analysisId, image: fallbackImageBytes!, mask: _draftMask!);
-      if (mounted) setState(() => _saved = true);
-    } catch (e) {
-      if (mounted) setState(() => _saveError = '$e Черновик остаётся на экране.');
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
   Future<void> _editContour() async {
-    final original = fallbackImageBytes;
-    if (original == null || original.isEmpty || _editing || _saving) return;
+    if (fallbackImageBytes == null || fallbackImageBytes!.isEmpty || _editing) return;
     setState(() => _editing = true);
     try {
-      final edited = await Navigator.of(context).push<Map<String, dynamic>>(
-        MaterialPageRoute(builder: (_) => MaskDrawingPage(
-          originalImageBase64: base64Encode(original),
-          aiMaskBase64: result.maskImageBytes == null ? null : base64Encode(result.maskImageBytes!),
-          initialMaskBase64: _draftMask == null ? null : base64Encode(_draftMask!),
-          initialPoints: _draftPoints,
-        )),
-      );
-      if (!mounted || edited == null) return;
-      final encoded = edited['mask_png_base64'];
-      final rawPoints = edited['points'];
-      if (encoded is! String || rawPoints is! List || edited['closed'] != true) {
-        throw const FormatException('Редактор вернул неполный контур');
-      }
-      final bytes = base64Decode(encoded);
-      final points = rawPoints.map((entry) {
-        if (entry is! Map || entry['x'] is! num || entry['y'] is! num) {
-          throw const FormatException('Некорректные координаты контура');
-        }
-        final x = (entry['x'] as num).toDouble();
-        final y = (entry['y'] as num).toDouble();
-        if (!x.isFinite || !y.isFinite || x < 0 || x > 1 || y < 0 || y > 1) {
-          throw const FormatException('Точки выходят за границы фотографии');
-        }
-        return Offset(x, y);
-      }).toList();
-      if (bytes.isEmpty || points.length < 3) {
-        throw const FormatException('Пустая маска или недостаточно точек');
-      }
-      setState(() { _draftMask = bytes; _draftPoints = points; _saved = false; _saveError = null; });
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось открыть или принять контур: $e')));
-    } finally {
-      if (mounted) setState(() => _editing = false);
-    }
-  }
-
-  Future<bool> _confirmLeave() async {
-    if (_saving) return false;
-    if (_draftMask == null || _saved) return true;
-    return await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Закрыть черновик контура?'),
-      content: const Text('Контур ещё не отправлен на сервер. При выходе из этого результата черновик будет потерян.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Остаться')),
-        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Выйти')),
-      ],
-    )) ?? false;
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) =>
+        ContourWorkspacePage(analysisId:result.analysisId, image:fallbackImageBytes,
+          aiMask:result.maskImageBytes, service:widget.correctionsService)));
+    } finally { if (mounted) setState(() => _editing = false); }
   }
 
   @override
@@ -129,7 +43,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
     final status = _statusPresentation(result.status);
 
     return WillPopScope(
-      onWillPop: _confirmLeave,
+      onWillPop: () async => true,
       child: Scaffold(
       appBar: AppBar(title: const Text('Результат сканирования')),
       body: SafeArea(
@@ -151,10 +65,10 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
               const SizedBox(height: 14),
             ],
             OutlinedButton.icon(
-              onPressed: fallbackImageBytes == null || fallbackImageBytes!.isEmpty || _editing || _saving
+              onPressed: fallbackImageBytes == null || fallbackImageBytes!.isEmpty
                   ? null : _editContour,
               icon: const Icon(Icons.edit_outlined),
-              label: Text(_draftMask == null ? 'Исправить контур' : 'Продолжить правку контура'),
+              label: const Text('Исправить контур'),
             ),
             const SizedBox(height: 8),
             Text(
@@ -163,27 +77,6 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                   : 'Сохраните исправленный контур отдельной кнопкой. Исходные измерения не пересчитываются.',
               style: const TextStyle(color: AppTheme.muted, fontSize: 13),
             ),
-            if (_draftMask != null) ...[
-              FilledButton.icon(
-                onPressed: _saving || _editing || _saved ? null : _saveContour,
-                icon: Icon(_saved ? Icons.check : Icons.cloud_upload_outlined),
-                label: Text(_saving ? 'Сохранение…' : _saved ? 'Сохранено' : 'Сохранить контур'),
-              ),
-              if (_saveError != null) Text(_saveError!, style: const TextStyle(color: AppTheme.danger)),
-            ],
-            if (_draftPoints != null && fallbackImageBytes != null) ...[
-              const SizedBox(height: 12),
-              const Text('Ваш черновик контура', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Stack(children: [
-                Image.memory(fallbackImageBytes!, fit: BoxFit.contain),
-                Positioned.fill(child: IgnorePointer(child: CustomPaint(
-                  painter: _DraftContourPainter(_draftPoints!),
-                ))),
-              ]),
-              const Text('Ниже показан исходный результат сервера.',
-                  style: TextStyle(color: AppTheme.muted, fontSize: 13)),
-            ],
             const SizedBox(height: 14),
             _StatusCard(
               title: status.$1,
@@ -892,23 +785,4 @@ String _warningLabel(String code) {
     default:
       return code.replaceAll('_', ' ');
   }
-}
-
-class _DraftContourPainter extends CustomPainter {
-  final List<Offset> points;
-  _DraftContourPainter(List<Offset> points) : points = List<Offset>.unmodifiable(points);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 3) return;
-    final path = Path()..moveTo(points.first.dx * size.width, points.first.dy * size.height);
-    for (final point in points.skip(1)) {
-      path.lineTo(point.dx * size.width, point.dy * size.height);
-    }
-    path.close();
-    canvas.drawPath(path, Paint()..color = Colors.orange..style = PaintingStyle.stroke..strokeWidth = 2);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DraftContourPainter oldDelegate) => oldDelegate.points != points;
 }

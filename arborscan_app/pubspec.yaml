@@ -13,6 +13,9 @@ dependencies:
   http: ^1.2.0
   image_picker: ^1.0.7
   shared_preferences: ^2.2.2
+  path_provider: ^2.1.5
+  # Keep the existing Android NDK; 2.3.x introduces JNI/NDK 28 requirements.
+  path_provider_android: '>=2.2.5 <2.3.0'
   url_launcher: ^6.3.2
   lottie: ^2.6.0
   google_maps_flutter: ^2.6.0

@@ -11,7 +11,7 @@ import 'package:arborscan_app/api_config.dart';
 import 'package:arborscan_app/saved_corrections_page.dart';
 import 'package:arborscan_app/unified_analysis_report_page.dart';
 import 'package:arborscan_app/unified_analysis_models.dart';
-import 'package:arborscan_app/mask_drawing_page.dart';
+import 'package:arborscan_app/contour_workspace_page.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -107,44 +107,21 @@ void main() {
     expect(find.textContaining('Сессия изменилась'), findsOneWidget);
   });
 
-  testWidgets('report keeps draft on failure, blocks duplicate send and confirms only saved true', (tester) async {
-    final response = Completer<http.Response>();
-    var attempts = 0;
-    final service = CorrectionsService(clientFactory: () => MockClient((_) async {
-      attempts++;
-      if (attempts == 1) return response.future;
-      return http.Response('{"saved":true}', 200);
-    }));
+  testWidgets('report opens contour workspace without changing measurements', (tester) async {
     final original = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=');
     final result = UnifiedAnalysisResult.fromJson({'analysis_id': 'id',
       'measurements': {'height': {'value_m': 12.5}}});
+    final service = CorrectionsService(clientFactory: () => MockClient((_) async => http.Response('{}',200)));
     await tester.pumpWidget(MaterialApp(home: UnifiedAnalysisReportPage(
-      result: result, fallbackImageBytes: original, correctionsService: service)));
+      result: result, fallbackImageBytes: original, correctionsService:service)));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Исправить контур'), 200);
     await tester.tap(find.text('Исправить контур'));
-    // Return the editor contract without waiting for the native image codec
-    // (the editor itself is outside this save-flow test).
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    final editor = tester.element(find.byType(MaskDrawingPage));
-    Navigator.of(editor).pop({'mask_png_base64': base64Encode(original),
-      'points': [{'x': 0.1, 'y': 0.1}, {'x': 0.8, 'y': 0.1}, {'x': 0.5, 'y': 0.9}], 'closed': true});
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Сохранить контур'));
-    await tester.tap(find.text('Сохранить контур'));
-    await tester.pump();
-    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Сохранение…')).onPressed, isNull);
-    response.complete(http.Response('{"saved":false}', 200));
-    await tester.pumpAndSettle();
-    expect(find.text('Сохранено'), findsNothing);
-    expect(find.textContaining('Черновик остаётся'), findsOneWidget);
-    await tester.tap(find.text('Сохранить контур'));
-    await tester.pumpAndSettle();
-    expect(find.text('Сохранено'), findsOneWidget);
-    expect(attempts, 2);
+    expect(find.byType(ContourWorkspacePage), findsOneWidget);
     expect(result.height.valueM, 12.5);
   });
+
 }
 
 class _MultipartClient extends http.BaseClient {

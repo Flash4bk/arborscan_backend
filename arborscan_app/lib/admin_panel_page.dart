@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'admin_service.dart';
 import 'training_dataset_page.dart';
+import 'saved_corrections_page.dart';
 
 class AdminPanelPage extends StatefulWidget {
   final String baseUrl;
@@ -180,6 +181,11 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Panel'),
+        bottom: PreferredSize(preferredSize:const Size.fromHeight(48), child:TextButton.icon(
+          icon:const Icon(Icons.fact_check_outlined), label:const Text('Проверка контуров'),
+          onPressed:_accessDenied ? null : () => Navigator.of(context).push(MaterialPageRoute(
+            builder:(_) => const SavedCorrectionsPage(adminQueue:true))),
+        )),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -4,12 +4,17 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'contour_editor_state.dart';
+import 'corrections_service.dart';
 
 class MaskDrawingPage extends StatefulWidget {
   final String? originalImageBase64;
   final String? initialMaskBase64;
   final String? aiMaskBase64;
   final List<Offset>? initialPoints;
+  final ContourEditorState? editorState;
+  final ValueChanged<Map<String, dynamic>>? onDraftChanged;
+  final String? sessionToken;
 
   const MaskDrawingPage({
     Key? key,
@@ -17,6 +22,9 @@ class MaskDrawingPage extends StatefulWidget {
     this.initialMaskBase64,
     this.aiMaskBase64,
     this.initialPoints,
+    this.editorState,
+    this.onDraftChanged,
+    this.sessionToken,
   }) : super(key: key);
 
   @override
@@ -38,6 +46,21 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   bool _finishing = false;
   Size? _drawSize;
   bool _initialPointsApplied = false;
+  bool _sessionInvalid = false;
+
+  void _invalidateSession() {
+    if (widget.sessionToken != null && mounted) setState(() => _sessionInvalid = true);
+  }
+
+  Map<String, dynamic> _editorSnapshot() => ContourEditorState(
+    width: _imageSize!.width.toInt(), height: _imageSize!.height.toInt(),
+    closed: _closed, points: _points.map((p) => Offset(
+      p.dx / _drawSize!.width, p.dy / _drawSize!.height)).toList()).toJson();
+
+  void _notifyDraft() {
+    if (_sessionInvalid) return;
+    if (_imageSize != null && _drawSize != null) widget.onDraftChanged?.call(_editorSnapshot());
+  }
 
   void _setFinishing(bool v) {
     if (!mounted) return;
@@ -77,6 +100,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   void _undo() {
     if (_undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty) return;
     setState(() => _restore(_undoHistory.removeLast()));
+    _notifyDraft();
   }
 
   void _setClosed(bool value) {
@@ -85,6 +109,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       _remember(_snapshot());
       _closed = value;
     });
+    _notifyDraft();
   }
 
   Offset _clampToImage(Offset point) => Offset(
@@ -120,6 +145,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       _remember(_snapshot());
       _points.insert(edge! + 1, _clampToImage(projected!));
     });
+    _notifyDraft();
   }
 
   void _cancelDrag() {
@@ -171,6 +197,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   @override
   void initState() {
     super.initState();
+    CorrectionsService.authChanges.addListener(_invalidateSession);
     if (widget.originalImageBase64 == null) {
       throw Exception('originalImageBase64 is required');
     }
@@ -239,6 +266,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   @override
   void dispose() {
+    CorrectionsService.authChanges.removeListener(_invalidateSession);
     _controller.dispose();
     super.dispose();
   }
@@ -474,6 +502,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   Future<void> _saveMaskAndExit() async {
     try {
+      if (_sessionInvalid) return;
+      if (widget.sessionToken != null) await CorrectionsService().checkSession(widget.sessionToken!);
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
 
@@ -514,6 +544,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       }
 
       final result = {
+        "editor_state": _editorSnapshot(),
         "mask_png_base64": base64Encode(bytes.buffer.asUint8List()),
         "points": _points
             .map((p) => {
@@ -579,6 +610,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_sessionInvalid) return const Scaffold(body:Center(child:Text('Сессия изменилась. Закройте редактор.')));
     if (_image == null || _imageSize == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -691,11 +723,15 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
             _drawSize = drawSize;
             if (!_initialPointsApplied) {
               _initialPointsApplied = true;
-              final initial = widget.initialPoints;
-              if (initial != null && initial.length >= 3 && initial.every((p) =>
+              final initial = widget.editorState?.points ?? widget.initialPoints;
+              if (widget.editorState != null && (widget.editorState!.width != _imageSize!.width ||
+                  widget.editorState!.height != _imageSize!.height)) {
+                return const Center(child: Text('Размеры состояния не совпадают с оригиналом. Откройте исходное фото.'));
+              }
+              if (initial != null && initial.every((p) =>
                   p.dx.isFinite && p.dy.isFinite && p.dx >= 0 && p.dx <= 1 && p.dy >= 0 && p.dy <= 1)) {
                 _points.addAll(initial.map((p) => Offset(p.dx * drawSize.width, p.dy * drawSize.height)));
-                _closed = true;
+                _closed = widget.editorState?.closed ?? (initial.length >= 3);
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) setState(() {});
                 });
@@ -748,6 +784,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                             _dragMoved = true;
                             _points[_dragIndex!] = _clampToImage(_toScene(e.localPosition));
                           });
+                          _notifyDraft();
                           return;
                         }
                         if (distance > _tapSlopPx) _tapCandidate = false;
@@ -788,6 +825,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                           _primaryPointer = null;
                           _resetTapState();
                         });
+                        _notifyDraft();
                       },
                       onPointerCancel: (e) {
                         _activePointers.remove(e.pointer);

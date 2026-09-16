@@ -169,6 +169,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _clearInvalidSession(String message) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove('arborscan_user_id');
     await prefs.remove(_expiresAtKey);
     await prefs.setBool(_loggedInKey, false);
     await prefs.setBool(_adminFlagKey, false);
@@ -264,7 +265,9 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setString(_nameKey, name);
     await prefs.setString(_emailKey, email);
     await prefs.setString(_roleKey, role);
+    await prefs.remove('arborscan_user_id');
     await prefs.setString(_tokenKey, token);
+    if (user['id'] is String) await prefs.setString('arborscan_user_id', user['id'] as String);
     await prefs.setString(_expiresAtKey, expiresAt);
     await prefs.setBool(_loggedInKey, true);
     await prefs.setBool(_adminFlagKey, isAdmin);
@@ -387,6 +390,7 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setBool(_adminFlagKey, false);
     await prefs.setString(_roleKey, 'user');
     await prefs.remove(_tokenKey);
+    await prefs.remove('arborscan_user_id');
     await prefs.remove(_expiresAtKey);
 
     if (!mounted) return;
@@ -411,6 +415,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _deleteLocalSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove('arborscan_user_id');
     await prefs.remove(_expiresAtKey);
     await prefs.setBool(_loggedInKey, false);
     await prefs.setBool(_adminFlagKey, false);
