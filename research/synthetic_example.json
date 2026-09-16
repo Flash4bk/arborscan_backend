@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "model": "synthetic-free-element-rk4-v1",
+  "synthetic": true,
+  "units": {
+    "length": "m",
+    "time": "s",
+    "mass": "kg",
+    "beta": "kg/s"
+  },
+  "observations_source": "Independent analytic Newton solution, beta=2 kg/s; not experimental data",
+  "position_standard_uncertainty_m": 0,
+  "time_standard_uncertainty_s": 0,
+  "times_s": [
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0,
+    2.5,
+    3.0
+  ],
+  "positions_m": [
+    [
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    [
+      [
+        0.9063462346100909,
+        -0.6952561807887161
+      ]
+    ],
+    [
+      [
+        1.6483997698218034,
+        -3.4872979376492346
+      ]
+    ],
+    [
+      [
+        2.255941819529868,
+        -7.9960425282500545
+      ]
+    ],
+    [
+      [
+        2.753355179413892,
+        -13.9103045227302
+      ]
+    ],
+    [
+      [
+        3.1606027941427883,
+        -20.97530683975267
+      ]
+    ],
+    [
+      [
+        3.49402894043899,
+        -28.982455647647384
+      ]
+    ]
+  ],
+  "max_step_s": 0.05,
+  "bounds_kg_s": [
+    0,
+    6
+  ],
+  "bounds_reason": "Nonnegative damping; synthetic bracket containing the known fixture coefficient, not a bound for trees",
+  "parameters": {
+    "mass_kg": {
+      "value": 5,
+      "source": "Exact synthetic fixture",
+      "standard_uncertainty": 0
+    },
+    "initial_position_m": {
+      "value": [
+        0,
+        0
+      ],
+      "source": "Exact synthetic fixture",
+      "standard_uncertainty": 0
+    },
+    "initial_velocity_m_s": {
+      "value": [
+        2,
+        1
+      ],
+      "source": "Exact synthetic fixture",
+      "standard_uncertainty": 0
+    },
+    "gravity_m_s2": {
+      "value": [
+        0,
+        -9.81
+      ],
+      "source": "Exact synthetic fixture",
+      "standard_uncertainty": 0
+    }
+  }
+}
