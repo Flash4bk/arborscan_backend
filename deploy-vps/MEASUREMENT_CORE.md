@@ -45,7 +45,8 @@ AR отправляет метры, hash исходных байтов и явн
 - `fb51564`: эталон, локальное восстановление, AR и интерфейс отчёта.
 - `f146cb2`: спецификация β, независимые численные компоненты и синтетика.
 
-**Новая ветка не включена в main и не развёрнута. Production не изменялся.**
+**На момент исходного отчёта ветка не была развёрнута. Обновление от 17 сентября
+зафиксировано ниже; в main ветка по-прежнему не включена.**
 Прежние подтверждения телефона относятся к контурам/модерации, а не к измерениям
 этой ветки. Последний документированный backend на VPS — `5af8dd1`, образ
 `arborscan-api-v4:contour-5af8dd1`; перед будущей выкладкой заново сверить состояние.
@@ -230,9 +231,9 @@ cd /opt/arborscan
 git status -sb
 git rev-parse HEAD
 git fetch origin
-MEAS_COMMIT=f146cb2066c7dd070dc0814bbc9343c9df018e41
+MEAS_COMMIT=7a866db9f69136b026e91bb781ed5f4bf605f80e
 git cat-file -e "$MEAS_COMMIT^{commit}"
-MEAS_TREE=/home/arborscan/measurement-f146cb2
+MEAS_TREE=/home/arborscan/measurement-7a866db
 git worktree add --detach "$MEAS_TREE" "$MEAS_COMMIT"
 MEAS_BACKUP=/home/arborscan/measurement-backup-$(date -u +%Y%m%dT%H%M%SZ)
 mkdir -m 700 "$MEAS_BACKUP"
@@ -252,7 +253,7 @@ tar -tf "$MEAS_BACKUP/runtime.tar" > /dev/null
 sha256sum "$MEAS_BACKUP/runtime.tar" > "$MEAS_BACKUP/runtime.sha256"
 sha256sum -c "$MEAS_BACKUP/runtime.sha256"
 printf 'services:\n  api-v4:\n    image: %s\n' "$RUNNING_IMAGE" > "$MEAS_BACKUP/rollback.yml"
-MEAS_IMAGE=arborscan-api-v4:measurement-f146cb2
+MEAS_IMAGE=arborscan-api-v4:measurement-7a866db
 docker build --build-arg BASE_IMAGE="$RUNNING_IMAGE" \
   --label org.opencontainers.image.revision="$MEAS_COMMIT" \
   -f "$MEAS_TREE/deploy-vps/Dockerfile.v4-contour" -t "$MEAS_IMAGE" "$MEAS_TREE"
@@ -265,10 +266,11 @@ production (test-зависимости только во временном к�
 
 ```bash
 docker run --rm --entrypoint sh \
-  -v "$MEAS_TREE/tests_v4:/checks:ro" \
+  -e PROJECT_ROOT=/tmp/runtime -e MODEL_DIR=/tmp/runtime/models \
+  -v "$MEAS_TREE/tests_v4:/app/tests_v4:ro" \
   -v "$MEAS_TREE/research:/app/research:ro" \
   -v "$MEAS_TREE/tools:/app/tools:ro" "$MEAS_IMAGE" -c \
-  'python -m venv --system-site-packages /tmp/check && /tmp/check/bin/pip install pytest httpx && cd /app && PYTHONPATH=/app /tmp/check/bin/python -m pytest /checks -q'
+  'python -m venv --system-site-packages /tmp/check && /tmp/check/bin/pip install pytest httpx && cd /app && PYTHONPATH=/app:/app/arborscan_v4 /tmp/check/bin/python -m pytest /app/tests_v4 -q -p no:cacheprovider'
 docker run -d --name arborscan-measurement-staging \
   --env-file /etc/arborscan/arborscan.env \
   -e PROJECT_ROOT=/app -e MODEL_DIR=/app/models -e ACTIVE_MODEL_VERSION=4 \
@@ -293,9 +295,9 @@ docker rm arborscan-measurement-staging
 без ar_photo_sha256 прямые AR-размеры null, с правильным хешем и подтверждением
 принимаются, без crown_width_px физическая крона не выдумывается. Синтетический
 пустой снимок проверяет контракт/валидацию, а не качество сегментации. Приведённые
-команды staging в этой задаче не выполнялись.
+команды являются шаблоном; фактически выполненные проверки перечислены ниже.
 
-После этих проверок, свежего snapshot и отдельного разрешения на обновление:
+После проверки резервной копии затрагиваемых компонентов и разрешения на обновление:
 
 ```bash
 printf 'services:\n  api-v4:\n    image: %s\n' "$MEAS_IMAGE" > "$MEAS_BACKUP/candidate.yml"
@@ -322,3 +324,109 @@ curl --fail https://31.57.170.88/api/v4/health
 Откат APK: собрать `22ce545` в отдельном worktree тем же Flutter/debug-ключом,
 установить `adb install -r` без uninstall/clear-data. Локальный журнал эталона
 не удалять: старый клиент его не показывает, новая версия снова прочитает.
+
+## Фактическое развёртывание 2026-09-17
+
+### Выполнено агентом
+
+- Код API и установленного APK: `7a866db9f69136b026e91bb781ed5f4bf605f80e`.
+  Последующий коммит этого отчёта меняет только документацию.
+- Образ: `arborscan-api-v4:measurement-7a866db`;
+  фактический image ID контейнера:
+  `sha256:371a68a1a3cbf915bb9ccb5b49651c6d42f62f798546ae67a7f3b53238c21a60`.
+  OCI revision сверена с коммитом; контейнер `arborscan-api-v4` healthy.
+- До обновления `/opt/arborscan` был чистым на
+  `5d8176a22fddd6634c266a1ed09f1845019065c5`; checkout не перезаписывался.
+  Сборка выполнена из отдельного detached worktree
+  `/home/arborscan/measurement-7a866db` поверх прежнего runtime.
+- Резервная копия `/home/arborscan/measurement-backup-20260916-review`:
+  прежний runtime.tar, конфигурация окружения, обе compose-конфигурации,
+  приватный inspect контейнера, Git-состояние, candidate.yml и rollback.yml.
+  Архив читается; SHA256SUMS для пяти сохранённых файлов повторно проверены: OK.
+  Содержимое окружения не публиковалось. Новая копия SQL/storage не создавалась:
+  миграций и изменения данных контуров этот пакет не требует и не выполняет.
+- Заменён только сервис api-v4 командой compose `up -d --no-build --no-deps`.
+  API v3, HTTPS, модели и данные контуров не изменялись; обучение не запускалось.
+  Временный staging-контейнер после проверок остановлен и удалён.
+- Backend в точном образе Python 3.11: **48 passed, 3 subtests**, два прежних
+  предупреждения FastAPI/Starlette. Локальный облегчённый Python: 45 passed,
+  один пропуск API-модуля из-за отсутствия ultralytics, 3 subtests; в образе
+  этот модуль выполнен. Контрактные тесты используют детерминированную маску.
+- Flutter: **35 passed**. Полный сценарий widget-теста проходит редактор,
+  разметку, вычисление, запись, пересоздание экрана и пересчёт: 1 м = 100 см;
+  изменение эталона на 200 см удваивает результат. Проверяются EXIF и отказ
+  при несоответствии сохранённых размеров оригиналу.
+- `flutter analyze`: 0 ошибок, 7 прежних warnings и 99 info, всего 106;
+  exit 1 из-за имеющихся замечаний. Новых замечаний в итоговой проверке нет.
+  Debug APK собран без dart-define. Docker сообщил существующее предупреждение
+  InvalidDefaultArgInFrom; BASE_IMAGE был явно задан.
+- Staging с настоящей моделью: синтетический EXIF-6 снимок декодирован как
+  100×200, tree_not_detected, method_version=1, β=null; NaN отклонён с 422,
+  запрос контуров без токена — 401. Это проверка контракта, не точности дерева.
+- После обновления оба публичных HTTPS health вернули ok со штатной проверкой
+  TLS. Без авторизации corrections, capabilities и queue вернули 401.
+  Публичный multipart-анализ синтетического снимка вернул 100×200,
+  measurement_method_version=1, tree_not_detected, persisted:false, β=null.
+  Startup-логи подтвердили успешный запуск; ERROR/Traceback не обнаружены.
+  Проверки записи пользовательских данных не выполнялись.
+- APK установлен на S24 Ultra (SM-S928B) через `adb install --no-streaming -r`:
+  **Success**, без удаления приложения или очистки данных.
+  Файл: `arborscan_app/build/app/outputs/flutter-apk/app-debug.apk`.
+  SHA256: `5ec2e604385fcffe7558f7ff9c1a24cb02698fd3d7bb108c7eee2409a979e9ee`.
+  Автоматическая проверка разрешений отклонила объединённую команду запуска
+  приложения с причиной «blocked by policy»; запуск не повторялся обходным
+  способом. Пользователю предложено открыть приложение с иконки.
+
+### Проверки пользователя — частично подтверждены
+
+Предыдущие подтверждения контуров/модерации относятся к прежней версии.
+Для измерительного APK пользователь прислал два скриншота: при эталоне 1 м
+показаны высота 19,59 м, ширина кроны 3,51 м и сообщение «Сохранено на этом
+устройстве». Подтверждены отображение расчёта и сообщение локального сохранения.
+Соответствие метрового эталона выбранному отрезку, независимые контрольные
+размеры, эквивалентность 100 см, восстановление после остановки и AR пока
+не подтверждены. Запрошено уточнение эталона и результатов этих действий.
+Точность по скриншотам не установлена; полный сценарий ещё не завершён.
+
+1. Известный объект: эталон 1 м и независимо измеренный контрольный размер
+   в той же плоскости. Разметить соответствующие основание/верх, дерево и крону.
+2. Сравнить 1 м и 100 см; проверить точки после увеличения фото.
+3. Сохранить отчёт на устройстве, принудительно остановить приложение через
+   настройки Android, открыть историю по значку линейки и проверить пересчёт.
+4. AR: несколько повторов с независимо измеренными размерами, записью
+   дистанции, освещения, ветра, условий отслеживания и всех результатов.
+5. Сохранить контур, отправить на проверку и проверить решение администратора.
+
+### Точный откат API
+
+Прежний код: `5af8dd1435db289007afaa39368018f35c7ce8d4`, образ
+`arborscan-api-v4:contour-5af8dd1`, ID
+`sha256:09a5719dc38204f90fd3806c51500e8c923ad88dbf04b41420cedc104bc98022`.
+Rollback-файл ссылается на этот ID. Миграций нет, откат схемы не нужен.
+Следующая команда подготовлена, **откат не выполнялся**:
+
+```bash
+ssh arborscan@31.57.170.88
+set -eu
+b=/home/arborscan/measurement-backup-20260916-review
+(cd "$b" && sha256sum -c SHA256SUMS)
+docker image inspect sha256:09a5719dc38204f90fd3806c51500e8c923ad88dbf04b41420cedc104bc98022 >/dev/null || docker image load -i "$b/runtime.tar"
+docker compose -p arborscan-v4 \
+  -f /home/arborscan/contour-5af8dd1/deploy-vps/docker-compose.v4.yml \
+  -f /home/arborscan/contour-backup-20260916/candidate.yml \
+  -f "$b/rollback.yml" up -d --no-build --no-deps api-v4
+curl --fail https://31.57.170.88/api/v4/health
+```
+
+### Оставшиеся препятствия для β
+
+Точные источники, отсутствующие уравнения/граничные условия и формат набора
+описаны в `research/BETA_SPEC.md`. Нужны полные первоисточники модели стержня
+(2012) и динамики падения (2018), согласованная связанная система с начальными
+и граничными условиями, распределения масс/инерций и E, калиброванные временные
+траектории элементов и независимые геометрические/экспериментальные данные.
+Необходимо разрешить расхождение масс 34.0/33.4 кг в proof и проверить
+идентифицируемость/неопределённость. CSV/JSON-пакет является спецификацией,
+не реализованным импортёром. Имеющийся свободный элемент RK4 и подбор β на
+синтетике не заменяют связанный решатель дерева и экспериментальную проверку.
+β по породе не подставляется; приложение и API не выдают рассчитанный β.
