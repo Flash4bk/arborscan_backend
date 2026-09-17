@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -135,6 +136,9 @@ class ImagePayload(BaseModel):
 
 
 class UnifiedAnalysisResponse(BaseModel):
+    captured_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    algorithm_versions: dict = Field(default_factory=lambda: {'measurement':1,'image_coordinates':'exif_oriented_v1'})
+    segmentation_model_version: Optional[int] = None
     measurement_method_version: int = 1
     beta: dict = Field(default_factory=lambda: {
         'value_kg_s': None, 'method': None, 'available': False,

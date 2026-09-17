@@ -218,6 +218,7 @@ async def analyze_tree_v4(
             reason="species_not_identified",
         )
         return UnifiedAnalysisResponse(
+            segmentation_model_version=vision.health().get('version'),
             analysis_id=analysis_id,
             api_version=API_VERSION,
             schema_version=SCHEMA_VERSION,
@@ -317,6 +318,7 @@ async def analyze_tree_v4(
     )
 
     return UnifiedAnalysisResponse(
+        segmentation_model_version=vision.health().get('version'),
         analysis_id=analysis_id,
         api_version=API_VERSION,
         schema_version=SCHEMA_VERSION,
@@ -393,3 +395,5 @@ async def analyze_tree_v4(
 # Private contour submissions, isolated from verified training data.
 from .corrections_api import router as corrections_router
 app.include_router(corrections_router)
+from .report_history import router as reports_router
+app.include_router(reports_router)
