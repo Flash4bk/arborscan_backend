@@ -147,7 +147,7 @@ class ReportStore(WorkflowStore):
         self.ready()
         digest=self.write_blob(owner,payload)
         report=payload['report']; species=report.get('species')
-        if isinstance(species,dict): species=species.get('common_name') or species.get('scientific_name')
+        if isinstance(species,dict): species=species.get('display_name') or species.get('scientific_name')
         summary={'kind':payload['kind'],'species':species or 'Вид не определён',
                  'height_m':report.get('height_m') or (report.get('measurements',{}).get('height') or {}).get('value_m'),
                  'captured_at':payload['captured_at']}
