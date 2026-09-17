@@ -6,17 +6,20 @@ import 'app_theme.dart';
 import 'corrections_service.dart';
 import 'contour_workspace_page.dart';
 import 'unified_analysis_models.dart';
+import 'report_history_service.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
   final UnifiedAnalysisResult result;
   final Uint8List? fallbackImageBytes;
   final CorrectionsService? correctionsService;
+  final bool allowServerSave;
 
   const UnifiedAnalysisReportPage({
     super.key,
     required this.result,
     this.fallbackImageBytes,
     this.correctionsService,
+    this.allowServerSave = true,
   });
 
   @override
@@ -27,6 +30,43 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   UnifiedAnalysisResult get result => widget.result;
   Uint8List? get fallbackImageBytes => widget.fallbackImageBytes;
   bool _editing = false;
+  final _history = ReportHistoryService();
+  String? _reportToken, _saveMessage;
+  bool _savingReport = false, _invalidSession = false;
+  @override
+  void initState() {
+    super.initState();
+    CorrectionsService.authChanges.addListener(_invalidateSession);
+    if(widget.allowServerSave && fallbackImageBytes!=null) _stageReport();
+  }
+  void _invalidateSession(){if(mounted)setState(()=>_invalidSession=true);}
+  @override
+  void dispose(){CorrectionsService.authChanges.removeListener(_invalidateSession);super.dispose();}
+  Future<void> _stageReport() async {
+    _savingReport = true;
+    try {
+      _reportToken = await CorrectionsService.currentToken();
+      if (_invalidSession) return;
+      final raw = result.raw;
+      await _history.stage(token:_reportToken!,localId:result.analysisId,
+        analysisId:result.analysisId,image:fallbackImageBytes!,snapshot:{
+          'version':1,'kind':'v4','report':raw,'reference':null,
+          'ar':raw['ar_provenance'],'environment':raw['environment_snapshot'],
+          'captured_at':raw['captured_at'] ?? DateTime.now().toUtc().toIso8601String(),
+          'change_source':'analysis'});
+      if(mounted&&!_invalidSession)setState(()=>_saveMessage='Полный отчёт сохранён на устройстве.');
+    } catch(e) {if(mounted)setState(()=>_saveMessage='$e');}
+    finally {if(mounted)setState(()=>_savingReport=false);}
+  }
+  Future<void> _saveReport() async {
+    if(_savingReport||_invalidSession)return;
+    setState(()=>_savingReport=true);
+    try {
+      await _history.upload(_reportToken??'',result.analysisId);
+      if(mounted&&!_invalidSession)setState(()=>_saveMessage='Сохранено в аккаунте');
+    }catch(e){if(mounted)setState(()=>_saveMessage='$e');}
+    finally{if(mounted)setState(()=>_savingReport=false);}
+  }
   Future<void> _editContour() async {
     if (fallbackImageBytes == null || fallbackImageBytes!.isEmpty || _editing) return;
     setState(() => _editing = true);
@@ -39,6 +79,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
 
   @override
   Widget build(BuildContext context) {
+    if(_invalidSession)return const Scaffold(body:Center(child:Text('Аккаунт изменился. Откройте свой отчёт заново.')));
     final displayImage = result.annotatedImageBytes ?? fallbackImageBytes;
     final status = _statusPresentation(result.status);
 
@@ -50,6 +91,11 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
+            if(widget.allowServerSave && fallbackImageBytes!=null)...[
+              FilledButton(onPressed:_savingReport?null:_saveReport,
+                child:Text(_savingReport?'Сохранение…':'Сохранить отчёт в аккаунте')),
+              if(_saveMessage!=null)Text(_saveMessage!),
+            ],
             if (displayImage != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(18),

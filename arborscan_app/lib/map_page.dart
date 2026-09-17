@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_theme.dart';
+import 'corrections_service.dart';
 import 'location_service.dart';
 import 'api_config.dart'; // Подключаем наш конфиг
 
@@ -72,15 +73,19 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
+    CorrectionsService.authChanges.addListener(_authChanged);
     _pendingFocus = widget.initialFocus;
     _load();
   }
 
   @override
   void dispose() {
+    CorrectionsService.authChanges.removeListener(_authChanged);
     _mapController?.dispose();
     super.dispose();
   }
+
+  void _authChanged(){setState((){_items=[];_selected=null;});_load();}
 
   Future<void> _safeRefresh() async {
     try {
@@ -103,12 +108,16 @@ class _MapPageState extends State<MapPage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      final token=prefs.getString(_authTokenKey)??'';
+      final owner=prefs.getString('arborscan_user_id');
+      final generation=CorrectionsService.authChanges.value;
       final list = prefs.getStringList(_historyKey) ?? const [];
 
       final parsed = <_HistoryItem>[];
       for (final s in list) {
         try {
           final m = jsonDecode(s) as Map<String, dynamic>;
+          if(token.isEmpty||owner==null||m['owner_id']!=owner)continue;
           parsed.add(_HistoryItem.fromJson(m));
         } catch (_) {
           // ignore broken record
@@ -116,6 +125,7 @@ class _MapPageState extends State<MapPage> {
       }
 
       final serverItems = await _loadServerHistoryItems();
+      if(generation!=CorrectionsService.authChanges.value || await CorrectionsService.currentToken()!=token)return;
       final byId = <String, _HistoryItem>{
         for (final item in parsed)
           if (item.analysisId.isNotEmpty) item.analysisId: item

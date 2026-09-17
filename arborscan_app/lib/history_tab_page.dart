@@ -8,6 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme.dart';
 import 'saved_corrections_page.dart';
 import 'reference_measurement_page.dart';
+import 'server_report_page.dart';
+import 'corrections_service.dart';
+import 'report_history_service.dart';
 import 'map_page.dart';
 import 'api_config.dart';
 import 'analysis_report_page.dart'; // Нужно для перехода в отчет
@@ -37,15 +40,19 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
   @override
   void initState() {
     super.initState();
+    CorrectionsService.authChanges.addListener(_authChanged);
     _load();
     _searchCtrl.addListener(_applyFilters);
   }
 
   @override
   void dispose() {
+    CorrectionsService.authChanges.removeListener(_authChanged);
     _searchCtrl.dispose();
     super.dispose();
   }
+
+  void _authChanged() {setState((){_all=[];_filtered=[];});_load();}
 
   Future<void> _load() async {
     setState(() {
@@ -55,16 +62,36 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey) ?? '';
+      final owner = prefs.getString('arborscan_user_id');
+      final generation = CorrectionsService.authChanges.value;
       final list = prefs.getStringList(_historyKey) ?? const [];
 
       final items = <_HistoryItem>[];
       for (final s in list) {
         try {
           final m = jsonDecode(s) as Map<String, dynamic>;
+          if(token.isEmpty || owner==null || m['owner_id']!=owner)continue;
           items.add(_HistoryItem.fromJson(m));
         } catch (_) {}
       }
 
+      if(token.isNotEmpty) {
+        try {
+          final r=await http.get(ApiConfig.v3('/analyses/my'),headers:{'Authorization':'Bearer $token'}).timeout(const Duration(seconds:15));
+          if(r.statusCode==200) {
+            final rows=jsonDecode(utf8.decode(r.bodyBytes))['items'] as List;
+            for(final row in rows) {
+              if(items.any((i)=>i.analysisId==row['analysis_id']))continue;
+              items.add(_HistoryItem.fromJson({'analysisId':row['analysis_id'],'species':row['species'],
+                'timestamp':row['created_at'],'height':row['height_m'],'crown':row['crown_width_m'],
+                'trunk':row['trunk_diameter_m'],'lat':row['lat'],'lon':row['lon'],'address':row['address'],
+                'riskIndex':row['risk_index'],'riskCategory':row['risk_category']}));
+            }
+          }
+        } catch (_) { /* Owned local records remain available offline. */ }
+      }
+      if(generation!=CorrectionsService.authChanges.value || await CorrectionsService.currentToken()!=token)return;
       items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
       if (!mounted) return;
@@ -111,7 +138,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Очистить историю?'),
-        content: const Text('Все записи будут удалены.'),
+        content: const Text('Будут удалены краткие локальные записи текущего аккаунта. Серверные отчёты и оригиналы останутся.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Очистить')),
@@ -120,7 +147,11 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
     );
     if (ok != true) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_historyKey);
+    final owner=prefs.getString('arborscan_user_id');
+    final kept=(prefs.getStringList(_historyKey)??[]).where((s){
+      try{return owner==null||jsonDecode(s)['owner_id']!=owner;}catch(_){return true;}
+    }).toList();
+    await prefs.setStringList(_historyKey,kept);
     await _load();
   }
 
@@ -146,7 +177,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       try {
         final m = jsonDecode(s) as Map<String, dynamic>;
         final other = _HistoryItem.fromJson(m);
-        if (other.uniqueKey != item.uniqueKey) {
+        if (other.uniqueKey != item.uniqueKey || m['owner_id'] != prefs.getString('arborscan_user_id')) {
           newList.add(s);
         }
       } catch (_) {
@@ -162,6 +193,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
   // --- ИСПРАВЛЕНИЕ: СКАЧИВАНИЕ ПОЛНОГО ОТЧЕТА С СЕРВЕРА ---
   Future<void> _openFullReport(_HistoryItem item) async {
+    bool dialogOpen = false;
     if (item.analysisId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Этот анализ не сохранен на сервере.')));
       return;
@@ -173,16 +205,30 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       barrierDismissible: false,
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
     );
+    dialogOpen = true;
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_tokenKey) ?? '';
+      final history=ReportHistoryService();
+      final owner=await history.auth.owner(token);
+      final local=await history.journal.load(owner,item.analysisId);
+      await history.auth.checkSession(token);
+      if(!mounted)return;
+      if(local!=null){
+        Navigator.pop(context);
+        dialogOpen = false;
+        await Navigator.push(context,MaterialPageRoute(builder:(_)=>ServerReportPage(localId:item.analysisId)));
+        return;
+      }
       
       final uri = ApiConfig.v3('/analyses/${Uri.encodeComponent(item.analysisId)}').replace(queryParameters: {'token': token});
       final res = await http.get(uri).timeout(const Duration(seconds: 15));
+      if(await CorrectionsService.currentToken()!=token)return;
       
       if (!mounted) return;
       Navigator.pop(context); // Закрываем крутилку
+      dialogOpen = false;
 
       if (res.statusCode != 200) {
         throw Exception('Не удалось загрузить отчет: ${res.statusCode}');
@@ -192,20 +238,24 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       final analysisRaw = data['analysis'] as Map<String, dynamic>?;
 
       if (analysisRaw != null) {
+        final generation=CorrectionsService.authChanges.value;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => AnalysisReportPageV2.fromRawResult(
+            builder: (_) => ValueListenableBuilder<int>(valueListenable:CorrectionsService.authChanges,
+              builder:(_,value,child)=>value==generation?child!:const Scaffold(body:Center(child:Text('Аккаунт изменился.'))),
+              child:AnalysisReportPageV2.fromRawResult(
               raw: analysisRaw,
               annotatedImageBytes: _tryDecodeImageB64(analysisRaw['annotated_image_base64']),
-            ),
+            )),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Закрываем крутилку
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка загрузки: $e')));
       }
+    } finally {
+      if(mounted && dialogOpen)Navigator.pop(context);
     }
   }
 
@@ -255,8 +305,9 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       ),
       body: _error != null
           ? _ErrorState(message: _error!, onRetry: _load)
-          : Column(
+          : ListView(
               children: [
+                const ServerHistoryPanel(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
                   child: Column(
@@ -333,9 +384,12 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                     ],
                   ),
                 ),
-                Expanded(
+                Padding(
+                  padding: EdgeInsets.zero,
                   child: _filtered.isEmpty
                       ? ListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
                           children: [
                             GlassPanel(
@@ -356,6 +410,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                           ],
                         )
                       : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
                           itemCount: _filtered.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 12),

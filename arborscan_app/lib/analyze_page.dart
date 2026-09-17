@@ -157,13 +157,19 @@ class _ArborScanPageState extends State<ArborScanPage> {
         }
       }
 
+      decoded['captured_at'] ??= DateTime.now().toUtc().toIso8601String();
+      decoded['ar_provenance'] = ar == null ? null : {'photo_sha256':_arPhotoHash,
+        'association':'user_confirmed_same_tree','measurement':ar.raw};
+      if (prefs.getString('arborscan_auth_token') != sessionToken) {
+        throw const FormatException('Аккаунт изменился. Повторите анализ.');
+      }
       final result = UnifiedAnalysisResult.fromJson(
         Map<String, dynamic>.from(decoded),
       );
 
       if (!mounted) return;
       setState(() => _lastResult = result);
-      await _saveHistory(result);
+      await _saveHistory(result, sessionToken);
 
       Uint8List? fallbackBytes;
       try {
@@ -171,6 +177,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       } catch (_) {}
 
       if (!mounted) return;
+      if (prefs.getString('arborscan_auth_token') != sessionToken) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => UnifiedAnalysisReportPage(
@@ -189,12 +196,14 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
-  Future<void> _saveHistory(UnifiedAnalysisResult result) async {
+  Future<void> _saveHistory(UnifiedAnalysisResult result, String? sessionToken) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (sessionToken == null || prefs.getString('arborscan_auth_token') != sessionToken) return;
       final existing = prefs.getStringList(_historyKey) ?? <String>[];
 
       final historyRow = <String, dynamic>{
+        'owner_id':prefs.getString('arborscan_user_id'),
         'species': result.speciesName,
         'height': result.height.valueM,
         'crown': result.crownWidth.valueM,

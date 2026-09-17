@@ -12,6 +12,7 @@ import 'corrections_service.dart';
 import 'image_line_page.dart';
 import 'mask_drawing_page.dart';
 import 'reference_measurement.dart';
+import 'report_history_service.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -66,6 +67,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   String _unit = 'm';
   bool _busy = true, _invalid = false, _plane = false;
   bool _saved = false;
+  String? _serverAnalysisId, _serverParentId, _serverMessage;
+  Map<String, dynamic>? _serverSnapshot;
   Uint8List? _image;
   int _width = 0, _height = 0;
   Map<String, dynamic>? _outline;
@@ -134,6 +137,11 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         _tree = ReferenceMeasurement.decode(d['tree']);
         _crown = ReferenceMeasurement.decode(d['crown']);
         _saved = true;
+        _serverAnalysisId = d['server_analysis_id'];
+        _serverParentId = d['server_parent_id'];
+        _serverSnapshot = d['server_snapshot'] == null
+            ? null
+            : Map<String, dynamic>.from(d['server_snapshot']);
       }
     } catch (e) {
       _image = null;
@@ -151,6 +159,9 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         _id!,
         {
           'version': 1,
+          'server_analysis_id': _serverAnalysisId,
+          'server_parent_id': _serverParentId,
+          'server_snapshot': _serverSnapshot,
           'method': 'known_object_segment_v1',
           'coordinates': 'normalized_oriented_image',
           'width': _width,
@@ -184,6 +195,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     setState(() {
       _busy = true;
       _saved = false;
+      _serverMessage = null;
       _error = null;
     });
     try {
@@ -215,6 +227,55 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     _tree = [];
     _crown = [];
     _plane = false;
+    _serverAnalysisId = null;
+    _serverParentId = null;
+    _serverSnapshot = null;
+    _serverMessage = null;
+  }
+
+  Future<void> _uploadReport() async {
+    final result = _result;
+    if (result == null) return;
+    _serverAnalysisId ??= reportUuid();
+    await _save();
+    final snapshot = <String, dynamic>{
+      'version': 1,
+      'kind': 'reference',
+      'reference': result.toJson(),
+      'report': {
+        ...?_serverSnapshot?['report'],
+        'method': 'known_object_segment_v1',
+        'height_m': result.heightM,
+        'crown_width_m': result.crownM,
+        'dbh_m': null,
+        'beta_kg_s': null
+      },
+      'ar': _serverSnapshot?['ar'],
+      'environment': _serverSnapshot?['environment'],
+      'captured_at': _serverSnapshot?['captured_at'],
+      'change_source': 'reference',
+      if (_serverSnapshot?['correction_id'] != null)
+        'correction_id': _serverSnapshot!['correction_id'],
+    };
+    // Capture time belongs to the measurement, not to each network retry.
+    _serverSnapshot ??= {
+      'captured_at': DateTime.now().toUtc().toIso8601String()
+    };
+    snapshot['captured_at'] = _serverSnapshot!['captured_at'];
+    await _save();
+    final history = ReportHistoryService(auth: _service);
+    await history.stage(
+        token: _token!,
+        localId: _id!,
+        analysisId: _serverAnalysisId!,
+        image: _image!,
+        snapshot: snapshot,
+        parentId: _serverParentId);
+    await _guard();
+    final response = await history.upload(_token!, _id!);
+    await _guard();
+    _serverParentId = response['record']['version_id'];
+    _serverMessage = 'Сохранено в аккаунте';
   }
 
   Future<void> _line(String kind, String title) async {
@@ -325,7 +386,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                   decoration: const InputDecoration(
                       labelText: 'Реальная высота эталона'),
                   onChanged: (_) {
-                    setState(() => _saved = false);
+                    setState(() { _saved = false; _serverMessage = null; });
                     _save().catchError((Object e) {
                       if (mounted) setState(() => _error = '$e');
                     });
@@ -405,12 +466,16 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 FilledButton(
                     onPressed: _busy ? null : () => _run(() async {}),
                     child: const Text('Сохранить отчёт на устройстве')),
+                FilledButton(
+                    onPressed: _busy ? null : () => _run(_uploadReport),
+                    child: const Text('Сохранить в аккаунте / новую версию')),
+                if (_serverMessage != null) Text(_serverMessage!),
                 OutlinedButton(
                     onPressed: () => _run(_export),
                     child: const Text('Экспорт результата и разметки')),
               ],
               const Text(
-                  'Разметка и отчёт хранятся только на этом устройстве, отдельно для вашего аккаунта. Синхронизации с сервером и другим телефоном нет. AR и исходный отчёт не перезаписываются.'),
+                  'Локальная копия остаётся на этом устройстве. После «Сохранить в аккаунте» отчёт доступен в истории на других устройствах. Неотправленные данные не переживут удаление приложения. AR и исходный отчёт не перезаписываются.'),
               if (_saved) const Text('Сохранено на этом устройстве'),
             ],
           ],
