@@ -4,6 +4,8 @@ services:
   api-v4:
     image: ${MODEL_QUALITY_IMAGE:?Set exact tested image}
     environment:
+      ACTIVE_MODEL_VERSION: "4"
+      AUTO_SELECT_LATEST_LOCAL_MODEL: "false"
       MODEL_QUALITY_ENABLED: "1"
       MODEL_QUALITY_DIR: /app/model-quality
     volumes:

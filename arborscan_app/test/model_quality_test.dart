@@ -77,4 +77,31 @@ void main() {
     expect(find.text('Аккаунт изменился.'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('open confirmation is hidden when the account changes',
+      (tester) async {
+    final service = ModelQualityService(
+        clientFactory: () => MockClient((r) async => http.Response(
+            r.url.path.endsWith('/status')
+                ? '{"worker":{"online":true},"jobs":[],"models":[],"active":[],"snapshots":[{"id":"fixture","created_at":"test-date","model_type":"segmentation","manifest":{"items":[],"training_ready":true}}]}'
+                : '{"eligible":[],"excluded":[]}',
+            200)));
+    await tester
+        .pumpWidget(MaterialApp(home: ModelQualityPage(service: service)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Снимок test-date'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Запустить пробное обучение'));
+    await tester.tap(find.text('Запустить пробное обучение'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Пробная задача'), findsOneWidget);
+    CorrectionsService.authChanges.value++;
+    await tester.pump();
+    expect(find.text('Пробная задача'), findsNothing);
+    expect(find.text('Данные прежней сессии скрыты. Откройте раздел заново.'),
+        findsOneWidget);
+    await tester.tap(find.text('Закрыть'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+  });
 }

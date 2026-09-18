@@ -123,12 +123,34 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
     await p.remove('ml_pending_$_owner$name');
   }
 
+  Future<T?> _accountDialog<T>(
+      {required BuildContext context, required WidgetBuilder builder}) {
+    final generation = CorrectionsService.authChanges.value;
+    return showDialog<T>(
+        context: context,
+        builder: (c) => ValueListenableBuilder<int>(
+              valueListenable: CorrectionsService.authChanges,
+              builder: (c, value, _) => value == generation
+                  ? builder(c)
+                  : AlertDialog(
+                      title: const Text('Аккаунт изменился.'),
+                      content: const Text(
+                          'Данные прежней сессии скрыты. Откройте раздел заново.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(c),
+                            child: const Text('Закрыть'))
+                      ],
+                    ),
+            ));
+  }
+
   Future<void> _diagnostic(String id, String key, int index) async {
     final parts = key.split('_');
     final data = await _request(
         '/models/$id/diagnostics/${parts[0]}/${parts[1]}/$index');
     if (!mounted || _invalid) return;
-    await showDialog<void>(
+    await _accountDialog<void>(
         context: context,
         builder: (c) => AlertDialog(
                 title: Text('$key · ${data['case']['correction_id']}'),
@@ -153,8 +175,8 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
     final previous = items.isEmpty ? null : items.first;
     final operationName = 'label-${r['owner_id']}-${r['correction_id']}';
     final prefs = await SharedPreferences.getInstance();
-    if (previous != null &&
-        prefs.getString('ml_pending_$_owner$operationName') == previous['id']) {
+    if (items.any((item) =>
+        item['id'] == prefs.getString('ml_pending_$_owner$operationName'))) {
       await _clearOperation(operationName);
       return; // A lost response was already committed.
     }
@@ -170,7 +192,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
     var rank = previous?['label']?['rank'] ?? 'species';
     bool confirmed = false;
     if (!mounted || _invalid) return;
-    final payload = await showDialog<Map<String, dynamic>>(
+    final payload = await _accountDialog<Map<String, dynamic>>(
         context: context,
         builder: (c) => StatefulBuilder(
             builder: (c, set) => AlertDialog(
@@ -293,7 +315,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                     onPressed: _busy
                         ? null
                         : () => _run(() async {
-                              final ok = await showDialog<bool>(
+                              final ok = await _accountDialog<bool>(
                                   context: context,
                                   builder: (c) => AlertDialog(
                                           title: const Text(
@@ -389,7 +411,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                             ? null
                             : () => _run(() async {
                                   var imageSize = 320;
-                                  final approved = await showDialog<bool>(
+                                  final approved = await _accountDialog<bool>(
                                       context: context,
                                       builder: (c) => StatefulBuilder(
                                           builder: (c, setDialog) =>
@@ -493,7 +515,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                         onPressed: _busy
                             ? null
                             : () => _run(() async {
-                                  final ok = await showDialog<bool>(
+                                  final ok = await _accountDialog<bool>(
                                       context: context,
                                       builder: (c) => AlertDialog(
                                               title: const Text(
