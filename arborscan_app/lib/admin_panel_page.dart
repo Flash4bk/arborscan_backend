@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'admin_service.dart';
 import 'training_dataset_page.dart';
 import 'saved_corrections_page.dart';
+import 'model_quality_page.dart';
 
 class AdminPanelPage extends StatefulWidget {
   final String baseUrl;
@@ -17,8 +18,8 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   late final AdminService _service = AdminService(baseUrl: widget.baseUrl);
 
   bool _loading = true;
-  bool _changingModel = false;
-  bool _requestingTraining = false;
+  final bool _changingModel = false;
+  final bool _requestingTraining = false;
   String? _error;
   int? _errorStatusCode;
 
@@ -94,87 +95,10 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   }
 
   Future<void> _setActive() async {
-    final version = _selectedVersion;
-    if (version == null || _changingModel) return;
-
-    setState(() {
-      _changingModel = true;
-      _error = null;
-      _errorStatusCode = null;
-    });
-
-    try {
-      await _service.setActiveModel(version);
-      await _refresh();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Активная модель переключена на v$version')),
-      );
-    } on AdminApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error.message;
-        _errorStatusCode = error.statusCode;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _changingModel = false);
-    }
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const ModelQualityPage()));
   }
 
-  Future<void> _requestTraining() async {
-    if (_requestingTraining) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Запросить переобучение?'),
-        content: const Text(
-          'Сервер установит флаг переобучения. Worker начнёт работу, '
-          'когда увидит запрос и доступные подтверждённые примеры.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Запросить'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    setState(() {
-      _requestingTraining = true;
-      _error = null;
-      _errorStatusCode = null;
-    });
-
-    try {
-      await _service.requestTraining();
-      await _refresh();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Запрос обучения отправлен')),
-      );
-    } on AdminApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error.message;
-        _errorStatusCode = error.statusCode;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _requestingTraining = false);
-    }
-  }
+  Future<void> _requestTraining() => _setActive();
 
   @override
   Widget build(BuildContext context) {
@@ -221,13 +145,13 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                   ],
 
                   _Card(
-                    title: 'Статус обучения',
+                    title: 'Архивный статус обучения v3',
                     child: _StatusBlock(status: _status),
                   ),
                   const SizedBox(height: 16),
 
                   _Card(
-                    title: 'Переключение модели',
+                    title: 'Архив моделей v3',
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -265,8 +189,8 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.swap_horiz),
-                          label: Text(
-                            _changingModel ? 'Переключение...' : 'Сделать активной',
+                          label: const Text(
+                            'Открыть реестр моделей v4',
                           ),
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size.fromHeight(48),
@@ -283,7 +207,7 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Text(
-                          'Запуск обучения берёт подтверждённые примеры из Supabase и формирует новую версию модели.',
+                          'Обучение v4 выполняется в новом разделе по зафиксированным снимкам и явным решениям модерации.',
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton.icon(

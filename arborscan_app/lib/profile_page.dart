@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'onboarding_page.dart';
 
 import 'app_theme.dart';
+import 'model_quality_page.dart';
 import 'api_config.dart';
 import 'admin_panel_page.dart';
 import 'saved_corrections_page.dart';
@@ -834,6 +835,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 14),
                 if (_isAdmin && _loggedIn) ...[
+                  FilledButton.icon(onPressed:_busy?null:()=>Navigator.push(context,
+                    MaterialPageRoute(builder:(_)=>const ModelQualityPage())),
+                    icon:const Icon(Icons.model_training),label:const Text('Модели, данные и породы')),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const AdminPanelPage(baseUrl: ApiConfig.baseUrl))),

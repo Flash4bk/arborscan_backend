@@ -345,7 +345,7 @@ class _SpeciesCard extends StatelessWidget {
             if (conf != null) ...[
               const SizedBox(height: 10),
               Ui.badge(
-                text: 'PlantNet ${(conf * 100).toStringAsFixed(1)}%',
+                text: 'Оценка Pl@ntNet ${conf.toStringAsFixed(3)} — не точность',
                 color: conf >= 0.80 ? AppTheme.success : AppTheme.warning,
                 icon: Icons.eco_outlined,
               ),
