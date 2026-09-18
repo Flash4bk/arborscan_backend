@@ -37,8 +37,18 @@ class ModelQualityService extends ReportHistoryService {
         };
         throw CorrectionException(message, statusCode: response.statusCode);
       }
-      return Map<String, dynamic>.from(
+      final result = Map<String, dynamic>.from(
           jsonDecode(utf8.decode(response.bodyBytes)));
+      if (request is http.Request &&
+          request.method == 'POST' &&
+          request.body.isNotEmpty) {
+        final operation = jsonDecode(request.body)['operation_id'];
+        if (operation != null && result['id'] != operation) {
+          throw const CorrectionException(
+              'Сервер не подтвердил идентификатор операции. Повторите тот же запрос.');
+        }
+      }
+      return result;
     } on CorrectionException {
       rethrow;
     } catch (_) {

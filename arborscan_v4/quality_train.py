@@ -97,8 +97,11 @@ def classification_metrics(model,items,root,classes):
 def train(job_id):
     import resource
     import torch
-    from ultralytics import YOLO
+    from ultralytics import YOLO,settings as yolo_settings
     from .vision_engine import TreeVisionRuntime
+    # Training artifacts stay in the private worker directory, not external
+    # experiment trackers that happen to be installed in the base runtime.
+    yolo_settings.update({k:False for k in ('sync','hub','wandb','mlflow','clearml','comet','neptune','dvc','raytune') if k in yolo_settings})
     torch.set_num_threads(1)
     store=QualityStore();job=store.one('ml_jobs',job_id);snapshot=store.one('ml_snapshots',job['snapshot_id'])
     root=model_path(job_id).parent;root.mkdir(parents=True,exist_ok=True)
@@ -176,4 +179,16 @@ def train(job_id):
 
 if __name__=='__main__':
     import sys
-    train(sys.argv[1])
+    try:train(sys.argv[1])
+    except Exception as error:
+        # No exception URLs, credentials or dataset contents leave the private log.
+        codes={'training_mask_representation_loss':'Mask export loses detail at this resolution; inspect the fidelity audit or choose a higher resolution.',
+               'Pinned baseline checksum mismatch':'The pinned initial weights are unavailable or changed.',
+               'Dataset checksum mismatch':'Dataset archive failed checksum verification.',
+               'Manifest mismatch':'Dataset manifest does not match the frozen snapshot.',
+               'Candidate classes incompatible':'Candidate class schema is incompatible.'}
+        key=str(error) if str(error) in codes else 'training_or_evaluation_failed'
+        root=model_path(sys.argv[1]).parent
+        root.mkdir(parents=True,exist_ok=True)
+        (root/'failure.json').write_text(json.dumps({'error':key,'message':codes.get(key,'See private worker diagnostics; candidate was not activated.')}))
+        raise

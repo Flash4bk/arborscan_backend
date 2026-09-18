@@ -4,6 +4,11 @@ import pytest
 from arborscan_v4 import quality_worker as w
 
 
+@pytest.fixture(autouse=True)
+def available_disk(monkeypatch):
+    monkeypatch.setattr(w.shutil,'disk_usage',lambda _:type('Disk',(),{'free':20*1024**3})())
+
+
 @pytest.mark.parametrize('state,exit_code,terminal', [('cancel_requested',None,'cancelled'),('running',1,'failed'),('running',0,'completed')])
 def test_worker_terminal_states_are_not_training_evidence(tmp_path,monkeypatch,state,exit_code,terminal):
     monkeypatch.setenv('MODEL_QUALITY_DIR',str(tmp_path))
@@ -38,3 +43,13 @@ def test_lost_lease_terminates_child_without_registering_candidate(tmp_path,monk
     terminate=Mock();monkeypatch.setattr(w,'terminate',terminate)
     assert w.run_once();terminate.assert_called_once_with(child)
     assert store.transition.call_args.kwargs['state']=='failed'
+
+
+def test_disk_limit_fails_before_spawning(tmp_path,monkeypatch):
+    monkeypatch.setenv('MODEL_QUALITY_DIR',str(tmp_path))
+    monkeypatch.setattr(w.shutil,'disk_usage',lambda _:type('Disk',(),{'free':1})())
+    store=Mock();store.transition.return_value={'id':'00000000-0000-4000-8000-000000000003','params':{'max_seconds':1800}}
+    monkeypatch.setattr(w,'QualityStore',lambda:store)
+    spawn=Mock();monkeypatch.setattr(w.subprocess,'Popen',spawn)
+    assert w.run_once();spawn.assert_not_called()
+    assert store.transition.call_args.kwargs['progress']['error']=='insufficient_worker_disk'

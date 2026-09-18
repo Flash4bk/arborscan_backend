@@ -44,6 +44,15 @@ void main() {
     response.complete(http.Response('{"private":"old account"}', 200));
     await assertion;
   });
+  test('200 without the operation ID does not confirm saving', () async {
+    final service = ModelQualityService(
+        clientFactory: () => MockClient((r) async => http.Response('{}', 200)));
+    final request =
+        http.Request('POST', Uri.https('example.test', '/snapshots'))
+          ..body = '{"operation_id":"pending-operation"}';
+    await expectLater(
+        service.request('first', request), throwsA(isA<CorrectionException>()));
+  });
   testWidgets(
       'admin screen restores durable jobs and invalidates on account change',
       (tester) async {

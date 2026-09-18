@@ -25,6 +25,7 @@ services:
       MKL_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
       YOLO_AUTOINSTALL: "false"
+      YOLO_CONFIG_DIR: /app/model-quality/ultralytics
     volumes:
       - /opt/arborscan/models:/app/models:ro
       - /home/arborscan/model-quality:/app/model-quality

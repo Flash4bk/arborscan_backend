@@ -116,15 +116,37 @@ explicitly saved matching report; older absent predictions cannot be reconstruct
 
 ## Checks so far
 
-- Local Python: 73 passed, 1 ultralytics-dependent module skipped, 3 subtests;
+- Local Python: 74 passed, 1 ultralytics-dependent module skipped, 3 subtests;
   two pre-existing Starlette/AnyIO deprecation warnings.
 - PGlite executed migration 003 and rerun, ACL, independent labels, conflicting
   retries, cancellation, expired leases, immutable completion, activation CAS and
   rollback using synthetic fixtures. This is **not** a production migration.
-- Flutter: 41 tests passed. Analyzer: 106 existing issues (0 errors, 7 warnings,
+- Flutter: 42 tests passed. Analyzer: 106 existing issues (0 errors, 7 warnings,
   99 info); no new issues. Debug APK built without dart-define.
 - Production migration, candidate-container tests, rollout, new APK installation
   and phone acceptance are pending unless a later dated entry records completion.
+
+### Additional checks on 2026-09-18
+
+Candidate `8fd7c28` built in `/home/arborscan/model-quality-8fd7c28` on the unchanged
+history runtime. Its isolated container passed 76 tests and 3 subtests, without
+skips. Real copied production weights passed loading/smoke inference, isolated
+runtime selection/rollback and corruption rejection. The real production pointer
+and original weight checksum were unchanged. Scratch `yolo11n-cls.yaml` architecture
+was instantiated successfully; no training was run.
+
+Actual installed Ultralytics resampler/rasterizer checks on synthetic shapes:
+edge rectangle IoU 1.0; disconnected components ~0.99992; a hole ~0.96436 (rejected);
+thin branches IoU 1.0 at original resolution but ~0.80825 at 320 px (job rejected).
+These are representation tests, not real-tree model quality scores. The app now
+offers 320/640 px for the one-epoch trial. Worker reports fidelity errors explicitly
+and checks at least 5 GiB free disk before starting. External experiment tracking
+is disabled. These follow-up fixes are included in a subsequent commit.
+
+Staging candidate health is 200/ok; unauthenticated new ML/history/contour routes
+return 401. Both existing public HTTPS health endpoints remain 200/ok. Production
+RPC `model_quality_version` still returned 404 at the last check; migration 003
+and production rollout have not been claimed as completed.
 
 ## Backup and prepared rollout
 

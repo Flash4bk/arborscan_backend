@@ -388,32 +388,58 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                                 s['manifest']['training_ready'] != true
                             ? null
                             : () => _run(() async {
+                                  var imageSize = 320;
                                   final approved = await showDialog<bool>(
                                       context: context,
-                                      builder: (c) => AlertDialog(
-                                              title:
-                                                  const Text('Пробная задача'),
-                                              content: const Text(
-                                                  '1 эпоха, CPU, 320 px, batch 1, лимит 30 минут. Это не доказательство улучшения. Текущая модель останется прежней.'),
-                                              actions: [
-                                                TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(c, false),
-                                                    child:
-                                                        const Text('Отмена')),
-                                                FilledButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(c, true),
-                                                    child:
-                                                        const Text('Запустить'))
-                                              ]));
+                                      builder: (c) => StatefulBuilder(
+                                          builder: (c, setDialog) =>
+                                              AlertDialog(
+                                                  title: const Text(
+                                                      'Пробная задача'),
+                                                  content: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        const Text(
+                                                            '1 эпоха, CPU, batch 1, лимит 30 минут. Это не доказательство улучшения. Текущая модель останется прежней. При потере тонких деталей можно выбрать 640 px; это требует больше ресурсов.'),
+                                                        DropdownButton<int>(
+                                                            value: imageSize,
+                                                            items: const [
+                                                              DropdownMenuItem(
+                                                                  value: 320,
+                                                                  child: Text(
+                                                                      '320 px')),
+                                                              DropdownMenuItem(
+                                                                  value: 640,
+                                                                  child: Text(
+                                                                      '640 px'))
+                                                            ],
+                                                            onChanged: (v) =>
+                                                                setDialog(() =>
+                                                                    imageSize =
+                                                                        v!)),
+                                                      ]),
+                                                  actions: [
+                                                    TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                c, false),
+                                                        child: const Text(
+                                                            'Отмена')),
+                                                    FilledButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                c, true),
+                                                        child: const Text(
+                                                            'Запустить'))
+                                                  ])));
                                   if (approved != true) return;
-                                  final name = 'job-${s['id']}';
+                                  final name = 'job-${s['id']}-$imageSize';
                                   await _request('/jobs', body: {
                                     'operation_id': await _operation(name),
                                     'snapshot_id': s['id'],
                                     'epochs': 1,
-                                    'imgsz': 320
+                                    'imgsz': imageSize
                                   });
                                   await _clearOperation(name);
                                 }),

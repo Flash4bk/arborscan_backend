@@ -1,6 +1,7 @@
 """One bounded CPU child, renewable database lease, durable jobs, no activation."""
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -16,6 +17,7 @@ def run_once():
     root=model_path(job['id']).parent;root.mkdir(parents=True,exist_ok=True)
     started=time.monotonic();process=None
     try:
+        if shutil.disk_usage(root).free<5*1024**3:raise RuntimeError('insufficient_worker_disk')
         with (root/'worker.log').open('ab') as log:
             process=subprocess.Popen([sys.executable,'-m','arborscan_v4.quality_train',job['id']],stdout=log,stderr=log,
                env={**os.environ,'OMP_NUM_THREADS':'1','MKL_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1'},start_new_session=True)
@@ -43,8 +45,18 @@ def run_once():
         if process is not None:
             try:terminate(process)
             except (ProcessLookupError,subprocess.TimeoutExpired):pass
-        safe_code=str(error) if str(error) in ('training_time_limit','training_subprocess_failed') else 'worker_service_or_result_failed'
-        try:store.transition('finish',job['id'],lease_id=lease,state='failed',progress={'error':safe_code,'diagnostics':'private_worker_log'})
+        safe_code=str(error) if str(error) in ('training_time_limit','training_subprocess_failed','insufficient_worker_disk') else 'worker_service_or_result_failed'
+        failure={'error':safe_code,'diagnostics':'private_worker_log'}
+        if process is not None:failure['exit_code']=process.poll()
+        if (root/'failure.json').is_file():
+            try:
+                detail=json.loads((root/'failure.json').read_text())
+                failure.update({k:detail[k] for k in ('error','message') if isinstance(detail.get(k),str)})
+            except (ValueError,OSError):pass
+        if (root/'mask-fidelity.json').is_file():
+            try:failure['mask_fidelity']=json.loads((root/'mask-fidelity.json').read_text())
+            except (ValueError,OSError):pass
+        try:store.transition('finish',job['id'],lease_id=lease,state='failed',progress=failure)
         except Exception:pass # Lease expiry leaves a durable failed status on next claim.
         return True
 
