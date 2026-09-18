@@ -1,0 +1,7 @@
+**
+!config.py
+!arborscan_v4/
+!arborscan_v4/**/*.py
+!deploy-vps/
+!deploy-vps/Dockerfile.v4-contour
+!deploy-vps/Dockerfile.v4-contour.dockerignore

@@ -1,0 +1,48 @@
+# Overlay the recorded production compose files. Pin MODEL_QUALITY_IMAGE to a
+# tested commit image, never latest. Does not replace the read-only models mount.
+services:
+  api-v4:
+    image: ${MODEL_QUALITY_IMAGE:?Set exact tested image}
+    environment:
+      MODEL_QUALITY_ENABLED: "1"
+      MODEL_QUALITY_DIR: /app/model-quality
+    volumes:
+      - /home/arborscan/model-quality:/app/model-quality:ro
+  quality-worker:
+    image: ${MODEL_QUALITY_IMAGE:?Set exact tested image}
+    container_name: arborscan-quality-worker
+    command: ["python", "-m", "arborscan_v4.quality_worker"]
+    restart: unless-stopped
+    init: true
+    env_file:
+      - /etc/arborscan/arborscan.env
+    environment:
+      PROJECT_ROOT: /app
+      MODEL_DIR: /app/models
+      MODEL_QUALITY_DIR: /app/model-quality
+      MODEL_QUALITY_BASE_WEIGHTS: /app/models/model_v4.pt
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      YOLO_AUTOINSTALL: "false"
+    volumes:
+      - /opt/arborscan/models:/app/models:ro
+      - /home/arborscan/model-quality:/app/model-quality
+    cpus: 2
+    mem_limit: 3g
+    memswap_limit: 3g
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import pathlib,time; p=pathlib.Path('/app/model-quality/heartbeat'); assert p.exists() and time.time()-p.stat().st_mtime<45"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
