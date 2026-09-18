@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import time
+import math
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import cv2
@@ -39,10 +41,16 @@ class PlantNetClient:
             "remaining_requests": None,
             "latency_ms": None,
             "message": message,
+            "source": "plantnet", "engine_version": None,
+            "retrieved_at": datetime.now(timezone.utc).isoformat(),
+            "score_interpretation": "provider_ranking_score_not_measured_accuracy",
+            "taxon_id": None, "taxon_rank": None, "russian_name": None,
         }
 
     @staticmethod
     def _parse_item(item: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(item, dict):
+            item = {}
         species = item.get("species") if isinstance(item, dict) else {}
         if not isinstance(species, dict):
             species = {}
@@ -62,6 +70,7 @@ class PlantNetClient:
 
         try:
             confidence = round(float(item.get("score")), 6)
+            if not math.isfinite(confidence) or not 0 <= confidence <= 1: confidence = None
         except (TypeError, ValueError):
             confidence = None
 
@@ -70,6 +79,11 @@ class PlantNetClient:
             "scientific_name": scientific_name,
             "common_names": common_names[:8],
             "confidence": confidence,
+            "taxon_id": str((item.get('gbif') or {}).get('id')) if (item.get('gbif') or {}).get('id') is not None else None,
+            "taxon_id_source": "GBIF" if (item.get('gbif') or {}).get('id') is not None else None,
+            # Author abbreviations in scientificName do not prove a species.
+            "taxon_rank": "species" if isinstance(species.get('scientificNameWithoutAuthor'),str) and len(species['scientificNameWithoutAuthor'].split()) >= 2 else "genus_or_unresolved",
+            "russian_name": None,
         }
 
     def identify(self, crop_bgr) -> Dict[str, Any]:
@@ -138,23 +152,34 @@ class PlantNetClient:
                     f"({confidence:.4f} < {self.min_score:.4f})"
                 )
 
+            if confidence is None or not best.get('scientific_name'):
+                status = 'invalid_candidate'
+            selected = best if status == 'ok' else {
+                'display_name':'Неизвестно','scientific_name':None,'confidence':None,
+                'common_names':[],'taxon_id':None,'taxon_rank':None,'russian_name':None}
+
             return {
                 "status": status,
-                **best,
+                **selected,
                 "top_results": top_results,
                 "predicted_organs": payload.get("predictedOrgans") or [],
                 "remaining_requests": payload.get("remainingIdentificationRequests"),
                 "latency_ms": latency_ms,
                 "message": message,
+                "source":"plantnet", "engine_version":str(payload['version']) if payload.get('version') is not None else None,
+                "retrieved_at":datetime.now(timezone.utc).isoformat(),
+                "score_interpretation":"provider_ranking_score_not_measured_accuracy",
+                # Do not retain provider query URLs (may contain API credentials).
+                "original_prediction": {key:payload.get(key) for key in ('results','otherResults','bestMatch','version')},
             }
         except requests.Timeout:
             return self._unknown("timeout", "Pl@ntNet request timed out")
-        except requests.RequestException as exc:
-            return self._unknown("network_error", str(exc))
+        except requests.RequestException:
+            return self._unknown("network_error", "Pl@ntNet connection failed")
         except ValueError:
             return self._unknown("invalid_response", "Pl@ntNet returned invalid JSON")
-        except Exception as exc:  # defensive: classification must not crash analysis
-            return self._unknown("internal_error", str(exc))
+        except Exception:  # defensive: classification must not crash analysis
+            return self._unknown("internal_error", "Invalid identification response")
 
     def health(self) -> Dict[str, Any]:
         info: Dict[str, Any] = {
@@ -184,8 +209,8 @@ class PlantNetClient:
             else:
                 info["reachable"] = False
                 info["error"] = f"HTTP {response.status_code}"
-        except Exception as exc:
+        except Exception:
             info["latency_ms"] = round((time.perf_counter() - started) * 1000, 1)
             info["reachable"] = False
-            info["error"] = str(exc)
+            info["error"] = "Pl@ntNet health request failed"
         return info

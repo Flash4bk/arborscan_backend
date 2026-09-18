@@ -87,6 +87,8 @@ def _measurement_model(result) -> MeasurementValue:
 
 def _species_model(raw: dict) -> SpeciesInfo:
     return SpeciesInfo(
+        **{key:raw.get(key) for key in ('engine_version','retrieved_at','taxon_id',
+             'taxon_id_source','taxon_rank','russian_name','original_prediction')},
         status=str(raw.get("status") or "unknown"),
         display_name=str(raw.get("display_name") or "Неизвестно"),
         scientific_name=raw.get("scientific_name"),
@@ -170,6 +172,8 @@ async def analyze_tree_v4(
     camera_distance_m: Optional[float] = Form(None),
     include_images: bool = Form(True),
 ):
+    from .quality_runtime import select_runtime
+    runtime = await run_in_threadpool(select_runtime, vision)
     analysis_id = str(uuid4())
     image_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
     if not image_bytes:
@@ -207,7 +211,7 @@ async def analyze_tree_v4(
             "camera_distance_m_not_used_without_calibrated_intrinsics_and_pose"
         )
 
-    detection = await run_in_threadpool(vision.infer, image, tap_x, tap_y)
+    detection = await run_in_threadpool(runtime.infer, image, tap_x, tap_y)
     warnings.extend(detection.warnings)
 
     if not detection.detected or detection.mask is None:
@@ -218,15 +222,17 @@ async def analyze_tree_v4(
             reason="species_not_identified",
         )
         return UnifiedAnalysisResponse(
-            segmentation_model_version=vision.health().get('version'),
+            segmentation_model_version=runtime.health().get('version'),
+            segmentation_model_id=getattr(runtime,'quality_model_id',None),
+            segmentation_weights_sha256=getattr(runtime,'model_sha256',None),
             analysis_id=analysis_id,
             api_version=API_VERSION,
             schema_version=SCHEMA_VERSION,
             analysis_status=AnalysisStatus.TREE_NOT_DETECTED,
             tree=TreeDetectionInfo(
                 detected=False,
-                model_version=vision.model_version,
-                model_path=str(vision.model_path) if vision.model_path else None,
+                model_version=runtime.model_version,
+                model_path=str(runtime.model_path) if runtime.model_path else None,
             ),
             species=empty_species,
             mechanical_profile=empty_profile,
@@ -318,7 +324,9 @@ async def analyze_tree_v4(
     )
 
     return UnifiedAnalysisResponse(
-        segmentation_model_version=vision.health().get('version'),
+        segmentation_model_version=runtime.health().get('version'),
+            segmentation_model_id=getattr(runtime,'quality_model_id',None),
+            segmentation_weights_sha256=getattr(runtime,'model_sha256',None),
         analysis_id=analysis_id,
         api_version=API_VERSION,
         schema_version=SCHEMA_VERSION,
@@ -331,8 +339,8 @@ async def analyze_tree_v4(
             bbox=BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2),
             mask_area_ratio=geometry.mask_area_ratio,
             touches_image_edge=geometry.touches_image_edge,
-            model_version=vision.model_version,
-            model_path=str(vision.model_path) if vision.model_path else None,
+            model_version=runtime.model_version,
+            model_path=str(runtime.model_path) if runtime.model_path else None,
         ),
         species=species,
         mechanical_profile=mechanical,
@@ -397,3 +405,6 @@ from .corrections_api import router as corrections_router
 app.include_router(corrections_router)
 from .report_history import router as reports_router
 app.include_router(reports_router)
+
+from .model_quality_api import router as model_quality_router
+app.include_router(model_quality_router)

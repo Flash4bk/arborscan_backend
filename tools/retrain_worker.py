@@ -850,6 +850,8 @@ def main():
     parser.add_argument("--diagnose-selection", action="store_true",
                         help="Read candidate images and print selection; no training or uploads")
     args = parser.parse_args()
+    if not args.diagnose_models and not args.diagnose_selection:
+        raise RuntimeError('Legacy verified-folder training is disabled: use python -m arborscan_v4.quality_worker with immutable reviewed snapshots')
 
     if args.diagnose_selection:
         samples = discover_new_samples(args.bucket_verified, max_samples=args.max_samples)

@@ -532,6 +532,10 @@ def export_from_manifest(
         raise ValueError("min_mask_area must be > 0")
 
     manifest = _load_manifest(manifest_in)
+    # The old verified directory is not evidence of a revision decision.
+    # Production training now consumes immutable snapshots from quality_dataset.
+    if manifest.get('purpose') != 'export_smoke_test_only_not_model_evaluation':
+        raise ValueError('Legacy verified export is not a reviewed dataset. Use model-quality snapshots; this exporter is smoke-only.')
     selection = manifest["selection"]
 
     _ensure_empty_dir(out_dir)

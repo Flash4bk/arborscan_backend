@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import os
 import threading
+import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
@@ -78,6 +79,7 @@ class TreeVisionRuntime:
         self.model_path = path
         self.model_version = version
         self.model_names = names
+        self.model_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
 
     def health(self) -> dict:
         return {

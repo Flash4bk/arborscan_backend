@@ -50,6 +50,15 @@ class SpeciesCandidate(BaseModel):
 
 
 class SpeciesInfo(BaseModel):
+    source: str = 'plantnet'
+    engine_version: Optional[str] = None
+    retrieved_at: Optional[str] = None
+    score_interpretation: str = 'provider_ranking_score_not_measured_accuracy'
+    taxon_id: Optional[str] = None
+    taxon_id_source: Optional[str] = None
+    taxon_rank: Optional[str] = None
+    russian_name: Optional[str] = None
+    original_prediction: Optional[dict] = None
     status: str
     display_name: str = "Неизвестно"
     scientific_name: Optional[str] = None
@@ -139,6 +148,8 @@ class UnifiedAnalysisResponse(BaseModel):
     captured_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     algorithm_versions: dict = Field(default_factory=lambda: {'measurement':1,'image_coordinates':'exif_oriented_v1'})
     segmentation_model_version: Optional[int] = None
+    segmentation_model_id: Optional[str] = None
+    segmentation_weights_sha256: Optional[str] = None
     measurement_method_version: int = 1
     beta: dict = Field(default_factory=lambda: {
         'value_kg_s': None, 'method': None, 'available': False,
