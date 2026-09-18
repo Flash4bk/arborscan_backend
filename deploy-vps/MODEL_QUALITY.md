@@ -208,3 +208,65 @@ clear data. Old client lacks the new admin screens; server ML records remain.
 5. Do not activate production as part of this smoke. Candidate acceptance is a
    separate informed decision; real improvement and unknown-species coverage need
    appropriate datasets and independent evaluation.
+
+## Final prepared version / pending manual SQL (2026-09-18)
+
+- Exact candidate and APK source: `f35d12c946ae78b32de9fc2524ad4124f509c4c4`.
+  Candidate image `arborscan-api-v4:quality-f35d12c`, ID
+  `sha256:b8e0f8d771d426534ece258ea4449e2c293345815ecca4a0b28a8fbda0dd2844`.
+  Separate checkout `/home/arborscan/model-quality-f35d12c`; staging container
+  `arborscan-quality-candidate` on localhost:18001 is running/healthy.
+- Follow-up worker changes passed 5 targeted tests in the real container runtime;
+  the preceding full container run passed 76 tests. Local updated suite passed
+  74 tests + 3 subtests, with one ultralytics-dependent module skipped.
+- Flutter full run: 42 passed before the final dialog guard; all 5 focused ML
+  tests passed after it, including hiding an open dialog on account change.
+  Analyzer still 106 existing issues. Final debug APK build succeeded.
+- Final APK installed on S24 Ultra `R5CY40HNVCP` with `install --no-streaming -r`
+  → **Success**, after the user confirmed USB debugging. No uninstall/data clear.
+  SHA256 `4833e1ce6af6f8d909682cf1b14ffe53d732e727221a68638ca53b6f05365ecb`.
+  Installation is not manual acceptance of the new feature.
+- Production remains **history-d9a2a9f**, its original image ID recorded above.
+  Both public HTTPS health endpoints still return ok. No worker is deployed,
+  no training has run, no active model was changed. SQL RPC 003 last returned 404.
+  Authenticated ML integration smoke is prepared, **not yet executed**, because
+  the user SQL step is pending. This blocks production replacement, not local work.
+
+After the user executes migration 003 and reports version 1, these are the
+prepared VPS commands. They have **not** been executed as a rollout:
+
+```bash
+set -eu
+b=/home/arborscan/model-quality-backup-20260918
+c=/home/arborscan/model-quality-f35d12c
+(cd "$b" && sha256sum -c SHA256SUMS)
+test "$(docker inspect -f '{{.Image}}' arborscan-api-v4)" = "$(cat "$b/image-id.txt")"
+test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' arborscan-api-v4:quality-f35d12c)" = f35d12c946ae78b32de9fc2524ad4124f509c4c4
+docker exec arborscan-quality-candidate python -c "from arborscan_v4.model_quality_api import QualityStore; assert QualityStore().request('POST','rpc/model_quality_version',json={})==1; print('Migration 003 ready')"
+docker exec -i -e MODEL_QUALITY_SMOKE_BASE=http://127.0.0.1:8001 arborscan-quality-candidate python - < "$c/deploy-vps/smoke_model_quality.py"
+export MODEL_QUALITY_IMAGE=arborscan-api-v4:quality-f35d12c
+docker compose -p arborscan-v4 \
+ -f /home/arborscan/contour-5af8dd1/deploy-vps/docker-compose.v4.yml \
+ -f /home/arborscan/contour-backup-20260916/candidate.yml \
+ -f /home/arborscan/measurement-backup-20260916-review/candidate.yml \
+ -f /home/arborscan/server-history-backup-20260917/candidate.yml \
+ -f "$c/deploy-vps/docker-compose.model-quality.yml" \
+ up -d --no-build --no-deps api-v4 quality-worker
+```
+
+After startup, inspect container health and filtered startup errors, both public
+HTTPS health endpoints, 401 on unauthenticated ML routes, and run the fixture-only
+smoke through public HTTPS:
+
+```bash
+docker inspect -f '{{.State.Health.Status}}' arborscan-api-v4 arborscan-quality-worker
+curl --fail https://31.57.170.88/api/v3/health
+curl --fail https://31.57.170.88/api/v4/health
+curl -s -o /dev/null -w '%{http_code}\n' https://31.57.170.88/api/v4/v4/model-quality/status
+docker exec -i arborscan-api-v4 python - < /home/arborscan/model-quality-f35d12c/deploy-vps/smoke_model_quality.py
+```
+
+If staging verification fails, do not replace production. If production checks
+fail, use the rollback above. Leave the additive tables and private artifacts in
+place. There is no production candidate ready for activation: suitable accepted
+real-tree data and independent evaluation remain missing.
