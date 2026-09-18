@@ -23,7 +23,7 @@ def main():
         return r
     def req(method,path,token=None,status=200,**kwargs):
         r=requests.request(method,base+path,headers={'Authorization':'Bearer '+token} if token else {},timeout=120,**kwargs)
-        assert r.status_code==status,'Unexpected HTTP '+str(r.status_code)+' for '+path.split('/')[2]
+        assert r.status_code==status,'Unexpected HTTP '+str(r.status_code)+' for '+method+' '+ '/'.join(path.split('/')[:4])
         return r.json()
     try:
         for _ in range(2):
@@ -72,7 +72,12 @@ def main():
         for digest in archives:
             remaining=db('GET','ml_snapshots',params={'manifest->>archive_sha256':'eq.'+digest,'limit':'1'}).json()
             if not remaining:
-                r=requests.delete(url+'/storage/v1/object/'+bucket,headers=service,json={'prefixes':['model-quality/'+digest]},timeout=30);r.raise_for_status()
+                prefix='model-quality/'+digest
+                r=requests.post(url+'/storage/v1/object/list/'+bucket,headers=service,json={'prefix':prefix,'limit':100},timeout=30);r.raise_for_status()
+                names=[o['name'] for o in r.json()]
+                assert all('/' not in name and (name=='manifest.json' or name.startswith('part-')) for name in names)
+                if names:
+                    r=requests.delete(url+'/storage/v1/object/'+bucket,headers=service,json={'prefixes':[prefix+'/'+name for name in names]},timeout=30);r.raise_for_status()
         for key in reversed(labels):db('DELETE','ml_taxon_labels',params={'id':'eq.'+key})
         for a in accounts:
             db('DELETE','contour_revisions',params={'owner_id':'eq.'+a['id']})
@@ -88,6 +93,9 @@ def main():
 
 if __name__=='__main__':
     try:main()
-    except Exception:
-        print('ML integration smoke failed; no secrets or private response bodies printed')
+    except Exception as error:
+        import traceback
+        frame=traceback.extract_tb(error.__traceback__)[-1]
+        print('ML integration smoke failed:',type(error).__name__,'line',frame.lineno)
+        if isinstance(error,AssertionError):print(str(error))
         raise SystemExit(1)

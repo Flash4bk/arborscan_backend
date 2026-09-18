@@ -29,17 +29,54 @@ class QualityStore(WorkflowStore):
         return r[0]
 
 
+ARCHIVE_CHUNK_BYTES=8*1024*1024
+MAX_ARCHIVE_BYTES=256*1024*1024
+
+
+def _asset_json(url,headers,payload=None):
+    try:
+        if payload is not None:
+            r=requests.post(url,headers={**headers,'Content-Type':'application/json','x-upsert':'false'},data=canonical(payload),timeout=120)
+            if r.status_code not in (200,201,400,409):raise HTTPException(503,'Snapshot upload unconfirmed')
+        r=requests.get(url,headers=headers,timeout=120)
+        if r.status_code!=200:raise HTTPException(503,'Snapshot object unavailable')
+        value=r.json()
+        if not isinstance(value,dict) or (payload is not None and value!=payload):raise HTTPException(503,'Snapshot object mismatch')
+        return value
+    except (requests.RequestException,ValueError):raise HTTPException(503,'Snapshot storage unavailable') from None
+
+
 def asset(digest,raw=None):
     if len(digest)!=64 or any(c not in '0123456789abcdef' for c in digest):raise ValueError('Invalid asset digest')
-    u,h,b=_config();url=u+'/storage/v1/object/'+b+'/model-quality/'+digest
-    try:
-        if raw is not None:
-            r=requests.post(url,headers={**h,'Content-Type':'application/octet-stream','x-upsert':'false'},data=raw,timeout=120)
-            if r.status_code not in (200,201,400,409):raise HTTPException(503,'Snapshot upload unconfirmed')
-        r=requests.get(url,headers=h,timeout=120)
-        if r.status_code!=200 or sha(r.content)!=digest:raise HTTPException(503,'Snapshot checksum unavailable')
-        return r.content
-    except requests.RequestException:raise HTTPException(503,'Snapshot storage unavailable') from None
+    u,h,b=_config();url=u+'/storage/v1/object/'+b+'/model-quality/'+digest+'/'
+    if raw is not None:
+        if len(raw)>MAX_ARCHIVE_BYTES:raise HTTPException(413,'Snapshot exceeds archive limit; select fewer revisions')
+        if sha(raw)!=digest:raise ValueError('Archive checksum mismatch')
+        hashes=[]
+        for i,start in enumerate(range(0,len(raw),ARCHIVE_CHUNK_BYTES)):
+            part=raw[start:start+ARCHIVE_CHUNK_BYTES];part_sha=sha(part);hashes.append(part_sha)
+            _asset_json(url+f'part-{i:03d}.json',h,{'sha256':part_sha,'base64':base64.b64encode(part).decode()})
+        # Publish the index only after every immutable part has been read back.
+        _asset_json(url+'manifest.json',h,{'version':1,'sha256':digest,'size':len(raw),'chunks':hashes})
+        return raw
+    manifest=_asset_json(url+'manifest.json',h)
+    if (manifest.get('version')!=1 or manifest.get('sha256')!=digest or type(manifest.get('size')) is not int
+        or not 0<=manifest['size']<=MAX_ARCHIVE_BYTES or not isinstance(manifest.get('chunks'),list)
+        or len(manifest['chunks'])>MAX_ARCHIVE_BYTES//ARCHIVE_CHUNK_BYTES):
+        raise HTTPException(503,'Invalid snapshot archive index')
+    parts=[]
+    for i,expected in enumerate(manifest['chunks']):
+        part=_asset_json(url+f'part-{i:03d}.json',h)
+        try:
+            encoded=part['base64']
+            if not isinstance(encoded,str) or len(encoded)>((ARCHIVE_CHUNK_BYTES+2)//3)*4:raise ValueError()
+            decoded=base64.b64decode(encoded,validate=True)
+            if sha(decoded)!=expected or part.get('sha256')!=expected:raise ValueError()
+        except (ValueError,KeyError,TypeError):raise HTTPException(503,'Snapshot part checksum mismatch') from None
+        parts.append(decoded)
+    result=b''.join(parts)
+    if len(result)!=manifest['size'] or sha(result)!=digest:raise HTTPException(503,'Snapshot archive checksum mismatch')
+    return result
 
 
 def inventory(kind,load=False,selection=None):

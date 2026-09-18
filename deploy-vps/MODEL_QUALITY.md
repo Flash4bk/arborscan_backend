@@ -270,3 +270,21 @@ If staging verification fails, do not replace production. If production checks
 fail, use the rollback above. Leave the additive tables and private artifacts in
 place. There is no production candidate ready for activation: suitable accepted
 real-tree data and independent evaluation remain missing.
+
+### Migration confirmation and storage compatibility fix
+
+The user executed migration 003 and reported version 1; the agent independently
+confirmed version 1 through the VPS/PostgREST RPC. Backup checksums and unchanged
+production image/checkout were rechecked before staging integration.
+The initial staging smoke failed at snapshot upload and cleaned its fixture
+accounts. The actual private bucket permits only `application/json`, with a
+40 MiB per-object limit. Production was not switched on this failure.
+
+Snapshots now store the unchanged TAR content as checksum-verified 8 MiB binary
+parts encoded inside JSON objects (~10.7 MiB each), plus a JSON index under
+`model-quality/<archive-sha256>/`. The index is published only after parts are
+read back. Downloads verify each part and the entire original archive. Maximum
+archive size is 256 MiB; existing selection/memory limits remain. No bucket
+configuration, contour object, original photo, SQL schema or client API changed.
+Eight focused archive/API tests passed locally, covering JSON-only storage,
+chunked reads, retries, corruption and failure before index publication.
