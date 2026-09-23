@@ -360,3 +360,8 @@ Implementation, rollout and automated evidence are recorded above. The user is
 currently performing manual acceptance; no completed acceptance is claimed.
 Real training and candidate quality evaluation remain blocked by missing eligible
 data. Update the same plan entries when those results become available.
+
+User feedback on 2026-09-23: after the screen-by-screen walkthrough, the user
+confirmed that everything matches the described interface and button visibility.
+This confirms UI correspondence only; it does not independently establish label
+persistence, restart recovery, real training, candidate quality or activation.
