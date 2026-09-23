@@ -7,10 +7,13 @@ import os
 import json
 import secrets
 import uuid
+import tempfile
+from pathlib import Path
 import cv2
 import numpy as np
 import requests
 from arborscan_v4.corrections_api import _config
+from arborscan_v4.quality_train import unpack
 
 
 def main():
@@ -62,6 +65,9 @@ def main():
             body={'operation_id':sid,'model_type':kind,'selection':selection}
             snap=req('POST',prefix+'/snapshots',admin['token'],json=body)
             archives.append(snap['manifest']['archive_sha256'])
+            with tempfile.TemporaryDirectory() as directory:
+                restored=unpack(snap,Path(directory))
+                assert restored['items']==snap['manifest']['items']
             assert req('POST',prefix+'/snapshots',admin['token'],json=body)==snap
             assert len(snap['manifest']['items'])==(1 if kind=='classification' else 0)
             assert snap['manifest']['training_ready'] is False

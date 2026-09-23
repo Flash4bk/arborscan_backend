@@ -1,5 +1,12 @@
 # Model quality: segmentation and independent taxon labels
 
+**Current state, 2026-09-23:** API v4 and the bounded worker are deployed from
+`2938d89e5e69dd4149074ef1ee7ad07d73c04c3d`; migration 003 is version 1.
+Public HTTPS integration checks passed. APK `f35d12c` is already installed and
+compatible (the later fix only changes private server archive storage).
+Phone acceptance of this release and real training remain unperformed. The dated
+preparation/pending sections below are retained as history; see the rollout entry.
+
 ## Scope and current evidence (2026-09-18)
 
 `codex/model-quality` is based on the verified server-history main (`60329e1`).
@@ -288,3 +295,60 @@ archive size is 256 MiB; existing selection/memory limits remain. No bucket
 configuration, contour object, original photo, SQL schema or client API changed.
 Eight focused archive/API tests passed locally, covering JSON-only storage,
 chunked reads, retries, corruption and failure before index publication.
+
+## Executed rollout — 2026-09-23
+
+- Rechecked backup SHA256SUMS, old production image, clean `/opt/arborscan`,
+  migration RPC version 1, empty active-job queue and unchanged baseline hash.
+- Separate checkout `/home/arborscan/model-quality-2938d89`, exact deployed
+  commit `2938d89e5e69dd4149074ef1ee7ad07d73c04c3d`.
+  Both API and worker use `arborscan-api-v4:quality-2938d89`, image ID
+  `sha256:01bc835d921112c5ebf325c13dcb2f91f2d02db65580087b980a58088692a4fe`.
+  Built on the recorded history image without dependency/model updates.
+- Before production replacement, isolated staging HTTP checks passed with new
+  synthetic accounts: normal-user denial, admin-only actions, independent taxon
+  confirmation, immutable retries, segmentation exclusion of unaccepted masks,
+  classification eligibility independent of mask acceptance, and refusal to queue
+  training on insufficient independent data. The worker's actual unpack function
+  downloaded JSON parts from private storage, restored each archive and verified
+  file checksums. This was archive transport validation, not training.
+- Compose recreated only `api-v4` and created `quality-worker`, using the four
+  recorded compose files plus the overlay in the `2938d89` checkout.
+  Both containers became **healthy**. Worker: actual CPU quota 2, RAM 3221225472
+  bytes, equal memory+swap limit (no additional swap), fresh heartbeat.
+- After replacement, v3 and v4 public HTTPS health returned 200/ok with normal
+  TLS verification; unauthenticated ML status/data, contours and reports returned
+  401. The same fixture-only integration scenario passed through public HTTPS.
+  Synthetic accounts, metadata, archive index/parts and contour objects were
+  cleaned up. No real moderation decision was changed.
+- API startup completed, zero ERROR/Traceback lines in inspected startup logs.
+  Worker startup reported ready. Baseline SHA256 remained
+  `626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb`.
+  Registry pointers remain null (original model). The temporary staging container
+  was stopped and removed after successful production checks.
+- Final aggregate counts: **0 accepted contours, 0 confirmed species labels,
+  0 registered training jobs**. Consequently no genuine training run or candidate
+  improvement can be reported. Do not admit smoke fixtures to fill this gap.
+- Installed APK remains `f35d12c`, SHA256 recorded above; no Dart changes followed
+  that installation. No further Flutter rebuild/test was needed for this server
+  storage correction. User has not yet reported the new manual acceptance result.
+
+Rollback is prepared, not executed: stop `arborscan-quality-worker`, apply the
+four original compose files as shown above to restore `history-d9a2a9f`, and
+check HTTPS health. Retain migration 003 and all new private data; the old API
+ignores ML tables. Backup remains `/home/arborscan/model-quality-backup-20260918`.
+V3, HTTPS configuration, production weights and old data were not modified.
+
+To reproduce the deployed image:
+
+```bash
+c=/home/arborscan/model-quality-2938d89
+docker build --build-arg BASE_IMAGE=arborscan-api-v4:history-d9a2a9f \
+ --label org.opencontainers.image.revision=2938d89e5e69dd4149074ef1ee7ad07d73c04c3d \
+ -f "$c/deploy-vps/Dockerfile.v4-contour" \
+ -t arborscan-api-v4:quality-2938d89 "$c"
+```
+
+Use `MODEL_QUALITY_IMAGE=arborscan-api-v4:quality-2938d89` and that checkout's
+compose overlay when reproducing the deployment; the earlier f35d12c commands
+describe the pre-storage-fix candidate, not the version now running.
