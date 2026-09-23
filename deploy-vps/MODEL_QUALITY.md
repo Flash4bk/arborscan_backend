@@ -352,3 +352,11 @@ docker build --build-arg BASE_IMAGE=arborscan-api-v4:history-d9a2a9f \
 Use `MODEL_QUALITY_IMAGE=arborscan-api-v4:quality-2938d89` and that checkout's
 compose overlay when reproducing the deployment; the earlier f35d12c commands
 describe the pre-storage-fix candidate, not the version now running.
+
+## Master plan tracking — 2026-09-23
+
+This package covers [AS-05, AS-06 and AS-07](ARBORSCAN_MASTER_PLAN.md).
+Implementation, rollout and automated evidence are recorded above. The user is
+currently performing manual acceptance; no completed acceptance is claimed.
+Real training and candidate quality evaluation remain blocked by missing eligible
+data. Update the same plan entries when those results become available.
