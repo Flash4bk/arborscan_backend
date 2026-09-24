@@ -107,6 +107,9 @@ class CalibrationInfo(BaseModel):
 
 
 class MeasurementValue(BaseModel):
+    method: str = "measurement_fusion_v2"
+    unit: str = "m"
+    coordinate_system: str = "exif_oriented_image_pixels_or_direct_ar_world_metres"
     value_m: Optional[float] = None
     value_px: Optional[float] = None
     source: MeasurementSource = MeasurementSource.UNAVAILABLE
@@ -146,14 +149,20 @@ class ImagePayload(BaseModel):
 
 class UnifiedAnalysisResponse(BaseModel):
     captured_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    algorithm_versions: dict = Field(default_factory=lambda: {'measurement':1,'image_coordinates':'exif_oriented_v1'})
+    algorithm_versions: dict = Field(default_factory=lambda: {'measurement':2,'image_coordinates':'exif_oriented_v1'})
     segmentation_model_version: Optional[int] = None
     segmentation_model_id: Optional[str] = None
     segmentation_weights_sha256: Optional[str] = None
-    measurement_method_version: int = 1
+    measurement_method_version: int = 2
     beta: dict = Field(default_factory=lambda: {
         'value_kg_s': None, 'method': None, 'available': False,
         'reason': 'dynamic_experiment_and_validated_forward_model_required'})
+    geometry: dict = Field(default_factory=lambda: {
+        'crown_height': {'value': None, 'unit': 'm', 'reason': 'whole_tree_mask_has_no_live_crown_base'},
+        'dbh': {'value': None, 'unit': 'm', 'reason': 'field_position_protocol_not_verified'},
+        'trunk_lean': {'value': None, 'unit': 'deg', 'reason': 'no_local_trunk_axis_and_gravity_reference'},
+        'crown_porosity': {'value': None, 'unit': '1', 'reason': 'no_validated_crown_region_and_gap_preserving_mask'},
+    })
     analysis_id: str
     api_version: str
     schema_version: str

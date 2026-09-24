@@ -303,7 +303,7 @@ def fuse_measurements(
             value_px=geometry.tree_height_px,
             source=_derived_source(calibration.source),
             confidence=_clamp01(min(seg_conf, calibration.confidence) * 0.95),
-            notes=("derived_from_segmentation_and_absolute_scale",),
+            notes=("image_vertical_mask_extent_not_gravity_height", "weak_perspective_assumption"),
         )
     else:
         height = MeasurementResult(
@@ -344,10 +344,10 @@ def fuse_measurements(
     ar_t = _positive(calibration_request.ar_trunk_diameter_m) if calibration_request.ar_photo_matches else None
     ar_t_height = _positive(calibration_request.ar_trunk_measurement_height_m)
     if ar_t is not None:
-        standard = "dbh_1_3m" if ar_t_height is not None and abs(ar_t_height - 1.3) < 1e-9 else None
+        standard = None  # Height alone does not establish a forestry DBH protocol.
         notes = ["direct_ar_measurement"]
         if standard is None:
-            notes.append("measurement_height_is_not_confirmed_as_dbh_1_3m")
+            notes.append("dbh_field_position_protocol_not_verified")
         trunk = MeasurementResult(
             value_m=round(ar_t, 4),
             value_px=geometry.trunk_width_px_estimate,
@@ -361,7 +361,7 @@ def fuse_measurements(
         dbh_px = _positive(calibration_request.dbh_width_px)
         dbh_h = _positive(calibration_request.dbh_measurement_height_m)
         if dbh_px is not None and calibration.available:
-            standard = "dbh_1_3m" if dbh_h is not None and abs(dbh_h - 1.3) < 1e-9 else None
+            standard = None  # Keep the actual section, never certify DBH from a scalar height.
             trunk = MeasurementResult(
                 value_m=round(dbh_px * calibration.px_to_m, 4),
                 value_px=dbh_px,
@@ -369,7 +369,7 @@ def fuse_measurements(
                 confidence=_clamp01(min(seg_conf, calibration.confidence) * 0.82),
                 measurement_height_m=dbh_h,
                 standard=standard,
-                notes=("explicit_trunk_line_on_photo",),
+                notes=("explicit_trunk_line_on_photo", "dbh_field_position_protocol_not_verified"),
             )
         else:
             trunk = MeasurementResult(

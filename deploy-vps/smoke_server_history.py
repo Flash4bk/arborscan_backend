@@ -43,6 +43,12 @@ def main():
           'tree':line((.5,.1),(.5,.9)),'crown':line((.2,.1),(.8,.1)),
           'outline':[{'x':.1,'y':.1},{'x':.1,'y':.3},{'x':.2,'y':.3}]},
           'environment':{'weather':{'value':{'temperature_c':8},'source':'synthetic_fixture','retrieved_at':'2026-09-16T00:00:00Z'}}}
+        geometry=os.getenv('GEOMETRY_SMOKE')=='1'
+        if geometry:
+            assert 2 in req('GET','/v4/reports/capabilities',owner['token'])['reference_versions']
+            snapshot['reference'].update(version=2,method='known_object_segment_v2',
+                scale_origin='vertical_reference_same_depth_user_confirmed',
+                crown_height=line((.5,.4),(.5,.1)),trunk=line((.45,.7),(.55,.7)),trunk_axis=line((.5,.8),(.5,.6)))
         analysis=str(uuid.uuid4());first=str(uuid.uuid4())
         def save(version,parent=None,length=1,status=200):
             s=json.loads(json.dumps(snapshot));s['reference']['length_m']=length
@@ -60,6 +66,12 @@ def main():
         assert r['snapshot']['image']['width']==100 and r['snapshot']['image']['height']==200
         assert abs(r['snapshot']['report']['height_m']-4)<1e-8
         assert r['snapshot']['environment']==snapshot['environment']
+        if geometry:
+            g=r['snapshot']['report']['geometry']
+            assert abs(g['trunk_diameter']['value']-.25)<1e-8
+            assert abs(g['crown_height']['value']-1.5)<1e-8
+            assert g['trunk_lean']['value']==0 and g['dbh']['value'] is None
+            assert r['snapshot']['reference']==snapshot['reference']
         req('GET','/v4/reports/'+first,other['token'],404)
         assert req('GET','/v4/reports',other['token'])['items']==[]
         save(first,length=2,status=409)
@@ -72,6 +84,11 @@ def main():
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             children=list(pool.map(compete,versions))
         assert sum(c is not None for c in children)==1
+        if geometry:
+            winner=next(c for c in children if c is not None)
+            child=req('GET','/v4/reports/'+winner['record']['version_id'],owner['token'])
+            assert abs(child['snapshot']['report']['geometry']['trunk_diameter']['value']-.5)<1e-8
+            print('PASS: geometry v2 source points, server calculations, immutable child rescaling and null DBH/porosity')
         assert req('GET','/v4/reports/'+first,owner['token'])['snapshot']['report']['height_m']==r['snapshot']['report']['height_m']
         assert len(req('GET','/v4/reports',owner['token'])['items'])==2
         stage='private object access'

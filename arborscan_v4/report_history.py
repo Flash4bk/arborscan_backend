@@ -18,6 +18,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from .corrections_api import current_user, _config, _uuid, MAX_IMAGE, MAX_PIXELS
 from .correction_workflow import WorkflowStore
+from .reference_geometry import reference_geometry
 
 router = APIRouter(prefix='/v4/reports', tags=['private report history'])
 
@@ -51,7 +52,7 @@ def validate_snapshot(raw, image):
         digest = hashlib.sha256(image).hexdigest()
         ref = data.get('reference')
         if ref is not None:
-            if (ref['version'] != 1 or ref['method'] != 'known_object_segment_v1' or
+            if (type(ref['version']) is not int or ref['version'] not in (1,2) or ref['method'] != f"known_object_segment_v{ref['version']}" or
                 ref['coordinates'] != 'normalized_oriented_image' or
                 ref['width'] != width or ref['height'] != height or ref['same_plane'] is not True):
                 raise ValueError()
@@ -75,7 +76,10 @@ def validate_snapshot(raw, image):
             crown=abs(cx*ry-cy*rx)*length/squared
             if not all(math.isfinite(x) and x>0 for x in (measured_height,crown)): raise ValueError()
             data['report']={**data['report'], 'height_m':measured_height,'crown_width_m':crown,
-                            'dbh_m':None,'beta_kg_s':None,'method':'known_object_segment_v1'}
+                            'dbh_m':None,'beta_kg_s':None,'method':ref['method']}
+            if ref['version'] == 2:
+                if ref.get('scale_origin') != 'vertical_reference_same_depth_user_confirmed': raise ValueError()
+                data['report']['geometry'] = reference_geometry(ref)
         if data['kind']=='reference' and ref is None: raise ValueError()
         ar=data.get('ar')
         if ar is not None and (not isinstance(ar,dict) or ar.get('photo_sha256')!=digest or ar.get('association')!='user_confirmed_same_tree'):
@@ -171,7 +175,7 @@ class ReportStore(WorkflowStore):
 @router.get('/capabilities')
 def capabilities(owner=Depends(current_user)):
     ReportStore().ready()
-    return {'history_version':1}
+    return {'history_version':1, 'reference_versions':[1,2], 'geometry_version':2}
 
 
 @router.post('')

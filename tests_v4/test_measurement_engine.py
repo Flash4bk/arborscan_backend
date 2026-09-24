@@ -77,7 +77,7 @@ class MeasurementEngineTests(unittest.TestCase):
         cal = resolve_calibration(geom, req)
         fused = fuse_measurements(geom, req, cal, 0.9)
         self.assertAlmostEqual(fused.trunk_diameter.value_m, 0.6, places=4)
-        self.assertEqual(fused.trunk_diameter.standard, "dbh_1_3m")
+        self.assertIsNone(fused.trunk_diameter.standard)  # scalar height is not a field protocol
 
 
 if __name__ == "__main__":
