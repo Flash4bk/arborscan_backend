@@ -40,7 +40,9 @@ def test_reference_si_and_oriented_original_pixels(client):
            reference_same_plane='true',crown_width_px='60')
     assert r.status_code==200,r.text
     j=r.json()
-    assert j['measurement_method_version']==1
+    assert j['measurement_method_version']==2
+    assert j['geometry']['dbh']['value'] is None
+    assert j['geometry']['crown_porosity']['value'] is None
     assert j['pixel_measurements']['image_width_px']==100
     assert j['pixel_measurements']['image_height_px']==200
     assert j['measurements']['height']['value_m']==9
