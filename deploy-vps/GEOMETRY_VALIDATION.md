@@ -86,6 +86,128 @@ SHA256 + подтверждение пользователя связывают 
 
 ## Проверки и эксплуатация
 
-Результаты автоматических тестов, точные коммиты, образ, APK и фактическое
-развёртывание будут записаны после завершения проверок. Пока новая версия не
-считается развёрнутой или принятой на телефоне.
+Проверки 24–25.09.2026:
+
+- Windows: 32 целевых backend-теста прошли; после проверки границ ещё 10 тестов
+  геометрии прошли. Python 3.14; один warning Starlette/httpx тестового окружения.
+- Финальный образ Python 3.11: **36 passed**, без пропусков, два прежних
+  предупреждения Starlette/httpx и AnyIO. Проверены API, история, EXIF, геометрия,
+  отсутствие фиктивных показателей и статистика полевого журнала.
+- Flutter: полный запуск **45 passed**; после проверки границ — **8 целевых passed**,
+  после уточнения текста ошибки — workflow отдельно passed.
+- Финальный `flutter analyze --no-pub`: **106 прежних замечаний**, 0 errors,
+  7 warnings, 99 info. Новых нет. Итог относится именно к arborscan_app,
+  а не к первоначальному root-level запуску, захватившему резервную копию приложения.
+- Android `:app:testDebugUnitTest`: **2 tests, 0 failures/errors**. Геометрия AR
+  не менялась; обновлены подписи и provenance, различающие диаметр и DBH.
+- Debug APK собран без dart-define. Первое препятствие — Java 8; выбран имеющийся
+  JDK 21 через JAVA_HOME только для процесса. Опечатка в Kotlin-подписи обнаружена
+  сборкой и исправлена; финальная сборка успешна.
+- Ручная приёмка новой геометрии и полевая точность **не подтверждены**.
+
+## Версии и развёртывание
+
+Финальный код API и APK: `97edd7164f43a66f697ee7fbfb8741ce75b5315d`.
+Образ `arborscan-api-v4:geometry-97edd71`, image ID
+`sha256:d50c7b981361c29a1584c12a6560074aeb7d2b7441189dacfc35bb27f5e30594`.
+APK SHA256 `71940fd56435cf16229251ca6d20d01cfc6c32119df8027be4bbde26d66599bd`.
+25.09 установлен агентом на S24 Ultra `R5CY40HNVCP` через `adb install --no-streaming -r`
+с результатом Success, запущен через am start. Данные не очищались.
+
+Исходный API и worker: `quality-2938d89`, image ID
+`sha256:01bc835d921112c5ebf325c13dcb2f91f2d02db65580087b980a58088692a4fe`.
+Основной checkout /opt/arborscan был чистым, `5d8176a22fddd6634c266a1ed09f1845019065c5`;
+не переключался. Финальный отдельный worktree: `/home/arborscan/geometry-97edd71`.
+Образ построен на прежнем runtime без обновления зависимостей и весов.
+SQL-миграций **нет**.
+
+Backup `/home/arborscan/geometry-backup-20260924`: runtime.tar перечитан,
+SHA256SUMS проверены; сохранены приватные inspect/environment, compose-файлы,
+Git-состояние и checksum baseline. Это копия затрагиваемого runtime/конфигурации,
+**не полный snapshot Supabase**: существующие записи в этом обновлении не мигрируют.
+Проверено совпадение env по значениям (порядок переменных после compose иной).
+Пересоздан только api-v4; worker остался `quality-2938d89` с прежним ID и StartedAt.
+Обучение не запускалось.
+
+До переключения HTTP-сценарии v1/v2 на отдельных синтетических аккаунтах проверили
+EXIF, повтор UUID, пересчёт из точек, новую ревизию, конфликт двух правок,
+доступ владельца и закрытость файлов. Fixtures удалены. Промежуточный ec5bf84
+также прошёл оба сценария через публичный HTTPS. Финальная проверка указана ниже.
+
+25.09 финальный `97edd71` проверен через публичный HTTPS: оба health v3/v4 —
+200/ok; reports/capabilities, reports, corrections и model-quality/status без
+авторизации — 401. Сценарий v2 подтвердил серверный пересчёт, сохранение/чтение,
+неизменяемый повтор и дочернюю версию, исходный EXIF, сохранённые условия,
+изоляцию владельцев, конфликт правок и закрытость файлов. Тестовые записи удалены.
+API healthy, в проверенных логах запуска нет ERROR/Traceback. Worker сохранил
+прежние ID/StartedAt и healthy; SHA256 baseline не изменился. Временный контейнер
+кандидата остановлен и удалён. Эти проверки не являются ручной приёмкой телефона.
+
+## Воспроизведение и откат
+
+На VPS:
+
+```bash
+c=/home/arborscan/geometry-97edd71
+docker build --build-arg BASE_IMAGE=arborscan-api-v4:quality-2938d89 \
+ --label org.opencontainers.image.revision=97edd7164f43a66f697ee7fbfb8741ce75b5315d \
+ -f "$c/deploy-vps/Dockerfile.v4-contour" -t arborscan-api-v4:geometry-97edd71 "$c"
+```
+
+Откат подготовлен, не выполнялся. Используются пять зафиксированных compose-файлов
+и override старого API; worker не пересоздаётся:
+
+```bash
+python3 - <<'PY'
+import json, os, pathlib, subprocess
+b=pathlib.Path('/home/arborscan/geometry-backup-20260924')
+subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=b,check=True)
+image=(b/'image-id.txt').read_text().strip()
+if subprocess.run(['docker','image','inspect',image],stdout=subprocess.DEVNULL).returncode:
+    subprocess.run(['docker','image','load','-i',str(b/'runtime.tar')],check=True)
+cmd=['docker','compose','-p','arborscan-v4']
+for f in json.loads((b/'compose-paths.json').read_text()): cmd+=['-f',f]
+cmd+=['-f',str(b/'rollback.yml'),'up','-d','--no-build','--no-deps','api-v4']
+subprocess.run(cmd,env={**os.environ,'MODEL_QUALITY_IMAGE':'arborscan-api-v4:quality-2938d89'},check=True)
+PY
+curl --fail https://31.57.170.88/api/v3/health
+curl --fail https://31.57.170.88/api/v4/health
+```
+
+Для повторной установки нового API заменить только rollback.yml на
+candidate-97edd71.yml. Отчёты v2 остаются в private storage при откате: старый API
+читает снимки, но не принимает новую запись v2. Клиент сохраняет черновик и объясняет
+недоступность. APK откатывается сборкой f35d12c в отдельном worktree тем же debug-ключом
+и `adb install -r`, без удаления данных. Правка v2 в старом клиенте недоступна.
+
+Локальная сборка и установка:
+
+```powershell
+cd D:\arborscan_backend\arborscan_app
+$env:JAVA_HOME='C:\Program Files\Android\openjdk\jdk-21.0.8'
+$env:PATH="$env:JAVA_HOME\bin;$env:PATH"
+flutter build apk --debug --no-pub
+$adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb -s R5CY40HNVCP install --no-streaming -r build/app/outputs/flutter-apk/app-debug.apk
+& $adb -s R5CY40HNVCP shell am start -n com.example.arborscan_app/.MainActivity
+```
+
+## Последовательная проверка пользователя
+
+1. История → старый отчёт: прежние числа, новые отсутствующие поля без выдуманных значений.
+2. По известному объекту → фото → реальная высота 1 м, контур и три прежних отрезка.
+   Подтвердить общую глубину. Сравнить с 100 см; увеличить фото и переставить точку.
+3. Нажать «Низ живой кроны и верх», затем «Края ствола в выбранном сечении» и
+   «Ось участка ствола у сечения». Проверить подписи проекционных размеров,
+   локального угла и причины отсутствия DBH/пористости.
+4. Изменить только край кроны: ширина меняется, прочие независимые отрезки остаются.
+   Сечение ниже отмеченного основания должно давать понятную ошибку.
+5. «Сохранить в аккаунте / новую версию». Остановить приложение через настройки
+   Android, открыть История → запись → «Изменить эталон / новая версия».
+   Проверить восстановление всех точек. Исправить точку, сохранить ребёнка и
+   открыть обе версии: старая не должна измениться.
+6. При доступном объекте выполнить AR с независимым контролем. Проверить подпись
+   диаметра и фактический уровень. Если условий нет, шаг остаётся непроверенным.
+7. Проверить сохранённый контур/модерацию; заполнить CSV по протоколу выше.
+   Передать результаты и отказы. Установка и синтетические тесты не означают
+   ручную приёмку или доказанную точность.
