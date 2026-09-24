@@ -73,6 +73,14 @@ class ReferenceMeasurement {
       throw const FormatException(
           'Дополнительный отрезок имеет нулевую проекцию.');
     }
+    if (version == 2) {
+      for (final p in [...crownHeight, ...trunk]) {
+        final h = level(p);
+        if (h < -1e-8 || h > heightM + 1e-8) {
+          throw const FormatException('Крона и сечение должны находиться между основанием и верхом дерева по оси эталона.');
+        }
+      }
+    }
     if (!heightM.isFinite || !crownM.isFinite || heightM <= 0 || crownM <= 0) {
       throw const FormatException(
           'Высота и ширина должны иметь ненулевую проекцию на оси эталона.');
@@ -93,8 +101,13 @@ class ReferenceMeasurement {
               .abs() /
           pixels(trunkAxis) *
           metresPerPixel;
-  double? get trunkLevelM =>
-      trunk.isEmpty ? null : projection([tree[0], (trunk[0] + trunk[1]) / 2]);
+  double level(Offset point) {
+    final axis = vector(tree);
+    final sign = (axis.dx * vertical.dx + axis.dy * vertical.dy).sign;
+    final v = vector([tree[0], point]);
+    return (v.dx * vertical.dx + v.dy * vertical.dy) * sign * metresPerPixel;
+  }
+  double? get trunkLevelM => trunk.isEmpty ? null : level((trunk[0] + trunk[1]) / 2);
   double? get leanDeg => trunkAxis.isEmpty
       ? null
       : math.atan2(

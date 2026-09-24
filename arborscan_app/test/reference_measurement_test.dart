@@ -34,6 +34,7 @@ void main() {
     expect(r.crownHeightM, closeTo(8,1e-8));
     expect(r.trunkM, closeTo(1,1e-8));
     expect(r.leanDeg, 0);
+    expect(() => ReferenceMeasurement.fromJson({...r.toJson(), 'trunk':[{'x':.45,'y':.95},{'x':.55,'y':.95}]}),throwsFormatException);
     expect(r.geometry['dbh']['value'],isNull);
     expect(r.geometry['crown_porosity']['value'],isNull);
     expect(ReferenceMeasurement.fromJson(r.toJson()).geometry, r.geometry);

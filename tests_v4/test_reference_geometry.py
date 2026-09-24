@@ -53,6 +53,7 @@ def test_roll_and_scale_and_height_not_segment_length():
  ('trunk_axis',[{'x':.5,'y':.5}]*2),('trunk',[{'x':2,'y':.5}]*2),
  ('crown_height',[{'x':.1,'y':.5},{'x':.8,'y':.5}]),
  ('trunk_axis',[{'x':True,'y':.2},{'x':.5,'y':.5}]),
+ ('trunk',[{'x':.45,'y':.95},{'x':.55,'y':.95}]),
  ('scale_origin','ar'),('version',True)])
 def test_reject_ambiguous_or_unbound_geometry(field,value):
     d=v2();d['reference'][field]=value

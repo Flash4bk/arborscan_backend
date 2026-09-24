@@ -64,7 +64,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   late final _service = widget.service ?? CorrectionsService(),
       _store = widget.drafts ?? referenceStore();
   final _length = TextEditingController();
-  String? _token, _owner, _id, _error;
+  String? _token, _owner, _id, _error, _calculationError;
   String _unit = 'm';
   bool _busy = true, _invalid = false, _plane = false;
   bool _saved = false;
@@ -325,6 +325,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   }
 
   ReferenceMeasurement? get _result {
+    _calculationError = null;
     if (_outline?['closed'] != true) return null;
     if (_outline?['width'] != _width || _outline?['height'] != _height) {
       return null;
@@ -345,7 +346,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           outline: _outline == null
               ? []
               : ContourEditorState.fromJson(_outline!).points);
-    } catch (_) {
+    } catch (e) {
+      _calculationError = e is FormatException ? e.message : 'Неверная разметка.';
       return null;
     }
   }
@@ -504,7 +506,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                             }),
                     child: const Text('Очистить дополнительную разметку')),
               if (result == null)
-                const Text(
+                Text(_calculationError ??
                     'Для расчёта введите положительную высоту, обведите эталон, отметьте три отрезка и подтвердите условия съёмки.'),
               if (result != null) ...[
                 const Text('Источник: По известному объекту'),
