@@ -128,6 +128,14 @@ class ReportHistoryService {
     if (d == null) {
       throw const CorrectionException('Локальный отчёт недоступен.');
     }
+    if (d['snapshot']?['reference']?['version'] == 2) {
+      final caps = await this.request(
+          token, http.Request('GET', ApiConfig.v4('/v4/reports/capabilities')));
+      if (!(caps['reference_versions'] as List? ?? []).contains(2)) {
+        throw const CorrectionException(
+            'Сервер пока не поддерживает новую геометрию. Измерение сохранено локально; требуется обновление API.');
+      }
+    }
     final request = http.MultipartRequest('POST', ApiConfig.v4('/v4/reports'))
       ..fields['analysis_id'] = d['analysis_id']
       ..fields['version_id'] = d['version_id']

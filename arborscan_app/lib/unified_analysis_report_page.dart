@@ -6,6 +6,7 @@ import 'app_theme.dart';
 import 'corrections_service.dart';
 import 'contour_workspace_page.dart';
 import 'unified_analysis_models.dart';
+import 'geometry_report.dart';
 import 'report_history_service.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
@@ -136,11 +137,11 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
             const _SectionTitle(
               title: 'Основные измерения',
               subtitle:
-                  'Высота, ширина кроны и DBH объединены в один результат.',
+                  'Размеры сохраняют свой источник. DBH требует отдельного подтверждения места измерения.',
             ),
             const SizedBox(height: 10),
             _MetricCard(
-              title: 'Высота дерева',
+              title: result.raw['measurement_method_version'] == 2 && result.height.source != 'ar' ? 'Вертикальный размер маски на фото' : 'Высота дерева',
               icon: Icons.height,
               metric: result.height,
               valueDigits: 2,
@@ -160,6 +161,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
               valueDigits: 3,
               dbh: true,
             ),
+            if (result.raw['measurement_method_version'] == 2) const GeometryReport(data: null),
             const SizedBox(height: 18),
             const _SectionTitle(
               title: 'Диагностика исходных данных',

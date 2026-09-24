@@ -4,6 +4,7 @@ import 'corrections_service.dart';
 import 'report_history_service.dart';
 import 'reference_measurement_page.dart';
 import 'reference_measurement.dart';
+import 'geometry_report.dart';
 import 'contour_workspace_page.dart';
 import 'unified_analysis_models.dart';
 import 'unified_analysis_report_page.dart';
@@ -160,6 +161,10 @@ class _ServerReportPageState extends State<ServerReportPage> {
                                     'reference': ref['reference'],
                                     'tree': ref['tree'],
                                     'crown': ref['crown'],
+                                    'measurement_version': r.version,
+                                    'crown_height': ref['crown_height'] ?? [],
+                                    'trunk': ref['trunk'] ?? [],
+                                    'trunk_axis': ref['trunk_axis'] ?? [],
                                     'server_analysis_id': row['analysis_id'],
                                     'server_parent_id': row['version_id'],
                                     'server_snapshot': s
@@ -287,7 +292,9 @@ class _ServerReportPageState extends State<ServerReportPage> {
             if (ref != null) ...[
               Text('Высота: ${s['report']['height_m']} м'),
               Text('Ширина кроны: ${s['report']['crown_width_m']} м'),
-              const Text('Источник: эталон. DBH не измерен. β не рассчитан.'),
+              const Text(
+                  'Источник: эталон. Проекционные размеры. β не рассчитан.'),
+              GeometryReport(data: s['report']['geometry']),
             ],
             ExpansionTile(
                 title: const Text('Исходные данные и происхождение'),
@@ -371,12 +378,14 @@ class _ServerHistoryPanelState extends State<ServerHistoryPanel> {
         throw const FormatException('Неверная страница истории.');
       }
       setState(() {
-        for(final r in page['items'] as List){
-          if(!_rows.any((old)=>old['version_id']==r['version_id'])) {
-            _rows.add(Map<String,dynamic>.from(r));
+        for (final r in page['items'] as List) {
+          if (!_rows.any((old) => old['version_id'] == r['version_id'])) {
+            _rows.add(Map<String, dynamic>.from(r));
           }
         }
-        _local.removeWhere((r)=>r['saved']==true && _rows.any((s)=>s['version_id']==r['version_id']));
+        _local.removeWhere((r) =>
+            r['saved'] == true &&
+            _rows.any((s) => s['version_id'] == r['version_id']));
         _next = next;
       });
     } catch (e) {
@@ -401,7 +410,9 @@ class _ServerHistoryPanelState extends State<ServerHistoryPanel> {
           for (final r in _local)
             ListTile(
                 leading: const Icon(Icons.phone_android),
-              title: Text(r['saved']==true?'Локальная копия серверного отчёта':'Локально — отправка не подтверждена'),
+                title: Text(r['saved'] == true
+                    ? 'Локальная копия серверного отчёта'
+                    : 'Локально — отправка не подтверждена'),
                 subtitle: Text('${r['created_at']}'),
                 onTap: () => Navigator.push(
                     context,

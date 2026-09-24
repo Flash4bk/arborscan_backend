@@ -24,6 +24,17 @@ void main(){
  Future<Map<String,dynamic>> stage(ReportHistoryService service,{int value=1,String? parent})=>service.stage(
    token:'first',localId:'local',analysisId:owner,image:Uint8List.fromList([1,2,3]),parentId:parent,
    snapshot:{'version':1,'report':{'height_m':value},'captured_at':'2026-09-17T00:00:00Z'});
+ test('old API refuses new geometry without losing durable draft', () async {
+  var posts=0;
+  final service=ReportHistoryService(journal:journal,clientFactory:()=>MockClient((r) async {
+    if(r.method=='POST') posts++;
+    return http.Response('{"history_version":1}',200);
+  }));
+  await service.stage(token:'first',localId:'geometry',analysisId:owner,image:Uint8List.fromList([1]),snapshot:{'reference':{'version':2}});
+  await expectLater(service.upload('first','geometry'),throwsA(isA<CorrectionException>().having((e)=>e.message,'message',contains('новую геометрию'))));
+  expect(posts,0);
+  expect((await journal.load(owner,'geometry'))!['snapshot']['reference']['version'],2);
+ });
  test('restart retains operation ID; uncertain reply retries exactly; new edit keeps parent',()async{
   final service=ReportHistoryService(journal:journal,clientFactory:()=>MockClient((r)async=>http.Response('{"saved":false}',200)));
   final first=await stage(service);

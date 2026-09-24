@@ -318,12 +318,12 @@ class ArMeasureActivity : AppCompatActivity() {
             incidence < 0.45 -> "Помощник: ракурс слишком боковой. Сместитесь так, чтобы смотреть на ствол более прямо."
             speed > STABLE_CAMERA_SPEED_M_S -> "Помощник: остановитесь и удерживайте телефон спокойнее."
             distance !in idealMin..idealMax -> if (forDbh) {
-                "Помощник: можно измерять, но для DBH лучше дистанция %.1f–%.1f м.".format(idealMin, idealMax)
+                "Помощник: можно измерять, но для диаметра лучше дистанция %.1f–%.1f м.".format(idealMin, idealMax)
             } else {
                 "Помощник: позиция допустима. Для высоты обычно лучше %.1f–%.1f м.".format(idealMin, idealMax)
             }
             else -> if (forDbh) {
-                "Помощник: позиция для DBH хорошая. После фиксации левого края не делайте шагов."
+                "Помощник: позиция для диаметра хорошая. После фиксации левого края не делайте шагов."
             } else {
                 "Помощник: позиция хорошая. Для верхушки можно немного повернуть или наклонить телефон без смены точки."
             }
@@ -382,7 +382,7 @@ class ArMeasureActivity : AppCompatActivity() {
 
         if (observation == null) {
             btnPlace.isEnabled = false
-            tvRealtime.text = "DBH ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
+            tvRealtime.text = "Диаметр ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
             tvStatus.text = "Помощник: прицел не пересекает измерительную область."
             return
         }
@@ -393,9 +393,9 @@ class ArMeasureActivity : AppCompatActivity() {
         val positionOk = position != null && position.score >= 0.58
 
         btnPlace.isEnabled = hOk && observation.incidence >= MIN_INCIDENCE && positionOk
-        tvRealtime.text = "DBH ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS\nВысота точки: %.2f м".format(h)
+        tvRealtime.text = "Диаметр ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS\nВысота точки: %.2f м".format(h)
         tvStatus.text = when {
-            !positionOk -> position?.hint ?: "Помощник: выберите стабильную позицию для DBH."
+            !positionOk -> position?.hint ?: "Помощник: выберите стабильную позицию для диаметра."
             !hOk -> "Помощник: наведите левый край ствола на высоте 1,30 м (±12 см)."
             smoothedCameraSpeedMps > STABLE_CAMERA_SPEED_M_S -> "Помощник: остановитесь. После левого края нельзя делать шаг до правого края."
             else -> "Помощник: фиксируйте левый край. Затем только поверните телефон к правому краю, не меняя место."
@@ -410,7 +410,7 @@ class ArMeasureActivity : AppCompatActivity() {
 
         if (left == null || right == null) {
             btnPlace.isEnabled = false
-            tvRealtime.text = "DBH ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
+            tvRealtime.text = "Диаметр ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
             tvStatus.text = "Помощник: потеряна геометрия правого края."
             return
         }
@@ -431,9 +431,9 @@ class ArMeasureActivity : AppCompatActivity() {
 
         btnPlace.isEnabled = hOk && moveOk && diameterOk && right.incidence >= MIN_INCIDENCE
         tvRealtime.text = if (diameter != null) {
-            "DBH ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS: %.3f м\nСмещение: %.0f мм".format(diameter, translation * 1000.0)
+            "Диаметр ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS: %.3f м\nСмещение: %.0f мм".format(diameter, translation * 1000.0)
         } else {
-            "DBH ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
+            "Диаметр ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
         }
         tvStatus.text = when {
             !moveOk -> "Помощник: телефон сместился на %.0f мм. Вернитесь к левому краю и повторите пару без шага.".format(translation * 1000.0)
@@ -596,7 +596,7 @@ class ArMeasureActivity : AppCompatActivity() {
         val relSpread = ArGeometry.relativeSpread(diameters) ?: 0.0
 
         if (spread > MAX_DBH_ABS_SPREAD_M || relSpread > MAX_DBH_REL_SPREAD) {
-            lastRepeatFailure = "DBH разброс: %.0f мм (%.1f%%). Сделайте три повтора ещё раз.".format(spread * 1000.0, relSpread * 100.0)
+            lastRepeatFailure = "Разброс диаметра: %.0f мм (%.1f%%). Сделайте три повтора ещё раз.".format(spread * 1000.0, relSpread * 100.0)
             resetDbhSeries(keepFailure = true)
             currentStep = MeasureStep.DBH_LEFT
             tvStatus.text = lastRepeatFailure
@@ -691,18 +691,18 @@ class ArMeasureActivity : AppCompatActivity() {
                 tvHint.text = "Наведите на самую верхнюю точку дерева"
             }
             MeasureStep.DBH_POSITION -> {
-                tvStep.text = "4 / 5 • ПОЗИЦИЯ DBH"
+                tvStep.text = "4 / 5 • ПОЗИЦИЯ ДЛЯ ДИАМЕТРА"
                 tvHint.text = "Подберите удобную дистанцию к стволу"
-                btnPlace.text = "Начать DBH"
+                btnPlace.text = "Измерить диаметр"
             }
             MeasureStep.DBH_LEFT -> {
-                tvStep.text = "5 / 5 • DBH ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
+                tvStep.text = "5 / 5 • ДИАМЕТР ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
                 tvHint.text = "Левый край ствола на высоте 1,30 м"
                 btnPlace.text = "Левый край"
                 if (lastRepeatFailure != null) tvStatus.text = lastRepeatFailure
             }
             MeasureStep.DBH_RIGHT -> {
-                tvStep.text = "5 / 5 • DBH ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
+                tvStep.text = "5 / 5 • ДИАМЕТР ${dbhSamples.size + 1}/$REQUIRED_DBH_REPEATS"
                 tvHint.text = "Правый край — не меняйте положение телефона"
                 btnPlace.text = "Правый край"
             }
@@ -727,12 +727,12 @@ class ArMeasureActivity : AppCompatActivity() {
             append("Высота  %.2f м\n".format(finalHeightM ?: 0.0))
             append("Диаметр  %.3f м на высоте %.2f м\n".format(finalTrunkDiameterM ?: 0.0, dbhMeasuredHeightM ?: 0.0))
             append("Крона    не измерена\n")
-            append("DBH разброс  %.0f мм".format((dbhRepeatSpreadM ?: 0.0) * 1000.0))
+            append("Разброс диаметра  %.0f мм".format((dbhRepeatSpreadM ?: 0.0) * 1000.0))
         }
         tvStatus.text = buildString {
             append("AR-трекинг: ${diagnostics.getString("tracking_status_ru")}. ")
             append("Геометрия: ${diagnostics.getString("geometry_status_ru")}. ")
-            append("DBH повторяемость: ${diagnostics.getString("dbh_repeatability_status_ru")}.")
+            append("Повторяемость диаметра: ${diagnostics.getString("dbh_repeatability_status_ru")}.")
         }
     }
 
@@ -742,7 +742,7 @@ class ArMeasureActivity : AppCompatActivity() {
         val dbhHeight = dbhMeasuredHeightM
         if (height == null || trunk == null || dbhHeight == null || dbhSamples.size != REQUIRED_DBH_REPEATS) {
             currentStep = MeasureStep.REVIEW
-            tvStatus.text = "Измерения неполные. Повторите DBH."
+            tvStatus.text = "Измерения неполные. Повторите диаметр."
             return
         }
 
@@ -904,6 +904,8 @@ class ArMeasureActivity : AppCompatActivity() {
         return JSONObject()
             .put("height_method", "fixed_vertical_tree_plane_ray_intersection_v1")
             .put("dbh_method", "cylindrical_tangent_rays_median_v2")
+            .put("dbh_protocol_verified", false)
+            .put("diameter_limitations", "vertical_cylinder_assumption; field_base_slope_fork_lean_rules_not_verified")
             .put("crown_method", "not_measured_requires_explicit_photo_calibration")
             .put("base", vec(basePoint))
             .put("base_camera", vec(baseFixCamera))

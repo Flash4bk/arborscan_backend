@@ -26,8 +26,10 @@ void main() {
     }
 
     Future<void> tapText(String text) async {
-      await t.scrollUntilVisible(find.text(text), 150,
+      await t.scrollUntilVisible(find.text(text), text.startsWith('Эталон и дерево') ? -150 : 150,
           scrollable: find.byType(Scrollable).first);
+      await Scrollable.ensureVisible(t.element(find.text(text)), alignment: .5);
+      await t.pumpAndSettle();
       await t.runAsync(() => t.tap(find.text(text)));
       await settle();
     }
@@ -77,15 +79,21 @@ void main() {
         'Отметить высоту дерева', const Offset(.5, .9), const Offset(.5, .1));
     await line(
         'Отметить ширину кроны', const Offset(.2, .3), const Offset(.8, .3));
+    await line('Низ живой кроны и верх', const Offset(.5,.5), const Offset(.5,.1));
+    await line('Края ствола в выбранном сечении', const Offset(.45,.7), const Offset(.55,.7));
+    await line('Ось участка ствола у сечения', const Offset(.5,.8), const Offset(.5,.6));
     await tapText(
         'Эталон и дерево примерно на одной глубине; перспектива мала');
     await tapText('Сохранить отчёт на устройстве');
+    await t.scrollUntilVisible(find.textContaining('Высота:'), -200, scrollable: find.byType(Scrollable).first);
     expect(find.text('Высота: 4.00 м'), findsOneWidget);
     final rows = (await t.runAsync(() => store.list(owner)))!;
     final id = rows.single['draft_id'] as String;
     expect(rows.single['width'], 100);
     expect(rows.single['height'], 200);
     expect(rows.single['report']['height_m'], closeTo(4, 1e-8));
+    expect(rows.single['report']['geometry']['crown_height']['value'], closeTo(2,1e-8));
+    expect(rows.single['report']['geometry']['trunk_diameter']['value'], closeTo(.25,1e-8));
     await t.pumpWidget(const SizedBox());
     await t.runAsync(() => t.pumpWidget(MaterialApp(
         home: ReferenceMeasurementPage(
@@ -101,15 +109,19 @@ void main() {
     await t.runAsync(() => t.tap(find.text('Сантиметры').last));
     await settle();
     await tapText('Сохранить отчёт на устройстве');
+    await t.scrollUntilVisible(find.textContaining('Высота:'), -200, scrollable: find.byType(Scrollable).first);
     expect(find.text('Высота: 4.00 м'), findsOneWidget);
     await t.scrollUntilVisible(find.byType(TextField), -200,
         scrollable: find.byType(Scrollable).first);
     await t.runAsync(() => t.enterText(find.byType(TextField), '200'));
     await settle();
     await tapText('Сохранить отчёт на устройстве');
+    await t.scrollUntilVisible(find.textContaining('Высота:'), -200, scrollable: find.byType(Scrollable).first);
     expect(find.text('Высота: 8.00 м'), findsOneWidget);
     final restored = (await t.runAsync(() => store.load(owner, id)))!;
     expect(restored['report']['height_m'], closeTo(8, 1e-8));
+    expect(restored['report']['geometry']['trunk_diameter']['value'], closeTo(.5,1e-8));
+    expect(restored['trunk_axis'], rows.single['trunk_axis']);
     await t.pumpWidget(const SizedBox());
     await t.runAsync(() => folder.delete(recursive: true));
   });

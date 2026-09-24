@@ -426,7 +426,7 @@ class _IntroCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'Высота, крона и DBH больше не считаются отдельными режимами. '
+                    'Высота, крона и диаметр сохраняют источники измерений. '
                     'AR даёт физическую геометрию, CV анализирует изображение, PlantNet определяет породу.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.muted,
@@ -704,7 +704,7 @@ class _ArCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 'Диаметр измерен на высоте ${ar.trunkMeasurementHeightMeters!.toStringAsFixed(2)} м. '
-                'Масштаб фото по AR не переносится. ${ar.dbhRepeatSpreadMeters != null ? ' Разброс DBH: ${(ar.dbhRepeatSpreadMeters! * 1000).toStringAsFixed(0)} мм.' : ''}',
+                'Масштаб фото по AR не переносится. ${ar.dbhRepeatSpreadMeters != null ? ' Разброс диаметра: ${(ar.dbhRepeatSpreadMeters! * 1000).toStringAsFixed(0)} мм.' : ''}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.muted,
                     ),

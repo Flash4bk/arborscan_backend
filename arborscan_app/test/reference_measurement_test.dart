@@ -25,6 +25,24 @@ ReferenceMeasurement measure(double length) => ReferenceMeasurement(
     outline: const [Offset(0, .9), Offset(.2, .9), Offset(.1, .6)]);
 
 void main() {
+  test('optional geometry rotates with reference and old versions remain old', () {
+    final base = measure(2).toJson();
+    final r = ReferenceMeasurement.fromJson({...base, 'version':2, 'method':'known_object_segment_v2',
+      'crown_height':[{'x':.5,'y':.5},{'x':.5,'y':.1}],
+      'trunk':[{'x':.45,'y':.7},{'x':.55,'y':.7}],
+      'trunk_axis':[{'x':.5,'y':.8},{'x':.5,'y':.6}]});
+    expect(r.crownHeightM, closeTo(8,1e-8));
+    expect(r.trunkM, closeTo(1,1e-8));
+    expect(r.leanDeg, 0);
+    expect(r.geometry['dbh']['value'],isNull);
+    expect(r.geometry['crown_porosity']['value'],isNull);
+    expect(ReferenceMeasurement.fromJson(r.toJson()).geometry, r.geometry);
+    expect(ReferenceMeasurement.fromJson(base).report.containsKey('geometry'),false);
+    final leaning = ReferenceMeasurement.fromJson({...r.toJson(), 'trunk_axis':[{'x':.2,'y':.8},{'x':.8,'y':.5}]});
+    expect(leaning.leanDeg,closeTo(45,1e-8));
+    expect(() => ReferenceMeasurement.fromJson({...r.toJson(), 'trunk_axis':[{'x':.5,'y':.5},{'x':.5,'y':.5}]}),throwsFormatException);
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('reference journal is accessible directly from History toolbar', (tester) async {
     SharedPreferences.setMockInitialValues({});

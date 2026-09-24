@@ -13,6 +13,7 @@ import 'image_line_page.dart';
 import 'mask_drawing_page.dart';
 import 'reference_measurement.dart';
 import 'report_history_service.dart';
+import 'geometry_report.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -73,6 +74,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   int _width = 0, _height = 0;
   Map<String, dynamic>? _outline;
   List<Offset> _reference = [], _tree = [], _crown = [];
+  List<Offset> _crownHeight = [], _trunk = [], _trunkAxis = [];
+  int _measurementVersion = 2;
   @override
   void initState() {
     super.initState();
@@ -136,6 +139,10 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         _reference = ReferenceMeasurement.decode(d['reference']);
         _tree = ReferenceMeasurement.decode(d['tree']);
         _crown = ReferenceMeasurement.decode(d['crown']);
+        _measurementVersion = d['measurement_version'] ?? 1;
+        _crownHeight = ReferenceMeasurement.decode(d['crown_height'] ?? []);
+        _trunk = ReferenceMeasurement.decode(d['trunk'] ?? []);
+        _trunkAxis = ReferenceMeasurement.decode(d['trunk_axis'] ?? []);
         _saved = true;
         _serverAnalysisId = d['server_analysis_id'];
         _serverParentId = d['server_parent_id'];
@@ -162,7 +169,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           'server_analysis_id': _serverAnalysisId,
           'server_parent_id': _serverParentId,
           'server_snapshot': _serverSnapshot,
-          'method': 'known_object_segment_v1',
+          'method': 'known_object_segment_v$_measurementVersion',
           'coordinates': 'normalized_oriented_image',
           'width': _width,
           'height': _height,
@@ -171,18 +178,14 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           'unit': _unit,
           'same_plane': _plane,
           'outline': _outline,
+          'measurement_version': _measurementVersion,
+          'crown_height': ReferenceMeasurement.encode(_crownHeight),
+          'trunk': ReferenceMeasurement.encode(_trunk),
+          'trunk_axis': ReferenceMeasurement.encode(_trunkAxis),
           'reference': ReferenceMeasurement.encode(_reference),
           'tree': ReferenceMeasurement.encode(_tree),
           'crown': ReferenceMeasurement.encode(_crown),
-          'report': _result == null
-              ? null
-              : {
-                  'method': 'known_object_segment_v1',
-                  'height_m': _result!.heightM,
-                  'crown_width_m': _result!.crownM,
-                  'dbh_m': null,
-                  'beta_kg_s': null,
-                },
+          'report': _result?.report,
           'saved_at': DateTime.now().toUtc().toIso8601String()
         },
         _image!);
@@ -226,6 +229,10 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     _reference = [];
     _tree = [];
     _crown = [];
+    _crownHeight = [];
+    _trunk = [];
+    _trunkAxis = [];
+    _measurementVersion = 2;
     _plane = false;
     _serverAnalysisId = null;
     _serverParentId = null;
@@ -244,11 +251,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
       'reference': result.toJson(),
       'report': {
         ...?_serverSnapshot?['report'],
-        'method': 'known_object_segment_v1',
-        'height_m': result.heightM,
-        'crown_width_m': result.crownM,
-        'dbh_m': null,
-        'beta_kg_s': null
+        ...result.report,
       },
       'ar': _serverSnapshot?['ar'],
       'environment': _serverSnapshot?['environment'],
@@ -283,7 +286,13 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         ? _reference
         : kind == 'tree'
             ? _tree
-            : _crown;
+            : kind == 'crown'
+                ? _crown
+                : kind == 'crown_height'
+                    ? _crownHeight
+                    : kind == 'trunk'
+                        ? _trunk
+                        : _trunkAxis;
     final result = await Navigator.of(context).push<List<Offset>>(
         MaterialPageRoute(
             builder: (_) => ImageLinePage(
@@ -301,6 +310,15 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
       _reference = result;
     } else if (kind == 'tree') {
       _tree = result;
+    } else if (kind == 'crown_height') {
+      _measurementVersion = 2;
+      _crownHeight = result;
+    } else if (kind == 'trunk') {
+      _measurementVersion = 2;
+      _trunk = result;
+    } else if (kind == 'trunk_axis') {
+      _measurementVersion = 2;
+      _trunkAxis = result;
     } else {
       _crown = result;
     }
@@ -313,6 +331,10 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     }
     try {
       return ReferenceMeasurement(
+          version: _measurementVersion,
+          crownHeight: _crownHeight,
+          trunk: _trunk,
+          trunkAxis: _trunkAxis,
           width: _width,
           height: _height,
           lengthM: ReferenceMeasurement.parseLength(_length.text, _unit),
@@ -334,7 +356,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     final json = const JsonEncoder.withIndent('  ').convert({
       'measurement': result.toJson(),
       'photo_sha256': sha256.convert(_image!).toString(),
-      'height_m': result.heightM,
+      ...result.report,
       'crown_width_m': result.crownM,
       'dbh_m': null,
       'beta_kg_s': null,
@@ -386,7 +408,10 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                   decoration: const InputDecoration(
                       labelText: 'Реальная высота эталона'),
                   onChanged: (_) {
-                    setState(() { _saved = false; _serverMessage = null; });
+                    setState(() {
+                      _saved = false;
+                      _serverMessage = null;
+                    });
                     _save().catchError((Object e) {
                       if (mounted) setState(() => _error = '$e');
                     });
@@ -454,6 +479,30 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                       : () => _run(() =>
                           _line('crown', 'Левый и правый край именно кроны')),
                   child: const Text('Отметить ширину кроны')),
+              const Text(
+                  'Дополнительно: отметьте нижнюю границу живой кроны и её верх; для сечения ствола — края коры и локальную ось рядом с сечением. Не включайте листву. Разметка необязательна.'),
+              for (final entry in {
+                'crown_height': 'Низ живой кроны и верх',
+                'trunk': 'Края ствола в выбранном сечении',
+                'trunk_axis': 'Ось участка ствола у сечения'
+              }.entries)
+                OutlinedButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _run(() => _line(entry.key, entry.value)),
+                    child: Text(entry.value)),
+              if (_crownHeight.isNotEmpty ||
+                  _trunk.isNotEmpty ||
+                  _trunkAxis.isNotEmpty)
+                TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _run(() async {
+                              _crownHeight = [];
+                              _trunk = [];
+                              _trunkAxis = [];
+                            }),
+                    child: const Text('Очистить дополнительную разметку')),
               if (result == null)
                 const Text(
                     'Для расчёта введите положительную высоту, обведите эталон, отметьте три отрезка и подтвердите условия съёмки.'),
@@ -461,6 +510,10 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 const Text('Источник: По известному объекту'),
                 Text('Высота: ${result.heightM.toStringAsFixed(2)} м'),
                 Text('Ширина кроны: ${result.crownM.toStringAsFixed(2)} м'),
+                if (_measurementVersion == 2)
+                  GeometryReport(data: result.geometry),
+                const Text(
+                    'Высота и ширина выше — проекции по вертикальному эталону; не длина ствола и не средний диаметр кроны.'),
                 const Text(
                     'DBH не измерен. β (кг/с) не определяется по одному фото: нужны динамический эксперимент и модель.'),
                 FilledButton(
