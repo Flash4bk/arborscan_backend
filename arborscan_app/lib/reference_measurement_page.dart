@@ -14,6 +14,8 @@ import 'mask_drawing_page.dart';
 import 'reference_measurement.dart';
 import 'report_history_service.dart';
 import 'geometry_report.dart';
+import 'report_export_button.dart';
+import 'report_export_data.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -387,6 +389,11 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) Text(_error!),
           if (!_invalid) ...[
+            if (result != null) ReportExportButton(enabled: !_busy, load: () async => ReportExportData(
+              snapshot: {'kind':'reference','report':result.report,'reference':result.toJson(),
+                'captured_at':_serverSnapshot?['captured_at'], 'ar':_serverSnapshot?['ar'],
+                'environment':_serverSnapshot?['environment']},
+              record: {'analysis_id':_serverAnalysisId ?? _id}, photo:_image, local:true)),
             const Text(
                 'Вертикальный эталон должен стоять рядом с деревом примерно на той же глубине. Снимайте целиком, без сильного наклона камеры. Его высота задаёт вертикальную ось; ширина кроны считается поперёк неё. Перспектива ограничивает метод: один отрезок её не исправляет. Результат — оценка проекции, не подтверждённая точность.'),
             OutlinedButton(

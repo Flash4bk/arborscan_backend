@@ -2,9 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'report_export_button.dart';
+import 'report_export_data.dart';
 
 import 'app_theme.dart';
 
@@ -84,7 +83,7 @@ class AnalysisReportPageV2 extends StatelessWidget {
       lat: (gps?['lat'] as num?)?.toDouble(),
       lon: (gps?['lon'] as num?)?.toDouble(),
       address: raw['address'] as String?,
-      timestamp: DateTime.now(),
+      timestamp: DateTime.tryParse('${raw['captured_at'] ?? raw['created_at'] ?? ''}'),
       onOpenFeedback: onOpenFeedback,
     );
   }
@@ -121,156 +120,6 @@ class AnalysisReportPageV2 extends StatelessWidget {
       address: address,
       timestamp: timestamp,
       onOpenFeedback: onOpenFeedback,
-    );
-  }
-
-  /// --- ГЕНЕРАЦИЯ PDF ---
-  Future<void> _exportToPdf(BuildContext context) async {
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Генерация PDF отчета...')),
-      );
-
-      final pdf = pw.Document();
-      final ttf = await PdfGoogleFonts.robotoRegular();
-      final ttfBold = await PdfGoogleFonts.robotoBold();
-
-      pw.ImageProvider? pdfImage;
-      final imageBytes = annotatedImageBytes ?? _tryDecodeAnnotated(raw);
-      if (imageBytes != null) {
-        pdfImage = pw.MemoryImage(imageBytes);
-      }
-
-      final resolvedSpecies = species ?? 'Неизвестно';
-      final risk = raw?['risk'] as Map<String, dynamic>?;
-      final explanation = (risk?['explanation'] as List?)?.cast<String>() ?? const [];
-
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(32),
-          build: (pw.Context ctx) {
-            return [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('ОТЧЕТ ARBORSCAN', style: pw.TextStyle(font: ttfBold, fontSize: 24, color: PdfColors.teal800)),
-                    pw.Text(_formatDateTime(timestamp ?? DateTime.now()), style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey600)),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 10),
-              
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Вид дерева:', style: pw.TextStyle(font: ttf, fontSize: 14, color: PdfColors.grey700)),
-                        pw.Text(resolvedSpecies, style: pw.TextStyle(font: ttfBold, fontSize: 18)),
-                        pw.SizedBox(height: 10),
-                        pw.Text('Оценка риска:', style: pw.TextStyle(font: ttf, fontSize: 14, color: PdfColors.grey700)),
-                        pw.Text(
-                          '${riskCategory?.toUpperCase() ?? "НЕИЗВЕСТНО"} (${riskIndex?.toStringAsFixed(2) ?? "—"})', 
-                          style: pw.TextStyle(
-                            font: ttfBold, 
-                            fontSize: 16, 
-                            color: riskCategory == 'высокий' ? PdfColors.red800 : PdfColors.green800
-                          )
-                        ),
-                      ],
-                    )
-                  ),
-                  if (pdfImage != null)
-                    pw.Container(
-                      height: 200,
-                      width: 150,
-                      child: pw.ClipRRect(
-                        horizontalRadius: 10,
-                        verticalRadius: 10,
-                        child: pw.Image(pdfImage, fit: pw.BoxFit.cover),
-                      ),
-                    ),
-                ]
-              ),
-              
-              pw.SizedBox(height: 20),
-              pw.Divider(color: PdfColors.grey300),
-              pw.SizedBox(height: 10),
-
-              pw.Text('ФИЗИЧЕСКИЕ ПАРАМЕТРЫ', style: pw.TextStyle(font: ttfBold, fontSize: 14, color: PdfColors.teal800)),
-              pw.SizedBox(height: 10),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  _pdfStatBox('Высота', '${heightM?.toStringAsFixed(2) ?? "—"} м', ttf, ttfBold),
-                  _pdfStatBox('Крона', '${crownWidthM?.toStringAsFixed(2) ?? "—"} м', ttf, ttfBold),
-                  _pdfStatBox('Диаметр ствола', '${trunkDiameterM?.toStringAsFixed(2) ?? "—"} м', ttf, ttfBold),
-                ]
-              ),
-
-              pw.SizedBox(height: 20),
-
-              if (address != null || lat != null) ...[
-                pw.Text('ЛОКАЦИЯ', style: pw.TextStyle(font: ttfBold, fontSize: 14, color: PdfColors.teal800)),
-                pw.SizedBox(height: 5),
-                if (address != null) pw.Text(address!, style: pw.TextStyle(font: ttf, fontSize: 12)),
-                if (lat != null && lon != null) pw.Text('GPS: $lat, $lon', style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.grey600)),
-                pw.SizedBox(height: 20),
-              ],
-
-              pw.Text('ФАКТОРЫ РИСКА (SIA METHOD)', style: pw.TextStyle(font: ttfBold, fontSize: 14, color: PdfColors.teal800)),
-              pw.SizedBox(height: 10),
-              
-              ...explanation.map((line) => pw.Padding(
-                padding: const pw.EdgeInsets.only(bottom: 6),
-                child: pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('• ', style: pw.TextStyle(font: ttfBold)),
-                    pw.Expanded(child: pw.Text(line, style: pw.TextStyle(font: ttf, fontSize: 12))),
-                  ]
-                )
-              )).toList(),
-              
-              pw.Spacer(),
-              pw.Divider(color: PdfColors.grey300),
-              pw.SizedBox(height: 10),
-              pw.Text('Сгенерировано в профессиональном приложении ArborScan AI', style: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.grey500)),
-            ];
-          },
-        ),
-      );
-
-      await Printing.sharePdf(
-        bytes: await pdf.save(), 
-        filename: 'ArborScan_Report_${DateTime.now().millisecondsSinceEpoch}.pdf'
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка создания PDF: $e')));
-    }
-  }
-
-  pw.Widget _pdfStatBox(String label, String val, pw.Font ttf, pw.Font ttfBold) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(10),
-      decoration: const pw.BoxDecoration(
-        color: PdfColors.grey100,
-        borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(label, style: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.grey700)),
-          pw.SizedBox(height: 4),
-          pw.Text(val, style: pw.TextStyle(font: ttfBold, fontSize: 14)),
-        ]
-      )
     );
   }
 
@@ -361,15 +210,14 @@ class AnalysisReportPageV2 extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _exportToPdf(context),
-        backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.black),
-        label: const Text(
-          'ЭКСПОРТ В PDF', 
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 1.0)
-        ),
-      ),
+      floatingActionButton: SizedBox(width: 290, child: Material(color: AppTheme.bg,
+        child: ReportExportButton(load: () async => ReportExportData(
+          snapshot: {'kind':'legacy','captured_at':timestamp?.toUtc().toIso8601String(),
+            'report': raw ?? {'species':species,'height_m':heightM,'crown_width_m':crownWidthM,
+              'trunk_diameter_m':trunkDiameterM,'gps':{'lat':lat,'lon':lon}}},
+          record:{'analysis_id':raw?['analysis_id'] ?? raw?['id'] ?? 'legacy'},
+          photo:exportDecode(raw?['original_image_base64'] ?? raw?['image_base64']),
+          annotation:annotatedImageBytes ?? _tryDecodeAnnotated(raw), local:raw == null)))),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }

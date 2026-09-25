@@ -8,12 +8,15 @@ import 'contour_workspace_page.dart';
 import 'unified_analysis_models.dart';
 import 'geometry_report.dart';
 import 'report_history_service.dart';
+import 'report_export_button.dart';
+import 'report_export_data.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
   final UnifiedAnalysisResult result;
   final Uint8List? fallbackImageBytes;
   final CorrectionsService? correctionsService;
   final bool allowServerSave;
+  final ExportLoader? exportLoader;
 
   const UnifiedAnalysisReportPage({
     super.key,
@@ -21,6 +24,7 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
     this.fallbackImageBytes,
     this.correctionsService,
     this.allowServerSave = true,
+    this.exportLoader,
   });
 
   @override
@@ -92,6 +96,10 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
+            ReportExportButton(load: widget.exportLoader ?? () async => ReportExportData(
+                snapshot: {'kind':'v4', 'report':result.raw, 'captured_at':result.raw['captured_at'],
+                  'ar':result.raw['ar_provenance'], 'environment':result.raw['environment_snapshot']},
+                record: {'analysis_id':result.analysisId}, photo:fallbackImageBytes, local:true)),
             if(widget.allowServerSave && fallbackImageBytes!=null)...[
               FilledButton(onPressed:_savingReport?null:_saveReport,
                 child:Text(_savingReport?'Сохранение…':'Сохранить отчёт в аккаунте')),

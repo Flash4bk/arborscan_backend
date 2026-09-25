@@ -5,6 +5,8 @@ import 'report_history_service.dart';
 import 'reference_measurement_page.dart';
 import 'reference_measurement.dart';
 import 'geometry_report.dart';
+import 'report_export_button.dart';
+import 'report_export_loader.dart';
 import 'contour_workspace_page.dart';
 import 'unified_analysis_models.dart';
 import 'unified_analysis_report_page.dart';
@@ -101,6 +103,9 @@ class _ServerReportPageState extends State<ServerReportPage> {
             Text(widget.versionId != null
                 ? 'Сохранено в аккаунте'
                 : 'Локальная запись'),
+            ReportExportButton(enabled: !_busy, load: () => loadReportExport(
+                snapshot: Map<String, dynamic>.from(s), record: Map<String, dynamic>.from(row!),
+                photo: photo, local: widget.versionId == null && row['saved'] != true, token: _token!)),
             if (photo != null)
               Image.memory(photo, height: 240, fit: BoxFit.contain),
             Text('Снимок отчёта от ${s['captured_at'] ?? 'дата неизвестна'}'),
@@ -126,6 +131,9 @@ class _ServerReportPageState extends State<ServerReportPage> {
                                   result: UnifiedAnalysisResult.fromJson(
                                       Map<String, dynamic>.from(s['report'])),
                                   fallbackImageBytes: photo,
+                                  exportLoader: () => loadReportExport(
+                                    snapshot: Map<String,dynamic>.from(s), record: Map<String,dynamic>.from(row!),
+                                    photo:photo, local:widget.versionId == null && row['saved'] != true, token:_token!),
                                   allowServerSave: false))),
                   child: const Text('Открыть отчёт анализа')),
             if (ref != null)

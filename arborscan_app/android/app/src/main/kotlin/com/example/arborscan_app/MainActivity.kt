@@ -11,9 +11,12 @@ class MainActivity : FlutterActivity() {
     private val channelName = "arborscan/ar_measure"
     private var pendingResult: MethodChannel.Result? = null
     private val requestCodeAr = 1001
+    private val reportExport by lazy { ReportExport(this) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "arborscan/report_export")
+            .setMethodCallHandler { call, result -> reportExport.handle(call, result) }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
@@ -36,6 +39,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (reportExport.onResult(requestCode, resultCode, data)) return
 
         if (requestCode != requestCodeAr) return
 
