@@ -1,0 +1,62 @@
+{
+  "disk_free_bytes": 130479456256,
+  "containers": [
+    {
+      "name": "arborscan-api",
+      "image": "arborscan-api",
+      "image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "running": true,
+      "health": "healthy",
+      "started": "2026-09-07T17:35:02.146108577Z",
+      "restarts": 0,
+      "logging": {
+        "Type": "json-file",
+        "Config": {
+          "max-file": "5",
+          "max-size": "10m"
+        }
+      }
+    },
+    {
+      "name": "arborscan-api-v4",
+      "image": "arborscan-api-v4:reliability-691fb77",
+      "image_id": "sha256:afb6c57845667f9aff8a1e9236fbe7b81255f2c8ccc53ccc5b7b10cb77abb26e",
+      "running": true,
+      "health": "healthy",
+      "started": "2026-09-26T20:27:50.198440244Z",
+      "restarts": 0,
+      "logging": {
+        "Type": "json-file",
+        "Config": {
+          "max-file": "5",
+          "max-size": "10m"
+        }
+      }
+    },
+    {
+      "name": "arborscan-quality-worker",
+      "image": "arborscan-api-v4:reliability-691fb77",
+      "image_id": "sha256:afb6c57845667f9aff8a1e9236fbe7b81255f2c8ccc53ccc5b7b10cb77abb26e",
+      "running": true,
+      "health": "healthy",
+      "started": "2026-09-26T20:27:50.676398046Z",
+      "restarts": 0,
+      "logging": {
+        "Type": "json-file",
+        "Config": {
+          "max-file": "3",
+          "max-size": "10m"
+        }
+      }
+    }
+  ],
+  "latest_completed_backup": "/home/arborscan/ops-backups/20260926T202023Z",
+  "backup_age_seconds": 243,
+  "incomplete_backups": [],
+  "dependency_readiness": {
+    "contours": true,
+    "history": true,
+    "quality": true,
+    "private_storage": true
+  }
+}

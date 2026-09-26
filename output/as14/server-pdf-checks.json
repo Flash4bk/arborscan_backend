@@ -1,0 +1,26 @@
+[
+  {
+    "file": "server-v1.pdf",
+    "pages": 4,
+    "height_m": "4.8",
+    "version": "36dfd793-4357-439c-80e1-6cad80538f72",
+    "photo_jpeg_rms_per_channel": [
+      1.181642571451565,
+      0.9171968163922071,
+      1.4570375195352154
+    ],
+    "sha256": "a0524722a8a5e8ecfd450a6fbce110601a5fb75a5f31ee2dc42e5fa8c3970876"
+  },
+  {
+    "file": "server-v2.pdf",
+    "pages": 4,
+    "height_m": "9.6",
+    "version": "a15904af-c257-4afd-a2fa-4c97f8891bf5",
+    "photo_jpeg_rms_per_channel": [
+      1.181642571451565,
+      0.9171968163922071,
+      1.4570375195352154
+    ],
+    "sha256": "0e6691fa974fef0ab188c2650da3c48b90b445c612ff24f4af1352eb571f0451"
+  }
+]

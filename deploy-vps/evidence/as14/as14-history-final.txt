@@ -1,0 +1,10 @@
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/report_history_test.dart
+00:00 +0: old API refuses new geometry without losing durable draft
+00:00 +1: restart retains operation ID; uncertain reply retries exactly; new edit keeps parent
+00:00 +2: account switch rejects in-flight response and does not mark operation saved
+00:00 +3: network and conflict preserve complete local snapshot and photo
+00:00 +4: lost committed reply survives restart, blocks replacement and deduplicates retry
+00:00 +5: rejected request permits correction, original photo cannot silently change
+00:00 +6: journal snapshots mutable photo before asynchronous write
+00:01 +7: expired session after uncertain commit cannot discard original operation
+00:01 +8: All tests passed!

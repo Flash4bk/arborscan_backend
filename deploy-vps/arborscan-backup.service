@@ -1,0 +1,12 @@
+[Unit]
+Description=ArborScan private application and file backup
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+User=arborscan
+UMask=0077
+ExecStart=/bin/sh /home/arborscan/ops-tools/ops_backup.sh
+TimeoutStartSec=40min
+Nice=10
+IOSchedulingClass=idle

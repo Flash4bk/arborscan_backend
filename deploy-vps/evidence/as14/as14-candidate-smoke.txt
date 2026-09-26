@@ -1,0 +1,2 @@
+PASS: authorized save/read, immutable retry, original EXIF, historical environment, owner isolation, concurrent conflict, private files
+Synthetic fixtures removed
