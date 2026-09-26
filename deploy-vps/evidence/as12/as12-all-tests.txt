@@ -1,0 +1,52 @@
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/api_config_test.dart
+00:00 +0: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: defaults and dart-define overrides are used
+00:00 +1: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: endpoint paths retain nginx prefixes and intentional repeated v4
+00:00 +2: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: relative images retain prefix, absolute URLs are preserved
+00:00 +3: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: tunnel hints appear only for loopback configurations
+00:00 +4: D:/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: AR exports direct measurements without inventing photo or crown scale
+00:00 +5: D:/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: invalid AR distance is rejected instead of replaced with tree height
+00:01 +6: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: editor state restores exact normalized points and open/closed state
+00:01 +7: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +8: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +9: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +10: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +11: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +12: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +13: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +14: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +15: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +16: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +17: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +18: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:02 +19: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +20: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +21: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +22: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +23: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +24: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +25: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:03 +26: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:03 +27: D:/arborscan_backend/arborscan_app/test/model_quality_test.dart: admin screen restores durable jobs and invalidates on account change
+00:03 +28: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:04 +29: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:04 +30: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:04 +31: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:05 +32: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:05 +33: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:06 +34: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:06 +35: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:06 +36: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:06 +37: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:06 +38: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:06 +39: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:06 +40: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:07 +41: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:07 +42: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:07 +43: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:08 +44: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:08 +45: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:08 +46: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:08 +47: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:08 +48: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +49: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:21 +50: All tests passed!

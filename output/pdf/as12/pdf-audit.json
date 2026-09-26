@@ -1,0 +1,83 @@
+[
+  {
+    "file": "output\\pdf\\as12\\ArborScan_DEMO-AS12_full-v1.pdf",
+    "sha256": "3d59ce249f5e211dba5aa3a52f92958b90dc024f839e04eba22302989c589321",
+    "pages": 4,
+    "words": 429,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\ArborScan_DEMO-AS12_full-v2.pdf",
+    "sha256": "ecc38feff9a92838c8550174a6012b78e25fc4e125f1cf8ff73fb54088c7470f",
+    "pages": 4,
+    "words": 429,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\ArborScan_DEMO-AS12_long.pdf",
+    "sha256": "caef1cbe73852fbfbc7154f7c2dd667519aa5477c54674b88d90ee902dda27ce",
+    "pages": 7,
+    "words": 865,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\ArborScan_DEMO-AS12_missing.pdf",
+    "sha256": "b1fbc6945a23bd805bc729cd34c417d1bbcd3550458bea99e8a07a1bd09d2029",
+    "pages": 3,
+    "words": 358,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\ArborScan_DEMO-AS12_old.pdf",
+    "sha256": "cd47333c09a97e04097678c2dc6864cc835a880ebfd51154e3aca6da4f533eaa",
+    "pages": 3,
+    "words": 333,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\device\\ArborScan_DEMO-AS12_full-v1.pdf",
+    "sha256": "f5fcf9a97f839f5055d08b418ef9b712267de1d260bfa3deb0ec998724ce4fd9",
+    "pages": 4,
+    "words": 433,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\device\\ArborScan_DEMO-AS12_full-v2.pdf",
+    "sha256": "14c64698659bd254def8b7846693a9d6c22aca4c93c75e451e34b87c1b3b0557",
+    "pages": 4,
+    "words": 433,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\device\\ArborScan_DEMO-AS12_long.pdf",
+    "sha256": "3d83bfe8a67743caea6d81f1c7386eb74e7a40b7fd3be890488a7d863690cf6a",
+    "pages": 7,
+    "words": 869,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  },
+  {
+    "file": "output\\pdf\\as12\\device\\ArborScan_DEMO-AS12_old.pdf",
+    "sha256": "33b78a5956f2f1b5fe329b5ed8cfdafda9ed2b578f17a8e84c84964e22697fe1",
+    "pages": 3,
+    "words": 337,
+    "cyrillic_embedded_font": true,
+    "page_bounds": true,
+    "text_checks": true
+  }
+]

@@ -1,0 +1,1 @@
+{"record":{"analysis_id":"DEMO-AS12","version_id":"old","created_at":"2026-09-25T09:00:00Z"},"snapshot":{"version":1,"kind":"legacy","captured_at":null,"report":{"species":"ДЕМОНСТРАЦИОННЫЕ ДАННЫЕ","height_m":null,"crown_width_m":null,"method":"known_object_segment_v2","geometry":{"crown_height":{"value":2.1,"unit":"m","source":"reference","definition":"Проекция живой кроны"}}}}}
