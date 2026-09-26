@@ -110,5 +110,15 @@ void main(){
   bytes[0]=9;await saving;
   expect((await ContourDrafts(directory:()async=>temp).load(owner,'immutable'))!['image'],[1,2,3]);
  });
+ test('expired session after uncertain commit cannot discard original operation',()async{
+  var status=503;
+  final service=ReportHistoryService(journal:journal,clientFactory:()=>MockClient((_)async=>http.Response('{}',status)));
+  final first=await stage(service);
+  await expectLater(service.upload('first','local'),throwsA(isA<CorrectionException>()));
+  status=401;
+  await expectLater(service.upload('first','local'),throwsA(isA<CorrectionException>()));
+  await expectLater(stage(service,value:2),throwsA(isA<CorrectionException>()));
+  expect((await journal.load(owner,'local'))!['version_id'],first['version_id']);
+ });
 
 }

@@ -197,7 +197,8 @@ class ReportHistoryService {
     try {
       response = await this.request(token, request);
     } on CorrectionException catch (e) {
-      if ([400, 401, 403, 404, 405, 409, 413, 422, 429]
+      if (d['upload_attempted'] != true &&
+          [400, 401, 403, 404, 405, 409, 413, 422, 429]
           .contains(e.statusCode)) {
         await auth.checkSession(token);
         await journal.save(
