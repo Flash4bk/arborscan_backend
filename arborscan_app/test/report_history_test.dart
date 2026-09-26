@@ -72,4 +72,43 @@ void main(){
    expect(d['image'],[1,2,3]);expect(d['snapshot']['report']['height_m'],1);expect(d['saved'],false);
   }
  });
+ test('lost committed reply survives restart, blocks replacement and deduplicates retry',()async{
+  final records=<String>{};
+  var drop=true;
+  late String version;
+  http.Client factory()=>MockClient((r)async{
+    records.add(version);
+    if(drop) throw const SocketException('reply lost after commit');
+    return http.Response(jsonEncode({'saved':true,'persisted':true,'record':{'version_id':version}}),200);
+  });
+  final service=ReportHistoryService(journal:journal,clientFactory:factory);
+  version=(await stage(service))['version_id'];
+  await expectLater(service.upload('first','local'),throwsA(isA<CorrectionException>()));
+  final restarted=ReportHistoryService(journal:ContourDrafts(directory:()async=>temp),clientFactory:factory);
+  await expectLater(stage(restarted,value:2),throwsA(isA<CorrectionException>()));
+  expect((await journal.load(owner,'local'))!['snapshot']['report']['height_m'],1);
+  drop=false;
+  await restarted.upload('first','local');
+  expect(records.length,1);
+  expect((await stage(restarted,value:2))['parent_id'],version);
+ });
+ test('rejected request permits correction, original photo cannot silently change',()async{
+  for(final code in [400,401,403,409,413,422,429]){
+   final service=ReportHistoryService(journal:journal,clientFactory:()=>MockClient((_)async=>http.Response('{}',code)));
+   await stage(service,value:code);
+   await expectLater(service.upload('first','local'),throwsA(isA<CorrectionException>().having((e)=>e.statusCode,'status',code)));
+   await stage(service,value:code+1);
+  }
+  final service=ReportHistoryService(journal:journal);
+  await expectLater(service.stage(token:'first',localId:'local',analysisId:owner,
+    snapshot:{'new':true},image:Uint8List.fromList([9])),throwsA(isA<CorrectionException>()));
+  expect((await journal.load(owner,'local'))!['image'],[1,2,3]);
+ });
+ test('journal snapshots mutable photo before asynchronous write',()async{
+  final bytes=Uint8List.fromList([1,2,3]);
+  final saving=journal.save(owner,'immutable',{'points':[1,2]},bytes);
+  bytes[0]=9;await saving;
+  expect((await ContourDrafts(directory:()async=>temp).load(owner,'immutable'))!['image'],[1,2,3]);
+ });
+
 }

@@ -63,6 +63,8 @@ app = FastAPI(
     version=API_VERSION,
     lifespan=lifespan,
 )
+from .reliability import RequestLimits
+app.add_middleware(RequestLimits)
 
 
 def _measurement_model(result) -> MeasurementValue:

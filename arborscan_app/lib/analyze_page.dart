@@ -115,6 +115,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       _lastResult = null;
     });
 
+    final client = http.Client();
     try {
       final request = http.MultipartRequest('POST', Uri.parse(_apiUrl));
       final prefs = await SharedPreferences.getInstance();
@@ -136,10 +137,8 @@ class _ArborScanPageState extends State<ArborScanPage> {
         await http.MultipartFile.fromPath('file', imageFile.path),
       );
 
-      final streamed = await request.send().timeout(
-            const Duration(seconds: 180),
-          );
-      final response = await http.Response.fromStream(streamed);
+      final response = await (() async => http.Response.fromStream(
+          await client.send(request)))().timeout(const Duration(seconds: 180));
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(_extractServerMessage(response));
@@ -192,6 +191,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
         _error = _humanizeNetworkError(e);
       });
     } finally {
+      client.close();
       if (mounted) setState(() => _loading = false);
     }
   }

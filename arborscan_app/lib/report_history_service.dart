@@ -23,6 +23,14 @@ ContourDrafts reportStore() => ContourDrafts(
         '${(await getApplicationSupportDirectory()).path}/report-history-v1'));
 
 class ReportHistoryService {
+  static Future<void> _operations = Future.value();
+  Future<T> _serial<T>(Future<T> Function() action) {
+    final next = _operations.catchError((_) {}).then((_) => action());
+    _operations =
+        next.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return next;
+  }
+
   final CorrectionsService auth;
   final ContourDrafts journal;
   final http.Client Function() clientFactory;
@@ -55,8 +63,11 @@ class ReportHistoryService {
             statusCode: 409);
       }
       if ([401, 403].contains(r.statusCode)) {
-        throw const CorrectionException('Войдите в свой аккаунт заново.',
-            statusCode: 401);
+        throw CorrectionException(
+            r.statusCode == 401
+                ? 'Войдите в свой аккаунт заново.'
+                : 'Недостаточно прав для этой операции.',
+            statusCode: r.statusCode);
       }
       if ([404, 405, 503].contains(r.statusCode)) {
         throw CorrectionException(
@@ -65,7 +76,8 @@ class ReportHistoryService {
       }
       if (r.statusCode < 200 || r.statusCode >= 300) {
         throw CorrectionException(
-            'Отчёт не сохранён (${r.statusCode}). Проверьте данные и повторите.');
+            'Операция не подтверждена (${r.statusCode}). Данные сохранены локально. Повторите тот же запрос для проверки результата.',
+            statusCode: r.statusCode);
       }
       return Map<String, dynamic>.from(jsonDecode(utf8.decode(r.bodyBytes)));
     } on CorrectionException {
@@ -94,6 +106,21 @@ class ReportHistoryService {
           'GET', ApiConfig.v4('/v4/reports/${Uri.encodeComponent(id)}')));
 
   Future<Map<String, dynamic>> stage(
+          {required String token,
+          required String localId,
+          required String analysisId,
+          required Map<String, dynamic> snapshot,
+          required Uint8List image,
+          String? parentId}) =>
+      _serial(() => _stage(
+          token: token,
+          localId: localId,
+          analysisId: analysisId,
+          snapshot: snapshot,
+          image: image,
+          parentId: parentId));
+
+  Future<Map<String, dynamic>> _stage(
       {required String token,
       required String localId,
       required String analysisId,
@@ -104,7 +131,16 @@ class ReportHistoryService {
     final old = await journal.load(owner, localId);
     await auth.checkSession(token);
     final hash = sha256.convert(utf8.encode(jsonEncode(snapshot))).toString();
+    if (old != null &&
+        sha256.convert(old['image'] as Uint8List) != sha256.convert(image)) {
+      throw const CorrectionException(
+          'Оригинал изменился. Создайте отдельный отчёт; прежние данные сохранены.');
+    }
     if (old != null && old['snapshot_hash'] == hash) return old;
+    if (old?['upload_attempted'] == true && old?['saved'] != true) {
+      throw const CorrectionException(
+          'Результат предыдущей отправки неизвестен. Повторите сохранение прежней версии из истории перед созданием новой. Черновик не заменён.');
+    }
     final data = <String, dynamic>{
       'analysis_id': analysisId,
       'version_id': reportUuid(),
@@ -121,7 +157,10 @@ class ReportHistoryService {
     return {...data, 'image': image, 'draft_id': localId};
   }
 
-  Future<Map<String, dynamic>> upload(String token, String localId) async {
+  Future<Map<String, dynamic>> upload(String token, String localId) =>
+      _serial(() => _upload(token, localId));
+
+  Future<Map<String, dynamic>> _upload(String token, String localId) async {
     final owner = await auth.owner(token);
     final d = await journal.load(owner, localId);
     await auth.checkSession(token);
@@ -143,7 +182,35 @@ class ReportHistoryService {
       ..files.add(http.MultipartFile.fromBytes('image', d['image'],
           filename: 'original.jpg'));
     if (d['parent_id'] != null) request.fields['parent_id'] = d['parent_id'];
-    final response = await this.request(token, request);
+    // Durable before the first byte can reach the server. A lost response must
+    // retain the exact version ID, payload and parent across process restarts.
+    await journal.save(
+        owner,
+        localId,
+        {...d}
+          ..remove('image')
+          ..remove('draft_id')
+          ..['upload_attempted'] = true,
+        d['image']);
+    await auth.checkSession(token);
+    late Map<String, dynamic> response;
+    try {
+      response = await this.request(token, request);
+    } on CorrectionException catch (e) {
+      if ([400, 401, 403, 404, 405, 409, 413, 422, 429]
+          .contains(e.statusCode)) {
+        await auth.checkSession(token);
+        await journal.save(
+            owner,
+            localId,
+            {...d}
+              ..remove('image')
+              ..remove('draft_id')
+              ..['upload_attempted'] = false,
+            d['image']);
+      }
+      rethrow;
+    }
     if (response['saved'] != true ||
         response['persisted'] != true ||
         response['record']?['version_id'] != d['version_id']) {

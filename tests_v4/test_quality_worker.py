@@ -53,3 +53,25 @@ def test_disk_limit_fails_before_spawning(tmp_path,monkeypatch):
     spawn=Mock();monkeypatch.setattr(w.subprocess,'Popen',spawn)
     assert w.run_once();spawn.assert_not_called()
     assert store.transition.call_args.kwargs['progress']['error']=='insufficient_worker_disk'
+
+
+def test_readiness_is_not_updated_on_database_outage(tmp_path,monkeypatch):
+    store=Mock();store.request.side_effect=RuntimeError('offline')
+    monkeypatch.setattr(w,'QualityStore',lambda:store)
+    with pytest.raises(RuntimeError):w.refresh_readiness(tmp_path)
+    assert not (tmp_path/'heartbeat').exists()
+    store.request.side_effect=None;store.request.return_value=1
+    w.refresh_readiness(tmp_path)
+    assert (tmp_path/'heartbeat').exists()
+
+
+def test_shutdown_stops_child_and_records_interruption(tmp_path,monkeypatch):
+    monkeypatch.setenv('MODEL_QUALITY_DIR',str(tmp_path))
+    store=Mock();store.transition.side_effect=[{'id':'00000000-0000-4000-8000-000000000004',
+        'params':{'max_seconds':1800}},SystemExit(0),None]
+    monkeypatch.setattr(w,'QualityStore',lambda:store)
+    child=Mock();monkeypatch.setattr(w.subprocess,'Popen',lambda *a,**k:child)
+    stop=Mock();monkeypatch.setattr(w,'terminate',stop)
+    with pytest.raises(SystemExit):w.run_once()
+    stop.assert_called_once_with(child)
+    assert store.transition.call_args.kwargs['progress']=={'error':'worker_interrupted'}

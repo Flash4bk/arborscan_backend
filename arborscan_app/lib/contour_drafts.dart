@@ -12,9 +12,12 @@ class ContourDrafts {
       : directory = directory ?? getApplicationSupportDirectory;
 
   Future<Directory> _folder(String owner) async {
-    if (!RegExp(r'^[a-fA-F0-9-]{36}$').hasMatch(owner)) throw const FormatException('Invalid owner');
+    if (!RegExp(r'^[a-fA-F0-9-]{36}$').hasMatch(owner)) {
+      throw const FormatException('Invalid owner');
+    }
     final root = await directory();
-    return Directory('${root.path}/contour-drafts-v1/$owner')..createSync(recursive: true);
+    return Directory('${root.path}/contour-drafts-v1/$owner')
+      ..createSync(recursive: true);
   }
 
   String _id(String id) {
@@ -24,15 +27,17 @@ class ContourDrafts {
     return id;
   }
 
-  Future<void> save(String owner, String id, Map<String, dynamic> data, Uint8List image) {
+  Future<void> save(
+      String owner, String id, Map<String, dynamic> data, Uint8List image) {
     // Snapshot before enqueueing so subsequent editor mutations cannot alter it.
     final encoded = jsonEncode(data);
+    final imageSnapshot = Uint8List.fromList(image);
     final task = _writes.catchError((_) {}).then((_) async {
       final folder = await _folder(owner);
       final stem = '${folder.path}/${_id(id)}';
       final photo = File('$stem.photo');
       if (!await photo.exists()) {
-        await File('$stem.photo.tmp').writeAsBytes(image, flush: true);
+        await File('$stem.photo.tmp').writeAsBytes(imageSnapshot, flush: true);
         await File('$stem.photo.tmp').rename(photo.path);
       }
       await File('$stem.json.tmp').writeAsString(encoded, flush: true);
@@ -59,12 +64,14 @@ class ContourDrafts {
     final result = <Map<String, dynamic>>[];
     await for (final file in folder.list()) {
       if (file is File && file.path.endsWith('.json')) {
-        final id = file.uri.pathSegments.last.replaceFirst(RegExp(r'\.json$'), '');
+        final id =
+            file.uri.pathSegments.last.replaceFirst(RegExp(r'\.json$'), '');
         try {
           // List metadata only; don't decode every original photo into memory.
-          final row = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-          result.add({...row, 'draft_id':id});
-        } catch (_) { /* A corrupt draft must not hide the other drafts. */ }
+          final row =
+              jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+          result.add({...row, 'draft_id': id});
+        } catch (_) {/* A corrupt draft must not hide the other drafts. */}
       }
     }
     return result;

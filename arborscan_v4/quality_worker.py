@@ -22,7 +22,6 @@ def run_once():
             process=subprocess.Popen([sys.executable,'-m','arborscan_v4.quality_train',job['id']],stdout=log,stderr=log,
                env={**os.environ,'OMP_NUM_THREADS':'1','MKL_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1'},start_new_session=True)
             while True:
-                (root.parent.parent/'heartbeat').touch()
                 result_file=root/'runs/candidate/results.csv'
                 progress={'stage':'training_and_evaluation','elapsed_seconds':int(time.monotonic()-started)}
                 stage_file=root/'stage.json'
@@ -31,6 +30,7 @@ def run_once():
                     except (ValueError,OSError):pass
                 if result_file.is_file():progress['completed_epochs']=max(0,len(result_file.read_text().splitlines())-1)
                 current=store.transition('heartbeat',job['id'],lease_id=lease,progress=progress)
+                (root.parent.parent/'heartbeat').touch()
                 if current['state']=='cancel_requested':
                     terminate(process);store.transition('finish',job['id'],lease_id=lease,state='cancelled',progress={'stage':'cancelled'});return True
                 if time.monotonic()-started>job['params']['max_seconds']:raise RuntimeError('training_time_limit')
@@ -59,6 +59,14 @@ def run_once():
         try:store.transition('finish',job['id'],lease_id=lease,state='failed',progress=failure)
         except Exception:pass # Lease expiry leaves a durable failed status on next claim.
         return True
+    except BaseException:
+        # SIGTERM during a rollout must not leave the training child alive.
+        if process is not None:
+            try:terminate(process)
+            except (ProcessLookupError,subprocess.TimeoutExpired):pass
+        try:store.transition('finish',job['id'],lease_id=lease,state='failed',progress={'error':'worker_interrupted'})
+        except Exception:pass
+        raise
 
 
 def terminate(process):
@@ -71,15 +79,28 @@ def terminate(process):
 
 def main():
     import fcntl
+    import signal
+    def stop(signum, frame):
+        raise SystemExit(0)
+    signal.signal(signal.SIGTERM,stop)
     root=Path(os.getenv('MODEL_QUALITY_DIR','/app/model-quality'));root.mkdir(parents=True,exist_ok=True)
     with (root/'worker.lock').open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         print('Model quality worker ready: CPU, one job, no automatic activation',flush=True)
         while True:
-            (root/'heartbeat').touch()
-            try:run_once()
+            try:
+                run_once()
+                # Readiness means a successful database round-trip, not just a
+                # living loop. On dependency failure the heartbeat must expire.
+                refresh_readiness(root)
             except Exception:print('Worker service unavailable; will retry without exposing credentials',flush=True)
             time.sleep(5)
+
+
+def refresh_readiness(root):
+    if QualityStore().request('POST','rpc/model_quality_version',json={}) != 1:
+        raise RuntimeError('worker_schema_unavailable')
+    (root/'heartbeat').touch()
 
 
 if __name__=='__main__':main()
