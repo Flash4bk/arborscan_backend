@@ -9,7 +9,7 @@ from pathlib import Path, PurePosixPath
 import sys
 
 
-def verify(root):
+def verify(root, postgres=False):
     root = Path(root).resolve(strict=True)
     (root / 'OFFSITE_VERIFIED.json').unlink(missing_ok=True)
     count = total = 0
@@ -34,19 +34,22 @@ def verify(root):
         if actual.hexdigest() != digest:
             raise ValueError('Incomplete or damaged backup file')
         count += 1
-    required = {'application.tar', 'local-files.tar', 'arborscan.env.private',
-                'containers.private.json'}
+    required = ({'database.dump', 'roles.sql', 'source.json', 'archive-list.private.txt'} if postgres else
+                {'application.tar', 'local-files.tar', 'arborscan.env.private', 'containers.private.json'})
     if not required.issubset({str(PurePosixPath(n)) for n in seen}):
         raise ValueError('Required backup archives/configuration missing')
     result = {'verified_files': count, 'verified_bytes': total,
-              'scope': 'application/files snapshot; not full PostgreSQL backup'}
+              'scope': ('native PostgreSQL archive and password-free roles' if postgres else
+                        'application/files snapshot; not full PostgreSQL backup')}
     (root / 'OFFSITE_VERIFIED.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     return result
 
 
 if __name__ == '__main__':
     try:
-        print(json.dumps(verify(sys.argv[1]), indent=2))
+        if len(sys.argv)>2 and sys.argv[2]!='--postgres':
+            raise ValueError('Unknown backup kind')
+        print(json.dumps(verify(sys.argv[1], postgres=len(sys.argv)>2), indent=2))
     except (ValueError, OSError):
         # Private names and content must not leak via exception messages.
         raise SystemExit('Verification failed; destination is not a complete verified backup')

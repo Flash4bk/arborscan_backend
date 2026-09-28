@@ -1,0 +1,17 @@
+{
+  "container": "as14-pg-restore-20260928t132111z",
+  "image": "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+  "network": "none",
+  "production_credentials_mounted": false,
+  "seconds": 10.563,
+  "restored": {
+    "tables": 54,
+    "contour_version": 1,
+    "history_version": 1,
+    "quality_version": 1,
+    "reports": 4,
+    "contours": 5
+  },
+  "acl_and_workflow_tests": "passed",
+  "rows_matched_to_file_snapshot": 9
+}

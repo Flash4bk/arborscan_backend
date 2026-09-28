@@ -41,6 +41,21 @@ class OffsiteVerificationTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.verify(root)
 
+    def test_native_postgres_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            names = ['database.dump','roles.sql','source.json','archive-list.private.txt']
+            lines = []
+            for name in names:
+                raw = ('synthetic '+name).encode()
+                (root/name).write_bytes(raw)
+                lines.append(hashlib.sha256(raw).hexdigest()+'  '+name+'\n')
+            (root/'SHA256SUMS').write_text(''.join(lines))
+            self.assertEqual(module.verify(root, postgres=True)['verified_files'],4)
+            with self.assertRaises(ValueError):
+                module.verify(root)  # Cannot call it an application/Storage backup.
+            self.assertFalse((root/'OFFSITE_VERIFIED.json').exists())
+
 
 if __name__ == '__main__':
     unittest.main()

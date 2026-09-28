@@ -114,6 +114,9 @@ def snapshot(output):
 if __name__ == '__main__':
     try:
         snapshot(sys.stdout.buffer)
-    except Exception:
-        print('Snapshot failed; retain .partial for diagnosis, do not publish as complete.', file=sys.stderr)
+    except Exception as error:
+        # Never log exception text: requests errors can contain private object URLs.
+        status = getattr(getattr(error, 'response', None), 'status_code', None)
+        print(f'Snapshot failed ({type(error).__name__}, HTTP {status}); '
+              'retain .partial for diagnosis, do not publish as complete.', file=sys.stderr)
         sys.exit(1)

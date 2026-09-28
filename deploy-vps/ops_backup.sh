@@ -37,6 +37,9 @@ for c in json.loads((root/'containers.private.json').read_text()):
             dest=configs/(str(len(list(configs.iterdir())))+'-'+pathlib.Path(p).name)
             shutil.copyfile(p,dest);dest.chmod(0o600)
 PY
+# Native transaction-consistent database dump, including schema/ACL and roles.
+# Fail the overall backup if this stage fails; never publish an incomplete COMPLETE.
+python3 "$script_dir/ops_pg_backup.py" "$target/postgres"
 (cd "$target" && find . -type f ! -name SHA256SUMS ! -path './restored/*' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && sha256sum --quiet -c SHA256SUMS)
 touch "$target/COMPLETE"
 echo "Completed private application/files snapshot: $target"
