@@ -1,0 +1,37 @@
+AS-14 / AS-12 agent verification, 2026-09-28
+
+S24 Ultra R5CY40HNVCP: adb device; install -r --no-streaming => Success.
+APK code 2e99acb, SHA256 82af01cd701be8cc9969277849cface8ed2ca0e5d9a947718b93d8e3f8092c32.
+Two real server DEMO versions opened through history and saved through Samsung SAF.
+PDFs pulled from Downloads: s24-v1.pdf, s24-v2.pdf. Four pages each.
+Old local DEMO saved through SAF: s24-old.pdf, three pages.
+All 11 pages rendered and visually inspected. tools/as14_check_s24_pdfs.py PASS.
+Samsung Notes viewer opened PDF. Share menu opened and dismissed without sending.
+SAF cancellation displayed cancellation message. App force-stopped and server record reopened.
+No data clearing, logout, uninstall, or changes to real reports.
+Further UI automation stopped when a different application became foreground.
+
+Backup timer 20260928T031731Z: Result=success, ExecMainStatus=0, exit 03:21:47 UTC.
+Runtime: API v4 / worker reliability-691fb77; v3 unchanged; healthy and restarts=0.
+
+PostgreSQL credential discovery: no direct DSN/password found in project/config or
+three container environments. Service files exist with mode 600, actual password
+not supplied. No password reset or libpq SELECT 1. MCP SQL access is separate.
+
+Applied migration 20260928124032_as14_restrict_legacy_internal_tables.
+tests_v4/sql/as14_legacy_access.sql executed against real database: PASS.
+10 actual SELECT permission denials (anon/authenticated on 5 tables), RLS enabled,
+server CRUD rights retained. API v3 PostgREST limit=0: five HTTP 200 empty responses.
+Public HTTPS v3/v4 health: ok/ok. No training, model activation or container restart.
+Security advisor: INFO RLS without policies (server-only tables); existing mutable
+search_path warning on public.set_updated_at remains.
+
+New off-site verification unit tests: 3 passed.
+Off-site transfer completed to private D:/ArborScanBackups/20260928T031731Z.
+All SHA256SUMS entries passed: 22 files, 927004700 bytes.
+Local fresh restore: 2239 files, 827887709 bytes, 4 linked reports, 2.329 seconds.
+Offline file decoding: 4 report photos, 5 contour/original pairs, passed.
+No production credentials loaded by restore; Windows network isolation not claimed.
+One-time off-site application/files snapshot, not a PostgreSQL dump or scheduled sync.
+Full Flutter/backend suites/build not repeated: no mobile/API code changes in this follow-up.
+Prior results and remaining full PostgreSQL restore limitation: RELIABILITY_OPS.md.

@@ -1,0 +1,22 @@
+[
+  {
+    "file": "s24-v1.pdf",
+    "pages": 4,
+    "version": "41821299-2bac-41fc-aa84-c64a9bebc061",
+    "sha256": "d18680d40dab81bb9a676b2135585814ce5f805d9eefcf22a83e8ee986a64608",
+    "photo_and_annotation_match": true
+  },
+  {
+    "file": "s24-v2.pdf",
+    "pages": 4,
+    "version": "84bb70d2-aef8-49b8-bf03-3207e06a21de",
+    "sha256": "3e7189326fe8fa44b79c2915d620a737c59b25aa4abe5241affeb67f5804dc99",
+    "photo_and_annotation_match": true
+  },
+  {
+    "file": "s24-old.pdf",
+    "pages": 3,
+    "sha256": "74539c3159056e201547b81381152cbcf3c5df091ecaf1213b7bbf2c71c96962",
+    "legacy_missing_fields_explicit": true
+  }
+]

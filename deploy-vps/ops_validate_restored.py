@@ -27,4 +27,5 @@ for row in json.loads((root/'tables/contour_revisions.json').read_text()):
         with Image.open(io.BytesIO(raw)) as image:image.verify()
     contours+=1
 print(json.dumps({'report_photos_opened':photos,'contour_pairs_opened':contours,
-                  'database_restored':False,'network':'disabled_by_docker_run'}))
+                  'database_restored':False,'network_calls_performed':False,
+                  'runtime_network_isolation':'not determined by this script'}))
