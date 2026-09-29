@@ -18,6 +18,7 @@ from arborscan_v4.corrections_api import _config
 def main():
     url,service,bucket=_config()
     base=os.getenv('REPORT_SMOKE_BASE','https://31.57.170.88/api/v4')
+    auth_base=os.getenv('SMOKE_AUTH_BASE','https://31.57.170.88/api/v3').rstrip('/')
     accounts=[]; blobs={}; revisions=[]; stage='registration'
     def req(method,path,token=None,status=200,**kw):
         r=requests.request(method,base+path,headers={'Authorization':'Bearer '+token} if token else {},timeout=90,**kw)
@@ -26,7 +27,7 @@ def main():
     try:
         for _ in range(2):
             email='history-smoke-'+uuid.uuid4().hex+'@example.invalid'
-            r=requests.post('https://31.57.170.88/api/v3/auth/register',json={
+            r=requests.post(auth_base+'/auth/register',json={
                 'name':'Server history synthetic fixture','email':email,'password':secrets.token_urlsafe(32)},timeout=60)
             assert r.status_code==200
             a=r.json(); assert a['user']['email']==email

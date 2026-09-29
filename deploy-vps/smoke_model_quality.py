@@ -19,6 +19,7 @@ from arborscan_v4.quality_train import unpack
 def main():
     url,service,bucket=_config()
     base=os.getenv('MODEL_QUALITY_SMOKE_BASE','https://31.57.170.88/api/v4')
+    auth_base=os.getenv('SMOKE_AUTH_BASE','https://31.57.170.88/api/v3').rstrip('/')
     accounts=[];snapshots=[];labels=[];archives=[]
     def db(method,table,**kwargs):
         r=requests.request(method,url+'/rest/v1/'+table,headers=service,timeout=30,**kwargs)
@@ -31,7 +32,7 @@ def main():
     try:
         for _ in range(2):
             email='model-quality-smoke-'+uuid.uuid4().hex+'@example.invalid'
-            r=requests.post('https://31.57.170.88/api/v3/auth/register',json={'name':'ML synthetic fixture','email':email,'password':secrets.token_urlsafe(32)},timeout=60)
+            r=requests.post(auth_base+'/auth/register',json={'name':'ML synthetic fixture','email':email,'password':secrets.token_urlsafe(32)},timeout=60)
             assert r.status_code==200
             a=r.json();assert a['user']['email']==email
             accounts.append({'id':a['user']['id'],'token':a['token'],'email':email})
@@ -72,7 +73,7 @@ def main():
             assert len(snap['manifest']['items'])==(1 if kind=='classification' else 0)
             assert snap['manifest']['training_ready'] is False
             req('POST',prefix+'/jobs',admin['token'],422,json={'operation_id':str(uuid.uuid4()),'snapshot_id':sid})
-        print('PASS: HTTPS/app auth, admin-only operations, independent taxon label, immutable snapshot retries, insufficient-data gate. No training or activation.')
+        print('PASS: configured endpoint/app auth, admin-only operations, independent taxon label, immutable snapshot retries, insufficient-data gate. No training or activation.')
     finally:
         for sid in snapshots:db('DELETE','ml_snapshots',params={'id':'eq.'+sid})
         for digest in archives:

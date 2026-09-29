@@ -1,0 +1,14 @@
+[
+  {
+    "name": "s24-v1.pdf",
+    "sha256": "9e0f9d232c75812edfb98be30ba2968945caa7b785eb3f273a500c264f5eab01",
+    "pages": 4,
+    "values_photo_annotations": "match"
+  },
+  {
+    "name": "s24-v2.pdf",
+    "sha256": "555bd59adb398fc891e2b3892a275d638c75ad9a1396952df3305da7d3b8d414",
+    "pages": 4,
+    "values_photo_annotations": "match"
+  }
+]

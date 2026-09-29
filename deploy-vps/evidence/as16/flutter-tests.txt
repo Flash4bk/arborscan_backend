@@ -1,0 +1,64 @@
+
+┌─────────────────────────────────────────────────────────┐
+│ A new version of Flutter is available!                  │
+│                                                         │
+│ To update to the latest version, run "flutter upgrade". │
+└─────────────────────────────────────────────────────────┘
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/api_config_test.dart
+00:00 +0: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: defaults and dart-define overrides are used
+00:00 +1: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: endpoint paths retain nginx prefixes and intentional repeated v4
+00:00 +2: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: relative images retain prefix, absolute URLs are preserved
+00:00 +3: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: tunnel hints appear only for loopback configurations
+00:00 +4: D:/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: AR exports direct measurements without inventing photo or crown scale
+00:00 +5: D:/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: invalid AR distance is rejected instead of replaced with tree height
+00:01 +6: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: editor state restores exact normalized points and open/closed state
+00:01 +7: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +8: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: disk draft survives service recreation and is owner isolated
+00:02 +9: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: old API capabilities retain legacy save and return clear conflict
+00:02 +10: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: saved draft restores after screen recreation, retry is idempotent and send is blocked
+00:02 +11: D:/arborscan_backend/arborscan_app/test/contour_workflow_test.dart: legacy PNG uses explicit new contour, accepted state restores editor and new edit loses acceptance
+00:10 +12: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: multipart preserves original bytes, fields and bearer header
+00:10 +13: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: does not accept unconfirmed response {"saved":false}
+00:10 +14: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: does not accept unconfirmed response {}
+00:10 +15: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: does not accept unconfirmed response {"saved":"true"}
+00:10 +16: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: does not accept unconfirmed response invalid
+00:10 +17: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: HTTP 401 allows retry
+00:10 +18: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: HTTP 403 allows retry
+00:10 +19: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: HTTP 503 allows retry
+00:10 +20: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: network loss and timeout are recoverable errors
+00:10 +21: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: missing token never sends request
+00:10 +22: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: account switch rejects pending response and old token
+00:10 +23: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:10 +24: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:10 +25: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:10 +26: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:11 +27: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:11 +28: D:/arborscan_backend/arborscan_app/test/model_quality_test.dart: open confirmation is hidden when the account changes
+00:11 +29: D:/arborscan_backend/arborscan_app/test/model_quality_test.dart: open confirmation is hidden when the account changes
+00:13 +30: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:14 +31: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile user exposes only appropriate moderation navigation
+00:15 +32: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: optional geometry rotates with reference and old versions remain old
+00:15 +33: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:17 +34: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:17 +35: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:17 +36: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:17 +37: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:17 +38: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:17 +39: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:17 +40: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:18 +41: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:18 +42: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:18 +43: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:18 +44: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:18 +45: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:18 +46: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:19 +47: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:19 +48: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:19 +49: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:19 +50: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:19 +51: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:19 +52: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:20 +53: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:20 +54: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:21 +55: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +56: All tests passed!

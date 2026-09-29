@@ -1,0 +1,3 @@
+{"restart_login_reports_contours_worker": "passed", "versions": 2, "training_started": false}
+
+{"auth_owners": "passed", "restored_reports": 4, "restored_contours": 5, "photo_mask_hashes": "passed", "bounded_inference": "passed", "new_versions": 2, "moderation": "passed", "worker_fixture": "queued_invalid_archive_no_training"}

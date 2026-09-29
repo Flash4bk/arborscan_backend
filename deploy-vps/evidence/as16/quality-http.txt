@@ -1,0 +1,2 @@
+PASS: HTTPS/app auth, admin-only operations, independent taxon label, immutable snapshot retries, insufficient-data gate. No training or activation.
+Synthetic fixture cleanup complete
