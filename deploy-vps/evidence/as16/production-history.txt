@@ -1,0 +1,2 @@
+Synthetic fixtures removed
+Server history smoke failed; no credentials or response bodies printed

@@ -73,8 +73,12 @@ def main():
     for file in plan['compose']:
         cmd += ['-f', file]
     cmd += ['-f', str(root/(args.mode+'.yml')), 'up', '-d', '--no-build', '--pull', 'never', '--no-deps', 'api-v4', 'quality-worker']
+    # Compose interpolates every input file before applying the final overlay.
+    # Existing quality configuration requires this variable even with pinned
+    # per-service images in our final overlay.
+    image = plan['image'] if args.mode == 'deploy' else plan['old']['arborscan-api-v4']
     with (root/(args.mode+'.private.log')).open('ab') as log:
-        subprocess.run(cmd, stdout=log, stderr=log, check=True)
+        subprocess.run(cmd, env={**os.environ, 'MODEL_QUALITY_IMAGE': image}, stdout=log, stderr=log, check=True)
     print(args.mode+' finished; health/auth/worker checks are still required')
 
 

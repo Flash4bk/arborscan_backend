@@ -121,6 +121,10 @@ def main():
 
 if __name__=='__main__':
     try:main()
-    except Exception:
-        print('Server history smoke failed; no credentials or response bodies printed')
+    except Exception as error:
+        import traceback
+        frame=traceback.extract_tb(error.__traceback__)[-1]
+        print('Server history smoke failed:', type(error).__name__, 'line', frame.lineno)
+        if isinstance(error, AssertionError) and str(error).startswith('Unexpected status '):
+            print(str(error))
         raise SystemExit(1)
