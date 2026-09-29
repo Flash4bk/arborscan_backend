@@ -1,0 +1,13 @@
+test_candidate_overlay_and_base_can_share_one_release (test_release_bundle.ReleaseBundleTests.test_candidate_overlay_and_base_can_share_one_release) ... ok
+test_corruption_is_refused_even_with_complete_marker (test_release_bundle.ReleaseBundleTests.test_corruption_is_refused_even_with_complete_marker) ... ok
+test_new_deployment_without_archived_image_is_refused (test_release_bundle.ReleaseBundleTests.test_new_deployment_without_archived_image_is_refused) ... ok
+test_overlay_from_different_base_is_refused (test_release_bundle.ReleaseBundleTests.test_overlay_from_different_base_is_refused) ... ok
+test_path_outside_offsite_root_is_refused (test_release_bundle.ReleaseBundleTests.test_path_outside_offsite_root_is_refused) ... ok
+test_required_archive_cannot_be_omitted_from_checksums (test_release_bundle.ReleaseBundleTests.test_required_archive_cannot_be_omitted_from_checksums) ... ok
+test_resolves_shared_runtime_archive_without_copying_it (test_release_bundle.ReleaseBundleTests.test_resolves_shared_runtime_archive_without_copying_it) ... ok
+test_unfinished_transfer_is_not_a_complete_release (test_release_bundle.ReleaseBundleTests.test_unfinished_transfer_is_not_a_complete_release) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.134s
+
+OK
