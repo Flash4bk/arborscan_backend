@@ -4,6 +4,7 @@ No production env or libpq credentials are mounted. All service credentials are 
 Network is Docker-internal; only localhost HTTP ports. Never modifies production.
 """
 import base64
+import argparse
 import datetime
 import hashlib
 import hmac
@@ -26,6 +27,20 @@ IMAGES = {'db':'supabase/postgres@sha256:178f0976b54a39237096bfa310c1a352dbc82fb
 
 
 def main():
+    global BACKUP, IMAGES
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--backup', type=Path, default=BACKUP)
+    parser.add_argument('--images-manifest', type=Path)
+    args = parser.parse_args()
+    BACKUP = args.backup.resolve()
+    if args.images_manifest:
+        candidate = json.loads(args.images_manifest.read_text())['images']
+        if set(candidate) != set(IMAGES) or any(
+            not __import__('re').fullmatch(r'sha256:[0-9a-f]{64}', value)
+            for value in candidate.values()
+        ):
+            raise ValueError('Invalid pinned recovery image manifest')
+        IMAGES = candidate
     os.umask(0o077)
     assert (BACKUP/'COMPLETE').is_file() and (BACKUP/'postgres/COMPLETE').is_file()
     subprocess.run(['sha256sum','--quiet','-c','SHA256SUMS'],cwd=BACKUP,check=True)
