@@ -41,6 +41,10 @@ def verify(root, postgres=False):
     result = {'verified_files': count, 'verified_bytes': total,
               'scope': ('native PostgreSQL archive and password-free roles' if postgres else
                         'application/files snapshot; not full PostgreSQL backup')}
+    if not postgres and 'postgres/database.dump' in seen:
+        if not {'postgres/'+n for n in ('database.dump','roles.sql','source.json','archive-list.private.txt','COMPLETE')}.issubset(seen):
+            raise ValueError('Incomplete native backup set')
+        result['scope']='one application/configuration/native PostgreSQL backup set'
     (root / 'OFFSITE_VERIFIED.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     return result
 

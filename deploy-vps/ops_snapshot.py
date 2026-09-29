@@ -12,12 +12,20 @@ import tarfile
 import time
 from urllib.parse import quote
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from arborscan_v4.corrections_api import _config
 
 
 def snapshot(output):
     url, headers, _ = _config()
     session = requests.Session()
+    # This session only reads: POST is used by list/version RPC endpoints.
+    # Retry transient upstream errors without publishing a partial snapshot.
+    session.mount('https://', HTTPAdapter(max_retries=Retry(
+        total=3, connect=3, read=3, status=3, backoff_factor=1,
+        status_forcelist=(429, 500, 502, 503, 504), allowed_methods=('GET', 'POST'),
+        respect_retry_after_header=False)))
     session.headers.update(headers)
     started = time.time()
     hashes = {}

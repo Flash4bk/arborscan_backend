@@ -1,0 +1,65 @@
+{
+  "checked_at": "2026-09-28T14:15:35.908466+00:00",
+  "root": "/home/arborscan/as14-recovery-20260928T135137Z",
+  "source_backup": "/home/arborscan/ops-backups/20260928T133059Z",
+  "services": [
+    {
+      "service": "api",
+      "image": "sha256:afb6c57845667f9aff8a1e9236fbe7b81255f2c8ccc53ccc5b7b10cb77abb26e",
+      "running": true,
+      "health": "healthy",
+      "ports_localhost_only": true
+    },
+    {
+      "service": "db",
+      "image": "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+      "running": true,
+      "health": "healthy",
+      "ports_localhost_only": true
+    },
+    {
+      "service": "gateway",
+      "image": "sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "running": true,
+      "health": null,
+      "ports_localhost_only": true
+    },
+    {
+      "service": "rest",
+      "image": "sha256:c9dc201e555f5d8e37e7f39cdd4df0229774996e213bfd7de8d10ac609030f2c",
+      "running": true,
+      "health": null,
+      "ports_localhost_only": true
+    },
+    {
+      "service": "storage",
+      "image": "sha256:b393ac5759a45a934557a150ecdb97157bbdd419e0193e4c5dc5770b9ddd7ee1",
+      "running": true,
+      "health": null,
+      "ports_localhost_only": true
+    },
+    {
+      "service": "v3",
+      "image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "running": true,
+      "health": "healthy",
+      "ports_localhost_only": true
+    },
+    {
+      "service": "worker",
+      "image": "sha256:afb6c57845667f9aff8a1e9236fbe7b81255f2c8ccc53ccc5b7b10cb77abb26e",
+      "running": true,
+      "health": "healthy",
+      "ports_localhost_only": true
+    }
+  ],
+  "storage": {
+    "objects_imported": 2221,
+    "bytes": 759097658,
+    "seconds": 74.951
+  },
+  "api_egress": "blocked",
+  "elapsed_including_diagnostics_seconds": 1439,
+  "guaranteed_rto": false,
+  "production_reconfigured": false
+}

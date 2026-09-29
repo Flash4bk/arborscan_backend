@@ -1,0 +1,66 @@
+{
+  "checked_at": "2026-09-29T20:09:18Z",
+  "systemd": {
+    "manual_service": "success, exit 0, 2026-09-28 13:58:02–14:03:56 UTC",
+    "calendar_start": "2026-09-29T03:19:24Z",
+    "calendar_finish": "2026-09-29T03:24:47Z",
+    "result": "success",
+    "exit": 0,
+    "timer": "enabled/active"
+  },
+  "backup": "20260929T031924Z",
+  "verification": {
+    "verified_files": 28,
+    "verified_bytes": 979158674,
+    "scope": "one application/configuration/native PostgreSQL backup set"
+  },
+  "scheduler_repeat": [
+    {
+      "at": "2026-09-29T20:08:19.464277+00:00",
+      "event": "started"
+    },
+    {
+      "at": "2026-09-29T20:09:07.857202+00:00",
+      "event": "verified_existing",
+      "backup": "20260926T202023Z"
+    },
+    {
+      "at": "2026-09-29T20:09:09.760247+00:00",
+      "event": "verified_existing",
+      "backup": "20260927T032112Z"
+    },
+    {
+      "at": "2026-09-29T20:09:11.796667+00:00",
+      "event": "verified_existing",
+      "backup": "20260928T031731Z"
+    },
+    {
+      "at": "2026-09-29T20:09:13.851279+00:00",
+      "event": "verified_existing",
+      "backup": "20260928T133059Z"
+    },
+    {
+      "at": "2026-09-29T20:09:16.619533+00:00",
+      "event": "verified_existing",
+      "backup": "20260928T135802Z"
+    },
+    {
+      "at": "2026-09-29T20:09:18.535080+00:00",
+      "event": "verified_existing",
+      "backup": "20260929T031924Z"
+    },
+    {
+      "at": "2026-09-29T20:09:18.535447+00:00",
+      "event": "success",
+      "complete_sets": 6
+    }
+  ],
+  "tests": {
+    "targeted": 11,
+    "result": "passed"
+  },
+  "production_health": {
+    "v3": "ok",
+    "v4": "ok"
+  }
+}
