@@ -10,5 +10,14 @@
     "sha256": "555bd59adb398fc891e2b3892a275d638c75ad9a1396952df3305da7d3b8d414",
     "pages": 4,
     "values_photo_annotations": "match"
+  },
+  {
+    "name": "emulator-offline.pdf",
+    "sha256": "0913655f8dbfdbe4a5f46c708dff46e173f9bc4ea5f78c737baf5a02fca14ec3",
+    "pages": 4,
+    "values_photo_annotations": "match",
+    "network": "disabled",
+    "restart": "passed",
+    "save_cancel": "passed"
   }
 ]
