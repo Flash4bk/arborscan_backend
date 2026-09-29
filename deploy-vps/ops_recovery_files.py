@@ -10,6 +10,21 @@ assert cfg['services']['gateway']['ports']==['127.0.0.1:18080:8000']
 key=cfg['services']['api']['environment']['SUPABASE_SERVICE_KEY']
 state=json.loads((root/'state.private.json').read_text())
 source=Path(state['backup'])/'restored/objects'
+# Compose can return before PostgREST/Storage have accepted connections. Probe a
+# read-only authenticated endpoint before importing; never retry arbitrary writes.
+ready = False
+deadline = time.monotonic() + 60
+while time.monotonic() < deadline:
+ try:
+  request=urllib.request.Request('http://127.0.0.1:18080/storage/v1/bucket',headers={
+    'Authorization':'Bearer '+key,'apikey':key})
+  with urllib.request.urlopen(request,timeout=5) as response:
+   ready=response.status == 200
+  if ready:break
+ except OSError:pass
+ time.sleep(2)
+if not ready:
+ print(json.dumps({'stage':'storage_readiness','ready':False}));sys.exit(1)
 started=time.monotonic();count=total=0
 for file in sorted(source.rglob('*')):
  if not file.is_file():continue

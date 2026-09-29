@@ -43,7 +43,10 @@ def main():
         IMAGES = candidate
     os.umask(0o077)
     assert (BACKUP/'COMPLETE').is_file() and (BACKUP/'postgres/COMPLETE').is_file()
-    subprocess.run(['sha256sum','--quiet','-c','SHA256SUMS'],cwd=BACKUP,check=True)
+    # BusyBox (clean Docker-in-Docker bootstrap) lacks GNU --quiet. Capture
+    # output instead so both implementations verify without exposing names.
+    subprocess.run(['sha256sum','-c','SHA256SUMS'],cwd=BACKUP,check=True,
+                   stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root=Path('/home/arborscan')/('as14-recovery-'+stamp);root.mkdir(mode=0o700)
     started=time.monotonic()

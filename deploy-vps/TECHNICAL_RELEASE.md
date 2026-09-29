@@ -203,3 +203,99 @@ SHA256 небольшого image overlay:
 В подкаталоге tooling сохранены инструменты восстановления и отдельный SHA manifest.
 Полный images.tar.zst считается доступным снаружи только после проверки целого
 файла; наличие chunks или успешная загрузка образа на VPS этого не доказывает.
+
+
+## Восстановление в пустом Docker engine — фактический опыт 29.09 UTC
+
+Создан новый Docker 29.8.0 с отдельным volume, без host Docker socket,
+без bind mounts production, без опубликованных наружу портов. Внешняя сеть
+контейнера internal. Это privileged вложенный контейнер на существующем ядре VPS,
+не новая виртуальная машина. Bootstrap: публичный Docker digest выше, Alpine
+python3 3.14.7-r1 и zstd 1.5.7-r2; доступ к этим bootstrap-репозиториям — явная
+зависимость. Приложения/модели не скачивались из живого Docker image store.
+
+Использован транспортный кэш **архивов**, SHA-манифест данных взят с Windows и
+сопоставлен побайтно; каждый файл кэша проверен перед копированием. Архив образов
+также проверен по фиксированному SHA. Это не физическая обратная передача всего
+набора с Windows. Пока полный архив образов на Windows не проверен целиком,
+доказана работа процедуры с архивами, но дополнительный off-site критерий не закрыт.
+
+- Загружены шесть образов base archive и образ кандидата, восстановленный overlay.
+- Native PostgreSQL/роли/ACL восстановлены; старые сессии инвалидированы и прежние
+  queued/running задания помечены failed **только в копии**. Созданы новые lab secrets.
+- Восстановлены 2239 файлов, 827887708 байт; связи 4 отчётов проверены.
+- Storage: 2221 объект, 759097658 байт, импорт 67.853 секунды.
+- HTTP: вход, изоляция владельцев, 4 старых отчёта, 5 контуров, фото/маски по SHA,
+  ограниченный inference, 2 новые тестовые версии, отказ/принятие/новый draft.
+- Worker отклонил invalid snapshot до обучения; активная модель не изменилась.
+- После restart семи сервисов вход/отчёты/контуры/worker прочитаны повторно;
+  health API/v3/DB/worker корректен, внешний доступ API к production заблокирован.
+
+Опыт от начала подготовки проверенного кэша/импорта образов 21:22:55 UTC
+до конечного аудита 21:39:38 UTC занял **16 мин 43 сек**, включая диагностику.
+Возраст backup в начале этого интервала — **18 ч 03 мин 31 сек** относительно
+его запуска 03:19:24 UTC. Bootstrap engine выполнен раньше; длительная внешняя
+передача также не включена. Это измеренные фазы опыта, не полный гарантированный
+RTO/RPO и не время развёртывания нового сервера с нуля.
+
+Найдено и исправлено различие BusyBox/GNU sha256sum: --quiet заменён захватом
+stdout/stderr при сохранении -c и ненулевого exit при повреждении. Первый импорт
+Storage остановился на начальном запуске; повтор прошёл. Добавлена отдельная
+read-only проверка готовности Storage с ограничением 60 секунд, без произвольных
+повторов изменяющих запросов. Проверка задержанного запуска на 10 секунд прошла:
+2221 объект импортирован, elapsed 90.98 секунды (импорт 71.415).
+Никакие из этих исправлений не меняют продуктовый API или APK.
+
+Доказательства: evidence/as16/nested-app-checks.txt, engine-audit.json,
+storage-readiness.txt, integrity-gate.txt. Служебные секреты и архивы в Git не входят.
+
+### Команды воспроизведения в отдельном Docker 29.8
+
+Команды выполняются **внутри отдельного engine**, содержащего только лабораторные
+volumes. /inputs/backup — проверенные файлы внешнего backup; /inputs/release —
+архив версии и tooling. Не направлять этот Docker context в production daemon.
+Первоначальный image store и volumes должны быть пусты; bootstrap должен быть
+заранее подготовлен и изолирован от production-сетей.
+
+```sh
+cd /inputs/release
+sha256sum -c SHA256SUMS
+zstd -qdc images.tar.zst | docker load
+python3 tooling/ops_image_delta.py apply images.tar.zst candidate-eaa39f4.delta.tar.gz candidate.tar
+docker load -i candidate.tar
+python3 tooling/ops_verify_restore.py /inputs/backup/application.tar /inputs/backup/restored
+python3 tooling/ops_recovery_stack.py --backup /inputs/backup --images-manifest pinned-images.json > /tmp/recovery-result.json
+LAB=$(python3 -c 'import json; print(json.load(open("/tmp/recovery-result.json"))["root"])')
+python3 tooling/ops_recovery_files.py "$LAB"
+```
+
+Для восстановления исходной версии продолжить ops_recovery_start.py без замены.
+Для проверенного технического кандидата перед стартом заменить api/worker image
+в **созданном lab compose**, сохранив остальные поля и приватные credentials:
+
+```sh
+python3 - "$LAB" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+assert root.parent == pathlib.Path('/home/arborscan') and root.name.startswith('as14-recovery-')
+p = root / 'compose.private.json'
+c = json.loads(p.read_text())
+assert c['networks']['default']['internal']
+for service in ('api', 'worker'):
+    c['services'][service]['image'] = 'sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a'
+p.write_text(json.dumps(c))
+PY
+python3 tooling/ops_recovery_start.py "$LAB"
+docker compose -f "$LAB/compose.private.json" cp tooling/ops_recovery_smoke.py api:/tmp/recovery-smoke.py
+docker compose -f "$LAB/compose.private.json" exec -T api python /tmp/recovery-smoke.py
+python3 tooling/ops_recovery_audit.py "$LAB"
+docker compose -f "$LAB/compose.private.json" restart
+python3 tooling/ops_recovery_start.py "$LAB"
+docker compose -f "$LAB/compose.private.json" exec -T api python /tmp/recovery-smoke.py
+python3 tooling/ops_recovery_audit.py "$LAB"
+```
+
+После опыта остановить именно lab compose через `stop`, не удаляя volumes.
+Восстановление production из дампа этими командами не выполнялось и не требуется
+для отката технического API. Откат production — ранее подготовленный rollout.py
+rollback с точными прежними образами, без замены текущей базы.
