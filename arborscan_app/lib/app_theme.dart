@@ -1,90 +1,134 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+/// AS-15: one palette for screens, controls and status messages.
 class AppTheme {
-  // Eco-Futurism Palette
-  static const Color background = Color(0xFF041217); // Глубокий сине-зеленый
-  static const Color bg = background;
-
-  static const Color surface = Color(0xFF082229); // Стекло 1
-  static const Color surface2 = Color(0xFF0B2E36); // Стекло 2
-  static const Color surface3 = Color(0xFF103A43);
-
-  static const Color primary = Color(0xFF00FFA3); // Neon Mint
-  static const Color primary2 = Color(0xFF00E5FF); // Cyan Glow
-  static const Color accent = primary;
-
-  static const Color text = Color(0xFFF8FAFC);
-  static const Color muted = Color(0xFF6B929B); // Мягкий лесной тон
-  static const Color border = Color(0x5500FFA3); // Полупрозрачный мятный бордер
-
-  static const Color danger = Color(0xFFFF4B6B);
-  static const Color warning = Color(0xFFFFB800);
-  static const Color success = Color(0xFF00FFA3);
-
-  static const Color textOnLight = Color(0xFF041217);
-  static const Color mutedOnLight = Color(0xFF385E66);
+  static const background = Color(0xFFF5F5EF);
+  static const bg = background;
+  static const surface = Color(0xFFFFFFFF);
+  static const surface2 = Color(0xFFECEEE3);
+  static const surface3 = Color(0xFFDDE2CE);
+  static const primary = Color(0xFF526238);
+  static const primary2 = Color(0xFF476456);
+  static const accent = primary;
+  static const text = Color(0xFF242A20);
+  static const muted = Color(0xFF5C6456);
+  static const border = Color(0xFFCBD0C0);
+  static const danger = Color(0xFFA33132);
+  static const warning = Color(0xFF805716);
+  static const success = Color(0xFF386445);
+  static const textOnLight = text;
+  static const mutedOnLight = muted;
 
   static ThemeData light() {
+    final scheme =
+        ColorScheme.fromSeed(seedColor: primary, brightness: Brightness.light)
+            .copyWith(
+                primary: primary,
+                secondary: primary2,
+                surface: surface,
+                onSurface: text,
+                onSurfaceVariant: muted,
+                outline: border,
+                error: danger,
+                onPrimary: Colors.white,
+                onSecondary: Colors.white);
     final base = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: background,
-      canvasColor: background,
-      colorScheme: const ColorScheme.dark(
-        primary: primary,
-        secondary: primary2,
-        surface: surface,
-        background: background,
-        error: danger,
-      ),
+        useMaterial3: true,
+        colorScheme: scheme,
+        scaffoldBackgroundColor: background,
+        canvasColor: surface);
+    final shape =
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
+    final button = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(48, 52)),
+      padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+      shape: WidgetStatePropertyAll(shape),
+      textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
     );
-
-    final radius = BorderRadius.circular(24);
-
     return base.copyWith(
-      textTheme: base.textTheme.apply(
-        bodyColor: text,
-        displayColor: text,
-        fontFamily: 'Roboto',
-      ).copyWith(
-        headlineSmall: base.textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.w900,
-          color: text,
-          letterSpacing: 1.2,
-          shadows: [const Shadow(color: primary2, blurRadius: 12)],
-        ),
-        titleLarge: base.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          color: text,
-          shadows: [const Shadow(color: primary, blurRadius: 8)],
-        ),
-        titleMedium: base.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: text,
-        ),
-      ),
+      textTheme:
+          base.textTheme.apply(bodyColor: text, displayColor: text).copyWith(
+                headlineSmall: const TextStyle(
+                    fontSize: 24,
+                    height: 1.25,
+                    fontWeight: FontWeight.w700,
+                    color: text),
+                titleLarge: const TextStyle(
+                    fontSize: 21,
+                    height: 1.3,
+                    fontWeight: FontWeight.w700,
+                    color: text),
+                titleMedium: const TextStyle(
+                    fontSize: 17,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: text),
+              ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w900,
-          color: text,
-          letterSpacing: 2.0,
-          shadows: [Shadow(color: primary2, blurRadius: 10)],
-        ),
-      ),
+          backgroundColor: background,
+          foregroundColor: text,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: false,
+          systemOverlayStyle: SystemUiOverlayStyle.dark,
+          titleTextStyle: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.w700, color: text)),
+      cardTheme: CardThemeData(
+          color: surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: shape.copyWith(side: const BorderSide(color: border))),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+          style: button.copyWith(
+              backgroundColor: WidgetStateProperty.resolveWith(
+                  (s) => s.contains(WidgetState.disabled) ? surface2 : primary),
+              foregroundColor: WidgetStateProperty.resolveWith((s) =>
+                  s.contains(WidgetState.disabled) ? muted : Colors.white),
+              elevation: const WidgetStatePropertyAll(0))),
+      filledButtonTheme: FilledButtonThemeData(style: button),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+          style: button.copyWith(
+              side: const WidgetStatePropertyAll(BorderSide(color: border)))),
+      textButtonTheme: TextButtonThemeData(style: button),
+      iconButtonTheme: const IconButtonThemeData(
+          style:
+              ButtonStyle(minimumSize: WidgetStatePropertyAll(Size(48, 48)))),
+      dialogTheme: DialogThemeData(
+          backgroundColor: surface,
+          surfaceTintColor: Colors.transparent,
+          shape: shape),
+      bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: surface, showDragHandle: true),
+      snackBarTheme: SnackBarThemeData(
+          backgroundColor: text,
+          contentTextStyle: const TextStyle(color: Colors.white),
+          behavior: SnackBarBehavior.floating,
+          shape: shape),
+      navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: surface,
+          indicatorColor: surface3,
+          labelTextStyle: WidgetStatePropertyAll(TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: text))),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1),
       inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: surface.withOpacity(0.5),
-        labelStyle: const TextStyle(color: muted, fontWeight: FontWeight.w600),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        border: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: border)),
-        enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: border)),
-        focusedBorder: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: primary, width: 2)),
-      ),
+          filled: true,
+          fillColor: surface,
+          labelStyle: const TextStyle(color: muted),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: border)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: border)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: primary, width: 2))),
     );
   }
 }
@@ -121,39 +165,22 @@ class GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget content = Container(
+    return Container(
       width: width,
       height: height,
       margin: margin,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: padding ?? const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color ?? AppTheme.surface.withOpacity(0.3),
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(radius),
-              border: border ?? Border.all(color: AppTheme.primary.withOpacity(0.2), width: 1.5),
-              boxShadow: boxShadow ?? [
-                BoxShadow(
-                  color: AppTheme.primary2.withOpacity(0.05),
-                  blurRadius: 20,
-                  spreadRadius: -5,
-                )
-              ],
-            ),
-            child: child,
-          ),
-        ),
+      child: Material(
+        color: color ?? AppTheme.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+            side: const BorderSide(color: AppTheme.border)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+            onTap: onTap,
+            child: Padding(
+                padding: padding ?? const EdgeInsets.all(16), child: child)),
       ),
     );
-
-    if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: content);
-    }
-    return content;
   }
 }
 
@@ -162,12 +189,11 @@ class Ui {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 16, 4, 12),
       child: Text(
-        text.toUpperCase(),
+        text,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: AppTheme.primary,
-          letterSpacing: 1.5,
-          shadows: [const Shadow(color: AppTheme.primary, blurRadius: 10)],
-        ),
+              color: AppTheme.primary,
+              letterSpacing: 0,
+            ),
       ),
     );
   }
@@ -185,14 +211,14 @@ class Ui {
     );
   }
 
-  static Widget badge({required String text, required Color color, IconData? icon}) {
+  static Widget badge(
+      {required String text, required Color color, IconData? icon}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color.withOpacity(0.5), width: 1.5),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 8)],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -201,7 +227,13 @@ class Ui {
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 6),
           ],
-          Text(text, style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 12, letterSpacing: 0.5)),
+          Flexible(
+              child: Text(text,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                      fontSize: 13,
+                      letterSpacing: 0))),
         ],
       ),
     );
@@ -252,9 +284,23 @@ class AppActionButton extends StatelessWidget {
     final caption = label ?? title ?? text ?? '';
     final callback = onPressed ?? onTap;
     final isEnabled = enabled && !loading && callback != null;
-    final bg = color ?? (danger ? AppTheme.danger.withOpacity(0.2) : primary ? AppTheme.primary.withOpacity(0.2) : AppTheme.surface2);
-    final fg = foregroundColor ?? (danger ? AppTheme.danger : primary ? AppTheme.primary : AppTheme.text);
-    final borderColor = danger ? AppTheme.danger : primary ? AppTheme.primary : AppTheme.border;
+    final bg = color ??
+        (danger
+            ? AppTheme.danger.withOpacity(0.2)
+            : primary
+                ? AppTheme.primary
+                : AppTheme.surface2);
+    final fg = foregroundColor ??
+        (danger
+            ? AppTheme.danger
+            : primary
+                ? Colors.white
+                : AppTheme.text);
+    final borderColor = danger
+        ? AppTheme.danger
+        : primary
+            ? AppTheme.primary
+            : AppTheme.border;
 
     final hasSubtitle = subtitle != null && subtitle!.isNotEmpty;
 
@@ -266,31 +312,38 @@ class AppActionButton extends StatelessWidget {
           SizedBox(
             width: 18,
             height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(fg)),
+            child: CircularProgressIndicator(
+                strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(fg)),
           )
         else if (icon != null)
           Icon(icon, size: 18, color: fg),
-        if ((loading || icon != null) && caption.isNotEmpty) const SizedBox(width: 8),
+        if ((loading || icon != null) && caption.isNotEmpty)
+          const SizedBox(width: 8),
         if (caption.isNotEmpty || hasSubtitle)
           Flexible(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: expanded ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+              crossAxisAlignment: expanded
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.center,
               children: [
                 if (caption.isNotEmpty)
                   Text(
                     caption,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: fg, fontWeight: FontWeight.w900, letterSpacing: 1.0),
+                    softWrap: true,
+                    style: TextStyle(
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0),
                   ),
                 if (hasSubtitle) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
                     style: TextStyle(
                       color: fg.withOpacity(0.78),
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -309,14 +362,19 @@ class AppActionButton extends StatelessWidget {
           onTap: isEnabled ? callback : null,
           borderRadius: BorderRadius.circular(compact ? 16 : 20),
           child: Container(
-            padding: padding ?? EdgeInsets.symmetric(
-              horizontal: compact ? 12 : 16,
-              vertical: compact ? 10 : 14,
-            ),
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: padding ??
+                EdgeInsets.symmetric(
+                  horizontal: compact ? 12 : 16,
+                  vertical: compact ? 10 : 14,
+                ),
             decoration: BoxDecoration(
               color: isEnabled ? bg : AppTheme.surface2.withOpacity(0.3),
               borderRadius: BorderRadius.circular(compact ? 16 : 20),
-              border: Border.all(color: isEnabled ? borderColor.withOpacity(0.5) : AppTheme.border),
+              border: Border.all(
+                  color: isEnabled
+                      ? borderColor.withOpacity(0.5)
+                      : AppTheme.border),
             ),
             child: child,
           ),
@@ -355,7 +413,6 @@ class AppStatCard extends StatelessWidget {
         color: AppTheme.surface2.withOpacity(0.5),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: c.withOpacity(0.3)),
-        boxShadow: [BoxShadow(color: c.withOpacity(0.05), blurRadius: 10)],
       ),
       child: Row(
         children: [
@@ -375,12 +432,26 @@ class AppStatCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (t.isNotEmpty)
-                  Text(t.toUpperCase(), style: const TextStyle(color: AppTheme.muted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                  Text(t,
+                      style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0)),
                 if (t.isNotEmpty) const SizedBox(height: 4),
-                Text(value, style: TextStyle(color: AppTheme.text, fontSize: 20, fontWeight: FontWeight.w900, shadows: [Shadow(color: c, blurRadius: 8)])),
+                Text(value,
+                    style: TextStyle(
+                      color: AppTheme.text,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    )),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle!, style: const TextStyle(color: AppTheme.muted, fontSize: 11, fontWeight: FontWeight.w600)),
+                  Text(subtitle!,
+                      style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
                 ],
               ],
             ),
@@ -389,4 +460,18 @@ class AppStatCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Consistent breathing room for task screens; never imposes fixed text heights.
+class AppContentList extends StatelessWidget {
+  final List<Widget> children;
+  final EdgeInsetsGeometry? padding;
+  const AppContentList({super.key, required this.children, this.padding});
+  @override
+  Widget build(BuildContext context) => ListView.separated(
+    padding: padding ?? const EdgeInsets.all(16),
+    itemCount: children.length,
+    separatorBuilder: (_, __) => const SizedBox(height: 12),
+    itemBuilder: (_, index) => children[index],
+  );
 }
