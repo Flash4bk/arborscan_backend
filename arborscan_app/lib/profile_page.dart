@@ -35,7 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
   static const String _expiresAtKey = 'arborscan_auth_expires_at';
 
   static const String _appName = 'ArborScan';
-  static const String _appVersion = '1.0.0 beta';
+  static const String _appVersion = '1.2.0 · новый интерфейс';
   static const String _developerEmail = 'danik.alshkevich@gmail.com';
 
   final _nameController = TextEditingController();
@@ -226,7 +226,9 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       } catch (e) {
         final msg = e.toString();
-        if (msg.contains('401') || msg.contains('Сессия') || msg.contains('Unauthorized')) {
+        if (msg.contains('401') ||
+            msg.contains('Сессия') ||
+            msg.contains('Unauthorized')) {
           await _clearInvalidSession(
             'Сессия истекла или была сброшена после обновления сервера. Войдите снова.',
           );
@@ -270,7 +272,9 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setString(_roleKey, role);
     await prefs.remove('arborscan_user_id');
     await prefs.setString(_tokenKey, token);
-    if (user['id'] is String) await prefs.setString('arborscan_user_id', user['id'] as String);
+    if (user['id'] is String) {
+      await prefs.setString('arborscan_user_id', user['id'] as String);
+    }
     await prefs.setString(_expiresAtKey, expiresAt);
     await prefs.setBool(_loggedInKey, true);
     await prefs.setBool(_adminFlagKey, isAdmin);
@@ -333,10 +337,11 @@ class _ProfilePageState extends State<ProfilePage> {
         _statusText = 'Профиль создан на сервере.';
       });
       _snack('Профиль создан. Добро пожаловать!');
-      
+
       // ПОКАЗЫВАЕМ ОБУЧЕНИЕ ПОСЛЕ РЕГИСТРАЦИИ!
       if (mounted) {
-        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OnboardingPage()));
+        Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const OnboardingPage()));
       }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -371,7 +376,9 @@ class _ProfilePageState extends State<ProfilePage> {
         _serverOnline = true;
         _statusText = 'Вход выполнен через сервер.';
       });
-      _snack(_isAdmin ? 'Вы вошли как администратор.' : 'Вы вошли как пользователь.');
+      _snack(_isAdmin
+          ? 'Вы вошли как администратор.'
+          : 'Вы вошли как пользователь.');
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -446,7 +453,7 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _busy = true);
     try {
       await _clearInvalidSession('Выполняется вход через Google...');
-      await _googleSignIn.signOut(); 
+      await _googleSignIn.signOut();
       final account = await _googleSignIn.signIn();
       if (account == null) {
         _snack('Вход через Google отменён.');
@@ -495,7 +502,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _geoAnalyses = (stats['with_geo'] as num?)?.toInt() ?? 0;
         _highRiskAnalyses = (stats['high_risk_count'] as num?)?.toInt() ?? 0;
         _avgRisk = (stats['avg_risk'] as num?)?.toDouble();
-        _lastAnalysis = (stats['last_analysis'] as Map?)?.cast<String, dynamic>();
+        _lastAnalysis =
+            (stats['last_analysis'] as Map?)?.cast<String, dynamic>();
       });
     } catch (_) {
       // Статистика профиля не должна ломать вход.
@@ -536,13 +544,15 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     _buildAppHeader(context),
                     const SizedBox(height: 14),
-                    _buildDeveloperCard(context),
-                    const SizedBox(height: 14),
-                    _loggedIn ? _buildAccountCard(context) : _buildAuthCard(context),
+                    _loggedIn
+                        ? _buildAccountCard(context)
+                        : _buildAuthCard(context),
                     if (_loggedIn) ...[
                       const SizedBox(height: 14),
                       _buildStatsCard(context),
                     ],
+                    const SizedBox(height: 14),
+                    _buildDeveloperCard(context),
                     const SizedBox(height: 14),
                     _buildInfoCard(context),
                   ],
@@ -632,7 +642,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     Ui.badge(
                       text: _serverOnline ? 'Сервер' : 'Локально',
-                      color: _serverOnline ? AppTheme.success : AppTheme.warning,
+                      color:
+                          _serverOnline ? AppTheme.success : AppTheme.warning,
                       icon: _serverOnline ? Icons.cloud_done : Icons.storage,
                     ),
                   ],
@@ -665,7 +676,8 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Связь с разработчиком', style: Theme.of(context).textTheme.titleMedium),
+                Text('Связь с разработчиком',
+                    style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 SelectableText(
                   _developerEmail,
@@ -721,7 +733,8 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
             selected: {_isRegisterMode},
-            onSelectionChanged: (v) => setState(() => _isRegisterMode = v.first),
+            onSelectionChanged: (v) =>
+                setState(() => _isRegisterMode = v.first),
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -733,17 +746,18 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
+          const Row(
             children: [
-              Expanded(child: Divider(color: AppTheme.border)),
-              Padding(
+              const Expanded(child: const Divider(color: AppTheme.border)),
+              const Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
+                child: const Text(
                   'или',
-                  style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      color: AppTheme.muted, fontWeight: FontWeight.w700),
                 ),
               ),
-              Expanded(child: Divider(color: AppTheme.border)),
+              const Expanded(child: const Divider(color: AppTheme.border)),
             ],
           ),
           const SizedBox(height: 14),
@@ -827,26 +841,41 @@ class _ProfilePageState extends State<ProfilePage> {
                         icon: Icons.admin_panel_settings,
                       ),
                     Ui.badge(
-                      text: _serverOnline ? 'Серверная сессия' : 'Локальная копия',
-                      color: _serverOnline ? AppTheme.success : AppTheme.warning,
+                      text: _serverOnline
+                          ? 'Серверная сессия'
+                          : 'Локальная копия',
+                      color:
+                          _serverOnline ? AppTheme.success : AppTheme.warning,
                       icon: _serverOnline ? Icons.cloud_done : Icons.storage,
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
                 if (_isAdmin && _loggedIn) ...[
-                  FilledButton.icon(onPressed:_busy?null:()=>Navigator.push(context,
-                    MaterialPageRoute(builder:(_)=>const ModelQualityPage())),
-                    icon:const Icon(Icons.model_training),label:const Text('Модели, данные и породы')),
+                  FilledButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const ModelQualityPage())),
+                      icon: const Icon(Icons.model_training),
+                      label: const Text('Модели, данные и породы')),
                   OutlinedButton.icon(
-                    onPressed: _busy ? null : () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AdminPanelPage(baseUrl: ApiConfig.baseUrl))),
+                    onPressed: _busy
+                        ? null
+                        : () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const AdminPanelPage(
+                                baseUrl: ApiConfig.baseUrl))),
                     icon: const Icon(Icons.admin_panel_settings_outlined),
                     label: const Text('Админ-панель'),
                   ),
                   FilledButton.icon(
-                    onPressed: _busy ? null : () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SavedCorrectionsPage(adminQueue: true))),
+                    onPressed: _busy
+                        ? null
+                        : () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) =>
+                                const SavedCorrectionsPage(adminQueue: true))),
                     icon: const Icon(Icons.fact_check_outlined),
                     label: const Text('Проверка контуров'),
                   ),
@@ -913,9 +942,12 @@ class _ProfilePageState extends State<ProfilePage> {
             builder: (context, constraints) {
               final twoCols = constraints.maxWidth > 430;
               final cards = [
-                _statTile('Всего', _totalAnalyses.toString(), Icons.analytics_outlined),
-                _statTile('На карте', _geoAnalyses.toString(), Icons.location_on_outlined),
-                _statTile('Высокий риск', _highRiskAnalyses.toString(), Icons.warning_amber),
+                _statTile('Всего', _totalAnalyses.toString(),
+                    Icons.analytics_outlined),
+                _statTile('На карте', _geoAnalyses.toString(),
+                    Icons.location_on_outlined),
+                _statTile('Высокий риск', _highRiskAnalyses.toString(),
+                    Icons.warning_amber),
                 _statTile('Средний риск', avgRiskText, Icons.speed_outlined),
               ];
 
@@ -1036,10 +1068,14 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Text('О приложении', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
-          _infoRow(Icons.analytics_outlined, 'AI-анализ', 'Параметры дерева и факторы риска.'),
-          _infoRow(Icons.view_in_ar_outlined, 'AR-измерения', 'Высота, крона и диаметр по 6 точкам.'),
-          _infoRow(Icons.map_outlined, 'Карта', 'GPS-точки анализов, спутник, 3D и Street View.'),
-          _infoRow(Icons.science_outlined, 'β-аналитика', 'Ветровая нагрузка и момент у основания.'),
+          _infoRow(Icons.analytics_outlined, 'AI-анализ',
+              'Параметры дерева и факторы риска.'),
+          _infoRow(Icons.view_in_ar_outlined, 'AR-измерения',
+              'Высота, крона и диаметр по 6 точкам.'),
+          _infoRow(Icons.map_outlined, 'Карта',
+              'GPS-точки анализов, спутник, 3D и Street View.'),
+          _infoRow(Icons.science_outlined, 'β-аналитика',
+              'Ветровая нагрузка и момент у основания.'),
         ],
       ),
     );
@@ -1058,8 +1094,12 @@ class _ProfilePageState extends State<ProfilePage> {
               text: TextSpan(
                 style: Theme.of(context).textTheme.bodyMedium,
                 children: [
-                  TextSpan(text: '$title: ', style: const TextStyle(fontWeight: FontWeight.w900)),
-                  TextSpan(text: text, style: const TextStyle(color: AppTheme.muted)),
+                  TextSpan(
+                      text: '$title: ',
+                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                  TextSpan(
+                      text: text,
+                      style: const TextStyle(color: AppTheme.muted)),
                 ],
               ),
             ),

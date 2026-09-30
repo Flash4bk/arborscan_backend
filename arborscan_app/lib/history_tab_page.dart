@@ -282,7 +282,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ИСТОРИЯ', style: TextStyle(letterSpacing: 1.5)),
+        title: const Text('История'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: TextButton.icon(
@@ -317,7 +317,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('ЖУРНАЛ АНАЛИЗОВ', style: Theme.of(context).textTheme.titleLarge),
+                            Text('Журнал анализов', style: Theme.of(context).textTheme.titleLarge),
                             const SizedBox(height: 6),
                             Text(
                               'Поиск, фильтрация и генерация PDF-отчетов.',

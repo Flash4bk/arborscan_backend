@@ -1,3 +1,4 @@
+import 'package:arborscan_app/app_theme.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,10 +36,11 @@ void main() {
     }
 
     await t.pumpWidget(MaterialApp(
-        home: ReferenceMeasurementPage(
+        theme: AppTheme.light(), home: ReferenceMeasurementPage(
             drafts: store, pickPhoto: () async => image)));
     await settle();
     await tapText('Выбрать фото');
+    await t.scrollUntilVisible(find.byType(TextField), 150, scrollable: find.byType(Scrollable).first);
     await t.runAsync(() => t.enterText(find.byType(TextField), '1'));
     await settle();
     await tapText('Обвести известный объект');
@@ -55,7 +57,7 @@ void main() {
     }
     await t.tap(find.byTooltip('Замкнуть контур'));
     await t.pump();
-    await t.runAsync(() => t.tap(find.byType(FloatingActionButton)));
+    await t.runAsync(() => t.tap(find.widgetWithText(FilledButton, 'Подтвердить')));
     await settle();
     await t.ensureVisible(find.text('Подтвердить'));
     await t.pump();
@@ -96,7 +98,7 @@ void main() {
     expect(rows.single['report']['geometry']['trunk_diameter']['value'], closeTo(.25,1e-8));
     await t.pumpWidget(const SizedBox());
     await t.runAsync(() => t.pumpWidget(MaterialApp(
-        home: ReferenceMeasurementPage(
+        theme: AppTheme.light(), home: ReferenceMeasurementPage(
             draftId: id,
             drafts: ContourDrafts(directory: () async => folder)))));
     await settle();

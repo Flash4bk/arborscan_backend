@@ -137,7 +137,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
       IconButton(tooltip: 'Обновить', icon: const Icon(Icons.refresh),
         onPressed: _busy || _invalidSession ? null : () => _load(refresh: true)),
     ]),
-    body: ListView(padding: const EdgeInsets.all(16), children: [
+    body: AppContentList(padding: const EdgeInsets.all(16), children: [
       if (_busy) const LinearProgressIndicator(),
       if (_error != null) ...[
         Text(_error!, style: const TextStyle(color: AppTheme.danger)),
@@ -152,7 +152,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
         for (final item in _items) Card(child: ListTile(
           leading: const Icon(Icons.layers_outlined, color: AppTheme.primary),
           title: Text(widget.localDrafts ? 'Черновик контура' : 'Сохранённый контур'),
-          subtitle: Text('${item['created_at'] ?? item['analysis_id'] ?? ''}\n${item['correction_id'] ?? item['draft_id']}'),
+          subtitle: Text('${item['created_at'] ?? 'На этом устройстве'}\n${contourStatus(item['review_status'] as String? ?? 'draft')}'),
           onTap: () async {
             final token = await _session;
             if (!context.mounted || _invalidSession) return;
@@ -179,7 +179,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
             SavedCorrectionsPage(service:_service, correctionId:_record!['next_revision_id'] as String))),
             child:const Text('Открыть следующую ревизию')),
         for (final event in (_record?['decisions'] as List? ?? []))
-          Text('${event['action']} · ${event['at']} · ${event['actor_id']}\n${event['reason'] ?? ''}'),
+          ExpansionTile(title: Text('${contourStatus(event['action'] as String? ?? '')} · ${event['at']}'), subtitle: Text(event['reason']?.toString() ?? ''), children: [SelectableText('Автор решения: ${event['actor_id']}')]),
         const Text('Принятие касается только маски: высота, DBH и механическая оценка не подтверждаются. Обучение не запускается.'),
         SwitchListTile(title:const Text('Наложение маски на оригинал'), value:_overlay,
           onChanged:(v) => setState(() => _overlay = v)),

@@ -66,9 +66,9 @@ void main() {
     addTearDown(t.view.resetDevicePixelRatio);
     await t.pumpWidget(MaterialApp(
         theme: AppTheme.light(),
-        home: MediaQuery(
+        home: const MediaQuery(
             data: const MediaQueryData(textScaler: TextScaler.linear(1.8)),
-            child: ArborScanPage())));
+            child: const ArborScanPage())));
     await t.pump();
     expect(t.takeException(), isNull);
     await t.scrollUntilVisible(find.text('Галерея'), 200);

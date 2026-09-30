@@ -63,24 +63,40 @@ class _ArborScanPageState extends State<ArborScanPage> {
   Future<void> _openAr() async {
     if (_openingAr) return;
     if (_imageFile == null) {
-      setState(() => _error = 'Сначала выберите фото дерева, затем измерьте именно это дерево в AR.');
+      setState(() => _error =
+          'Сначала выберите фото дерева, затем измерьте именно это дерево в AR.');
       return;
     }
-    setState(() { _openingAr = true; _error = null; });
+    setState(() {
+      _openingAr = true;
+      _error = null;
+    });
     try {
-    final selectedImage = _imageFile!;
-    final boundHash = sha256.convert(await selectedImage.readAsBytes()).toString();
-    if (!mounted) return;
-    final sameTree = await showDialog<bool>(context:context,builder:(c)=>AlertDialog(
-      title:const Text('Связать AR с выбранным фото'),
-      content:const Text('Измеряйте то же дерево, которое выбрано на фото. Приложение не проверяет это автоматически. AR сохраняет отдельные пространственные размеры и не задаёт масштаб фотографии.'),
-      actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Отмена')),
-        TextButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Это то же дерево'))]));
-    if(sameTree!=true || !mounted)return;
+      final selectedImage = _imageFile!;
+      final boundHash =
+          sha256.convert(await selectedImage.readAsBytes()).toString();
+      if (!mounted) return;
+      final sameTree = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+                  title: const Text('Связать AR с выбранным фото'),
+                  content: const Text(
+                      'Измеряйте то же дерево, которое выбрано на фото. Приложение не проверяет это автоматически. AR сохраняет отдельные пространственные размеры и не задаёт масштаб фотографии.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(c, false),
+                        child: const Text('Отмена')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(c, true),
+                        child: const Text('Это то же дерево'))
+                  ]));
+      if (sameTree != true || !mounted) return;
 
       final result = await ArMeasureChannel.openArMeasure();
       if (!mounted || result == null) return;
-      if (_imageFile != selectedImage) throw const FormatException('Фото изменилось. Повторите AR для выбранного дерева.');
+      if (_imageFile != selectedImage)
+        throw const FormatException(
+            'Фото изменилось. Повторите AR для выбранного дерева.');
 
       setState(() {
         _arResult = result;
@@ -120,13 +136,16 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final request = http.MultipartRequest('POST', Uri.parse(_apiUrl));
       final prefs = await SharedPreferences.getInstance();
       final sessionToken = prefs.getString('arborscan_auth_token');
-      if (sessionToken != null && sessionToken.isNotEmpty) request.headers['Authorization'] = 'Bearer $sessionToken';
+      if (sessionToken != null && sessionToken.isNotEmpty)
+        request.headers['Authorization'] = 'Bearer $sessionToken';
       request.fields['include_images'] = 'true';
 
       final ar = _arResult;
       if (ar != null) {
-        if (_arPhotoHash != sha256.convert(await imageFile.readAsBytes()).toString()) {
-          throw const FormatException('AR относится к другому фото. Повторите измерение.');
+        if (_arPhotoHash !=
+            sha256.convert(await imageFile.readAsBytes()).toString()) {
+          throw const FormatException(
+              'AR относится к другому фото. Повторите измерение.');
         }
         request.fields.addAll(ar.toV4FormFields());
         request.fields['ar_photo_sha256'] = _arPhotoHash!;
@@ -137,8 +156,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
         await http.MultipartFile.fromPath('file', imageFile.path),
       );
 
-      final response = await (() async => http.Response.fromStream(
-          await client.send(request)))().timeout(const Duration(seconds: 180));
+      final response = await (() async =>
+              http.Response.fromStream(await client.send(request)))()
+          .timeout(const Duration(seconds: 180));
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(_extractServerMessage(response));
@@ -151,14 +171,24 @@ class _ArborScanPageState extends State<ArborScanPage> {
       if (ar != null && decoded['measurement_method_version'] != 1) {
         final measures = decoded['measurements'];
         if (measures is Map) {
-          measures['crown_width'] = {'value_m':null,'value_px':null,
-            'source':'unavailable','confidence':0.0,'notes':['old_api_ar_photo_scale_not_validated']};
+          measures['crown_width'] = {
+            'value_m': null,
+            'value_px': null,
+            'source': 'unavailable',
+            'confidence': 0.0,
+            'notes': ['old_api_ar_photo_scale_not_validated']
+          };
         }
       }
 
       decoded['captured_at'] ??= DateTime.now().toUtc().toIso8601String();
-      decoded['ar_provenance'] = ar == null ? null : {'photo_sha256':_arPhotoHash,
-        'association':'user_confirmed_same_tree','measurement':ar.raw};
+      decoded['ar_provenance'] = ar == null
+          ? null
+          : {
+              'photo_sha256': _arPhotoHash,
+              'association': 'user_confirmed_same_tree',
+              'measurement': ar.raw
+            };
       if (prefs.getString('arborscan_auth_token') != sessionToken) {
         throw const FormatException('Аккаунт изменился. Повторите анализ.');
       }
@@ -176,7 +206,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
       } catch (_) {}
 
       if (!mounted) return;
-      if (prefs.getString('arborscan_auth_token') != sessionToken) return;
+      if (prefs.getString('arborscan_auth_token') != sessionToken) { return; }
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => UnifiedAnalysisReportPage(
@@ -196,14 +226,16 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
-  Future<void> _saveHistory(UnifiedAnalysisResult result, String? sessionToken) async {
+  Future<void> _saveHistory(
+      UnifiedAnalysisResult result, String? sessionToken) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (sessionToken == null || prefs.getString('arborscan_auth_token') != sessionToken) return;
+      if (sessionToken == null ||
+          prefs.getString('arborscan_auth_token') != sessionToken) { return; }
       final existing = prefs.getStringList(_historyKey) ?? <String>[];
 
       final historyRow = <String, dynamic>{
-        'owner_id':prefs.getString('arborscan_user_id'),
+        'owner_id': prefs.getString('arborscan_user_id'),
         'species': result.speciesName,
         'height': result.height.valueM,
         'crown': result.crownWidth.valueM,
@@ -217,8 +249,13 @@ class _ArborScanPageState extends State<ArborScanPage> {
         'imageBase64': '',
         'timestamp': DateTime.now().toIso8601String(),
         'analysisId': result.analysisId,
-        'ar_provenance': _arResult == null ? null : {'photo_sha256':_arPhotoHash,
-          'association':'user_confirmed_same_tree','measurement':_arResult!.raw},
+        'ar_provenance': _arResult == null
+            ? null
+            : {
+                'photo_sha256': _arPhotoHash,
+                'association': 'user_confirmed_same_tree',
+                'measurement': _arResult!.raw
+              },
       };
 
       final newRow = jsonEncode(historyRow);
@@ -285,7 +322,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
           children: [
             Text('ArborScan'),
             Text(
-              'Unified Analysis v4',
+              'Исследование дерева',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -307,11 +344,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
           children: [
-            const _IntroCard(),
-            OutlinedButton.icon(onPressed:_loading?null:()=>Navigator.of(context).push(
-              MaterialPageRoute(builder:(_)=>const ReferenceMeasurementPage())),
-              icon:const Icon(Icons.straighten),label:const Text('По известному объекту')),
-            const SizedBox(height: 16),
+            Text('Начните с фотографии',
+                style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
             _StepHeader(
               number: '1',
               title: 'Фотография дерева',
@@ -327,6 +362,14 @@ class _ArborScanPageState extends State<ArborScanPage> {
               onCamera: () => _pickImage(ImageSource.camera),
               onGallery: () => _pickImage(ImageSource.gallery),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+                onPressed: _loading
+                    ? null
+                    : () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const ReferenceMeasurementPage())),
+                icon: const Icon(Icons.straighten),
+                label: const Text('Измерить по известному объекту')),
             const SizedBox(height: 18),
             _StepHeader(
               number: '2',
@@ -348,7 +391,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
               number: '3',
               title: 'Единый анализ',
               subtitle: _arResult != null
-                  ? 'AR + CV + PlantNet будут объединены в один результат.'
+                  ? 'Фото, измерения AR и распознавание породы войдут в один отчёт.'
                   : 'Без AR система не будет придумывать физические размеры: метры останутся пустыми.',
               done: _lastResult != null,
             ),
@@ -385,6 +428,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
               ),
             ],
             const SizedBox(height: 18),
+            const _IntroCard(),
             _DebugEndpointCard(url: _apiUrl),
           ],
         ),
@@ -486,15 +530,15 @@ class _StepHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                   ),
                   if (optional) ...[
                     const SizedBox(width: 8),
@@ -578,49 +622,33 @@ class _PhotoCard extends StatelessWidget {
                 ],
               ),
             ] else ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 34),
-                decoration: BoxDecoration(
-                  color: AppTheme.bg,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(
-                      Icons.add_a_photo_outlined,
-                      size: 38,
-                      color: AppTheme.muted,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Добавьте одно хорошо видимое дерево',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: loading ? null : onCamera,
-                      icon: const Icon(Icons.camera_alt_outlined),
-                      label: const Text('Камера'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: loading ? null : onGallery,
-                      icon: const Icon(Icons.photo_library_outlined),
-                      label: const Text('Галерея'),
-                    ),
-                  ),
-                ],
-              ),
+              LayoutBuilder(builder: (context, constraints) {
+                final tiles = [
+                  _PhotoAction(
+                      icon: Icons.camera_alt_outlined,
+                      title: 'Камера',
+                      subtitle: 'Снять дерево',
+                      onTap: loading ? null : onCamera),
+                  _PhotoAction(
+                      icon: Icons.photo_library_outlined,
+                      title: 'Галерея',
+                      subtitle: 'Выбрать фото',
+                      onTap: loading ? null : onGallery),
+                ];
+                if (constraints.maxWidth < 320 ||
+                    MediaQuery.textScalerOf(context).scale(1) > 1.3) {
+                  return Column(children: [
+                    tiles[0],
+                    const SizedBox(height: 12),
+                    tiles[1]
+                  ]);
+                }
+                return Row(children: [
+                  Expanded(child: tiles[0]),
+                  const SizedBox(width: 12),
+                  Expanded(child: tiles[1])
+                ]);
+              }),
             ],
           ],
         ),
@@ -674,7 +702,8 @@ class _ArCard extends StatelessWidget {
                           ),
                         )
                       : const Icon(Icons.view_in_ar_outlined),
-                  label: Text(opening ? 'Открываем AR…' : 'Измерить дерево в AR'),
+                  label:
+                      Text(opening ? 'Открываем AR…' : 'Измерить дерево в AR'),
                 ),
               ),
             ] else ...[
@@ -688,7 +717,8 @@ class _ArCard extends StatelessWidget {
                     icon: Icons.height,
                   ),
                   Ui.badge(
-                    text: 'Диаметр ${ar.trunkDiameterMeters!.toStringAsFixed(3)} м',
+                    text:
+                        'Диаметр ${ar.trunkDiameterMeters!.toStringAsFixed(3)} м',
                     color: AppTheme.success,
                     icon: Icons.circle_outlined,
                   ),
@@ -767,7 +797,7 @@ class _AnalyzeCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     hasAr
-                        ? 'Готово к объединению AR + CV + PlantNet.'
+                        ? 'Фото и AR готовы к совместному анализу.'
                         : 'Будет выполнен анализ изображения без метрических догадок.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w700,
@@ -890,11 +920,13 @@ class _DebugEndpointCard extends StatelessWidget {
     return Card(
       child: ExpansionTile(
         title: const Text(
-          'Alpha / подключение',
+          'Диагностика подключения',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          Uri.parse(url).scheme == 'https' ? 'Подключение по HTTPS' : 'Подключение к настроенному серверу',
+          Uri.parse(url).scheme == 'https'
+              ? 'Подключение по HTTPS'
+              : 'Подключение к настроенному серверу',
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
@@ -913,4 +945,40 @@ class _DebugEndpointCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PhotoAction extends StatelessWidget {
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback? onTap;
+  const _PhotoAction(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      this.onTap});
+  @override
+  Widget build(BuildContext context) => Semantics(
+      button: true,
+      enabled: onTap != null,
+      child: Material(
+          color: AppTheme.surface3,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(icon, size: 32, color: AppTheme.primary),
+                      const SizedBox(height: 16),
+                      Text(title,
+                          style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 4),
+                      Text(subtitle,
+                          style: const TextStyle(color: AppTheme.muted)),
+                    ])),
+          )));
 }

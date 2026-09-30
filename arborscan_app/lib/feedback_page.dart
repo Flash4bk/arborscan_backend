@@ -532,14 +532,14 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.black,
+                        color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.done_all, color: Colors.black),
+                  : const Icon(Icons.done_all, color: Colors.white),
               label: Text(
                 _isSending ? 'ОТПРАВКА...' : 'ПОДТВЕРДИТЬ И ОТПРАВИТЬ',
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1,
                 ),

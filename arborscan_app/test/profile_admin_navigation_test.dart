@@ -1,3 +1,4 @@
+import 'package:arborscan_app/app_theme.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,7 +17,7 @@ void main() {
       });
       final requests = <Uri>[];
       await http.runWithClient(() async {
-        await tester.pumpWidget(const MaterialApp(home: ProfilePage()));
+        await tester.pumpWidget(MaterialApp(theme: AppTheme.light(), home: const ProfilePage()));
         await tester.pumpAndSettle();
         if (role == 'user') {
           expect(find.text('Админ-панель'), findsNothing);

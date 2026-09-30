@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -186,7 +187,7 @@ class _ContourWorkspacePageState extends State<ContourWorkspacePage> with Widget
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title:const Text('Работа с контуром')),
-    body: ListView(padding:const EdgeInsets.all(16), children:[
+    body: AppContentList(padding:const EdgeInsets.all(16), children:[
       if (_busy) const LinearProgressIndicator(),
       if (_error != null) Text(_error!, style:TextStyle(color:Theme.of(context).colorScheme.error)),
       if (!_invalid && _image != null) ...[

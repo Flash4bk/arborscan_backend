@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'corrections_service.dart';
@@ -96,7 +97,7 @@ class _ServerReportPageState extends State<ServerReportPage> {
         s == null ? null : base64Decode(s['image']['original_base64']);
     return Scaffold(
         appBar: AppBar(title: const Text('Сохранённый отчёт')),
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: AppContentList(padding: const EdgeInsets.all(16), children: [
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) Text(_error!),
           if (s != null && !_invalid) ...[
@@ -408,6 +409,7 @@ class _ServerHistoryPanelState extends State<ServerHistoryPanel> {
         ListTile(
             title: const Text('Отчёты аккаунта'),
             trailing: IconButton(
+                tooltip: 'Обновить отчёты аккаунта',
                 onPressed: _busy ? null : () => _load(true),
                 icon: const Icon(Icons.refresh))),
         if (_busy) const LinearProgressIndicator(),

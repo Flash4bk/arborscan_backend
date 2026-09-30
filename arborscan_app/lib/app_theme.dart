@@ -440,7 +440,7 @@ class AppStatCard extends StatelessWidget {
                           letterSpacing: 0)),
                 if (t.isNotEmpty) const SizedBox(height: 4),
                 Text(value,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppTheme.text,
                       fontSize: 20,
                       fontWeight: FontWeight.w600,

@@ -1,3 +1,4 @@
+import 'package:arborscan_app/app_theme.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -93,7 +94,7 @@ void main() {
       if(saves==1) return waiting.future;
       return http.Response('{"saved":true,"workflow_version":1,"correction_id":"revision","review_status":"draft"}',200);
     }));
-    Widget page() => MaterialApp(home:ContourWorkspacePage(analysisId:aid,drafts:drafts,service:service));
+    Widget page() => MaterialApp(theme: AppTheme.light(), home:ContourWorkspacePage(analysisId:aid,drafts:drafts,service:service));
     await tester.pumpWidget(page()); await tester.pumpAndSettle();
     expect(find.text('Продолжить редактирование'),findsOneWidget);
     await tester.ensureVisible(find.text('Сохранить контур'));
@@ -119,16 +120,20 @@ void main() {
     final service=CorrectionsService(clientFactory:()=>MockClient((_) async=>http.Response('{"workflow_version":1}',200)));
     final legacy={'analysis_id':aid,'correction_id':'legacy','mask_png_base64':base64Encode(image),
       'review_status':'pending_review'};
-    await tester.pumpWidget(MaterialApp(home:ContourWorkspacePage(analysisId:aid,image:image,
+    await tester.pumpWidget(MaterialApp(theme: AppTheme.light(), home:ContourWorkspacePage(analysisId:aid,image:image,
       record:legacy,drafts:drafts,service:service)));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Создать новый контур по фото'), 150);
     expect(find.text('Создать новый контур по фото'),findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     final record={...legacy,'correction_id':'accepted','editor_state':editor(),'review_status':'accepted'};
-    await tester.pumpWidget(MaterialApp(home:ContourWorkspacePage(analysisId:aid,image:image,
+    await tester.pumpWidget(MaterialApp(theme: AppTheme.light(), home:ContourWorkspacePage(analysisId:aid,image:image,
       record:record,drafts:drafts,service:service)));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Продолжить редактирование'));
+    await tester.scrollUntilVisible(find.text('Продолжить редактирование'), 150);
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(tester.element(find.text('Продолжить редактирование')), alignment: .5);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Продолжить редактирование'));
     await tester.pump(); await tester.pump(const Duration(seconds:1));
     final page=tester.widget<MaskDrawingPage>(find.byType(MaskDrawingPage));

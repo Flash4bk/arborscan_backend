@@ -3,7 +3,8 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#08111F">
+    android:background="#F5F5EF"
+    android:fitsSystemWindows="true">
 
     <fragment
         android:id="@+id/arFragment"
@@ -27,7 +28,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="ШАГ 1 ИЗ 5"
-            android:textColor="#46E0A1"
+            android:textColor="#526238"
             android:textSize="12sp"
             android:textStyle="bold"
             android:letterSpacing="0.1" />
@@ -38,7 +39,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="Наведите прицел на основание (корни) дерева"
-            android:textColor="#F6FAFF"
+            android:textColor="#242A20"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -48,7 +49,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:text="Поиск плоскости..."
-            android:textColor="#9BAABD"
+            android:textColor="#5C6456"
             android:textSize="14sp" />
     </LinearLayout>
 
@@ -62,14 +63,14 @@
             android:layout_width="2dp"
             android:layout_height="24dp"
             android:layout_gravity="center"
-            android:background="#46E0A1" />
+            android:background="#526238" />
         
         <!-- Горизонтальная линия прицела -->
         <View
             android:layout_width="24dp"
             android:layout_height="2dp"
             android:layout_gravity="center"
-            android:background="#46E0A1" />
+            android:background="#526238" />
 
         <!-- Плавающий текст с результатами (прямо над прицелом) -->
         <TextView
@@ -84,7 +85,7 @@
             android:paddingTop="6dp"
             android:paddingBottom="6dp"
             android:text="0.00 м"
-            android:textColor="#FFFFFF"
+            android:textColor="#242A20"
             android:textSize="16sp"
             android:textStyle="bold"
             android:visibility="gone" />
@@ -105,21 +106,24 @@
 
         <ImageButton
             android:id="@+id/btnUndo"
+            android:contentDescription="Отменить предыдущую точку"
             android:layout_width="0dp"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
             android:layout_weight="1"
-            android:backgroundTint="#132238"
+            android:backgroundTint="#DDE2CE"
             android:src="@android:drawable/ic_menu_revert"
-            android:tint="#F6FAFF" />
+            android:tint="#242A20" />
 
         <Button
             android:id="@+id/btnPlace"
             android:layout_width="0dp"
-            android:layout_height="56dp"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
             android:layout_weight="3"
             android:layout_marginStart="10dp"
-            android:backgroundTint="#46E0A1"
-            android:textColor="#000000"
+            android:backgroundTint="#526238"
+            android:textColor="#FFFFFF"
             android:text="Зафиксировать"
             android:textSize="16sp"
             android:textStyle="bold" />

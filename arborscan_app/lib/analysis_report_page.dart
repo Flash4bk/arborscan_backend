@@ -83,7 +83,8 @@ class AnalysisReportPageV2 extends StatelessWidget {
       lat: (gps?['lat'] as num?)?.toDouble(),
       lon: (gps?['lon'] as num?)?.toDouble(),
       address: raw['address'] as String?,
-      timestamp: DateTime.tryParse('${raw['captured_at'] ?? raw['created_at'] ?? ''}'),
+      timestamp:
+          DateTime.tryParse('${raw['captured_at'] ?? raw['created_at'] ?? ''}'),
       onOpenFeedback: onOpenFeedback,
     );
   }
@@ -104,7 +105,8 @@ class AnalysisReportPageV2 extends StatelessWidget {
     Uint8List? annotatedImageBytes,
     Future<void> Function()? onOpenFeedback,
   }) {
-    final resolvedBytes = annotatedImageBytes ?? _tryDecodeImageB64(imageBase64);
+    final resolvedBytes =
+        annotatedImageBytes ?? _tryDecodeImageB64(imageBase64);
     return AnalysisReportPageV2._(
       raw: null,
       annotatedImageBytes: resolvedBytes,
@@ -131,11 +133,14 @@ class AnalysisReportPageV2 extends StatelessWidget {
     final resolvedTimestamp = timestamp ?? DateTime.now();
 
     final risk = raw?['risk'] as Map<String, dynamic>?;
-    final explanation = (risk?['explanation'] as List?)?.cast<String>() ?? const [];
+    final explanation =
+        (risk?['explanation'] as List?)?.cast<String>() ?? const [];
     final beta = (raw?['beta'] as Map?)?.cast<String, dynamic>();
-    final analyticWindModel = (raw?['analytic_wind_model'] as Map?)?.cast<String, dynamic>();
+    final analyticWindModel =
+        (raw?['analytic_wind_model'] as Map?)?.cast<String, dynamic>();
 
-    final sourceMap = (raw?['measurement_sources'] as Map?)?.cast<String, dynamic>();
+    final sourceMap =
+        (raw?['measurement_sources'] as Map?)?.cast<String, dynamic>();
     final dimensionsSource = raw?['dimensions_source'] as String?;
     final hasArMeasurements = _sourceLabel(sourceMap?['height_m']) == 'AR' ||
         _sourceLabel(sourceMap?['crown_width_m']) == 'AR' ||
@@ -176,7 +181,6 @@ class AnalysisReportPageV2 extends StatelessWidget {
               imageBytes: annotatedImageBytes ?? _tryDecodeAnnotated(raw),
             ),
             const SizedBox(height: 24),
-
             Ui.sectionTitle(context, 'КЛЮЧЕВЫЕ ПАРАМЕТРЫ'),
             _SourceSummaryCard(
               dimensionsSource: dimensionsSource,
@@ -197,11 +201,9 @@ class AnalysisReportPageV2 extends StatelessWidget {
             const SizedBox(height: 12),
             _AnalyticWindModelCard(model: analyticWindModel),
             const SizedBox(height: 24),
-
             Ui.sectionTitle(context, 'ЛОКАЦИЯ'),
             _LocationCard(address: address, lat: lat, lon: lon),
             const SizedBox(height: 24),
-
             Ui.sectionTitle(context, 'ФАКТОРЫ РИСКА (SIA)'),
             _ExplanationCard(lines: explanation),
             const SizedBox(height: 12),
@@ -210,14 +212,33 @@ class AnalysisReportPageV2 extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: SizedBox(width: 290, child: Material(color: AppTheme.bg,
-        child: ReportExportButton(load: () async => ReportExportData(
-          snapshot: {'kind':'legacy','captured_at':timestamp?.toUtc().toIso8601String(),
-            'report': raw ?? {'species':species,'height_m':heightM,'crown_width_m':crownWidthM,
-              'trunk_diameter_m':trunkDiameterM,'gps':{'lat':lat,'lon':lon}}},
-          record:{'analysis_id':raw?['analysis_id'] ?? raw?['id'] ?? 'legacy'},
-          photo:exportDecode(raw?['original_image_base64'] ?? raw?['image_base64']),
-          annotation:annotatedImageBytes ?? _tryDecodeAnnotated(raw), local:raw == null)))),
+      floatingActionButton: SizedBox(
+          width: 290,
+          child: Material(
+              color: AppTheme.bg,
+              child: ReportExportButton(
+                  load: () async => ReportExportData(
+                          snapshot: {
+                            'kind': 'legacy',
+                            'captured_at': timestamp?.toUtc().toIso8601String(),
+                            'report': raw ??
+                                {
+                                  'species': species,
+                                  'height_m': heightM,
+                                  'crown_width_m': crownWidthM,
+                                  'trunk_diameter_m': trunkDiameterM,
+                                  'gps': {'lat': lat, 'lon': lon}
+                                }
+                          },
+                          record: {
+                            'analysis_id':
+                                raw?['analysis_id'] ?? raw?['id'] ?? 'legacy'
+                          },
+                          photo: exportDecode(raw?['original_image_base64'] ??
+                              raw?['image_base64']),
+                          annotation:
+                              annotatedImageBytes ?? _tryDecodeAnnotated(raw),
+                          local: raw == null)))),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
@@ -285,12 +306,16 @@ class _HeroCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       species,
-                      style: const TextStyle(fontSize: 20, color: AppTheme.primary2, fontWeight: FontWeight.w900, shadows: [Shadow(color: AppTheme.primary2, blurRadius: 8)]),
+                      style: const TextStyle(
+                          fontSize: 20,
+                          color: AppTheme.primary2,
+                          fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _formatDateTime(timestamp),
-                      style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: AppTheme.muted),
                     ),
                   ],
                 ),
@@ -300,7 +325,6 @@ class _HeroCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
           if (imageBytes != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
@@ -319,12 +343,14 @@ class _HeroCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.image_not_supported_outlined, color: AppTheme.muted),
+                  const Icon(Icons.image_not_supported_outlined,
+                      color: AppTheme.muted),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Аннотированное изображение недоступно.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.muted),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: AppTheme.muted),
                     ),
                   ),
                 ],
@@ -348,7 +374,9 @@ class _RiskBadge extends StatelessWidget {
         color: hero.background.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: hero.background, width: 2),
-        boxShadow: [BoxShadow(color: hero.background.withOpacity(0.2), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: hero.background.withOpacity(0.2), blurRadius: 12)
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -367,11 +395,9 @@ class _RiskBadge extends StatelessWidget {
           Text(
             hero.valueText,
             style: TextStyle(
-              fontWeight: FontWeight.w900,
-              color: hero.foreground,
-              fontSize: 24,
-              shadows: [Shadow(color: hero.foreground, blurRadius: 10)]
-            ),
+                fontWeight: FontWeight.w900,
+                color: hero.foreground,
+                fontSize: 24),
           ),
         ],
       ),
@@ -402,15 +428,27 @@ class _BetaCard extends StatelessWidget {
 
     String methodText;
     switch (method) {
-      case 'manual': methodText = 'вручную'; break;
-      case 'estimated_from_geometry': methodText = 'по геометрии AR'; break;
-      case 'species_default': methodText = 'по породе'; break;
-      case 'empirical_borisevich_2021': methodText = 'Borisevich (2021)'; break;
-      default: methodText = method;
+      case 'manual':
+        methodText = 'вручную';
+        break;
+      case 'estimated_from_geometry':
+        methodText = 'по геометрии AR';
+        break;
+      case 'species_default':
+        methodText = 'по породе';
+        break;
+      case 'empirical_borisevich_2021':
+        methodText = 'Borisevich (2021)';
+        break;
+      default:
+        methodText = method;
     }
 
     double? maxForce;
-    if (betaMax != null && force != null && betaValue != null && betaValue > 0) {
+    if (betaMax != null &&
+        force != null &&
+        betaValue != null &&
+        betaValue > 0) {
       maxForce = (force / betaValue) * betaMax;
     }
 
@@ -424,7 +462,8 @@ class _BetaCard extends StatelessWidget {
               color: AppTheme.primary.withOpacity(0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.air_outlined, color: AppTheme.primary, size: 24),
+            child: const Icon(Icons.air_outlined,
+                color: AppTheme.primary, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -433,19 +472,28 @@ class _BetaCard extends StatelessWidget {
               children: [
                 const Text(
                   'АЭРОДИНАМИКА (β)',
-                  style: TextStyle(color: AppTheme.text, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.0),
+                  style: TextStyle(
+                      color: AppTheme.text,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      letterSpacing: 1.0),
                 ),
                 const SizedBox(height: 12),
-                
-                _buildRow('Ожидаемый β:', _fmt(betaValue, suffix: ' кг/с'), AppTheme.success),
-                
-                if (betaMax != null && (betaValue == null || betaMax > betaValue)) ...[
+                _buildRow('Ожидаемый β:', _fmt(betaValue, suffix: ' кг/с'),
+                    AppTheme.success),
+                if (betaMax != null &&
+                    (betaValue == null || betaMax > betaValue)) ...[
                   const SizedBox(height: 6),
-                  _buildRow('Худший сценарий\n(жесткая крона):', _fmt(betaMax, suffix: ' кг/с'), AppTheme.warning),
+                  _buildRow('Худший сценарий\n(жесткая крона):',
+                      _fmt(betaMax, suffix: ' кг/с'), AppTheme.warning),
                 ],
-
                 const SizedBox(height: 8),
-                Text('$source · $methodText', style: const TextStyle(color: AppTheme.muted, fontSize: 10, fontWeight: FontWeight.w600, height: 1.3)),
+                Text('$source · $methodText',
+                    style: const TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3)),
               ],
             ),
           ),
@@ -458,9 +506,17 @@ class _BetaCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Text(label, style: const TextStyle(color: AppTheme.muted, fontSize: 12, fontWeight: FontWeight.w600, height: 1.2))),
+        Expanded(
+            child: Text(label,
+                style: const TextStyle(
+                    color: AppTheme.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2))),
         const SizedBox(width: 8),
-        Text(value, style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.w900, shadows: [Shadow(color: valueColor, blurRadius: 4)])),
+        Text(value,
+            style: TextStyle(
+                color: valueColor, fontSize: 14, fontWeight: FontWeight.w900)),
       ],
     );
   }
@@ -490,10 +546,13 @@ class _AnalyticWindModelCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: available ? AppTheme.primary2.withOpacity(0.15) : AppTheme.surface3,
+              color: available
+                  ? AppTheme.primary2.withOpacity(0.15)
+                  : AppTheme.surface3,
               shape: BoxShape.circle,
             ),
-            child: Icon(available ? Icons.science_outlined : Icons.info_outline, color: available ? AppTheme.primary2 : AppTheme.muted),
+            child: Icon(available ? Icons.science_outlined : Icons.info_outline,
+                color: available ? AppTheme.primary2 : AppTheme.muted),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -501,13 +560,22 @@ class _AnalyticWindModelCard extends StatelessWidget {
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('НАГРУЗКА ИЗЛОМА (SIA)', style: TextStyle(color: AppTheme.text, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.0)),
+                      const Text('НАГРУЗКА ИЗЛОМА (SIA)',
+                          style: TextStyle(
+                              color: AppTheme.text,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                              letterSpacing: 1.0)),
                       const SizedBox(height: 12),
-                      _miniRow('Сила ветра (F)', _fmt(outputs['total_force_n'], suffix: ' Н')),
-                      _miniRow('Момент излома у основания', _fmt(outputs['base_moment_nm'], suffix: ' Н·м')),
+                      _miniRow('Сила ветра (F)',
+                          _fmt(outputs['total_force_n'], suffix: ' Н')),
+                      _miniRow('Момент излома у основания',
+                          _fmt(outputs['base_moment_nm'], suffix: ' Н·м')),
                     ],
                   )
-                : const Text('Аналитическая модель недоступна.', style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700)),
+                : const Text('Аналитическая модель недоступна.',
+                    style: TextStyle(
+                        color: AppTheme.muted, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -519,8 +587,17 @@ class _AnalyticWindModelCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Expanded(child: Text(title, style: const TextStyle(color: AppTheme.muted, fontSize: 12, fontWeight: FontWeight.w600))),
-          Text(value, style: const TextStyle(color: AppTheme.text, fontSize: 14, fontWeight: FontWeight.w900)),
+          Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600))),
+          Text(value,
+              style: const TextStyle(
+                  color: AppTheme.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900)),
         ],
       ),
     );
@@ -531,24 +608,41 @@ class _SourceSummaryCard extends StatelessWidget {
   final String? dimensionsSource;
   final bool hasArMeasurements;
 
-  const _SourceSummaryCard({required this.dimensionsSource, required this.hasArMeasurements});
+  const _SourceSummaryCard(
+      {required this.dimensionsSource, required this.hasArMeasurements});
 
   @override
   Widget build(BuildContext context) {
     return GlassPanel(
-      border: Border.all(color: hasArMeasurements ? AppTheme.primary.withOpacity(0.5) : AppTheme.border),
+      border: Border.all(
+          color: hasArMeasurements
+              ? AppTheme.primary.withOpacity(0.5)
+              : AppTheme.border),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(hasArMeasurements ? Icons.view_in_ar_outlined : Icons.image_search_outlined, color: hasArMeasurements ? AppTheme.primary : AppTheme.muted),
+          Icon(
+              hasArMeasurements
+                  ? Icons.view_in_ar_outlined
+                  : Icons.image_search_outlined,
+              color: hasArMeasurements ? AppTheme.primary : AppTheme.muted),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('ИСТОЧНИК ДАННЫХ', style: TextStyle(color: AppTheme.text, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.0)),
+                const Text('ИСТОЧНИК ДАННЫХ',
+                    style: TextStyle(
+                        color: AppTheme.text,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        letterSpacing: 1.0)),
                 const SizedBox(height: 4),
-                Text(dimensionsSource ?? 'Фото + ИИ', style: const TextStyle(color: AppTheme.primary2, fontWeight: FontWeight.w900, fontSize: 14)),
+                Text(dimensionsSource ?? 'Фото + ИИ',
+                    style: const TextStyle(
+                        color: AppTheme.primary2,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14)),
               ],
             ),
           ),
@@ -567,7 +661,14 @@ class _MetricsGrid extends StatelessWidget {
   final String crownSource;
   final String trunkSource;
 
-  const _MetricsGrid({required this.heightM, required this.crownWidthM, required this.trunkDiameterM, required this.scalePxToM, required this.heightSource, required this.crownSource, required this.trunkSource});
+  const _MetricsGrid(
+      {required this.heightM,
+      required this.crownWidthM,
+      required this.trunkDiameterM,
+      required this.scalePxToM,
+      required this.heightSource,
+      required this.crownSource,
+      required this.trunkSource});
 
   @override
   Widget build(BuildContext context) {
@@ -575,17 +676,36 @@ class _MetricsGrid extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: _MetricCard(title: 'ВЫСОТА', icon: Icons.height, value: _fmt(heightM, suffix: 'м'))),
+            Expanded(
+                child: _MetricCard(
+                    title: 'ВЫСОТА',
+                    icon: Icons.height,
+                    value: _fmt(heightM, suffix: 'м'))),
             const SizedBox(width: 10),
-            Expanded(child: _MetricCard(title: 'КРОНА', icon: Icons.filter_hdr, value: _fmt(crownWidthM, suffix: 'м'))),
+            Expanded(
+                child: _MetricCard(
+                    title: 'КРОНА',
+                    icon: Icons.filter_hdr,
+                    value: _fmt(crownWidthM, suffix: 'м'))),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _MetricCard(title: 'СТВОЛ', icon: Icons.circle_outlined, value: _fmt(trunkDiameterM, suffix: 'м'))),
+            Expanded(
+                child: _MetricCard(
+                    title: 'СТВОЛ',
+                    icon: Icons.circle_outlined,
+                    value: _fmt(trunkDiameterM, suffix: 'м'))),
             const SizedBox(width: 10),
-            Expanded(child: _MetricCard(title: 'МАСШТАБ', icon: Icons.straighten, value: scalePxToM == null ? 'Нет' : '1 px ≈ ${scalePxToM!.toStringAsFixed(4)} м', isSecondary: true)),
+            Expanded(
+                child: _MetricCard(
+                    title: 'МАСШТАБ',
+                    icon: Icons.straighten,
+                    value: scalePxToM == null
+                        ? 'Нет'
+                        : '1 px ≈ ${scalePxToM!.toStringAsFixed(4)} м',
+                    isSecondary: true)),
           ],
         ),
       ],
@@ -604,14 +724,20 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final bool isSecondary;
 
-  const _MetricCard({required this.title, required this.icon, required this.value, this.isSecondary = false});
+  const _MetricCard(
+      {required this.title,
+      required this.icon,
+      required this.value,
+      this.isSecondary = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isSecondary ? AppTheme.surface3.withOpacity(0.3) : AppTheme.surface3,
+        color: isSecondary
+            ? AppTheme.surface3.withOpacity(0.3)
+            : AppTheme.surface3,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
       ),
@@ -620,13 +746,24 @@ class _MetricCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: isSecondary ? AppTheme.muted : AppTheme.primary, size: 18),
+              Icon(icon,
+                  color: isSecondary ? AppTheme.muted : AppTheme.primary,
+                  size: 18),
               const SizedBox(width: 8),
-              Text(title, style: TextStyle(color: isSecondary ? AppTheme.muted : AppTheme.text, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+              Text(title,
+                  style: TextStyle(
+                      color: isSecondary ? AppTheme.muted : AppTheme.text,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.0)),
             ],
           ),
           const SizedBox(height: 12),
-          Text(value, style: TextStyle(color: AppTheme.text, fontSize: 16, fontWeight: FontWeight.w900, shadows: isSecondary ? [] : [const Shadow(color: AppTheme.primary, blurRadius: 8)])),
+          Text(value,
+              style: const TextStyle(
+                  color: AppTheme.text,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900)),
         ],
       ),
     );
@@ -637,7 +774,8 @@ class _LocationCard extends StatelessWidget {
   final String? address;
   final double? lat;
   final double? lon;
-  const _LocationCard({required this.address, required this.lat, required this.lon});
+  const _LocationCard(
+      {required this.address, required this.lat, required this.lon});
 
   @override
   Widget build(BuildContext context) {
@@ -647,17 +785,30 @@ class _LocationCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: AppTheme.primary2.withOpacity(0.15), shape: BoxShape.circle),
-            child: const Icon(Icons.location_on_outlined, color: AppTheme.primary2),
+            decoration: BoxDecoration(
+                color: AppTheme.primary2.withOpacity(0.15),
+                shape: BoxShape.circle),
+            child: const Icon(Icons.location_on_outlined,
+                color: AppTheme.primary2),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(address != null && address!.isNotEmpty ? address! : 'Адрес не найден', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                Text(
+                    address != null && address!.isNotEmpty
+                        ? address!
+                        : 'Адрес не найден',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 14)),
                 const SizedBox(height: 6),
-                Text(lat != null && lon != null ? 'GPS: ${lat!.toStringAsFixed(6)}, ${lon!.toStringAsFixed(6)}' : 'Координаты отсутствуют.', style: const TextStyle(color: AppTheme.muted, fontSize: 12)),
+                Text(
+                    lat != null && lon != null
+                        ? 'GPS: ${lat!.toStringAsFixed(6)}, ${lon!.toStringAsFixed(6)}'
+                        : 'Координаты отсутствуют.',
+                    style:
+                        const TextStyle(color: AppTheme.muted, fontSize: 12)),
               ],
             ),
           ),
@@ -678,17 +829,23 @@ class _ExplanationCard extends StatelessWidget {
       color: AppTheme.danger.withOpacity(0.05),
       border: Border.all(color: AppTheme.danger.withOpacity(0.5)),
       child: Column(
-        children: lines.map((l) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 16),
-              const SizedBox(width: 8),
-              Expanded(child: Text(l, style: const TextStyle(color: AppTheme.text, height: 1.4))),
-            ],
-          ),
-        )).toList(),
+        children: lines
+            .map((l) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: AppTheme.danger, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                          child: Text(l,
+                              style: const TextStyle(
+                                  color: AppTheme.text, height: 1.4))),
+                    ],
+                  ),
+                ))
+            .toList(),
       ),
     );
   }
@@ -715,7 +872,11 @@ class _FootnoteCard extends StatelessWidget {
               children: [
                 const Text(
                   'ПРИМЕЧАНИЕ',
-                  style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.muted, letterSpacing: 1.0, fontSize: 11),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.muted,
+                      letterSpacing: 1.0,
+                      fontSize: 11),
                 ),
                 const SizedBox(height: 4),
                 const Text(

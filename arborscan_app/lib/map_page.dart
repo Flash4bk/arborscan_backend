@@ -690,13 +690,13 @@ class _MapControlButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: active ? const Color(0xFF06140E) : AppTheme.text,
+                color: active ? Colors.white : AppTheme.text,
               ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: active ? const Color(0xFF06140E) : AppTheme.text,
+                  color: active ? Colors.white : AppTheme.text,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),

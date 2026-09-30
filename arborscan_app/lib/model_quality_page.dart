@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -296,7 +297,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
             onPressed: _busy ? null : () => _run(() async {}),
             icon: const Icon(Icons.refresh))
       ]),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+      body: AppContentList(padding: const EdgeInsets.all(16), children: [
         if (_busy) const LinearProgressIndicator(),
         if (_error != null) Text(_error!),
         if (!_invalid) ...[

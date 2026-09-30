@@ -49,17 +49,24 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   bool _sessionInvalid = false;
 
   void _invalidateSession() {
-    if (widget.sessionToken != null && mounted) setState(() => _sessionInvalid = true);
+    if (widget.sessionToken != null && mounted)
+      setState(() => _sessionInvalid = true);
   }
 
   Map<String, dynamic> _editorSnapshot() => ContourEditorState(
-    width: _imageSize!.width.toInt(), height: _imageSize!.height.toInt(),
-    closed: _closed, points: _points.map((p) => Offset(
-      p.dx / _drawSize!.width, p.dy / _drawSize!.height)).toList()).toJson();
+          width: _imageSize!.width.toInt(),
+          height: _imageSize!.height.toInt(),
+          closed: _closed,
+          points: _points
+              .map((p) =>
+                  Offset(p.dx / _drawSize!.width, p.dy / _drawSize!.height))
+              .toList())
+      .toJson();
 
   void _notifyDraft() {
     if (_sessionInvalid) return;
-    if (_imageSize != null && _drawSize != null) widget.onDraftChanged?.call(_editorSnapshot());
+    if (_imageSize != null && _drawSize != null)
+      widget.onDraftChanged?.call(_editorSnapshot());
   }
 
   void _setFinishing(bool v) {
@@ -81,8 +88,10 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   bool _dragMoved = false;
 
   _ContourSnapshot _snapshot() => _ContourSnapshot(
-        _points.map((p) => Offset(p.dx / _drawSize!.width,
-            p.dy / _drawSize!.height)).toList(), _closed);
+      _points
+          .map((p) => Offset(p.dx / _drawSize!.width, p.dy / _drawSize!.height))
+          .toList(),
+      _closed);
 
   void _remember(_ContourSnapshot snapshot) {
     _undoHistory.add(snapshot);
@@ -92,13 +101,14 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   void _restore(_ContourSnapshot snapshot) {
     _points
       ..clear()
-      ..addAll(snapshot.points.map((p) => Offset(
-          p.dx * _drawSize!.width, p.dy * _drawSize!.height)));
+      ..addAll(snapshot.points.map(
+          (p) => Offset(p.dx * _drawSize!.width, p.dy * _drawSize!.height)));
     _closed = snapshot.closed;
   }
 
   void _undo() {
-    if (_undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty) return;
+    if (_undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty)
+      return;
     setState(() => _restore(_undoHistory.removeLast()));
     _notifyDraft();
   }
@@ -116,8 +126,11 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       point.dx.clamp(0.0, _drawSize!.width).toDouble(),
       point.dy.clamp(0.0, _drawSize!.height).toDouble());
 
-  bool _insideImage(Offset point) => point.dx >= 0 && point.dy >= 0 &&
-      point.dx <= _drawSize!.width && point.dy <= _drawSize!.height;
+  bool _insideImage(Offset point) =>
+      point.dx >= 0 &&
+      point.dy >= 0 &&
+      point.dx <= _drawSize!.width &&
+      point.dy <= _drawSize!.height;
 
   // Insert on the nearest edge, including the closing edge.
   void _insertOnEdge(Offset point) {
@@ -130,8 +143,10 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       final delta = b - a;
       final lengthSquared = delta.dx * delta.dx + delta.dy * delta.dy;
       if (lengthSquared == 0) continue;
-      final t = (((point.dx - a.dx) * delta.dx +
-          (point.dy - a.dy) * delta.dy) / lengthSquared).clamp(0.0, 1.0).toDouble();
+      final t = (((point.dx - a.dx) * delta.dx + (point.dy - a.dy) * delta.dy) /
+              lengthSquared)
+          .clamp(0.0, 1.0)
+          .toDouble();
       final candidate = a + delta * t;
       final distance = (point - candidate).distance;
       if (distance < bestDistance) {
@@ -190,7 +205,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   bool _isCloseTapToFirstPoint({required Offset tapLocal}) {
     if (_points.length < 3) return false;
-    final firstLocal = MatrixUtils.transformPoint(_controller.value, _points.first);
+    final firstLocal =
+        MatrixUtils.transformPoint(_controller.value, _points.first);
     return (firstLocal - tapLocal).distance <= _closeHitSlopPx;
   }
 
@@ -203,13 +219,14 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     }
     _imageBytes = _decodeBase64(widget.originalImageBase64!);
     _loadImage();
-    
+
     if (widget.aiMaskBase64 != null && widget.aiMaskBase64!.isNotEmpty) {
       _loadAiMask();
     }
-    
+
     // Загрузка начальной маски пользователя если есть
-    if (widget.initialMaskBase64 != null && widget.initialMaskBase64!.isNotEmpty) {
+    if (widget.initialMaskBase64 != null &&
+        widget.initialMaskBase64!.isNotEmpty) {
       _loadInitialMask();
     }
   }
@@ -227,10 +244,14 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     final codec = await ui.instantiateImageCodec(_imageBytes);
     final frame = await codec.getNextFrame();
     codec.dispose();
-    if (!mounted) { frame.image.dispose(); return; }
+    if (!mounted) {
+      frame.image.dispose();
+      return;
+    }
     setState(() {
       _image = frame.image;
-      _imageSize = Size(frame.image.width.toDouble(), frame.image.height.toDouble());
+      _imageSize =
+          Size(frame.image.width.toDouble(), frame.image.height.toDouble());
     });
   }
 
@@ -240,7 +261,10 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       final codec = await ui.instantiateImageCodec(aiMaskBytes);
       final frame = await codec.getNextFrame();
       codec.dispose();
-      if (!mounted) { frame.image.dispose(); return; }
+      if (!mounted) {
+        frame.image.dispose();
+        return;
+      }
       setState(() {
         _aiMaskImage = frame.image;
       });
@@ -255,7 +279,10 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       final codec = await ui.instantiateImageCodec(maskBytes);
       final frame = await codec.getNextFrame();
       codec.dispose();
-      if (!mounted) { frame.image.dispose(); return; }
+      if (!mounted) {
+        frame.image.dispose();
+        return;
+      }
       setState(() {
         _initialMaskImage = frame.image;
       });
@@ -288,14 +315,15 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    
+
     const previewWidth = 300.0;
-    final previewHeight = previewWidth * (_imageSize!.height / _imageSize!.width);
+    final previewHeight =
+        previewWidth * (_imageSize!.height / _imageSize!.width);
     final previewSize = Size(previewWidth, previewHeight);
-    
+
     final scaleX = previewWidth / _drawSize!.width;
     final scaleY = previewHeight / _drawSize!.height;
-    
+
     final paint = Paint();
     canvas.drawImageRect(
       _image!,
@@ -303,11 +331,12 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       Rect.fromLTWH(0, 0, previewWidth, previewHeight),
       paint,
     );
-    
+
     if (_aiMaskImage != null) {
       canvas.drawImageRect(
         _aiMaskImage!,
-        Rect.fromLTWH(0, 0, _aiMaskImage!.width.toDouble(), _aiMaskImage!.height.toDouble()),
+        Rect.fromLTWH(0, 0, _aiMaskImage!.width.toDouble(),
+            _aiMaskImage!.height.toDouble()),
         Rect.fromLTWH(0, 0, previewWidth, previewHeight),
         Paint()
           ..colorFilter = ColorFilter.mode(
@@ -316,7 +345,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           ),
       );
     }
-    
+
     if (_initialMaskImage != null) {
       canvas.drawImageRect(
         _initialMaskImage!,
@@ -338,19 +367,19 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     if (_points.length >= 3) {
       final path = Path();
       path.moveTo(_points.first.dx * scaleX, _points.first.dy * scaleY);
-      
+
       for (int i = 1; i < _points.length; i++) {
         path.lineTo(_points[i].dx * scaleX, _points[i].dy * scaleY);
       }
       path.close();
-      
+
       canvas.drawPath(
         path,
         Paint()
           ..color = Colors.blue.withOpacity(0.4)
           ..style = PaintingStyle.fill,
       );
-      
+
       canvas.drawPath(
         path,
         Paint()
@@ -358,7 +387,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
-      
+
       for (final p in _points) {
         canvas.drawCircle(
           Offset(p.dx * scaleX, p.dy * scaleY),
@@ -366,26 +395,27 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           Paint()..color = Colors.cyanAccent,
         );
       }
-      
+
       canvas.drawCircle(
         Offset(_points.first.dx * scaleX, _points.first.dy * scaleY),
         5,
         Paint()..color = Colors.yellowAccent,
       );
     }
-    
+
     const legendHeight = 40.0;
-    final legendRect = Rect.fromLTWH(0, previewHeight - legendHeight, previewWidth, legendHeight);
+    final legendRect = Rect.fromLTWH(
+        0, previewHeight - legendHeight, previewWidth, legendHeight);
     canvas.drawRect(
       legendRect,
       Paint()..color = Colors.black.withOpacity(0.7),
     );
-    
-    final textStyle = TextStyle(
+
+    final textStyle = const TextStyle(
       color: Colors.white,
       fontSize: 12,
     );
-    
+
     final textPainter = TextPainter(
       text: TextSpan(
         text: 'Зелёный: маска ИИ | Синий: моя маска',
@@ -401,13 +431,13 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
         previewHeight - legendHeight + 14,
       ),
     );
-    
+
     final previewPicture = recorder.endRecording();
     final previewImage = await previewPicture.toImage(
       previewWidth.toInt(),
       previewHeight.toInt(),
     );
-    
+
     final bytes = await previewImage.toByteData(format: ui.ImageByteFormat.png);
     return bytes?.buffer.asUint8List();
   }
@@ -424,7 +454,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     if (previewBytes == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось создать превью. Сохраняю маску без просмотра.')),
+        const SnackBar(
+            content: Text(
+                'Не удалось создать превью. Сохраняю маску без просмотра.')),
       );
       await _saveMaskAndExit();
       return;
@@ -470,13 +502,11 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                         onPressed: () => _safePop<bool>(ctx, false),
                         icon: const Icon(Icons.edit, size: 18),
                         label: const Text('Исправить'),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                       ),
                       ElevatedButton.icon(
                         onPressed: () => _safePop<bool>(ctx, true),
                         icon: const Icon(Icons.check, size: 18),
                         label: const Text('Подтвердить'),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                       ),
                     ],
                   ),
@@ -503,7 +533,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   Future<void> _saveMaskAndExit() async {
     try {
       if (_sessionInvalid) return;
-      if (widget.sessionToken != null) await CorrectionsService().checkSession(widget.sessionToken!);
+      if (widget.sessionToken != null)
+        await CorrectionsService().checkSession(widget.sessionToken!);
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
 
@@ -581,7 +612,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
     if (!_closed) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Сначала замкните контур (кнопка "Замкнуть" или касание первой точки).')),
+        const SnackBar(
+            content: Text(
+                'Сначала замкните контур (кнопка "Замкнуть" или касание первой точки).')),
       );
       return;
     }
@@ -610,16 +643,22 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_sessionInvalid) return const Scaffold(body:Center(child:Text('Сессия изменилась. Закройте редактор.')));
+    if (_sessionInvalid)
+      return const Scaffold(
+          body: Center(child: Text('Сессия изменилась. Закройте редактор.')));
     if (_image == null || _imageSize == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    if (widget.editorState != null && (widget.editorState!.width != _imageSize!.width ||
-        widget.editorState!.height != _imageSize!.height)) {
-      return Scaffold(appBar: AppBar(title: const Text('Редактор контура')),
-        body: const Center(child: Text('Размеры состояния не совпадают с оригиналом. Откройте исходное фото.')));
+    if (widget.editorState != null &&
+        (widget.editorState!.width != _imageSize!.width ||
+            widget.editorState!.height != _imageSize!.height)) {
+      return Scaffold(
+          appBar: AppBar(title: const Text('Редактор контура')),
+          body: const Center(
+              child: Text(
+                  'Размеры состояния не совпадают с оригиналом. Откройте исходное фото.')));
     }
 
     final canConfirm = _closed && _points.length >= 3 && !_finishing;
@@ -657,54 +696,63 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Исправление маски'),
-          actions: [
-            if (_points.length >= 3 && !_finishing)
-              IconButton(
-                tooltip: 'Быстрый превью',
-                icon: const Icon(Icons.visibility),
-                onPressed: () async {
-                  final previewBytes = await _createPreviewImage();
-                  if (previewBytes != null && mounted) {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Превью маски'),
-                        content: Image.memory(previewBytes),
-                        actions: [
-                          TextButton(
-                            onPressed: () => _safePop(ctx),
-                            child: const Text('Закрыть'),
-                          ),
-                        ],
+          bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(52),
+              child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: [
+                    if (_points.length >= 3 && !_finishing)
+                      IconButton(
+                        tooltip: 'Быстрый превью',
+                        icon: const Icon(Icons.visibility),
+                        onPressed: () async {
+                          final previewBytes = await _createPreviewImage();
+                          if (previewBytes != null && mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Превью маски'),
+                                content: Image.memory(previewBytes),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => _safePop(ctx),
+                                    child: const Text('Закрыть'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
                       ),
-                    );
-                  }
-                },
-              ),
-            IconButton(
-              tooltip: 'Замкнуть контур',
-              icon: const Icon(Icons.link),
-              onPressed: _points.length >= 3 && !_finishing
-                  ? () => _setClosed(true)
-                  : null,
-            ),
-            IconButton(
-              tooltip: 'Открыть контур',
-              icon: const Icon(Icons.link_off),
-              onPressed: _closed && !_finishing ? () => _setClosed(false) : null,
-            ),
-            IconButton(
-              tooltip: 'Отменить последнее действие',
-              icon: const Icon(Icons.undo),
-              onPressed: _undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty
-                  ? null : _undo,
-            ),
-            IconButton(
-              tooltip: 'Сброс зума',
-              icon: const Icon(Icons.zoom_out_map),
-              onPressed: () => _controller.value = Matrix4.identity(),
-            ),
-          ],
+                    IconButton(
+                      tooltip: 'Замкнуть контур',
+                      icon: const Icon(Icons.link),
+                      onPressed: _points.length >= 3 && !_finishing
+                          ? () => _setClosed(true)
+                          : null,
+                    ),
+                    IconButton(
+                      tooltip: 'Открыть контур',
+                      icon: const Icon(Icons.link_off),
+                      onPressed: _closed && !_finishing
+                          ? () => _setClosed(false)
+                          : null,
+                    ),
+                    IconButton(
+                      tooltip: 'Отменить последнее действие',
+                      icon: const Icon(Icons.undo),
+                      onPressed: _undoHistory.isEmpty ||
+                              _finishing ||
+                              _activePointers.isNotEmpty
+                          ? null
+                          : _undo,
+                    ),
+                    IconButton(
+                      tooltip: 'Сброс зума',
+                      icon: const Icon(Icons.zoom_out_map),
+                      onPressed: () => _controller.value = Matrix4.identity(),
+                    ),
+                  ]))),
         ),
         body: LayoutBuilder(
           builder: (_, constraints) {
@@ -721,17 +769,26 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
             final previousSize = _drawSize;
             if (previousSize != null && previousSize != drawSize) {
               for (int i = 0; i < _points.length; i++) {
-                _points[i] = Offset(_points[i].dx / previousSize.width * drawSize.width,
+                _points[i] = Offset(
+                    _points[i].dx / previousSize.width * drawSize.width,
                     _points[i].dy / previousSize.height * drawSize.height);
               }
             }
             _drawSize = drawSize;
             if (!_initialPointsApplied) {
               _initialPointsApplied = true;
-              final initial = widget.editorState?.points ?? widget.initialPoints;
-              if (initial != null && initial.every((p) =>
-                  p.dx.isFinite && p.dy.isFinite && p.dx >= 0 && p.dx <= 1 && p.dy >= 0 && p.dy <= 1)) {
-                _points.addAll(initial.map((p) => Offset(p.dx * drawSize.width, p.dy * drawSize.height)));
+              final initial =
+                  widget.editorState?.points ?? widget.initialPoints;
+              if (initial != null &&
+                  initial.every((p) =>
+                      p.dx.isFinite &&
+                      p.dy.isFinite &&
+                      p.dx >= 0 &&
+                      p.dx <= 1 &&
+                      p.dy >= 0 &&
+                      p.dy <= 1)) {
+                _points.addAll(initial.map((p) =>
+                    Offset(p.dx * drawSize.width, p.dy * drawSize.height)));
                 _closed = widget.editorState?.closed ?? (initial.length >= 3);
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) setState(() {});
@@ -776,14 +833,18 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                         _tapCandidate = _insideImage(scene);
                       },
                       onPointerMove: (e) {
-                        if (_finishing || _inPinch || _primaryPointer != e.pointer) return;
-                        final distance = _tapDownLocal == null ? 0.0 :
-                            (e.localPosition - _tapDownLocal!).distance;
+                        if (_finishing ||
+                            _inPinch ||
+                            _primaryPointer != e.pointer) { return; }
+                        final distance = _tapDownLocal == null
+                            ? 0.0
+                            : (e.localPosition - _tapDownLocal!).distance;
                         if (_dragIndex != null) {
                           if (!_dragMoved && distance <= _tapSlopPx) return;
                           setState(() {
                             _dragMoved = true;
-                            _points[_dragIndex!] = _clampToImage(_toScene(e.localPosition));
+                            _points[_dragIndex!] =
+                                _clampToImage(_toScene(e.localPosition));
                           });
                           _notifyDraft();
                           return;
@@ -793,12 +854,16 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                       onPointerUp: (e) {
                         final wasPinch = _inPinch;
                         _activePointers.remove(e.pointer);
-                        if (_primaryPointer == e.pointer && !wasPinch && !_finishing) {
+                        if (_primaryPointer == e.pointer &&
+                            !wasPinch &&
+                            !_finishing) {
                           if (_dragIndex != null) {
                             setState(() {
                               if (_dragMoved && _dragBefore != null) {
                                 _remember(_dragBefore!);
-                              } else if (_dragIndex == 0 && !_closed && _points.length >= 3) {
+                              } else if (_dragIndex == 0 &&
+                                  !_closed &&
+                                  _points.length >= 3) {
                                 _remember(_snapshot());
                                 _closed = true;
                               }
@@ -809,7 +874,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                             } else {
                               setState(() {
                                 _remember(_snapshot());
-                                if (_isCloseTapToFirstPoint(tapLocal: e.localPosition)) {
+                                if (_isCloseTapToFirstPoint(
+                                    tapLocal: e.localPosition)) {
                                   _closed = true;
                                 } else {
                                   _points.add(_clampToImage(_tapDownScene!));
@@ -898,7 +964,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                       color: Colors.black.withOpacity(0.5),
                       child: const Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
                     ),
@@ -907,34 +974,25 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
             );
           },
         ),
-        bottomNavigationBar: const SafeArea(
+        bottomNavigationBar: SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(12, 8, 12, 8),
-            child: Text(
-              'Точки можно перетаскивать. После замыкания коснитесь линии, '
-              'чтобы добавить точку. Два пальца — масштаб и перемещение.',
-              style: TextStyle(fontSize: 12),
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text(
+                  'Точки можно перетаскивать. После замыкания коснитесь линии, '
+                  'чтобы добавить точку. Два пальца — масштаб и перемещение.',
+                  style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 8),
+              SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: !_finishing && canConfirm ? _finish : null,
+                    icon: const Icon(Icons.check),
+                    label: Text(_finishing ? 'Подготовка…' : 'Подтвердить'),
+                  )),
+            ]),
           ),
         ),
-        floatingActionButton: _finishing
-            ? FloatingActionButton.extended(
-                onPressed: null,
-                icon: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-                label: const Text('Подготовка…'),
-              )
-            : FloatingActionButton.extended(
-                onPressed: canConfirm ? _finish : null,
-                icon: const Icon(Icons.check),
-                label: const Text('Подтвердить'),
-              ),
       ),
     );
   }
@@ -1020,7 +1078,7 @@ class _EnhancedMaskPainter extends CustomPainter {
     }
     if (closed && points.length >= 3) {
       path.close();
-      
+
       canvas.drawPath(
         path,
         Paint()

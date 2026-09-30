@@ -54,16 +54,19 @@ class _ImageLinePageState extends State<ImageLinePage> {
                     padding: EdgeInsets.all(12),
                     child: Text(
                         'Выберите конец и коснитесь нужного места. Двумя пальцами увеличивайте и перемещайте фото. Можно переставлять точки сколько угодно.')),
-                SegmentedButton<int>(
-                    segments: const [
-                      ButtonSegment(value: 0, label: Text('Основание / слева')),
-                      ButtonSegment(value: 1, label: Text('Верх / справа'))
-                    ],
-                    selected: {
-                      selected
-                    },
-                    onSelectionChanged: (v) =>
-                        setState(() => selected = v.first)),
+                SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SegmentedButton<int>(
+                        segments: const [
+                          ButtonSegment(
+                              value: 0, label: Text('Основание / слева')),
+                          ButtonSegment(value: 1, label: Text('Верх / справа'))
+                        ],
+                        selected: {
+                          selected
+                        },
+                        onSelectionChanged: (v) =>
+                            setState(() => selected = v.first))),
                 Expanded(child: LayoutBuilder(builder: (context, c) {
                   final size = applyBoxFit(
                           BoxFit.contain,

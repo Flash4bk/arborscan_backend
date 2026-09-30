@@ -1,3 +1,4 @@
+import 'app_theme.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -385,7 +386,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     final result = _result;
     return Scaffold(
         appBar: AppBar(title: const Text('По известному объекту')),
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: AppContentList(padding: const EdgeInsets.all(16), children: [
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) Text(_error!),
           if (!_invalid) ...[
@@ -409,6 +410,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 child: const Text('Сохранённые измерения по эталону')),
             if (_image != null) ...[
               Image.memory(_image!, height: 200, fit: BoxFit.contain),
+              Ui.sectionTitle(context, '1. Размер эталона'),
               TextField(
                   enabled: !_busy,
                   controller: _length,
@@ -488,6 +490,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                       : () => _run(() =>
                           _line('crown', 'Левый и правый край именно кроны')),
                   child: const Text('Отметить ширину кроны')),
+              Ui.sectionTitle(context, 'Дополнительные измерения'),
               const Text(
                   'Дополнительно: отметьте нижнюю границу живой кроны и её верх; для сечения ствола — края коры и локальную ось рядом с сечением. Не включайте листву. Разметка необязательна.'),
               for (final entry in {
@@ -516,6 +519,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 Text(_calculationError ??
                     'Для расчёта введите положительную высоту, обведите эталон, отметьте три отрезка и подтвердите условия съёмки.'),
               if (result != null) ...[
+                Ui.sectionTitle(context, 'Результат измерения'),
                 const Text('Источник: По известному объекту'),
                 Text('Высота: ${result.heightM.toStringAsFixed(2)} м'),
                 Text('Ширина кроны: ${result.crownM.toStringAsFixed(2)} м'),
@@ -593,7 +597,7 @@ class _ReferenceHistoryPageState extends State<ReferenceHistoryPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Измерения по эталону')),
-      body: ListView(children: [
+      body: AppContentList(children: [
         if (error != null) Text(error!),
         for (final r in rows)
           ListTile(
