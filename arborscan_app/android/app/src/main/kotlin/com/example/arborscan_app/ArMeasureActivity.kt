@@ -26,6 +26,8 @@ import com.google.ar.sceneform.rendering.Color as SceneColor
 import com.google.ar.sceneform.rendering.MaterialFactory
 import com.google.ar.sceneform.rendering.ShapeFactory
 import com.google.ar.sceneform.ux.ArFragment
+import com.gorisse.thomas.sceneform.light.LightEstimationConfig
+import com.gorisse.thomas.sceneform.lightEstimationConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
@@ -154,6 +156,10 @@ class ArMeasureActivity : AppCompatActivity() {
         setContentView(R.layout.activity_ar_measure)
 
         arFragment = supportFragmentManager.findFragmentById(R.id.arFragment) as ArFragment
+        // Sceneform 1.23's HDR cubemap uses an obsolete ARCore return type.
+        // The view property configures both the renderer and Session before resume.
+        // Ambient lighting avoids that API; poses, hit tests and measurements stay unchanged.
+        arFragment.arSceneView.lightEstimationConfig = LightEstimationConfig.AMBIENT_INTENSITY
         tvStep = findViewById(R.id.tvStep)
         tvHint = findViewById(R.id.tvHint)
         tvStatus = findViewById(R.id.tvStatus)
