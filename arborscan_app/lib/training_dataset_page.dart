@@ -111,6 +111,7 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
         title: const Text('Датасет для обучения'),
         actions: [
           IconButton(
+            tooltip: 'Обновить датасет',
             onPressed: _loading ? null : _load,
             icon: const Icon(Icons.refresh),
           ),
@@ -429,6 +430,7 @@ class _ImageTile extends StatelessWidget {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Закрыть изображение',
                     onPressed: () => Navigator.of(ctx).pop(),
                     icon: const Icon(Icons.close),
                   ),

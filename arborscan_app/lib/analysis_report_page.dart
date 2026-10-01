@@ -941,7 +941,7 @@ class _RiskHeroData {
         label: 'КРИТИЧНО',
         valueText: idx != null ? idx.toStringAsFixed(2) : '—',
         background: AppTheme.danger,
-        foreground: Colors.white,
+        foreground: AppTheme.danger,
       );
     }
 

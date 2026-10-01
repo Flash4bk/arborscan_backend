@@ -1,3 +1,4 @@
+import 'app_navigation.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -70,11 +71,13 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    AppNavigation.profileVisits.addListener(_loadStats);
     _loadProfile();
   }
 
   @override
   void dispose() {
+    AppNavigation.profileVisits.removeListener(_loadStats);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -491,7 +494,13 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadStats() async {
     if (_token.isEmpty) return;
     try {
+      final session = _token;
       final data = await _getJson('/profile/stats', useAuth: true);
+      if (session != _token ||
+          (await SharedPreferences.getInstance()).getString(_tokenKey) !=
+              session) {
+        return;
+      }
       final stats = (data['stats'] as Map?)?.cast<String, dynamic>() ?? {};
       final user = (data['user'] as Map?)?.cast<String, dynamic>() ?? {};
 
@@ -748,16 +757,16 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 10),
           const Row(
             children: [
-              const Expanded(child: const Divider(color: AppTheme.border)),
-              const Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: const Text(
+              Expanded(child: Divider(color: AppTheme.border)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
                   'или',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppTheme.muted, fontWeight: FontWeight.w700),
                 ),
               ),
-              const Expanded(child: const Divider(color: AppTheme.border)),
+              Expanded(child: Divider(color: AppTheme.border)),
             ],
           ),
           const SizedBox(height: 14),
@@ -805,108 +814,78 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildAccountCard(BuildContext context) {
-    return Ui.paddedCard(
-      context,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+  Widget _buildAccountCard(BuildContext context) => Ui.paddedCard(context,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _buildAvatar(size: 48),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _name.isNotEmpty ? _name : 'Пользователь ArborScan',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(_name.isNotEmpty ? _name : 'Пользователь ArborScan',
+                    style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 4),
-                SelectableText(
-                  _email,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.muted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (_isAdmin)
-                      Ui.badge(
-                        text: 'Администратор',
-                        color: AppTheme.primary,
-                        icon: Icons.admin_panel_settings,
-                      ),
-                    Ui.badge(
-                      text: _serverOnline
-                          ? 'Серверная сессия'
-                          : 'Локальная копия',
-                      color:
-                          _serverOnline ? AppTheme.success : AppTheme.warning,
-                      icon: _serverOnline ? Icons.cloud_done : Icons.storage,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                if (_isAdmin && _loggedIn) ...[
-                  FilledButton.icon(
-                      onPressed: _busy
-                          ? null
-                          : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const ModelQualityPage())),
-                      icon: const Icon(Icons.model_training),
-                      label: const Text('Модели, данные и породы')),
-                  OutlinedButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const AdminPanelPage(
-                                baseUrl: ApiConfig.baseUrl))),
-                    icon: const Icon(Icons.admin_panel_settings_outlined),
-                    label: const Text('Админ-панель'),
-                  ),
-                  FilledButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) =>
-                                const SavedCorrectionsPage(adminQueue: true))),
-                    icon: const Icon(Icons.fact_check_outlined),
-                    label: const Text('Проверка контуров'),
-                  ),
-                  const SizedBox(height: 14),
-                ],
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _logout,
-                        icon: const Icon(Icons.logout),
-                        label: const Text('Выйти'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextButton.icon(
-                        onPressed: _deleteLocalSession,
-                        icon: const Icon(Icons.cleaning_services_outlined),
-                        label: const Text('Очистить'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+                SelectableText(_email,
+                    style: const TextStyle(color: AppTheme.muted)),
+              ])),
+        ]),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          if (_isAdmin)
+            Ui.badge(
+                text: 'Администратор',
+                color: AppTheme.primary,
+                icon: Icons.admin_panel_settings),
+          Ui.badge(
+              text: _serverOnline ? 'Серверная сессия' : 'Локальная копия',
+              color: _serverOnline ? AppTheme.success : AppTheme.warning,
+              icon: _serverOnline ? Icons.cloud_done : Icons.storage),
+        ]),
+        const SizedBox(height: 16),
+        if (_isAdmin && _loggedIn) ...[
+          FilledButton.icon(
+              onPressed: _busy
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ModelQualityPage())),
+              icon: const Icon(Icons.model_training),
+              label: const Text('Модели, данные и породы')),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+              onPressed: _busy
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AdminPanelPage(
+                              baseUrl: ApiConfig.baseUrl))),
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+              label: const Text('Админ-панель')),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+              onPressed: _busy
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              const SavedCorrectionsPage(adminQueue: true))),
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('Проверка контуров')),
+          const Divider(height: 32),
         ],
-      ),
-    );
-  }
+        OutlinedButton.icon(
+            onPressed: _busy ? null : _logout,
+            icon: const Icon(Icons.logout),
+            label: const Text('Выйти')),
+        TextButton.icon(
+            onPressed: _busy ? null : _deleteLocalSession,
+            icon: const Icon(Icons.cleaning_services_outlined),
+            label: const Text('Очистить локальную сессию')),
+      ]));
 
   Widget _buildStatsCard(BuildContext context) {
     final avgRiskText = _avgRisk == null ? '—' : _avgRisk!.toStringAsFixed(2);

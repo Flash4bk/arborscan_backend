@@ -94,9 +94,10 @@ class _ArborScanPageState extends State<ArborScanPage> {
 
       final result = await ArMeasureChannel.openArMeasure();
       if (!mounted || result == null) return;
-      if (_imageFile != selectedImage)
+      if (_imageFile != selectedImage) {
         throw const FormatException(
             'Фото изменилось. Повторите AR для выбранного дерева.');
+      }
 
       setState(() {
         _arResult = result;
@@ -136,8 +137,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
       final request = http.MultipartRequest('POST', Uri.parse(_apiUrl));
       final prefs = await SharedPreferences.getInstance();
       final sessionToken = prefs.getString('arborscan_auth_token');
-      if (sessionToken != null && sessionToken.isNotEmpty)
+      if (sessionToken != null && sessionToken.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $sessionToken';
+      }
       request.fields['include_images'] = 'true';
 
       final ar = _arResult;

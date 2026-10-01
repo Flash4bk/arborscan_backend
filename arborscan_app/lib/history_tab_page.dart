@@ -1,3 +1,4 @@
+import 'app_navigation.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -40,6 +41,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
   @override
   void initState() {
     super.initState();
+    AppNavigation.historyVisits.addListener(_load);
     CorrectionsService.authChanges.addListener(_authChanged);
     _load();
     _searchCtrl.addListener(_applyFilters);
@@ -47,12 +49,19 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
   @override
   void dispose() {
+    AppNavigation.historyVisits.removeListener(_load);
     CorrectionsService.authChanges.removeListener(_authChanged);
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _authChanged() {setState((){_all=[];_filtered=[];});_load();}
+  void _authChanged() {
+    setState(() {
+      _all = [];
+      _filtered = [];
+    });
+    _load();
+  }
 
   Future<void> _load() async {
     setState(() {
@@ -71,27 +80,45 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       for (final s in list) {
         try {
           final m = jsonDecode(s) as Map<String, dynamic>;
-          if(token.isEmpty || owner==null || m['owner_id']!=owner)continue;
+          if (token.isEmpty || owner == null || m['owner_id'] != owner) {
+            continue;
+          }
           items.add(_HistoryItem.fromJson(m));
         } catch (_) {}
       }
 
-      if(token.isNotEmpty) {
+      if (token.isNotEmpty) {
         try {
-          final r=await http.get(ApiConfig.v3('/analyses/my'),headers:{'Authorization':'Bearer $token'}).timeout(const Duration(seconds:15));
-          if(r.statusCode==200) {
-            final rows=jsonDecode(utf8.decode(r.bodyBytes))['items'] as List;
-            for(final row in rows) {
-              if(items.any((i)=>i.analysisId==row['analysis_id']))continue;
-              items.add(_HistoryItem.fromJson({'analysisId':row['analysis_id'],'species':row['species'],
-                'timestamp':row['created_at'],'height':row['height_m'],'crown':row['crown_width_m'],
-                'trunk':row['trunk_diameter_m'],'lat':row['lat'],'lon':row['lon'],'address':row['address'],
-                'riskIndex':row['risk_index'],'riskCategory':row['risk_category']}));
+          final r = await http.get(ApiConfig.v3('/analyses/my'), headers: {
+            'Authorization': 'Bearer $token'
+          }).timeout(const Duration(seconds: 15));
+          if (r.statusCode == 200) {
+            final rows = jsonDecode(utf8.decode(r.bodyBytes))['items'] as List;
+            for (final row in rows) {
+              if (items.any((i) => i.analysisId == row['analysis_id'])) {
+                continue;
+              }
+              items.add(_HistoryItem.fromJson({
+                'analysisId': row['analysis_id'],
+                'species': row['species'],
+                'timestamp': row['created_at'],
+                'height': row['height_m'],
+                'crown': row['crown_width_m'],
+                'trunk': row['trunk_diameter_m'],
+                'lat': row['lat'],
+                'lon': row['lon'],
+                'address': row['address'],
+                'riskIndex': row['risk_index'],
+                'riskCategory': row['risk_category']
+              }));
             }
           }
-        } catch (_) { /* Owned local records remain available offline. */ }
+        } catch (_) {/* Owned local records remain available offline. */}
       }
-      if(generation!=CorrectionsService.authChanges.value || await CorrectionsService.currentToken()!=token)return;
+      if (generation != CorrectionsService.authChanges.value ||
+          await CorrectionsService.currentToken() != token) {
+        return;
+      }
       items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
       if (!mounted) return;
@@ -115,15 +142,23 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
     if (q.isNotEmpty) {
       out = out.where((e) {
-        final hay = [e.species, e.address ?? '', e.riskCategory ?? ''].join(' ').toLowerCase();
+        final hay = [e.species, e.address ?? '', e.riskCategory ?? '']
+            .join(' ')
+            .toLowerCase();
         return hay.contains(q);
       }).toList();
     }
 
     if (_filterMode == _FilterMode.withRisk) {
-      out = out.where((e) => e.riskIndex != null || (e.riskCategory?.isNotEmpty ?? false)).toList();
+      out = out
+          .where((e) =>
+              e.riskIndex != null || (e.riskCategory?.isNotEmpty ?? false))
+          .toList();
     } else if (_filterMode == _FilterMode.noRisk) {
-      out = out.where((e) => e.riskIndex == null && (e.riskCategory?.isEmpty ?? true)).toList();
+      out = out
+          .where(
+              (e) => e.riskIndex == null && (e.riskCategory?.isEmpty ?? true))
+          .toList();
     }
 
     if (_onlyWithGeo) {
@@ -138,20 +173,29 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Очистить историю?'),
-        content: const Text('Будут удалены краткие локальные записи текущего аккаунта. Серверные отчёты и оригиналы останутся.'),
+        content: const Text(
+            'Будут удалены краткие локальные записи текущего аккаунта. Серверные отчёты и оригиналы останутся.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Очистить')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Очистить')),
         ],
       ),
     );
     if (ok != true) return;
     final prefs = await SharedPreferences.getInstance();
-    final owner=prefs.getString('arborscan_user_id');
-    final kept=(prefs.getStringList(_historyKey)??[]).where((s){
-      try{return owner==null||jsonDecode(s)['owner_id']!=owner;}catch(_){return true;}
+    final owner = prefs.getString('arborscan_user_id');
+    final kept = (prefs.getStringList(_historyKey) ?? []).where((s) {
+      try {
+        return owner == null || jsonDecode(s)['owner_id'] != owner;
+      } catch (_) {
+        return true;
+      }
     }).toList();
-    await prefs.setStringList(_historyKey,kept);
+    await prefs.setStringList(_historyKey, kept);
     await _load();
   }
 
@@ -162,8 +206,12 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         title: const Text('Удалить запись?'),
         content: Text('“${item.species}” будет удалено из истории.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Удалить')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Удалить')),
         ],
       ),
     );
@@ -177,7 +225,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       try {
         final m = jsonDecode(s) as Map<String, dynamic>;
         final other = _HistoryItem.fromJson(m);
-        if (other.uniqueKey != item.uniqueKey || m['owner_id'] != prefs.getString('arborscan_user_id')) {
+        if (other.uniqueKey != item.uniqueKey ||
+            m['owner_id'] != prefs.getString('arborscan_user_id')) {
           newList.add(s);
         }
       } catch (_) {
@@ -188,14 +237,16 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
     await _load();
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Запись удалена')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Запись удалена')));
   }
 
   // --- ИСПРАВЛЕНИЕ: СКАЧИВАНИЕ ПОЛНОГО ОТЧЕТА С СЕРВЕРА ---
   Future<void> _openFullReport(_HistoryItem item) async {
     bool dialogOpen = false;
     if (item.analysisId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Этот анализ не сохранен на сервере.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Этот анализ не сохранен на сервере.')));
       return;
     }
 
@@ -210,22 +261,27 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_tokenKey) ?? '';
-      final history=ReportHistoryService();
-      final owner=await history.auth.owner(token);
-      final local=await history.journal.load(owner,item.analysisId);
+      final history = ReportHistoryService();
+      final owner = await history.auth.owner(token);
+      final local = await history.journal.load(owner, item.analysisId);
       await history.auth.checkSession(token);
-      if(!mounted)return;
-      if(local!=null){
+      if (!mounted) return;
+      if (local != null) {
         Navigator.pop(context);
         dialogOpen = false;
-        await Navigator.push(context,MaterialPageRoute(builder:(_)=>ServerReportPage(localId:item.analysisId)));
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => ServerReportPage(localId: item.analysisId)));
         return;
       }
-      
-      final uri = ApiConfig.v3('/analyses/${Uri.encodeComponent(item.analysisId)}').replace(queryParameters: {'token': token});
+
+      final uri =
+          ApiConfig.v3('/analyses/${Uri.encodeComponent(item.analysisId)}')
+              .replace(queryParameters: {'token': token});
       final res = await http.get(uri).timeout(const Duration(seconds: 15));
-      if(await CorrectionsService.currentToken()!=token)return;
-      
+      if (await CorrectionsService.currentToken() != token) return;
+
       if (!mounted) return;
       Navigator.pop(context); // Закрываем крутилку
       dialogOpen = false;
@@ -234,28 +290,35 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         throw Exception('Не удалось загрузить отчет: ${res.statusCode}');
       }
 
-      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
       final analysisRaw = data['analysis'] as Map<String, dynamic>?;
 
       if (analysisRaw != null) {
-        final generation=CorrectionsService.authChanges.value;
+        final generation = CorrectionsService.authChanges.value;
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ValueListenableBuilder<int>(valueListenable:CorrectionsService.authChanges,
-              builder:(_,value,child)=>value==generation?child!:const Scaffold(body:Center(child:Text('Аккаунт изменился.'))),
-              child:AnalysisReportPageV2.fromRawResult(
-              raw: analysisRaw,
-              annotatedImageBytes: _tryDecodeImageB64(analysisRaw['annotated_image_base64']),
-            )),
+            builder: (_) => ValueListenableBuilder<int>(
+                valueListenable: CorrectionsService.authChanges,
+                builder: (_, value, child) => value == generation
+                    ? child!
+                    : const Scaffold(
+                        body: Center(child: Text('Аккаунт изменился.'))),
+                child: AnalysisReportPageV2.fromRawResult(
+                  raw: analysisRaw,
+                  annotatedImageBytes:
+                      _tryDecodeImageB64(analysisRaw['annotated_image_base64']),
+                )),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка загрузки: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Ошибка загрузки: $e')));
       }
     } finally {
-      if(mounted && dialogOpen)Navigator.pop(context);
+      if (mounted && dialogOpen) Navigator.pop(context);
     }
   }
 
@@ -289,13 +352,21 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
             icon: const Icon(Icons.layers_outlined),
             label: const Text('Сохранённые контуры'),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const SavedCorrectionsPage())),
+                builder: (_) => const SavedCorrectionsPage())),
           ),
         ),
         actions: [
-          IconButton(tooltip: 'Обновить', icon: const Icon(Icons.refresh, color: AppTheme.primary), onPressed: _load),
-          IconButton(tooltip: 'Измерения по эталону', icon: const Icon(Icons.straighten),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferenceHistoryPage()))),
+          IconButton(
+              tooltip: 'Обновить',
+              icon: const Icon(Icons.refresh, color: AppTheme.primary),
+              onPressed: _load),
+          IconButton(
+              tooltip: 'Измерения по эталону',
+              icon: const Icon(Icons.straighten),
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ReferenceHistoryPage()))),
           IconButton(
             tooltip: 'Очистить всё',
             icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
@@ -317,7 +388,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Журнал анализов', style: Theme.of(context).textTheme.titleLarge),
+                            Text('Журнал анализов',
+                                style: Theme.of(context).textTheme.titleLarge),
                             const SizedBox(height: 6),
                             Text(
                               'Поиск, фильтрация и генерация PDF-отчетов.',
@@ -337,7 +409,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: AppStatCard(
-                                    value: '${_all.where((e) => e.lat != null && e.lon != null).length}',
+                                    value:
+                                        '${_all.where((e) => e.lat != null && e.lon != null).length}',
                                     label: 'С GPS',
                                     icon: Icons.location_on_rounded,
                                     color: AppTheme.warning,
@@ -396,12 +469,14 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.inbox_outlined, color: AppTheme.muted),
+                                  const Icon(Icons.inbox_outlined,
+                                      color: AppTheme.muted),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
                                       'Ничего не найдено по текущим фильтрам.',
-                                      style: Theme.of(context).textTheme.bodySmall,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
                                     ),
                                   ),
                                 ],
@@ -414,7 +489,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                           physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
                           itemCount: _filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
                           itemBuilder: (context, i) {
                             final item = _filtered[i];
                             // По клику теперь загружаем полный отчет с сервера
@@ -451,7 +527,9 @@ class _HistoryPreviewCard extends StatelessWidget {
     return GlassPanel(
       padding: EdgeInsets.zero,
       onTap: onTap,
-      border: Border.all(color: isHighRisk ? AppTheme.danger.withOpacity(0.5) : AppTheme.border),
+      border: Border.all(
+          color:
+              isHighRisk ? AppTheme.danger.withOpacity(0.5) : AppTheme.border),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -477,7 +555,8 @@ class _HistoryPreviewCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Text(item.formattedTs, style: Theme.of(context).textTheme.bodySmall),
+                  Text(item.formattedTs,
+                      style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -488,7 +567,10 @@ class _HistoryPreviewCard extends StatelessWidget {
                         color: riskColor,
                       ),
                       if (item.lat != null && item.lon != null)
-                        Ui.badge(text: 'GPS', color: AppTheme.success, icon: Icons.location_on),
+                        Ui.badge(
+                            text: 'GPS',
+                            color: AppTheme.success,
+                            icon: Icons.location_on),
                     ],
                   ),
                 ],
@@ -525,7 +607,10 @@ class _ErrorState extends StatelessWidget {
               Expanded(
                 child: Text(
                   message,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.danger),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: AppTheme.danger),
                 ),
               ),
             ],
@@ -559,23 +644,20 @@ class _FilterChipGroup extends StatelessWidget {
       spacing: 8,
       children: [
         ChoiceChip(
-          label: const Text('Все'), 
-          selected: value == _FilterMode.all, 
-          selectedColor: AppTheme.primary.withOpacity(0.3),
-          onSelected: (_) => onChanged(_FilterMode.all)
-        ),
+            label: const Text('Все'),
+            selected: value == _FilterMode.all,
+            selectedColor: AppTheme.primary.withOpacity(0.3),
+            onSelected: (_) => onChanged(_FilterMode.all)),
         ChoiceChip(
-          label: const Text('С риском'), 
-          selected: value == _FilterMode.withRisk, 
-          selectedColor: AppTheme.danger.withOpacity(0.3),
-          onSelected: (_) => onChanged(_FilterMode.withRisk)
-        ),
+            label: const Text('С риском'),
+            selected: value == _FilterMode.withRisk,
+            selectedColor: AppTheme.danger.withOpacity(0.3),
+            onSelected: (_) => onChanged(_FilterMode.withRisk)),
         ChoiceChip(
-          label: const Text('Без риска'), 
-          selected: value == _FilterMode.noRisk, 
-          selectedColor: AppTheme.success.withOpacity(0.3),
-          onSelected: (_) => onChanged(_FilterMode.noRisk)
-        ),
+            label: const Text('Без риска'),
+            selected: value == _FilterMode.noRisk,
+            selectedColor: AppTheme.success.withOpacity(0.3),
+            onSelected: (_) => onChanged(_FilterMode.noRisk)),
       ],
     );
   }
@@ -636,7 +718,8 @@ class _HistoryItem {
       lon: (json['lon'] as num?)?.toDouble(),
       address: json['address'] as String?,
       imageBase64: (json['imageBase64'] ?? '') as String,
-      timestamp: DateTime.tryParse((json['timestamp'] ?? '') as String) ?? DateTime.now(),
+      timestamp: DateTime.tryParse((json['timestamp'] ?? '') as String) ??
+          DateTime.now(),
     );
   }
 }

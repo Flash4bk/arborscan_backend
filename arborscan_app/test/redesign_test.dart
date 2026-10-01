@@ -67,8 +67,8 @@ void main() {
     await t.pumpWidget(MaterialApp(
         theme: AppTheme.light(),
         home: const MediaQuery(
-            data: const MediaQueryData(textScaler: TextScaler.linear(1.8)),
-            child: const ArborScanPage())));
+            data: MediaQueryData(textScaler: TextScaler.linear(1.8)),
+            child: ArborScanPage())));
     await t.pump();
     expect(t.takeException(), isNull);
     await t.scrollUntilVisible(find.text('Галерея'), 200);

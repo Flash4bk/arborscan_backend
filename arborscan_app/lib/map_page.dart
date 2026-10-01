@@ -1,3 +1,4 @@
+import 'app_navigation.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -68,11 +69,13 @@ class _MapPageState extends State<MapPage> {
   LatLngFocus? _pendingFocus;
 
   // Default fallback (neutral)
-  static const gmaps.LatLng _fallbackCenter = gmaps.LatLng(55.751244, 37.618423);
+  static const gmaps.LatLng _fallbackCenter =
+      gmaps.LatLng(55.751244, 37.618423);
 
   @override
   void initState() {
     super.initState();
+    AppNavigation.mapVisits.addListener(_safeRefresh);
     CorrectionsService.authChanges.addListener(_authChanged);
     _pendingFocus = widget.initialFocus;
     _load();
@@ -80,12 +83,19 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
+    AppNavigation.mapVisits.removeListener(_safeRefresh);
     CorrectionsService.authChanges.removeListener(_authChanged);
     _mapController?.dispose();
     super.dispose();
   }
 
-  void _authChanged(){setState((){_items=[];_selected=null;});_load();}
+  void _authChanged() {
+    setState(() {
+      _items = [];
+      _selected = null;
+    });
+    _load();
+  }
 
   Future<void> _safeRefresh() async {
     try {
@@ -108,16 +118,18 @@ class _MapPageState extends State<MapPage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token=prefs.getString(_authTokenKey)??'';
-      final owner=prefs.getString('arborscan_user_id');
-      final generation=CorrectionsService.authChanges.value;
+      final token = prefs.getString(_authTokenKey) ?? '';
+      final owner = prefs.getString('arborscan_user_id');
+      final generation = CorrectionsService.authChanges.value;
       final list = prefs.getStringList(_historyKey) ?? const [];
 
       final parsed = <_HistoryItem>[];
       for (final s in list) {
         try {
           final m = jsonDecode(s) as Map<String, dynamic>;
-          if(token.isEmpty||owner==null||m['owner_id']!=owner)continue;
+          if (token.isEmpty || owner == null || m['owner_id'] != owner) {
+            continue;
+          }
           parsed.add(_HistoryItem.fromJson(m));
         } catch (_) {
           // ignore broken record
@@ -125,7 +137,10 @@ class _MapPageState extends State<MapPage> {
       }
 
       final serverItems = await _loadServerHistoryItems();
-      if(generation!=CorrectionsService.authChanges.value || await CorrectionsService.currentToken()!=token)return;
+      if (generation != CorrectionsService.authChanges.value ||
+          await CorrectionsService.currentToken() != token) {
+        return;
+      }
       final byId = <String, _HistoryItem>{
         for (final item in parsed)
           if (item.analysisId.isNotEmpty) item.analysisId: item
@@ -183,7 +198,8 @@ class _MapPageState extends State<MapPage> {
       final res = await http.get(uri).timeout(const Duration(seconds: 12));
       if (res.statusCode != 200) return const [];
 
-      final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
       final items = (data['items'] as List? ?? const []);
 
       final out = <_HistoryItem>[];
@@ -268,7 +284,9 @@ class _MapPageState extends State<MapPage> {
     if (_selected?.lat != null && _selected?.lon != null) {
       return gmaps.LatLng(_selected!.lat!, _selected!.lon!);
     }
-    if (_items.isNotEmpty && _items.first.lat != null && _items.first.lon != null) {
+    if (_items.isNotEmpty &&
+        _items.first.lat != null &&
+        _items.first.lon != null) {
       return gmaps.LatLng(_items.first.lat!, _items.first.lon!);
     }
     return _fallbackCenter;
@@ -320,8 +338,10 @@ class _MapPageState extends State<MapPage> {
     final lon = item.lon;
     if (lat == null || lon == null) return;
 
-    final nativeStreetView = Uri.parse('google.streetview:cbll=$lat,$lon&cbp=0,0,0,0,0');
-    final mapsLayerStreetView = Uri.parse('https://www.google.com/maps?layer=c&cbll=$lat,$lon');
+    final nativeStreetView =
+        Uri.parse('google.streetview:cbll=$lat,$lon&cbp=0,0,0,0,0');
+    final mapsLayerStreetView =
+        Uri.parse('https://www.google.com/maps?layer=c&cbll=$lat,$lon');
     final webStreetView = Uri.parse(
       'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$lat,$lon',
     );
@@ -334,7 +354,8 @@ class _MapPageState extends State<MapPage> {
     } catch (_) {}
 
     try {
-      await launchUrl(mapsLayerStreetView, mode: LaunchMode.externalApplication);
+      await launchUrl(mapsLayerStreetView,
+          mode: LaunchMode.externalApplication);
       return;
     } catch (_) {}
 
@@ -359,7 +380,8 @@ class _MapPageState extends State<MapPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) {
-        final bytes = item.imageBase64.isNotEmpty ? _safeB64(item.imageBase64) : null;
+        final bytes =
+            item.imageBase64.isNotEmpty ? _safeB64(item.imageBase64) : null;
 
         return DraggableScrollableSheet(
           expand: false,
@@ -380,151 +402,156 @@ class _MapPageState extends State<MapPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Row(
-                  children: [
-                    Ui.badge(
-                      text: item.riskCategory?.isNotEmpty == true ? item.riskCategory! : 'Анализ',
-                      color: AppTheme.primary,
-                      icon: Icons.location_on,
-                    ),
-                    const Spacer(),
-                    Text(
-                      item.formattedTs,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                Text(
-                  item.species.isNotEmpty ? item.species : 'Неизвестно',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-
-                if (bytes != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.memory(
-                      bytes,
-                      height: 140,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 140,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.04),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppTheme.border),
+                    Row(
+                      children: [
+                        Ui.badge(
+                          text: item.riskCategory?.isNotEmpty == true
+                              ? item.riskCategory!
+                              : 'Анализ',
+                          color: AppTheme.primary,
+                          icon: Icons.location_on,
                         ),
-                        child: const Icon(Icons.image_not_supported),
+                        const Spacer(),
+                        Text(
+                          item.formattedTs,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppTheme.muted),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      item.species.isNotEmpty ? item.species : 'Неизвестно',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    if (bytes != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.memory(
+                          bytes,
+                          height: 140,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 140,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.04),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppTheme.border),
+                            ),
+                            child: const Icon(Icons.image_not_supported),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        if (item.height != null)
+                          Ui.badge(
+                            text: 'H: ${item.height!.toStringAsFixed(2)} м',
+                            color: AppTheme.success,
+                            icon: Icons.height,
+                          ),
+                        if (item.crown != null)
+                          Ui.badge(
+                            text: 'Крона: ${item.crown!.toStringAsFixed(2)} м',
+                            color: AppTheme.success,
+                            icon: Icons.nature,
+                          ),
+                        if (item.trunk != null)
+                          Ui.badge(
+                            text: 'Ствол: ${item.trunk!.toStringAsFixed(2)} м',
+                            color: AppTheme.success,
+                            icon: Icons.circle,
+                          ),
+                        if (item.riskIndex != null)
+                          Ui.badge(
+                            text: 'Риск: ${item.riskIndex!.toStringAsFixed(2)}',
+                            color: AppTheme.warning,
+                            icon: Icons.shield,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => _openStreetView(item),
+                          icon: const Icon(Icons.threesixty),
+                          label: const Text('Street View'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _openStreetViewInBrowser(item),
+                          icon: const Icon(Icons.public),
+                          label: const Text('В браузере'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final lat = item.lat;
+                            final lon = item.lon;
+                            if (lat == null || lon == null) return;
+                            final uri = Uri.parse(
+                              'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
+                            );
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          },
+                          icon: const Icon(Icons.near_me_outlined),
+                          label: const Text('Точка'),
+                        ),
+                      ],
+                    ),
+                    const Text(
+                      'Просмотр улиц доступен не везде. Если Google пишет, что он недоступен, значит рядом с этой точкой нет панорамы Street View.',
+                      style: TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 12,
+                        height: 1.25,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    if (item.height != null)
-                      Ui.badge(
-                        text: 'H: ${item.height!.toStringAsFixed(2)} м',
-                        color: AppTheme.success,
-                        icon: Icons.height,
-                      ),
-                    if (item.crown != null)
-                      Ui.badge(
-                        text: 'Крона: ${item.crown!.toStringAsFixed(2)} м',
-                        color: AppTheme.success,
-                        icon: Icons.nature,
-                      ),
-                    if (item.trunk != null)
-                      Ui.badge(
-                        text: 'Ствол: ${item.trunk!.toStringAsFixed(2)} м',
-                        color: AppTheme.success,
-                        icon: Icons.circle,
-                      ),
-                    if (item.riskIndex != null)
-                      Ui.badge(
-                        text: 'Риск: ${item.riskIndex!.toStringAsFixed(2)}',
-                        color: AppTheme.warning,
-                        icon: Icons.shield,
-                      ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => _openStreetView(item),
-                      icon: const Icon(Icons.threesixty),
-                      label: const Text('Street View'),
+                    const SizedBox(height: 10),
+                    if (item.address != null &&
+                        _normalizeAddressRu(item.address).isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Text(_normalizeAddressRu(item.address),
+                          style: Theme.of(context).textTheme.bodyMedium),
+                    ],
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              Navigator.of(context).pop();
+                              await _animateTo(item.lat!, item.lon!, zoom: 17);
+                            },
+                            icon: const Icon(Icons.center_focus_strong),
+                            label: const Text('Показать'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.check),
+                            label: const Text('Ок'),
+                          ),
+                        ),
+                      ],
                     ),
-                    OutlinedButton.icon(
-                      onPressed: () => _openStreetViewInBrowser(item),
-                      icon: const Icon(Icons.public),
-                      label: const Text('В браузере'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final lat = item.lat;
-                        final lon = item.lon;
-                        if (lat == null || lon == null) return;
-                        final uri = Uri.parse(
-                          'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
-                        );
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      },
-                      icon: const Icon(Icons.near_me_outlined),
-                      label: const Text('Точка'),
-                    ),
-                  ],
-                ),
-                const Text(
-                  'Просмотр улиц доступен не везде. Если Google пишет, что он недоступен, значит рядом с этой точкой нет панорамы Street View.',
-                  style: TextStyle(
-                    color: AppTheme.muted,
-                    fontSize: 12,
-                    height: 1.25,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                if (item.address != null && _normalizeAddressRu(item.address).isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(_normalizeAddressRu(item.address), style: Theme.of(context).textTheme.bodyMedium),
-                ],
-
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          Navigator.of(context).pop();
-                          await _animateTo(item.lat!, item.lon!, zoom: 17);
-                        },
-                        icon: const Icon(Icons.center_focus_strong),
-                        label: const Text('Показать'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.check),
-                        label: const Text('Ок'),
-                      ),
-                    ),
-                  ],
-                ),
                   ],
                 ),
               ),
@@ -594,7 +621,6 @@ class _MapPageState extends State<MapPage> {
                       },
                       onTap: (_) => setState(() => _selected = null),
                     ),
-
                     Positioned(
                       top: 12,
                       right: 12,
@@ -620,14 +646,14 @@ class _MapPageState extends State<MapPage> {
                         ],
                       ),
                     ),
-
                     Positioned(
                       left: 12,
                       right: 12,
                       bottom: 12,
                       child: Card(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
                           child: Row(
                             children: [
                               const Icon(Icons.info_outline, size: 18),
@@ -635,7 +661,10 @@ class _MapPageState extends State<MapPage> {
                               Expanded(
                                 child: Text(
                                   'Тап по маркеру — детали анализа',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: AppTheme.muted),
                                 ),
                               ),
                               TextButton(
@@ -730,7 +759,10 @@ class _EmptyState extends StatelessWidget {
                 child: Text(
                   'Пока нет точек на карте.\n\n'
                   'Сделай анализ с включённой геолокацией — и результаты появятся здесь.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.muted),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: AppTheme.muted),
                 ),
               ),
             ],
@@ -774,7 +806,10 @@ class _ErrorState extends StatelessWidget {
               Expanded(
                 child: Text(
                   message,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.danger),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: AppTheme.danger),
                 ),
               ),
             ],
@@ -846,7 +881,8 @@ class _HistoryItem {
       lon: (json['lon'] as num?)?.toDouble(),
       address: json['address'] as String?,
       imageBase64: (json['imageBase64'] ?? '') as String,
-      timestamp: DateTime.tryParse((json['timestamp'] ?? '') as String) ?? DateTime.now(),
+      timestamp: DateTime.tryParse((json['timestamp'] ?? '') as String) ??
+          DateTime.now(),
     );
   }
 }

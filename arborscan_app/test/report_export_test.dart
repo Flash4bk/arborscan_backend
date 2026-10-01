@@ -219,7 +219,9 @@ void main() {
         throwsFormatException);
   });
   test('generate real PDFs, frozen fixtures and selected versions', () async {
-    final dir = Directory('../output/pdf/as12')..createSync(recursive: true);
+    final dir = Directory(Platform.environment['ARBORSCAN_PDF_TEST_OUTPUT'] ??
+        '../output/pdf/as12')
+      ..createSync(recursive: true);
     for (final data in [
       fixture('full-v1'),
       fixture('full-v2', height: 5.4),

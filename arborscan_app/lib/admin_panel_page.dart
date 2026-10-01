@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
 
 import 'admin_service.dart';
 import 'training_dataset_page.dart';
@@ -29,8 +30,7 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   List<int> _models = const [];
   int? _selectedVersion;
 
-  bool get _accessDenied =>
-      _errorStatusCode == 401 || _errorStatusCode == 403;
+  bool get _accessDenied => _errorStatusCode == 401 || _errorStatusCode == 403;
 
   @override
   void initState() {
@@ -95,7 +95,8 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   }
 
   Future<void> _setActive() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const ModelQualityPage()));
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const ModelQualityPage()));
   }
 
   Future<void> _requestTraining() => _setActive();
@@ -104,14 +105,21 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Panel'),
-        bottom: PreferredSize(preferredSize:const Size.fromHeight(48), child:TextButton.icon(
-          icon:const Icon(Icons.fact_check_outlined), label:const Text('Проверка контуров'),
-          onPressed:_accessDenied ? null : () => Navigator.of(context).push(MaterialPageRoute(
-            builder:(_) => const SavedCorrectionsPage(adminQueue:true))),
-        )),
+        title: const Text('Администрирование'),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: TextButton.icon(
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('Проверка контуров'),
+              onPressed: _accessDenied
+                  ? null
+                  : () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) =>
+                          const SavedCorrectionsPage(adminQueue: true))),
+            )),
         actions: [
           IconButton(
+            tooltip: 'Обновить данные',
             icon: const Icon(Icons.refresh),
             onPressed: _loading ? null : _refresh,
           ),
@@ -126,135 +134,136 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                   onRetry: _refresh,
                 )
               : RefreshIndicator(
-              onRefresh: _refresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_error != null) ...[
-                    _ErrorBanner(message: _error!),
-                    const SizedBox(height: 12),
-                  ],
-
-                  if (_identity != null) ...[
-                    _Card(
-                      title: 'Подтверждённый доступ',
-                      child: _AdminIdentityBlock(identity: _identity!),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  _Card(
-                    title: 'Архивный статус обучения v3',
-                    child: _StatusBlock(status: _status),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _Card(
-                    title: 'Архив моделей v3',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DropdownButtonFormField<int>(
-                          value: (_selectedVersion != null && _models.contains(_selectedVersion))
-                              ? _selectedVersion
-                              : null,
-                          items: _models
-                              .map(
-                                (v) => DropdownMenuItem<int>(
-                                  value: v,
-                                  child: Text('Версия $v'),
-                                ),
-                              )
-                              .toList(),
-                          decoration: const InputDecoration(
-                            labelText: 'Версия модели',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: _changingModel
-                              ? null
-                              : (v) => setState(() => _selectedVersion = v),
-                        ),
+                  onRefresh: _refresh,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      if (_error != null) ...[
+                        _ErrorBanner(message: _error!),
                         const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _models.isEmpty ||
-                                  _selectedVersion == null ||
-                                  _changingModel
-                              ? null
-                              : _setActive,
-                          icon: _changingModel
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.swap_horiz),
-                          label: const Text(
-                            'Открыть реестр моделей v4',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                          ),
-                        ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _Card(
-                    title: 'Обучение',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'Обучение v4 выполняется в новом разделе по зафиксированным снимкам и явным решениям модерации.',
+                      if (_identity != null) ...[
+                        _Card(
+                          title: 'Подтверждённый доступ',
+                          child: _AdminIdentityBlock(identity: _identity!),
                         ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _requestingTraining ? null : _requestTraining,
-                          icon: _requestingTraining
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.play_arrow),
-                          label: Text(
-                            _requestingTraining
-                                ? 'Отправка...'
-                                : 'Запросить обучение',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => TrainingDatasetPage(service: _service),
+                        const SizedBox(height: 16),
+                      ],
+                      _Card(
+                        title: 'Архивный статус обучения v3',
+                        child: _StatusBlock(status: _status),
+                      ),
+                      const SizedBox(height: 16),
+                      _Card(
+                        title: 'Архив моделей v3',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            DropdownButtonFormField<int>(
+                              value: (_selectedVersion != null &&
+                                      _models.contains(_selectedVersion))
+                                  ? _selectedVersion
+                                  : null,
+                              items: _models
+                                  .map(
+                                    (v) => DropdownMenuItem<int>(
+                                      value: v,
+                                      child: Text('Версия $v'),
+                                    ),
+                                  )
+                                  .toList(),
+                              decoration: const InputDecoration(
+                                labelText: 'Версия модели',
+                                border: OutlineInputBorder(),
                               ),
-                            );
-                          },
-                          icon: const Icon(Icons.dataset_outlined),
-                          label: const Text('Датасет для последующего обучения'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                          ),
+                              onChanged: _changingModel
+                                  ? null
+                                  : (v) => setState(() => _selectedVersion = v),
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: _models.isEmpty ||
+                                      _selectedVersion == null ||
+                                      _changingModel
+                                  ? null
+                                  : _setActive,
+                              icon: _changingModel
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.swap_horiz),
+                              label: const Text(
+                                'Открыть реестр моделей v4',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+                      _Card(
+                        title: 'Обучение',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Обучение v4 выполняется в новом разделе по зафиксированным снимкам и явным решениям модерации.',
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed:
+                                  _requestingTraining ? null : _requestTraining,
+                              icon: _requestingTraining
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.play_arrow),
+                              label: Text(
+                                _requestingTraining
+                                    ? 'Отправка...'
+                                    : 'Запросить обучение',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        TrainingDatasetPage(service: _service),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.dataset_outlined),
+                              label: const Text(
+                                  'Датасет для последующего обучения'),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(48),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _Card(
+                        title: 'Лог обучения',
+                        child: _TrainingLog(events: _events),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-
-                  _Card(
-                    title: 'Лог обучения',
-                    child: _TrainingLog(events: _events),
-                  ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 }
@@ -288,7 +297,7 @@ class _AdminIdentityBlock extends StatelessWidget {
               const SizedBox(height: 3),
               const Text(
                 'Права подтверждены сервером',
-                style: TextStyle(color: Colors.green),
+                style: TextStyle(color: AppTheme.success),
               ),
             ],
           ),
@@ -312,9 +321,8 @@ class _AccessDeniedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = statusCode == 401 ? 'Требуется вход' : 'Недостаточно прав';
-    final icon = statusCode == 401
-        ? Icons.login
-        : Icons.admin_panel_settings_outlined;
+    final icon =
+        statusCode == 401 ? Icons.login : Icons.admin_panel_settings_outlined;
 
     return Center(
       child: SingleChildScrollView(
@@ -375,7 +383,8 @@ class _Card extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            Text(title,
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             child,
           ],
@@ -398,7 +407,8 @@ class _ErrorBanner extends StatelessWidget {
         // ignore: deprecated_member_use
         color: Theme.of(context).colorScheme.error.withOpacity(0.10),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.25)),
+        border: Border.all(
+            color: Theme.of(context).colorScheme.error.withOpacity(0.25)),
       ),
       child: Text(
         message,
@@ -424,7 +434,8 @@ class _StatusBlock extends StatelessWidget {
 
     return Column(
       children: [
-        _StatusRow(label: 'Обучение сейчас', value: s.isTraining ? 'Да' : 'Нет'),
+        _StatusRow(
+            label: 'Обучение сейчас', value: s.isTraining ? 'Да' : 'Нет'),
         const SizedBox(height: 8),
         _StatusRow(
           label: 'Запрос ожидает worker',
@@ -433,7 +444,8 @@ class _StatusBlock extends StatelessWidget {
         const SizedBox(height: 8),
         _StatusRow(label: 'Активная модель', value: dash(s.activeModelVersion)),
         const SizedBox(height: 8),
-        _StatusRow(label: 'Последняя обученная', value: dash(s.lastTrainedVersion)),
+        _StatusRow(
+            label: 'Последняя обученная', value: dash(s.lastTrainedVersion)),
         if (s.lastError != null && s.lastError!.isNotEmpty) ...[
           const SizedBox(height: 10),
           Align(

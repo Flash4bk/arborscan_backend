@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'corrections_service.dart';
 
@@ -27,6 +27,30 @@ class _ImageLinePageState extends State<ImageLinePage> {
   int selected = 0;
   final transform = TransformationController();
   bool invalid = false;
+  bool _allowLeave = false;
+  bool get _dirty => !listEquals(points, widget.initial);
+  Future<void> _confirmLeave(bool didPop, Object? result) async {
+    if (didPop || invalid || _allowLeave) return;
+    final discard = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+                title: const Text('Отрезок не применён'),
+                content: const Text(
+                    'Изменённые точки ещё не сохранены в измерении. Продолжить разметку или выйти без них?'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(c, false),
+                      child: const Text('Продолжить')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(c, true),
+                      child: const Text('Выйти без правок'))
+                ]));
+    if (discard == true && mounted) {
+      setState(() => _allowLeave = true);
+      Navigator.pop(context);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,15 +69,22 @@ class _ImageLinePageState extends State<ImageLinePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => PopScope(
+      canPop: invalid || !_dirty || _allowLeave,
+      onPopInvokedWithResult: _confirmLeave,
+      child: Scaffold(
         appBar: AppBar(title: Text(widget.title)),
         body: invalid
             ? const Center(child: Text('Аккаунт изменился. Закройте разметку.'))
             : Column(children: [
-                const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                        'Выберите конец и коснитесь нужного места. Двумя пальцами увеличивайте и перемещайте фото. Можно переставлять точки сколько угодно.')),
+                ConstrainedBox(
+                    constraints: BoxConstraints(
+                        maxHeight: MediaQuery.sizeOf(context).height * .25),
+                    child: const SingleChildScrollView(
+                        child: Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Text(
+                                'Выберите конец и коснитесь нужного места. Двумя пальцами увеличивайте и перемещайте фото. Можно переставлять точки сколько угодно.')))),
                 SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: SegmentedButton<int>(
@@ -119,7 +150,7 @@ class _ImageLinePageState extends State<ImageLinePage> {
                                         context, List<Offset>.from(points)),
                             child: const Text('Применить отрезок')))),
               ]),
-      );
+      ));
 }
 
 class _LinePainter extends CustomPainter {

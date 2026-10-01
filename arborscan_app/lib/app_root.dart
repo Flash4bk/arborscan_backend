@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'analyze_page.dart';
+import 'app_navigation.dart';
 import 'corrections_service.dart';
 import 'history_tab_page.dart';
 import 'map_page.dart';
@@ -57,10 +58,13 @@ class _AppRootState extends State<AppRoot> {
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() {
-          _visited.add(value);
-          _index = value;
-        }),
+        onDestinationSelected: (value) {
+          setState(() {
+            _visited.add(value);
+            _index = value;
+          });
+          AppNavigation.activate(value);
+        },
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.add_a_photo_outlined), label: 'Анализ'),

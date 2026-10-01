@@ -49,8 +49,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   bool _sessionInvalid = false;
 
   void _invalidateSession() {
-    if (widget.sessionToken != null && mounted)
+    if (widget.sessionToken != null && mounted) {
       setState(() => _sessionInvalid = true);
+    }
   }
 
   Map<String, dynamic> _editorSnapshot() => ContourEditorState(
@@ -65,8 +66,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   void _notifyDraft() {
     if (_sessionInvalid) return;
-    if (_imageSize != null && _drawSize != null)
+    if (_imageSize != null && _drawSize != null) {
       widget.onDraftChanged?.call(_editorSnapshot());
+    }
   }
 
   void _setFinishing(bool v) {
@@ -107,8 +109,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   }
 
   void _undo() {
-    if (_undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty)
+    if (_undoHistory.isEmpty || _finishing || _activePointers.isNotEmpty) {
       return;
+    }
     setState(() => _restore(_undoHistory.removeLast()));
     _notifyDraft();
   }
@@ -411,7 +414,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       Paint()..color = Colors.black.withOpacity(0.7),
     );
 
-    final textStyle = const TextStyle(
+    const textStyle = TextStyle(
       color: Colors.white,
       fontSize: 12,
     );
@@ -533,8 +536,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   Future<void> _saveMaskAndExit() async {
     try {
       if (_sessionInvalid) return;
-      if (widget.sessionToken != null)
+      if (widget.sessionToken != null) {
         await CorrectionsService().checkSession(widget.sessionToken!);
+      }
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
 
@@ -643,9 +647,10 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_sessionInvalid)
+    if (_sessionInvalid) {
       return const Scaffold(
           body: Center(child: Text('Сессия изменилась. Закройте редактор.')));
+    }
     if (_image == null || _imageSize == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),

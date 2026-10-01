@@ -350,7 +350,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
               ? []
               : ContourEditorState.fromJson(_outline!).points);
     } catch (e) {
-      _calculationError = e is FormatException ? e.message : 'Неверная разметка.';
+      _calculationError =
+          e is FormatException ? e.message : 'Неверная разметка.';
       return null;
     }
   }
@@ -390,11 +391,19 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) Text(_error!),
           if (!_invalid) ...[
-            if (result != null) ReportExportButton(enabled: !_busy, load: () async => ReportExportData(
-              snapshot: {'kind':'reference','report':result.report,'reference':result.toJson(),
-                'captured_at':_serverSnapshot?['captured_at'], 'ar':_serverSnapshot?['ar'],
-                'environment':_serverSnapshot?['environment']},
-              record: {'analysis_id':_serverAnalysisId ?? _id}, photo:_image, local:true)),
+            if (result != null)
+              ReportExportButton(
+                  enabled: !_busy,
+                  load: () async => ReportExportData(snapshot: {
+                        'kind': 'reference',
+                        'report': result.report,
+                        'reference': result.toJson(),
+                        'captured_at': _serverSnapshot?['captured_at'],
+                        'ar': _serverSnapshot?['ar'],
+                        'environment': _serverSnapshot?['environment']
+                      }, record: {
+                        'analysis_id': _serverAnalysisId ?? _id
+                      }, photo: _image, local: true)),
             const Text(
                 'Вертикальный эталон должен стоять рядом с деревом примерно на той же глубине. Снимайте целиком, без сильного наклона камеры. Его высота задаёт вертикальную ось; ширина кроны считается поперёк неё. Перспектива ограничивает метод: один отрезок её не исправляет. Результат — оценка проекции, не подтверждённая точность.'),
             OutlinedButton(
@@ -559,6 +568,7 @@ class _ReferenceHistoryPageState extends State<ReferenceHistoryPage> {
   List<Map<String, dynamic>> rows = [];
   String? error;
   bool invalid = false;
+  bool loading = true;
   @override
   void initState() {
     super.initState();
@@ -588,9 +598,19 @@ class _ReferenceHistoryPageState extends State<ReferenceHistoryPage> {
           t = await CorrectionsService.currentToken();
       final result = await referenceStore().list(await s.owner(t));
       await s.checkSession(t);
-      if (mounted && !invalid) setState(() => rows = result);
+      if (mounted && !invalid) {
+        setState(() {
+          rows = result;
+          loading = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => error = '$e');
+      if (mounted) {
+        setState(() {
+          error = '$e';
+          loading = false;
+        });
+      }
     }
   }
 
@@ -598,7 +618,10 @@ class _ReferenceHistoryPageState extends State<ReferenceHistoryPage> {
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Измерения по эталону')),
       body: AppContentList(children: [
+        if (loading) const LinearProgressIndicator(),
         if (error != null) Text(error!),
+        if (!loading && rows.isEmpty && error == null)
+          const Text('На этом устройстве пока нет измерений по эталону.'),
         for (final r in rows)
           ListTile(
               title: const Text('По известному объекту'),

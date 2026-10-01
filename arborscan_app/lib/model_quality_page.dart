@@ -294,6 +294,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Модели и качество'), actions: [
         IconButton(
+            tooltip: 'Обновить модели и качество',
             onPressed: _busy ? null : () => _run(() async {}),
             icon: const Icon(Icons.refresh))
       ]),

@@ -354,7 +354,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
               ),
               const SizedBox(height: 12),
             ],
-
             Ui.paddedCard(
               context,
               child: Row(
@@ -379,7 +378,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 ],
               ),
             ),
-
             Ui.sectionTitle(context, 'Инструменты'),
             Ui.paddedCard(
               context,
@@ -405,7 +403,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 ],
               ),
             ),
-
             Ui.sectionTitle(context, 'Вид дерева'),
             Ui.paddedCard(
               context,
@@ -416,9 +413,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     children: [
                       Ui.badge(
                         text: speciesOk ? 'Ок' : 'Изменено',
-                        color: speciesOk
-                            ? AppTheme.success
-                            : AppTheme.warning,
+                        color: speciesOk ? AppTheme.success : AppTheme.warning,
                         icon: speciesOk ? Icons.check_circle : Icons.edit,
                       ),
                       const Spacer(),
@@ -451,7 +446,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 ],
               ),
             ),
-
             Ui.sectionTitle(context, 'Параметры'),
             Ui.paddedCard(
               context,
@@ -461,9 +455,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     children: [
                       Ui.badge(
                         text: paramsOk ? 'Ок' : 'Изменено',
-                        color: paramsOk
-                            ? AppTheme.success
-                            : AppTheme.warning,
+                        color: paramsOk ? AppTheme.success : AppTheme.warning,
                         icon: paramsOk ? Icons.check_circle : Icons.tune,
                       ),
                       const Spacer(),
@@ -500,7 +492,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 ],
               ),
             ),
-
             Ui.sectionTitle(context, 'Датасет для обучения'),
             Ui.paddedCard(
               context,
@@ -522,7 +513,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     : (value) => setState(() => _useForTraining = value),
               ),
             ),
-
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _isSending ? null : _sendFeedback,
@@ -532,14 +522,13 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: AppTheme.muted,
                       ),
                     )
-                  : const Icon(Icons.done_all, color: Colors.white),
+                  : const Icon(Icons.done_all),
               label: Text(
                 _isSending ? 'ОТПРАВКА...' : 'ПОДТВЕРДИТЬ И ОТПРАВИТЬ',
                 style: const TextStyle(
-                  color: Colors.white,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1,
                 ),
@@ -554,9 +543,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
             ),
             const SizedBox(height: 10),
             OutlinedButton(
-              onPressed: _isSending
-                  ? null
-                  : () => Navigator.of(context).maybePop(),
+              onPressed:
+                  _isSending ? null : () => Navigator.of(context).maybePop(),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
               ),

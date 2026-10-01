@@ -290,7 +290,7 @@ class AppActionButton extends StatelessWidget {
             : primary
                 ? AppTheme.primary
                 : AppTheme.surface2);
-    final fg = foregroundColor ??
+    final fg = !isEnabled ? AppTheme.muted : foregroundColor ??
         (danger
             ? AppTheme.danger
             : primary
