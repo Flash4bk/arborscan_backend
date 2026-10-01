@@ -1,0 +1,18 @@
+{
+  "baseline_raw": 195,
+  "baseline_unique_with_locations": 105,
+  "baseline_normalized": 35,
+  "current_raw": 73,
+  "current_normalized": 29,
+  "new_normalized": [],
+  "current_severity_counts": [
+    {
+      "severity": "info",
+      "count": 67
+    },
+    {
+      "severity": "warning",
+      "count": 6
+    }
+  ]
+}

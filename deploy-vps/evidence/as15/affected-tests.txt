@@ -1,0 +1,20 @@
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart
+00:00 +0: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:01 +1: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:01 +2: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:02 +3: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:02 +4: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:03 +5: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:03 +6: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:03 +7: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:03 +8: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:03 +9: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:04 +10: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:04 +11: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:05 +12: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:06 +13: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:06 +14: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:06 +15: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:07 +16: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:07 +17: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:18 +18: All tests passed!

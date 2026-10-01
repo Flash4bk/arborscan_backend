@@ -1,0 +1,8 @@
+{
+  "offline_text_equals_v1_except_generation_time": true,
+  "offline_photo_annotation_bytes_equal_v1": true,
+  "versions_distinct_height_preserved": true,
+  "v2_photo_annotation_equal_v1": true,
+  "old_missing_values_explicit": true,
+  "all_beta_not_computed": true
+}

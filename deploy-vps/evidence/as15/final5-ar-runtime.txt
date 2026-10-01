@@ -1,0 +1,59 @@
+--------- beginning of main
+10-01 15:43:47.825 10820 10837 E native  : E0000 00:00:1790869427.825276   10837 device_provider.cc:3486] Could not identify device type from build fingerprint 'google/sdk_gphone64_x86_64/emu64xa:16/BE4B.251210.005/14574095:user/release-keys'.
+10-01 15:43:48.013 10571 10571 E native  : E0000 00:00:1790869428.013202   10571 session_create_implementation_shared.cc:1464] UNKNOWN:
+10-01 15:43:48.013 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1464
+10-01 15:43:48.013 10571 10571 E native  : Failed to create java data source utils.
+10-01 15:43:48.013 10571 10571 E native  : ARCoreError: third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc:84
+10-01 15:43:48.013 10571 10571 E native  : getCameraCharacteristics:1376: Unable to retrieve camera characteristics for unknown device 0: No such file or directory (-2)
+10-01 15:43:48.013 10571 10571 E native  : === Source Location Trace: ===
+10-01 15:43:48.013 10571 10571 E native  : third_party/arcore/ar/infrastructure/android/jni_util.cc:116
+10-01 15:43:48.013 10571 10571 E native  : third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc:84
+10-01 15:43:48.013 10571 10571 E native  : E0000 00:00:1790869428.013292   10571 session_create_implementation_shared.cc:1607] UNKNOWN:
+10-01 15:43:48.013 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1607
+10-01 15:43:48.013 10571 10571 E native  : Failed to create cameras using image subsystem from java stack.
+10-01 15:43:48.013 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1464
+10-01 15:43:48.013 10571 10571 E native  : Failed to create java data source utils.
+10-01 15:43:48.013 10571 10571 E native  : ARCoreError: third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc:84
+10-01 15:43:48.013 10571 10571 E native  : getCameraCharacteristics:1376: Unable to retrieve camera characteristics for unknown device 0: No such file or directory (-2)
+10-01 15:43:48.013 10571 10571 E native  : === Source Location Trace: ===
+10-01 15:43:48.013 10571 10571 E native  : third_party/arcore/ar/infrastructure/android/jni_util.cc:116
+10-01 15:43:48.013 10571 10571 E native  : third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc:84
+10-01 15:43:48.013 10571 10571 E native  : third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1464
+10-01 15:43:48.017 10571 10571 E native  : E0000 00:00:1790869428.017282   10571 error_policy_util.cc:263]
+10-01 15:43:48.017 10571 10571 E native  : ################ ARCore Native Error ##################
+10-01 15:43:48.017 10571 10571 E native  : BUILD_CHANGELIST:962753208
+10-01 15:43:48.017 10571 10571 E native  : BUILD_BASELINE_CHANGELIST:953564233
+10-01 15:43:48.017 10571 10571 E native  : ################### Stack Trace Begin ################
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc:84	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc?g=0&l=84
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1464	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc?g=0&l=1464
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1607	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc?g=0&l=1607
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:2984	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc?g=0&l=2984
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:3430	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc?g=0&l=3430
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation.cc:427	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/android/implementation/session_create_implementation.cc?g=0&l=427
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation.cc:547	https://cs.corp.google.com/piper///depot/google3/third_party/arcore/ar/core/android/implementation/session_create_implementation.cc?g=0&l=547
+10-01 15:43:48.017 10571 10571 E native  : ################### Stack Trace End #################
+10-01 15:43:48.017 10571 10571 E native  :
+10-01 15:43:48.017 10571 10571 E native  : ################### Undecorated Trace Begin  #################
+10-01 15:43:48.017 10571 10571 E native  : UNKNOWN:
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation.cc:427
+10-01 15:43:48.017 10571 10571 E native  :
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:3430
+10-01 15:43:48.017 10571 10571 E native  :
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:2984
+10-01 15:43:48.017 10571 10571 E native  :
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1607
+10-01 15:43:48.017 10571 10571 E native  : Failed to create cameras using image subsystem from java stack.
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1464
+10-01 15:43:48.017 10571 10571 E native  : Failed to create java data source utils.
+10-01 15:43:48.017 10571 10571 E native  : ARCoreError: third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc:84
+10-01 15:43:48.017 10571 10571 E native  : getCameraCharacteristics:1376: Unable to retrieve camera characteristics for unknown device 0: No such file or directory (-2)
+10-01 15:43:48.017 10571 10571 E native  : === Source Location Trace: ===
+10-01 15:43:48.017 10571 10571 E native  : third_party/arcore/ar/infrastructure/android/jni_util.cc:116
+10-01 15:43:48.017 10571 10571 E native  : third_party/arcore/ar/infrastructure/android/java_data_source_utils.cc:84
+10-01 15:43:48.017 10571 10571 E native  : third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1464
+10-01 15:43:48.017 10571 10571 E native  : third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:1607
+10-01 15:43:48.017 10571 10571 E native  : third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:2984
+10-01 15:43:48.017 10571 10571 E native  : third_party/arcore/ar/core/android/implementation/session_create_implementation_shared.cc:3430
+10-01 15:43:48.017 10571 10571 E native  : third_party/arcore/ar/core/android/implementation/session_create_implementation.cc:427
+10-01 15:43:48.017 10571 10571 E native  :
+10-01 15:43:48.017 10571 10571 E native  : ################### Undecorated Trace End  #################

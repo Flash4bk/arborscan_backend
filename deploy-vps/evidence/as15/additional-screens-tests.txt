@@ -1,0 +1,9 @@
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart
+00:00 +0: (setUpAll)
+00:00 +0: Models loading, empty data and account guard at 160% font
+00:00 +1: Models forbidden role remains explicit and cannot train / 200%
+00:01 +2: Feedback keeps unavailable dimensions and validates edits / 200%
+00:01 +3: Onboarding instructions scroll at 200% and finish returns home
+00:02 +4: Actual v4 report keeps missing metric values and original photo
+00:02 +5: (tearDownAll)
+00:03 +5: All tests passed!

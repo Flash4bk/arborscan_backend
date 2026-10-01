@@ -1,0 +1,19 @@
+{
+  "code_commit": "b34488f453356e25a83d2ddac66e7e7c0e153b11",
+  "application_id": "com.example.arborscan_app",
+  "version_name": "1.2.0-redesign.b34488f",
+  "version_code": 6,
+  "apk_sha256": "98e471f0dcc5b6708891fbd875d4409dc854a2260221b199e3c72e4a7b47c110",
+  "apk_size_bytes": 214292502,
+  "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+  "flutter_tests_passed": 81,
+  "android_app_tests_passed": 5,
+  "emulator_install": "Success, adb install --no-streaming -r",
+  "emulator_cold_launch": {
+    "status": "ok",
+    "total_time_ms": 9415
+  },
+  "s24_final_install": "not performed: device absent from adb",
+  "s24_last_confirmed_install": "1.2.0-redesign.caa65c8, versionCode 4",
+  "server_database_changes": false
+}

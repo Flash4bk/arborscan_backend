@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.arborscan_app.ArAvailabilityFailureTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-01T16:03:43" hostname="DANIIL" time="0.014">
+  <properties/>
+  <testcase name="declinedInstallationIsCancellationRatherThanAnError" classname="com.example.arborscan_app.ArAvailabilityFailureTest" time="0.004"/>
+  <testcase name="serviceAndSdkFailuresHaveDifferentRecoveryInstructions" classname="com.example.arborscan_app.ArAvailabilityFailureTest" time="0.008"/>
+  <testcase name="failedSessionExplainsRecoveryWithoutExposingInternalExceptionDetails" classname="com.example.arborscan_app.ArAvailabilityFailureTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

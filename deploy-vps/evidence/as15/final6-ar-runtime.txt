@@ -1,0 +1,4 @@
+--------- beginning of main
+10-01 16:34:23.233 11780 11780 W ArMeasureActivity: AR unavailable: UnavailableException
+10-01 16:39:10.557 12686 12686 W ArMeasureActivity: AR unavailable: UnavailableUserDeclinedInstallationException
+10-01 16:39:50.772 12686 12686 W ArMeasureActivity: AR unavailable: UnavailableUserDeclinedInstallationException

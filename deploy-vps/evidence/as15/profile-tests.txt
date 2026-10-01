@@ -1,0 +1,18 @@
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart
+00:00 +0: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: (setUpAll)
+00:00 +0: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:01 +1: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:01 +2: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:01 +3: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: offline profile clearly keeps a cached user rather than claiming a server session
+00:01 +4: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real user profile and navigation at 360px / 1.6 text
+00:01 +5: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real admin profile and navigation at 360px / 1.6 text
+00:02 +6: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real moderation rejects empty reason, preserves long comment and refreshes decision / 1.6
+00:02 +7: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real user profile and navigation at 360px / 2.0 text
+00:02 +8: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real admin profile and navigation at 360px / 2.0 text
+00:03 +9: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real moderation rejects empty reason, preserves long comment and refreshes decision / 2.0
+00:03 +10: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real correction 403 state can retry to empty list without exposing decision controls
+00:03 +11: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real correction 500 state can retry to empty list without exposing decision controls
+00:03 +12: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real offline correction state and session invalidation clear old records
+00:03 +13: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real loading disables refresh until response finishes
+00:03 +14: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: (tearDownAll)
+00:03 +14: All tests passed!
