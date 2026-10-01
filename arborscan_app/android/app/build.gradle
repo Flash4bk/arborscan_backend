@@ -43,8 +43,9 @@ dependencies {
     implementation "com.gorisse.thomas.sceneform:core:1.23.0"
     implementation "com.gorisse.thomas.sceneform:ux:1.23.0"
 
-    // ARCore (keep aligned with your Sceneform stack; you can bump later if needed)
-    implementation "com.google.ar:core:1.31.0"
+    // API 36-compatible SDK: the old install flow crashed on receiver flags.
+    // Sceneform rendering and ArborScan measurement geometry remain unchanged.
+    implementation "com.google.ar:core:1.50.0"
 
     implementation "androidx.appcompat:appcompat:1.7.0"
     implementation "com.google.android.material:material:1.12.0"

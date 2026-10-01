@@ -129,8 +129,20 @@ void main() {
     await http.runWithClient(() async {
       await _screen(tester, const ProfilePage(), 2);
       await tester.pumpAndSettle();
+      final registration = find.descendant(
+          of: find.byType(ChoiceChip), matching: find.text('Регистрация'));
+      await _reach(tester, registration);
+      final label = tester.renderObject<RenderParagraph>(registration);
+      expect(
+          label
+              .getBoxesForSelection(const TextSelection(
+                  baseOffset: 0, extentOffset: 'Регистрация'.length))
+              .length,
+          1,
+          reason: 'The registration label must not split off a final letter.');
+      await _snapshot(tester, 'registration-large-font');
       await _reach(tester, find.text('Вход'));
-      await tester.tap(find.text('Вход'));
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Вход'));
       await tester.pumpAndSettle();
       final email = find.byWidgetPredicate((widget) =>
           widget is TextField && widget.decoration?.labelText == 'Почта');

@@ -728,22 +728,29 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           const SizedBox(height: 12),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment<bool>(
-                value: true,
-                label: Text('Регистрация'),
-                icon: Icon(Icons.person_add_alt),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                avatar: const Icon(Icons.person_add_alt),
+                label: const Text('Регистрация'),
+                selected: _isRegisterMode,
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+                onSelected: _busy
+                    ? null
+                    : (_) => setState(() => _isRegisterMode = true),
               ),
-              ButtonSegment<bool>(
-                value: false,
-                label: Text('Вход'),
-                icon: Icon(Icons.lock_open),
+              ChoiceChip(
+                avatar: const Icon(Icons.lock_open),
+                label: const Text('Вход'),
+                selected: !_isRegisterMode,
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+                onSelected: _busy
+                    ? null
+                    : (_) => setState(() => _isRegisterMode = false),
               ),
             ],
-            selected: {_isRegisterMode},
-            onSelectionChanged: (v) =>
-                setState(() => _isRegisterMode = v.first),
           ),
           const SizedBox(height: 14),
           SizedBox(
