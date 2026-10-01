@@ -410,3 +410,5 @@ app.include_router(reports_router)
 
 from .model_quality_api import router as model_quality_router
 app.include_router(model_quality_router)
+from .environment_api import router as environment_router
+app.include_router(environment_router)

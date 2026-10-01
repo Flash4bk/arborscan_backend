@@ -19,6 +19,7 @@ from fastapi.concurrency import run_in_threadpool
 from .corrections_api import current_user, _config, _uuid, MAX_IMAGE, MAX_PIXELS
 from .correction_workflow import WorkflowStore
 from .reference_geometry import reference_geometry
+from .environment_snapshot import validate_environment
 
 router = APIRouter(prefix='/v4/reports', tags=['private report history'])
 
@@ -38,7 +39,7 @@ def validate_snapshot(raw, image):
             raise ValueError()
         if data.get('kind') not in ('v4','reference','legacy') or not isinstance(data.get('report'), dict):
             raise ValueError()
-        if data.get('change_source') not in ('analysis','reference','manual','legacy_import','contour_link'):
+        if data.get('change_source') not in ('analysis','reference','manual','legacy_import','contour_link','environment_edit'):
             raise ValueError()
         if not isinstance(data.get('captured_at'), str):
             raise ValueError()
@@ -98,10 +99,7 @@ def validate_snapshot(raw, image):
         images=report.get('images') or {}
         if not isinstance(images,dict): raise ValueError()
         if images.get('width') is not None and (images['width']!=width or images.get('height')!=height): raise ValueError()
-        for field in ('weather','soil','gps'):
-            envelope=(data.get('environment') or {}).get(field)
-            if envelope is not None and (not isinstance(envelope,dict) or 'value' not in envelope or not envelope.get('source') or not envelope.get('retrieved_at')):
-                raise ValueError()
+        validate_environment(data.get('environment'))
         return {**data,'image':{'sha256':digest,'width':width,'height':height,
                    'coordinates':'normalized_oriented_image','orientation':'exif_transpose',
                    'original_base64':base64.b64encode(image).decode()},
@@ -155,6 +153,10 @@ class ReportStore(WorkflowStore):
         summary={'kind':payload['kind'],'species':species or 'Вид не определён',
                  'height_m':report.get('height_m') or (report.get('measurements',{}).get('height') or {}).get('value_m'),
                  'captured_at':payload['captured_at']}
+        # Only new versions receive metadata. Existing snapshots/index entries
+        # remain immutable; no external lookup or inferred GPS during listing.
+        if (payload.get('environment') or {}).get('version') == 1:
+            summary['environment'] = payload['environment']
         row=self.request('POST','rpc/save_report_version',json={'p_owner':owner,'p_analysis':analysis,
             'p_version':version,'p_parent':parent,'p_payload':digest,'p_image':payload['image']['sha256'],
             'p_correction':payload.get('correction_id'),'p_summary':summary})
@@ -175,7 +177,7 @@ class ReportStore(WorkflowStore):
 @router.get('/capabilities')
 def capabilities(owner=Depends(current_user)):
     ReportStore().ready()
-    return {'history_version':1, 'reference_versions':[1,2], 'geometry_version':2}
+    return {'history_version':1, 'reference_versions':[1,2], 'geometry_version':2, 'environment_version':1}
 
 
 @router.post('')
