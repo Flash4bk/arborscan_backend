@@ -451,14 +451,15 @@ class _FeedbackPageState extends State<FeedbackPage> {
               context,
               child: Column(
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
                       Ui.badge(
                         text: paramsOk ? 'Ок' : 'Изменено',
                         color: paramsOk ? AppTheme.success : AppTheme.warning,
                         icon: paramsOk ? Icons.check_circle : Icons.tune,
                       ),
-                      const Spacer(),
                       Text(
                         'Масштаб: ${_userScale?.toStringAsFixed(6) ?? '—'}',
                         style: Theme.of(context)
@@ -572,6 +573,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
       decoration: InputDecoration(
         labelText: label,
         hintText: '—',
+        errorMaxLines: 4,
       ),
       validator: (value) => _validateRange(
         value,

@@ -51,7 +51,12 @@ class MainActivity : FlutterActivity() {
         if (resultCode == Activity.RESULT_OK) {
             callback.success(data?.getStringExtra(ArMeasureActivity.EXTRA_RESULT_JSON))
         } else {
-            callback.success(null)
+            val message = data?.getStringExtra(ArMeasureActivity.EXTRA_ERROR_MESSAGE)
+            if (message != null) {
+                callback.error("ar_unavailable", message, null)
+            } else {
+                callback.success(null)
+            }
         }
     }
 }

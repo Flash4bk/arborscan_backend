@@ -47,6 +47,7 @@ class ArMeasureActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_RESULT_JSON = "result_json"
+        const val EXTRA_ERROR_MESSAGE = "ar_error_message"
 
         private const val DBH_HEIGHT_M = 1.30
         private const val DBH_HEIGHT_TOLERANCE_M = 0.12
@@ -146,6 +147,7 @@ class ArMeasureActivity : AppCompatActivity() {
     private var lastCameraPosition: ArGeometry.Vec3? = null
     private var lastCameraTimestampNs: Long? = null
     private var smoothedCameraSpeedMps = 0.0
+    private var availabilityFailureHandled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,6 +161,18 @@ class ArMeasureActivity : AppCompatActivity() {
         btnPlace = findViewById(R.id.btnPlace)
         btnUndo = findViewById(R.id.btnUndo)
 
+        // Sceneform otherwise leaves a non-functional measurement screen after
+        // a failed Session constructor and only shows a short library Toast.
+        arFragment.setOnArUnavailableListener { exception ->
+            if (!availabilityFailureHandled && !isFinishing && !isDestroyed) {
+                availabilityFailureHandled = true
+                Log.w("ArMeasureActivity", "AR unavailable: ${exception.javaClass.simpleName}")
+                val message = ArAvailabilityFailure.message(exception)
+                val data = message?.let { Intent().putExtra(EXTRA_ERROR_MESSAGE, it) }
+                setResult(Activity.RESULT_CANCELED, data)
+                finish()
+            }
+        }
         arFragment.arSceneView.scene.addOnUpdateListener(this::onSceneUpdate)
         arFragment.setOnTapArPlaneListener { _, _, _ -> }
 

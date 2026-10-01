@@ -208,6 +208,8 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                           decoration: const InputDecoration(
                               labelText: 'Научное название')),
                       DropdownButton<String>(
+                          isExpanded: true,
+                          itemHeight: null,
                           value: rank,
                           items: const [
                             DropdownMenuItem(
@@ -217,10 +219,15 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                           ],
                           onChanged: (v) => set(() => rank = v!)),
                       DropdownButton<String>(
+                          isExpanded: true,
+                          itemHeight: null,
                           value: authority,
                           items: ['GBIF', 'POWO', 'manual_reference']
-                              .map((s) =>
-                                  DropdownMenuItem(value: s, child: Text(s)))
+                              .map((s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text(s == 'manual_reference'
+                                      ? 'Ручной справочник'
+                                      : s)))
                               .toList(),
                           onChanged: (v) => set(() => authority = v!)),
                       TextField(
@@ -344,6 +351,8 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                     child: const Text('Откатить к исходной модели')),
             ],
           DropdownButton<String>(
+              isExpanded: true,
+              itemHeight: null,
               value: _kind,
               items: const [
                 DropdownMenuItem(

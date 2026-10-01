@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -114,6 +114,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
           ),
         ),
       );
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message ?? 'AR сейчас недоступен на устройстве.');
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = 'AR-измерение не завершено: $e');
