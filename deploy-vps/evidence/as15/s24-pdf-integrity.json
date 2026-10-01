@@ -1,0 +1,18 @@
+{
+  "version": "1.2.0-redesign.ad15870+7",
+  "record": "DEMO-AS12",
+  "report_version": "old",
+  "file": "s24-code7-old.pdf",
+  "saved_phone_path": "/sdcard/Download/AS15-S24-code7-old.pdf",
+  "pages": 3,
+  "bytes": 39949,
+  "sha256": "dfdf1131d5d4ae8425d686177ed16bfcc15d1e91d14e10dbb2f0002e81ed87c1",
+  "rendered_with": "Poppler pdftoppm -png -r 96",
+  "all_pages_visually_checked": true,
+  "live_crown_height_m": 2.1,
+  "tree_height": "not available",
+  "dbh": "not available",
+  "annotation": "not available",
+  "synthetic_photo": true,
+  "system_save_cancel_open_share_cancel": true
+}

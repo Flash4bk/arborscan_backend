@@ -1,0 +1,11 @@
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: FATAL EXCEPTION: main
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: Process: com.example.arborscan_app, PID: 10993
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: java.lang.NoSuchMethodError: No virtual method acquireEnvironmentalHdrCubeMap()[Lcom/google/ar/core/ArImage; in class Lcom/google/ar/core/LightEstimate; or its super classes
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at com.gorisse.thomas.sceneform.light.LightEstimationKt.environmentalHdrEnvironmentLights(LightEstimation.kt:394)
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at com.gorisse.thomas.sceneform.light.LightEstimationKt.environmentLightsEstimate(LightEstimation.kt:225)
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at com.google.ar.sceneform.ArSceneView.onBeginFrame(ArSceneView.java:527)
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at com.google.ar.sceneform.SceneView.doFrameNoRepost(SceneView.java:466)
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at com.google.ar.sceneform.SceneView.doFrame(SceneView.java:450)
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at com.google.ar.sceneform.ArSceneView.doFrame(ArSceneView.java:552)
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at android.view.Choreographer$CallbackRecord.run(Choreographer.java:1959)
+10-01 20:30:59.490 10993 10993 E AndroidRuntime: 	at android.view.Choreographer$CallbackRecord.run(Choreographer.java:1970)

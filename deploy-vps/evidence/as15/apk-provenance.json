@@ -1,19 +1,67 @@
 {
-  "code_commit": "b34488f453356e25a83d2ddac66e7e7c0e153b11",
+  "code_commit": "ad15870d013e1a9f1d2f684c659c26454271a3d1",
   "application_id": "com.example.arborscan_app",
-  "version_name": "1.2.0-redesign.b34488f",
-  "version_code": 6,
-  "apk_sha256": "98e471f0dcc5b6708891fbd875d4409dc854a2260221b199e3c72e4a7b47c110",
+  "version_name": "1.2.0-redesign.ad15870",
+  "version_code": 7,
+  "apk_sha256": "19b1c6b10c74fbe86de48f2c999b8547304d86a91fc4fea70b1ae0cf542ec5f2",
   "apk_size_bytes": 214292502,
   "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
-  "flutter_tests_passed": 81,
-  "android_app_tests_passed": 5,
-  "emulator_install": "Success, adb install --no-streaming -r",
-  "emulator_cold_launch": {
-    "status": "ok",
-    "total_time_ms": 9415
+  "flutter_tests": {
+    "passed": 81,
+    "code_commit": "b34488f453356e25a83d2ddac66e7e7c0e153b11",
+    "dart_changed_since": false
   },
-  "s24_final_install": "not performed: device absent from adb",
-  "s24_last_confirmed_install": "1.2.0-redesign.caa65c8, versionCode 4",
-  "server_database_changes": false
+  "analyzer": {
+    "errors": 0,
+    "warnings": 6,
+    "info": 67,
+    "new_categories": 0,
+    "code_commit": "b34488f"
+  },
+  "android_app_tests": {
+    "passed": 5,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "code_commit": "ad15870"
+  },
+  "s24_install": "Success, adb install --no-streaming -r",
+  "s24_cold_launch": {
+    "status": "ok",
+    "total_time_ms": 1724
+  },
+  "s24_install_preservation": {
+    "before_files": 37,
+    "after_files": 37,
+    "removed": 0,
+    "added": 0,
+    "changed": 0
+  },
+  "s24_after_force_stop": {
+    "status": "ok",
+    "total_time_ms": 1160,
+    "history_old_demo_reopened": true
+  },
+  "s24_ar": {
+    "camera_rendered": true,
+    "plane_and_marker_observed": true,
+    "step2_observed": true,
+    "tracking_loss_reset": true,
+    "reopen_and_home_return": true,
+    "hot_return_ms": 269,
+    "accuracy_validated": false,
+    "environment": "indoor floor"
+  },
+  "s24_profile_font_scale2": {
+    "admin_action_visible": true,
+    "admin_page_opened": true,
+    "guest_registration_tested": false
+  },
+  "settings_restored": {
+    "font_scale": 1.0,
+    "stay_on_while_plugged_in": 0
+  },
+  "emulator_previous_version": "b34488f+6: service unavailable/install cancellation/registration font tests",
+  "server_database_changes": false,
+  "user_visual_acceptance": false
 }
