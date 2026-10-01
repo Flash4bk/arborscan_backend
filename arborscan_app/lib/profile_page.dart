@@ -634,28 +634,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Мобильная оценка состояния и риска повреждения деревьев',
+                  'Фото, измерения и история обследований',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppTheme.muted,
                       ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    Ui.badge(
-                      text: 'Версия $_appVersion',
-                      color: AppTheme.primary,
-                      icon: Icons.info_outline,
-                    ),
-                    Ui.badge(
-                      text: _serverOnline ? 'Сервер' : 'Локально',
-                      color:
-                          _serverOnline ? AppTheme.success : AppTheme.warning,
-                      icon: _serverOnline ? Icons.cloud_done : Icons.storage,
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -673,41 +655,55 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildDeveloperCard(BuildContext context) {
-    return Ui.paddedCard(
-      context,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.support_agent, color: AppTheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Связь с разработчиком',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 6),
-                SelectableText(
-                  _developerEmail,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: _openDeveloperEmail,
-                  icon: const Icon(Icons.email_outlined),
-                  label: const Text('Написать разработчику'),
-                ),
+  void _showRecoveryHelp() {
+    showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Восстановление доступа'),
+              content: const SingleChildScrollView(
+                  child: Text(
+                      'Если вы входили через Google, используйте тот же аккаунт Google. '
+                      'Для входа по почте автоматический сброс пароля пока недоступен на сервере. '
+                      'Обратитесь к разработчику и укажите почту профиля. Пароль присылать не нужно. '
+                      'Новую учётную запись вместо прежней создавать не требуется.')),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Закрыть')),
+                TextButton.icon(
+                    onPressed: _openDeveloperEmail,
+                    icon: const Icon(Icons.email_outlined),
+                    label: const Text('Связаться')),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
+            ));
   }
+
+  Widget _buildDeveloperCard(BuildContext context) => Card(
+          child: Column(children: [
+        ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Как пользоваться'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const OnboardingPage()))),
+        const Divider(height: 1),
+        ExpansionTile(
+            leading: const Icon(Icons.support_agent),
+            title: const Text('Связь с разработчиком'),
+            children: [
+              Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SelectableText(_developerEmail),
+                        TextButton.icon(
+                            onPressed: _openDeveloperEmail,
+                            icon: const Icon(Icons.email_outlined),
+                            label: const Text('Написать разработчику')),
+                      ])),
+            ]),
+      ]));
 
   Widget _buildAuthCard(BuildContext context) {
     return Ui.paddedCard(
@@ -807,6 +803,10 @@ class _ProfilePageState extends State<ProfilePage> {
             obscureText: true,
             onSubmitted: (_) => _isRegisterMode ? _register() : _login(),
           ),
+          if (!_isRegisterMode)
+            TextButton(
+                onPressed: _busy ? null : _showRecoveryHelp,
+                child: const Text('Не помню пароль')),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
@@ -859,7 +859,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       MaterialPageRoute(
                           builder: (_) => const ModelQualityPage())),
               icon: const Icon(Icons.model_training),
-              label: const Text('Модели, данные и породы')),
+              label: const Text('Модели и данные')),
           const SizedBox(height: 8),
           OutlinedButton.icon(
               onPressed: _busy
@@ -894,122 +894,40 @@ class _ProfilePageState extends State<ProfilePage> {
             label: const Text('Очистить локальную сессию')),
       ]));
 
-  Widget _buildStatsCard(BuildContext context) {
-    final avgRiskText = _avgRisk == null ? '—' : _avgRisk!.toStringAsFixed(2);
-    final last = _lastAnalysis;
-    final lastSpecies = last?['species']?.toString() ?? '—';
-    final lastRisk = (last?['risk_index'] as num?)?.toDouble();
-    final lastRiskCategory = last?['risk_category']?.toString();
-
-    return Ui.paddedCard(
-      context,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.insights_outlined, color: AppTheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Мои анализы',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Обновить статистику',
-                onPressed: _loadStats,
-                icon: const Icon(Icons.refresh),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final twoCols = constraints.maxWidth > 430;
-              final cards = [
-                _statTile('Всего', _totalAnalyses.toString(),
-                    Icons.analytics_outlined),
-                _statTile('На карте', _geoAnalyses.toString(),
-                    Icons.location_on_outlined),
-                _statTile('Высокий риск', _highRiskAnalyses.toString(),
-                    Icons.warning_amber),
-                _statTile('Средний риск', avgRiskText, Icons.speed_outlined),
-              ];
-
-              if (twoCols) {
-                return GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 2.6,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: cards,
-                );
-              }
-
-              return Column(
-                children: [
-                  for (final c in cards) ...[
-                    c,
-                    const SizedBox(height: 8),
-                  ],
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.surface2,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.history, color: AppTheme.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: last == null
-                      ? const Text(
-                          'Пока нет серверных анализов.',
-                          style: TextStyle(
-                            color: AppTheme.muted,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Последний анализ: $lastSpecies',
-                              style: const TextStyle(
-                                color: AppTheme.text,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Риск: ${lastRisk?.toStringAsFixed(2) ?? '—'}'
-                              '${lastRiskCategory == null ? '' : ' · $lastRiskCategory'}',
-                              style: const TextStyle(
-                                color: AppTheme.muted,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildStatsCard(BuildContext context) => Ui.paddedCard(context,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(
+              child: Text('Мои анализы',
+                  style: Theme.of(context).textTheme.titleMedium)),
+          IconButton(
+              tooltip: 'Обновить статистику',
+              onPressed: _loadStats,
+              icon: const Icon(Icons.refresh)),
+        ]),
+        _statTile(
+            'В архиве анализов', '$_totalAnalyses', Icons.analytics_outlined),
+        const SizedBox(height: 8),
+        _statTile(
+            'С координатами', '$_geoAnalyses', Icons.location_on_outlined),
+        if (_lastAnalysis == null)
+          const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Пока нет серверных анализов.')),
+        if (_lastAnalysis != null)
+          Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                  'Последний анализ: ${_lastAnalysis!['species'] ?? 'Порода не определена'}')),
+        ExpansionTile(title: const Text('Исторические показатели'), children: [
+          const Text(
+              'Прежняя эвристическая оценка риска не подтверждает безопасность дерева. Эти числа относятся к архиву анализов.'),
+          _statTile(
+              'Высокая прежняя оценка', '$_highRiskAnalyses', Icons.history),
+          _statTile('Средняя прежняя оценка',
+              _avgRisk?.toStringAsFixed(2) ?? '—', Icons.history),
+        ]),
+      ]));
 
   Widget _statTile(String title, String value, IconData icon) {
     return Container(
@@ -1046,26 +964,24 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildInfoCard(BuildContext context) {
-    return Ui.paddedCard(
-      context,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildInfoCard(BuildContext context) => Card(
+          child: ExpansionTile(
+        title: const Text('О приложении и диагностика'),
+        childrenPadding: const EdgeInsets.all(16),
         children: [
-          Text('О приложении', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
-          _infoRow(Icons.analytics_outlined, 'AI-анализ',
-              'Параметры дерева и факторы риска.'),
-          _infoRow(Icons.view_in_ar_outlined, 'AR-измерения',
-              'Высота, крона и диаметр по 6 точкам.'),
+          _infoRow(Icons.info_outline, 'Версия', _appVersion),
+          _infoRow(Icons.analytics_outlined, 'Анализ фото',
+              'Контуры и предположение о породе. Подтверждение вида хранится отдельно.'),
+          _infoRow(Icons.view_in_ar_outlined, 'Измерения',
+              'AR и известный объект. Полевую точность необходимо проверять контрольными измерениями.'),
           _infoRow(Icons.map_outlined, 'Карта',
-              'GPS-точки анализов, спутник, 3D и Street View.'),
-          _infoRow(Icons.science_outlined, 'β-аналитика',
-              'Ветровая нагрузка и момент у основания.'),
+              'Обследования с сохранёнными координатами.'),
+          _infoRow(Icons.science_outlined, 'Ограничения',
+              'β в кг/с и научно подтверждённая устойчивость пока не рассчитываются.'),
+          const SelectableText(
+              'API v3: ${ApiConfig.baseUrl}\nAPI v4: ${ApiConfig.v4BaseUrl}'),
         ],
-      ),
-    );
-  }
+      ));
 
   Widget _infoRow(IconData icon, String title, String text) {
     return Padding(

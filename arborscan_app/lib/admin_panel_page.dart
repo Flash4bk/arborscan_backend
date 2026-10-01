@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
+import 'corrections_service.dart';
 
 import 'admin_service.dart';
 import 'training_dataset_page.dart';
@@ -19,8 +20,7 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   late final AdminService _service = AdminService(baseUrl: widget.baseUrl);
 
   bool _loading = true;
-  final bool _changingModel = false;
-  final bool _requestingTraining = false;
+  bool _invalid = false;
   String? _error;
   int? _errorStatusCode;
 
@@ -35,10 +35,32 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   @override
   void initState() {
     super.initState();
+    CorrectionsService.authChanges.addListener(_invalidate);
     _refresh();
   }
 
+  void _invalidate() {
+    if (!mounted) return;
+    setState(() {
+      _invalid = true;
+      _loading = false;
+      _identity = null;
+      _status = null;
+      _events = [];
+      _models = [];
+      _error = 'Аккаунт изменился. Откройте раздел заново.';
+    });
+  }
+
+  @override
+  void dispose() {
+    CorrectionsService.authChanges.removeListener(_invalidate);
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
+    if (_invalid) return;
+    final generation = CorrectionsService.authChanges.value;
     if (mounted) {
       setState(() {
         _loading = true;
@@ -49,6 +71,12 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
 
     try {
       final identity = await _service.verifyAdminAccess();
+      if (!mounted ||
+          _invalid ||
+          generation != CorrectionsService.authChanges.value) {
+        return;
+      }
+      setState(() => _identity = identity);
       final results = await Future.wait<dynamic>([
         _service.getTrainingStatus(),
         _service.getTrainingEvents(limit: 15),
@@ -68,7 +96,11 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
         selection = models.isNotEmpty ? models.first : null;
       }
 
-      if (!mounted) return;
+      if (!mounted ||
+          _invalid ||
+          generation != CorrectionsService.authChanges.value) {
+        return;
+      }
       setState(() {
         _identity = identity;
         _status = status;
@@ -78,14 +110,22 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
         _loading = false;
       });
     } on AdminApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted ||
+          _invalid ||
+          generation != CorrectionsService.authChanges.value) {
+        return;
+      }
       setState(() {
         _error = error.message;
         _errorStatusCode = error.statusCode;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted ||
+          _invalid ||
+          generation != CorrectionsService.authChanges.value) {
+        return;
+      }
       setState(() {
         _error = error.toString();
         _errorStatusCode = null;
@@ -99,171 +139,87 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
         context, MaterialPageRoute(builder: (_) => const ModelQualityPage()));
   }
 
-  Future<void> _requestTraining() => _setActive();
-
   @override
   Widget build(BuildContext context) {
+    final canOpen = !_invalid && _identity != null && !_accessDenied;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Администрирование'),
-        bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(48),
-            child: TextButton.icon(
-              icon: const Icon(Icons.fact_check_outlined),
-              label: const Text('Проверка контуров'),
-              onPressed: _accessDenied
-                  ? null
-                  : () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) =>
-                          const SavedCorrectionsPage(adminQueue: true))),
-            )),
-        actions: [
-          IconButton(
+      appBar: AppBar(title: const Text('Администрирование'), actions: [
+        IconButton(
             tooltip: 'Обновить данные',
             icon: const Icon(Icons.refresh),
-            onPressed: _loading ? null : _refresh,
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _accessDenied
-              ? _AccessDeniedView(
-                  message: _error ?? 'Нет доступа.',
-                  statusCode: _errorStatusCode,
-                  onRetry: _refresh,
-                )
-              : RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
+            onPressed: _loading || _invalid ? null : _refresh),
+      ]),
+      body: _accessDenied
+          ? _AccessDeniedView(
+              message: _error ?? 'Нет доступа.',
+              statusCode: _errorStatusCode,
+              onRetry: _refresh)
+          : AppContentList(children: [
+              if (_loading) const LinearProgressIndicator(),
+              if (_error != null) _ErrorBanner(message: _error!),
+              if (_identity != null) _AdminIdentityBlock(identity: _identity!),
+              if (!_invalid) ...[
+                Card(
+                    child: ListTile(
+                  leading: const Icon(Icons.fact_check_outlined),
+                  title: const Text('Проверка контуров'),
+                  subtitle: const Text('Фото, ревизии и решения'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: canOpen
+                      ? () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  const SavedCorrectionsPage(adminQueue: true)))
+                      : null,
+                )),
+                Card(
+                    child: ListTile(
+                  leading: const Icon(Icons.layers_outlined),
+                  title: const Text('Модели и данные'),
+                  subtitle: const Text('Контуры, породы и снимки наборов'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: canOpen ? _setActive : null,
+                )),
+                ExpansionTile(
+                    title: const Text('Архив v3'),
+                    subtitle: const Text('Прежние данные и события'),
                     children: [
-                      if (_error != null) ...[
-                        _ErrorBanner(message: _error!),
-                        const SizedBox(height: 12),
-                      ],
-                      if (_identity != null) ...[
+                      _Card(
+                          title: 'Архивный статус обучения',
+                          child: _StatusBlock(status: _status)),
+                      if (_models.isNotEmpty)
                         _Card(
-                          title: 'Подтверждённый доступ',
-                          child: _AdminIdentityBlock(identity: _identity!),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      _Card(
-                        title: 'Архивный статус обучения v3',
-                        child: _StatusBlock(status: _status),
-                      ),
-                      const SizedBox(height: 16),
-                      _Card(
-                        title: 'Архив моделей v3',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            DropdownButtonFormField<int>(
-                              value: (_selectedVersion != null &&
-                                      _models.contains(_selectedVersion))
-                                  ? _selectedVersion
-                                  : null,
+                            title: 'Прежние версии моделей',
+                            child: DropdownButtonFormField<int>(
+                              initialValue: _selectedVersion,
+                              isExpanded: true,
                               items: _models
-                                  .map(
-                                    (v) => DropdownMenuItem<int>(
-                                      value: v,
-                                      child: Text('Версия $v'),
-                                    ),
-                                  )
+                                  .map((v) => DropdownMenuItem(
+                                      value: v, child: Text('Версия $v')))
                                   .toList(),
-                              decoration: const InputDecoration(
-                                labelText: 'Версия модели',
-                                border: OutlineInputBorder(),
-                              ),
-                              onChanged: _changingModel
-                                  ? null
-                                  : (v) => setState(() => _selectedVersion = v),
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: _models.isEmpty ||
-                                      _selectedVersion == null ||
-                                      _changingModel
-                                  ? null
-                                  : _setActive,
-                              icon: _changingModel
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.swap_horiz),
-                              label: const Text(
-                                'Открыть реестр моделей v4',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(48),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _Card(
-                        title: 'Обучение',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'Обучение v4 выполняется в новом разделе по зафиксированным снимкам и явным решениям модерации.',
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed:
-                                  _requestingTraining ? null : _requestTraining,
-                              icon: _requestingTraining
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.play_arrow),
-                              label: Text(
-                                _requestingTraining
-                                    ? 'Отправка...'
-                                    : 'Запросить обучение',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(48),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.of(context).push(
+                              onChanged: (v) =>
+                                  setState(() => _selectedVersion = v),
+                            )),
+                      ListTile(
+                          leading: const Icon(Icons.inventory_2_outlined),
+                          title: const Text('Архив примеров'),
+                          subtitle: const Text(
+                              'Архивный флаг не допускает запись к новому обучению'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: canOpen
+                              ? () => Navigator.push(
+                                  context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        TrainingDatasetPage(service: _service),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.dataset_outlined),
-                              label: const Text(
-                                  'Датасет для последующего обучения'),
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(48),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+                                      builder: (_) => TrainingDatasetPage(
+                                          service: _service)))
+                              : null),
                       _Card(
-                        title: 'Лог обучения',
-                        child: _TrainingLog(events: _events),
-                      ),
-                    ],
-                  ),
-                ),
+                          title: 'События архива',
+                          child: _TrainingLog(events: _events)),
+                    ]),
+              ],
+            ]),
     );
   }
 }
@@ -487,7 +443,7 @@ class _TrainingLog extends StatelessWidget {
   Widget build(BuildContext context) {
     if (events.isEmpty) {
       return const Text(
-        'События пока отсутствуют (или endpoint /admin/training-events ещё не развёрнут).',
+        'Архивные события пока недоступны.',
       );
     }
 

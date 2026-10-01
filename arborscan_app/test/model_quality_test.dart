@@ -65,15 +65,19 @@ void main() {
     await tester
         .pumpWidget(MaterialApp(home: ModelQualityPage(service: service)));
     await tester.pumpAndSettle();
-    expect(find.text('Задача: running'), findsOneWidget);
+    await tester.tap(find.text('Модели'));
+    await tester.pumpAndSettle();
+    expect(find.text('Задача: Выполняется'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester
         .pumpWidget(MaterialApp(home: ModelQualityPage(service: service)));
     await tester.pumpAndSettle();
-    expect(find.text('Задача: running'), findsOneWidget);
+    await tester.tap(find.text('Модели'));
+    await tester.pumpAndSettle();
+    expect(find.text('Задача: Выполняется'), findsOneWidget);
     CorrectionsService.authChanges.value++;
     await tester.pump();
-    expect(find.text('Задача: running'), findsNothing);
+    expect(find.text('Задача: Выполняется'), findsNothing);
     expect(find.text('Аккаунт изменился.'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
@@ -88,9 +92,23 @@ void main() {
     await tester
         .pumpWidget(MaterialApp(home: ModelQualityPage(service: service)));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Снимок test-date'), 180);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Снимок test-date'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Снимок test-date'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Запустить пробное обучение'));
+    for (var i = 0;
+        i < 20 &&
+            find
+                .text('Запустить пробное обучение')
+                .hitTestable()
+                .evaluate()
+                .isEmpty;
+        i++) {
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -160));
+      await tester.pumpAndSettle();
+    }
     await tester.tap(find.text('Запустить пробное обучение'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));

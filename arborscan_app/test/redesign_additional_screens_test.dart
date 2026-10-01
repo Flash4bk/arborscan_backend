@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:arborscan_app/data_presentation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -141,7 +142,11 @@ void main() {
         200));
     await tester.pumpAndSettle();
     expect(tester.widget<IconButton>(refresh).onPressed, isNotNull);
-    await _reach(tester, find.text('Допущено: 0. Исключено: 0.'));
+    await _reach(tester, find.byType(DatasetSummaryCard));
+    final summary =
+        tester.widget<DatasetSummaryCard>(find.byType(DatasetSummaryCard));
+    expect(summary.included, 0);
+    expect(summary.excluded, 0);
     expect(find.text('Запустить пробное обучение'), findsNothing);
     expect(find.text('Активировать после просмотра'), findsNothing);
     await _snapshot(tester, 'models-empty-160');

@@ -1,4 +1,6 @@
 import 'app_theme.dart';
+import 'data_presentation.dart';
+import 'dart:typed_data';
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -20,6 +22,7 @@ class ModelQualityPage extends StatefulWidget {
 class _ModelQualityPageState extends State<ModelQualityPage> {
   late final _service = widget.service ?? ModelQualityService();
   String _kind = 'segmentation';
+  String _tab = 'data', _filter = 'all';
   String? _token, _owner, _error;
   bool _busy = true, _invalid = false;
   Map<String, dynamic>? _status, _data;
@@ -90,7 +93,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = 'ML-сервис: $e');
+      if (mounted && !_invalid) setState(() => _error = 'Сервис моделей: $e');
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -297,11 +300,80 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
     await _clearOperation(name);
   }
 
+  List<Map<String, dynamic>> get _visibleRows {
+    final included = (_data?['eligible'] as List? ?? []);
+    final excluded = (_data?['excluded'] as List? ?? []);
+    final all = [...included, ...excluded];
+    return [
+      for (var i = 0; i < all.length; i++)
+        if (_filter == 'all' ||
+            (_filter == 'eligible'
+                ? i < included.length
+                : i >= included.length))
+          {
+            ...Map<String, dynamic>.from(all[i] as Map),
+            '_eligible': i < included.length,
+            '_ordinal': i + 1
+          }
+    ];
+  }
+
+  Widget _revisionTile(Map<String, dynamic> r) => DataRevisionTile(
+        key: ValueKey('${r['owner_id']}/${r['correction_id']}'),
+        title: r['label']?['russian_name']?.toString() ??
+            r['label']?['scientific_name']?.toString() ??
+            'Контур ${r['_ordinal']}',
+        eligible: r['_eligible'] == true,
+        reason: r['reason'] as String?,
+        loadImage: () async {
+          if (_invalid || _token == null) return null;
+          final record = await _service.request(
+              _token!,
+              http.Request(
+                  'GET',
+                  ApiConfig.v4(
+                      '/v4/corrections/workflow/review/${Uri.encodeComponent(r['owner_id'].toString())}/${Uri.encodeComponent(r['correction_id'].toString())}')));
+          if (_invalid || !mounted) return null;
+          final encoded = record['original_image_base64'];
+          return encoded is String
+              ? Uint8List.fromList(base64Decode(encoded))
+              : null;
+        },
+        details: [
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => SavedCorrectionsPage(
+                                correctionId: r['correction_id'],
+                                reviewOwner: r['owner_id']))),
+                icon: const Icon(Icons.layers_outlined),
+                label: const Text('Фото и модерация')),
+            TextButton.icon(
+                onPressed: _busy ? null : () => _run(() => _confirmLabel(r)),
+                icon: const Icon(Icons.park_outlined),
+                label: const Text('Подтвердить породу')),
+          ]),
+          ExpansionTile(title: const Text('Подробности ревизии'), children: [
+            SelectableText(
+                'Ревизия: ${r['correction_id']}\nАнализ: ${r['analysis_id']}'),
+            if (r['reason'] != null)
+              SelectableText('Код причины: ${r['reason']}'),
+            if (r['fidelity'] != null)
+              SelectableText(
+                  'Сохранность маски при экспорте: ${r['fidelity']}'),
+          ]),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Модели и качество'), actions: [
+      appBar: AppBar(title: const Text('Модели и данные'), actions: [
         IconButton(
-            tooltip: 'Обновить модели и качество',
+            tooltip: 'Обновить модели и данные',
             onPressed: _busy ? null : () => _run(() async {}),
             icon: const Icon(Icons.refresh))
       ]),
@@ -309,253 +381,306 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
         if (_busy) const LinearProgressIndicator(),
         if (_error != null) Text(_error!),
         if (!_invalid) ...[
-          const Text(
-              'Сегментация и классификация обучаются раздельно. Завершение задачи не включает модель в production.'),
-          if (_status != null)
-            Text(_status!['worker']?['online'] == true
-                ? 'Worker доступен (CPU).'
-                : 'Worker недоступен; прогресс сейчас не подтверждён.'),
-          for (final a in (_status?['active'] as List? ?? []))
-            if (a['model_type'] == 'segmentation') ...[
-              Text(
-                  'Активная сегментация: ${a['model_id'] ?? 'исходная модель'}. Версия реестра: ${a['generation']}'),
-              if (a['model_id'] != null)
-                OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(() async {
-                              final ok = await _accountDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                          title: const Text(
-                                              'Откат к исходной модели?'),
-                                          content: const Text(
-                                              'Новые запросы будут использовать исходные веса. Сохранённые отчёты останутся прежними.'),
-                                          actions: [
-                                            TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(c, false),
-                                                child: const Text('Отмена')),
-                                            TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(c, true),
-                                                child: const Text('Откатить'))
-                                          ]));
-                              if (ok == true) {
-                                await _request('/activate', body: {
-                                  'model_id': null,
-                                  'expected_generation': a['generation']
-                                });
-                              }
-                            }),
-                    child: const Text('Откатить к исходной модели')),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'data', label: Text('Данные')),
+              ButtonSegment(value: 'models', label: Text('Модели'))
             ],
-          DropdownButton<String>(
-              isExpanded: true,
-              itemHeight: null,
-              value: _kind,
-              items: const [
-                DropdownMenuItem(
-                    value: 'segmentation', child: Text('Сегментация: дерево')),
-                DropdownMenuItem(
-                    value: 'classification',
-                    child: Text('Локальная классификация: эксперимент'))
-              ],
-              onChanged: _busy
-                  ? null
-                  : (v) => _run(() async {
-                        _kind = v!;
-                      })),
-          if (_kind == 'classification')
-            const Text(
-                'Pl@ntNet остаётся внешним распознавателем. Эта задача обучает отдельного локального кандидата, а не Pl@ntNet.'),
-          Text(
-              'Допущено: ${(_data?['eligible'] as List?)?.length ?? 0}. Исключено: ${(_data?['excluded'] as List?)?.length ?? 0}.'),
-          const Text(
-              'Старый каталог verified сам по себе не доказывает подтверждение. Такие записи вне выборки до явной модерации.'),
-          for (final r in [...?_data?['eligible'], ...?_data?['excluded']])
-            ExpansionTile(
-                title: Text(r['reason'] ?? 'Допущено к $_kind'),
-                subtitle: Text('${r['analysis_id']}'),
+            selected: {_tab},
+            onSelectionChanged: (value) => setState(() => _tab = value.first),
+          ),
+          if (_tab == 'models') ...[
+            const ExpansionTile(
+                title: Text('Как устроено обучение'),
                 children: [
+                  Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text(
+                          'Сегментация и классификация обучаются раздельно. Завершение задачи не включает модель в production.'))
+                ]),
+            if (_status != null)
+              Text(_status!['worker']?['online'] == true
+                  ? 'Вычислитель доступен (CPU).'
+                  : 'Вычислитель недоступен; прогресс сейчас не подтверждён.'),
+            for (final a in (_status?['active'] as List? ?? []))
+              if (a['model_type'] == 'segmentation') ...[
+                Text(
+                    'Активная сегментация: ${a['model_id'] ?? 'исходная модель'}. Версия реестра: ${a['generation']}'),
+                if (a['model_id'] != null)
                   OutlinedButton(
                       onPressed: _busy
                           ? null
-                          : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => SavedCorrectionsPage(
-                                      correctionId: r['correction_id'],
-                                      reviewOwner: r['owner_id']))),
-                      child: const Text('Оригинал, маска и модерация')),
-                  OutlinedButton(
-                      onPressed:
-                          _busy ? null : () => _run(() => _confirmLabel(r)),
-                      child: const Text('Исправить / подтвердить породу')),
-                  if (r['fidelity'] != null)
-                    Text('Потери преобразования маски: ${r['fidelity']}'),
-                ]),
-          FilledButton(
-              onPressed: _busy
-                  ? null
-                  : () => _run(() async {
-                        final name = 'snapshot-$_kind';
-                        await _request('/snapshots', body: {
-                          'operation_id': await _operation(name),
-                          'model_type': _kind
-                        });
-                        await _clearOperation(name);
-                      }),
-              child: const Text('Создать зафиксированный снимок')),
-          for (final s in (_status?['snapshots'] as List? ?? []))
-            if (s['model_type'] == _kind)
-              ExpansionTile(
-                  title: Text('Снимок ${s['created_at']}'),
-                  subtitle: Text(
-                      'Примеров: ${(s['manifest']['items'] as List).length}'),
-                  children: [
-                    SelectableText(const JsonEncoder.withIndent('  ')
-                        .convert(s['manifest'])),
-                    FilledButton(
-                        onPressed: _busy ||
-                                s['manifest']['training_ready'] != true
-                            ? null
-                            : () => _run(() async {
-                                  var imageSize = 320;
-                                  final approved = await _accountDialog<bool>(
-                                      context: context,
-                                      builder: (c) => StatefulBuilder(
-                                          builder: (c, setDialog) =>
-                                              AlertDialog(
-                                                  title: const Text(
-                                                      'Пробная задача'),
-                                                  content: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        const Text(
-                                                            '1 эпоха, CPU, batch 1, лимит 30 минут. Это не доказательство улучшения. Текущая модель останется прежней. При потере тонких деталей можно выбрать 640 px; это требует больше ресурсов.'),
-                                                        DropdownButton<int>(
-                                                            value: imageSize,
-                                                            items: const [
-                                                              DropdownMenuItem(
-                                                                  value: 320,
-                                                                  child: Text(
-                                                                      '320 px')),
-                                                              DropdownMenuItem(
-                                                                  value: 640,
-                                                                  child: Text(
-                                                                      '640 px'))
-                                                            ],
-                                                            onChanged: (v) =>
-                                                                setDialog(() =>
-                                                                    imageSize =
-                                                                        v!)),
-                                                      ]),
-                                                  actions: [
-                                                    TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                                c, false),
-                                                        child: const Text(
-                                                            'Отмена')),
-                                                    FilledButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                                c, true),
-                                                        child: const Text(
-                                                            'Запустить'))
-                                                  ])));
-                                  if (approved != true) return;
-                                  final name = 'job-${s['id']}-$imageSize';
-                                  await _request('/jobs', body: {
-                                    'operation_id': await _operation(name),
-                                    'snapshot_id': s['id'],
-                                    'epochs': 1,
-                                    'imgsz': imageSize
+                          : () => _run(() async {
+                                final ok = await _accountDialog<bool>(
+                                    context: context,
+                                    builder: (c) => AlertDialog(
+                                            title: const Text(
+                                                'Откат к исходной модели?'),
+                                            content: const Text(
+                                                'Новые запросы будут использовать исходные веса. Сохранённые отчёты останутся прежними.'),
+                                            actions: [
+                                              TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(c, false),
+                                                  child: const Text('Отмена')),
+                                              TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(c, true),
+                                                  child: const Text('Откатить'))
+                                            ]));
+                                if (ok == true) {
+                                  await _request('/activate', body: {
+                                    'model_id': null,
+                                    'expected_generation': a['generation']
                                   });
-                                  await _clearOperation(name);
-                                }),
-                        child: const Text('Запустить пробное обучение')),
-                    if (s['manifest']['training_ready'] != true)
-                      const Text(
-                          'Недостаточно независимых групп для train / validation / test.'),
-                  ]),
-          for (final j in (_status?['jobs'] as List? ?? []))
-            Card(
-                child: ListTile(
-                    title: Text('Задача: ${j['state']}'),
-                    subtitle: Text('${j['progress']}'),
-                    trailing: ['queued', 'running', 'cancel_requested']
-                            .contains(j['state'])
-                        ? TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () => _run(() async {
-                                      await _request('/jobs/${j['id']}/cancel',
-                                          body: {});
-                                    }),
-                            child: const Text('Отменить'))
-                        : null)),
-          for (final m in (_status?['models'] as List? ?? []))
+                                }
+                              }),
+                      child: const Text('Откатить к исходной модели')),
+              ],
+          ],
+          if (_tab == 'data') ...[
+            DropdownButton<String>(
+                isExpanded: true,
+                itemHeight: null,
+                value: _kind,
+                items: const [
+                  DropdownMenuItem(
+                      value: 'segmentation', child: Text('Контуры')),
+                  DropdownMenuItem(
+                      value: 'classification',
+                      child: Text('Породы · эксперимент'))
+                ],
+                onChanged: _busy
+                    ? null
+                    : (v) => _run(() async {
+                          _kind = v!;
+                        })),
+            if (_kind == 'classification')
+              const Text(
+                  'Pl@ntNet остаётся внешним распознавателем. Эта задача обучает отдельного локального кандидата, а не Pl@ntNet.'),
+            if (_data != null) ...[
+              DatasetSummaryCard(
+                  included: (_data!['eligible'] as List? ?? []).length,
+                  excluded: (_data!['excluded'] as List? ?? []).length),
+              if (_data!['limit_reached'] == true)
+                Text(
+                    'Показаны последние ${_data!['selection_limit']} ревизий. Сводка относится к этой выборке.'),
+              Wrap(spacing: 8, runSpacing: 4, children: [
+                for (final f in const {
+                  'all': 'Все',
+                  'eligible': 'Допущены',
+                  'excluded': 'Исключены'
+                }.entries)
+                  ChoiceChip(
+                      label: Text(f.value),
+                      selected: _filter == f.key,
+                      onSelected: (_) => setState(() => _filter = f.key)),
+              ]),
+              if (_visibleRows.isEmpty)
+                const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text('В этой выборке пока нет записей.')),
+              for (final r in _visibleRows) _revisionTile(r),
+            ],
+            const ExpansionTile(title: Text('Условия допуска'), children: [
+              Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                      'Контур допускается после принятия конкретной ревизии. Для породы нужна отдельная подтверждённая метка вида. Старый каталог verified сам по себе не доказывает подтверждение. Принятие маски не подтверждает высоту, DBH или устойчивость дерева.'))
+            ]),
+            FilledButton(
+                onPressed: _busy ||
+                        _data == null ||
+                        (_data!['eligible'] as List? ?? []).isEmpty
+                    ? null
+                    : () => _run(() async {
+                          final name = 'snapshot-$_kind';
+                          await _request('/snapshots', body: {
+                            'operation_id': await _operation(name),
+                            'model_type': _kind
+                          });
+                          await _clearOperation(name);
+                        }),
+                child: const Text('Зафиксировать набор')),
             ExpansionTile(
-                title: Text('Кандидат ${m['model_type']}'),
+                title: const Text('Снимки данных'),
+                initiallyExpanded: true,
                 children: [
-                  SelectableText(const JsonEncoder.withIndent('  ')
-                      .convert(m['metadata'])),
-                  for (final key in [
-                    'baseline_val',
-                    'candidate_val',
-                    'baseline_test',
-                    'candidate_test'
-                  ])
-                    for (var i = 0;
-                        i <
-                            (m['metadata']['evaluation']?[key]?['cases']
-                                        as List? ??
-                                    [])
-                                .length;
-                        i++)
-                      TextButton(
-                          onPressed: _busy
-                              ? null
-                              : () => _run(() => _diagnostic(m['id'], key, i)),
-                          child: Text('Наложение $key · пример ${i + 1}')),
-                  if (m['metadata']['eligible_for_activation'] == true)
-                    FilledButton(
+                  for (final s in (_status?['snapshots'] as List? ?? []))
+                    if (s['model_type'] == _kind)
+                      ExpansionTile(
+                          title: Text('Снимок ${s['created_at']}'),
+                          subtitle: Text(
+                              'Примеров: ${(s['manifest']['items'] as List).length}'),
+                          children: [
+                            SelectableText(const JsonEncoder.withIndent('  ')
+                                .convert(s['manifest'])),
+                            FilledButton(
+                                onPressed:
+                                    _busy ||
+                                            s['manifest']['training_ready'] !=
+                                                true
+                                        ? null
+                                        : () => _run(() async {
+                                              var imageSize = 320;
+                                              final approved = await _accountDialog<
+                                                      bool>(
+                                                  context: context,
+                                                  builder: (c) =>
+                                                      StatefulBuilder(
+                                                          builder: (c,
+                                                                  setDialog) =>
+                                                              AlertDialog(
+                                                                  title: const Text(
+                                                                      'Пробная задача'),
+                                                                  content: Column(
+                                                                      mainAxisSize:
+                                                                          MainAxisSize
+                                                                              .min,
+                                                                      children: [
+                                                                        const Text(
+                                                                            '1 эпоха, CPU, batch 1, лимит 30 минут. Это не доказательство улучшения. Текущая модель останется прежней. При потере тонких деталей можно выбрать 640 px; это требует больше ресурсов.'),
+                                                                        DropdownButton<
+                                                                                int>(
+                                                                            value:
+                                                                                imageSize,
+                                                                            items: const [
+                                                                              DropdownMenuItem(value: 320, child: Text('320 px')),
+                                                                              DropdownMenuItem(value: 640, child: Text('640 px'))
+                                                                            ],
+                                                                            onChanged: (v) =>
+                                                                                setDialog(() => imageSize = v!)),
+                                                                      ]),
+                                                                  actions: [
+                                                                    TextButton(
+                                                                        onPressed: () => Navigator.pop(
+                                                                            c,
+                                                                            false),
+                                                                        child: const Text(
+                                                                            'Отмена')),
+                                                                    FilledButton(
+                                                                        onPressed: () => Navigator.pop(
+                                                                            c,
+                                                                            true),
+                                                                        child: const Text(
+                                                                            'Запустить'))
+                                                                  ])));
+                                              if (approved != true) return;
+                                              final name =
+                                                  'job-${s['id']}-$imageSize';
+                                              await _request('/jobs', body: {
+                                                'operation_id':
+                                                    await _operation(name),
+                                                'snapshot_id': s['id'],
+                                                'epochs': 1,
+                                                'imgsz': imageSize
+                                              });
+                                              await _clearOperation(name);
+                                            }),
+                                child:
+                                    const Text('Запустить пробное обучение')),
+                            if (s['manifest']['training_ready'] != true)
+                              const Text(
+                                  'Недостаточно независимых групп для train / validation / test.'),
+                          ]),
+                ]),
+          ],
+          if (_tab == 'models') ...[
+            if ((_status?['jobs'] as List? ?? []).isEmpty &&
+                (_status?['models'] as List? ?? []).isEmpty)
+              const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text('Задач и кандидатов пока нет.')),
+            for (final j in (_status?['jobs'] as List? ?? []))
+              Card(
+                  child: ExpansionTile(
+                title: Text('Задача: ${modelJobLabel(j['state'] as String?)}'),
+                subtitle: Text(j['progress']?['completed_epochs'] != null
+                    ? 'Завершено эпох: ${j['progress']['completed_epochs']}'
+                    : 'Прогресс ещё не получен'),
+                children: [
+                  SelectableText(
+                      'Код статуса: ${j['state']}\nЗадача: ${j['id']}\n${j['progress'] ?? ''}'),
+                  if (j['error'] != null)
+                    SelectableText('Причина: ${j['error']}'),
+                  if (['queued', 'running', 'cancel_requested']
+                      .contains(j['state']))
+                    TextButton(
                         onPressed: _busy
                             ? null
                             : () => _run(() async {
-                                  final ok = await _accountDialog<bool>(
-                                      context: context,
-                                      builder: (c) => AlertDialog(
-                                              title: const Text(
-                                                  'Изменить production-модель?'),
-                                              content: const Text(
-                                                  'Это отдельное переключение после просмотра метрик. Старые отчёты не пересчитываются.'),
-                                              actions: [
-                                                TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(c, false),
-                                                    child:
-                                                        const Text('Отмена')),
-                                                TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(c, true),
-                                                    child: const Text(
-                                                        'Активировать'))
-                                              ]));
-                                  if (ok != true) return;
-                                  final active = (_status!['active'] as List)
-                                      .firstWhere((a) =>
-                                          a['model_type'] == 'segmentation');
-                                  await _request('/activate', body: {
-                                    'model_id': m['id'],
-                                    'expected_generation': active['generation']
-                                  });
+                                  await _request('/jobs/${j['id']}/cancel',
+                                      body: {});
                                 }),
-                        child: const Text('Активировать после просмотра')),
-                ]),
+                        child: const Text('Отменить')),
+                ],
+              )),
+            for (final m in (_status?['models'] as List? ?? []))
+              ExpansionTile(
+                  title: Text(m['model_type'] == 'segmentation'
+                      ? 'Кандидат сегментации'
+                      : 'Кандидат классификации'),
+                  children: [
+                    SelectableText(const JsonEncoder.withIndent('  ')
+                        .convert(m['metadata'])),
+                    for (final key in [
+                      'baseline_val',
+                      'candidate_val',
+                      'baseline_test',
+                      'candidate_test'
+                    ])
+                      for (var i = 0;
+                          i <
+                              (m['metadata']['evaluation']?[key]?['cases']
+                                          as List? ??
+                                      [])
+                                  .length;
+                          i++)
+                        TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () =>
+                                    _run(() => _diagnostic(m['id'], key, i)),
+                            child: Text('Наложение $key · пример ${i + 1}')),
+                    if (m['metadata']['eligible_for_activation'] == true)
+                      FilledButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _run(() async {
+                                    final ok = await _accountDialog<bool>(
+                                        context: context,
+                                        builder: (c) => AlertDialog(
+                                                title: const Text(
+                                                    'Изменить production-модель?'),
+                                                content: const Text(
+                                                    'Это отдельное переключение после просмотра метрик. Старые отчёты не пересчитываются.'),
+                                                actions: [
+                                                  TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                              c, false),
+                                                      child:
+                                                          const Text('Отмена')),
+                                                  TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                              c, true),
+                                                      child: const Text(
+                                                          'Активировать'))
+                                                ]));
+                                    if (ok != true) return;
+                                    final active = (_status!['active'] as List)
+                                        .firstWhere((a) =>
+                                            a['model_type'] == 'segmentation');
+                                    await _request('/activate', body: {
+                                      'model_id': m['id'],
+                                      'expected_generation':
+                                          active['generation']
+                                    });
+                                  }),
+                          child: const Text('Активировать после просмотра')),
+                  ]),
+          ],
         ],
       ]));
 }

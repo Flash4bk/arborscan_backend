@@ -3,17 +3,17 @@ import 'package:flutter/services.dart';
 
 /// AS-15: one palette for screens, controls and status messages.
 class AppTheme {
-  static const background = Color(0xFFF5F5EF);
+  static const background = Color(0xFFF5F4EA);
   static const bg = background;
-  static const surface = Color(0xFFFFFFFF);
-  static const surface2 = Color(0xFFECEEE3);
-  static const surface3 = Color(0xFFDDE2CE);
-  static const primary = Color(0xFF526238);
-  static const primary2 = Color(0xFF476456);
-  static const accent = primary;
-  static const text = Color(0xFF242A20);
-  static const muted = Color(0xFF5C6456);
-  static const border = Color(0xFFCBD0C0);
+  static const surface = Color(0xFFFCFBF4);
+  static const surface2 = Color(0xFFECECDF);
+  static const surface3 = Color(0xFFDCE7B8);
+  static const primary = Color(0xFF263D2C);
+  static const primary2 = Color(0xFF657147);
+  static const accent = primary2;
+  static const text = Color(0xFF17291D);
+  static const muted = Color(0xFF59604F);
+  static const border = Color(0xFFD6D8C9);
   static const danger = Color(0xFFA33132);
   static const warning = Color(0xFF805716);
   static const success = Color(0xFF386445);
@@ -216,9 +216,9 @@ class Ui {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.5), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -286,16 +286,18 @@ class AppActionButton extends StatelessWidget {
     final isEnabled = enabled && !loading && callback != null;
     final bg = color ??
         (danger
-            ? AppTheme.danger.withOpacity(0.2)
+            ? AppTheme.danger.withValues(alpha: 0.2)
             : primary
                 ? AppTheme.primary
                 : AppTheme.surface2);
-    final fg = !isEnabled ? AppTheme.muted : foregroundColor ??
-        (danger
-            ? AppTheme.danger
-            : primary
-                ? Colors.white
-                : AppTheme.text);
+    final fg = !isEnabled
+        ? AppTheme.muted
+        : foregroundColor ??
+            (danger
+                ? AppTheme.danger
+                : primary
+                    ? Colors.white
+                    : AppTheme.text);
     final borderColor = danger
         ? AppTheme.danger
         : primary
@@ -342,7 +344,7 @@ class AppActionButton extends StatelessWidget {
                     subtitle!,
                     softWrap: true,
                     style: TextStyle(
-                      color: fg.withOpacity(0.78),
+                      color: fg.withValues(alpha: 0.78),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -369,11 +371,11 @@ class AppActionButton extends StatelessWidget {
                   vertical: compact ? 10 : 14,
                 ),
             decoration: BoxDecoration(
-              color: isEnabled ? bg : AppTheme.surface2.withOpacity(0.3),
+              color: isEnabled ? bg : AppTheme.surface2.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(compact ? 16 : 20),
               border: Border.all(
                   color: isEnabled
-                      ? borderColor.withOpacity(0.5)
+                      ? borderColor.withValues(alpha: 0.5)
                       : AppTheme.border),
             ),
             child: child,
@@ -410,9 +412,9 @@ class AppStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface2.withOpacity(0.5),
+        color: AppTheme.surface2.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: c.withOpacity(0.3)),
+        border: Border.all(color: c.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -420,7 +422,7 @@ class AppStatCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: c.withOpacity(0.15),
+                color: c.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: c, size: 24),
@@ -469,9 +471,9 @@ class AppContentList extends StatelessWidget {
   const AppContentList({super.key, required this.children, this.padding});
   @override
   Widget build(BuildContext context) => ListView.separated(
-    padding: padding ?? const EdgeInsets.all(16),
-    itemCount: children.length,
-    separatorBuilder: (_, __) => const SizedBox(height: 12),
-    itemBuilder: (_, index) => children[index],
-  );
+        padding: padding ?? const EdgeInsets.all(16),
+        itemCount: children.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (_, index) => children[index],
+      );
 }

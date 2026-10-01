@@ -39,7 +39,8 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
   Uint8List? _image;
   Uint8List? _mask;
   Map<String, dynamic>? _record;
-  bool _overlay = false;
+  String _view = 'photo';
+  final Map<String, Future<Uint8List?>> _previews = {};
   final _reason = TextEditingController();
 
   @override
@@ -58,6 +59,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
     setState(() {
       _invalidSession = true;
       _items.clear();
+      _previews.clear();
       _image = null;
       _mask = null;
       _record = null;
@@ -168,6 +170,19 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
     }
   }
 
+  Future<Uint8List?> _preview(Map<String, dynamic> item) {
+    final key = '${item['owner_id']}/${item['correction_id']}';
+    return _previews.putIfAbsent(key, () async {
+      if (_invalidSession || widget.localDrafts) return null;
+      final record = await _service.record(
+          await _session, item['correction_id'] as String,
+          ownerId: widget.adminQueue ? item['owner_id'] as String : null);
+      if (_invalidSession || !mounted) return null;
+      final encoded = record['original_image_base64'];
+      return encoded is String ? base64Decode(encoded) : null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
@@ -204,11 +219,33 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                   child: const Text('Черновики на устройстве')),
             if (!_busy && _error == null && _items.isEmpty)
               const Text('Сохранённых контуров пока нет.'),
+            if (_items.isNotEmpty)
+              Text('Загружено записей: ${_items.length}',
+                  style: Theme.of(context).textTheme.labelLarge),
             for (final item in _items)
               Card(
                   child: ListTile(
-                leading:
-                    const Icon(Icons.layers_outlined, color: AppTheme.primary),
+                leading: widget.localDrafts
+                    ? const Icon(Icons.edit_note)
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: FutureBuilder<Uint8List?>(
+                                future: _preview(item),
+                                builder: (context, snapshot) => snapshot.hasData
+                                    ? Image.memory(snapshot.data!,
+                                        cacheWidth: 140,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(
+                                                Icons.broken_image_outlined))
+                                    : const ColoredBox(
+                                        color: AppTheme.surface2,
+                                        child: Icon(Icons.layers_outlined,
+                                            color: AppTheme.primary))))),
+                trailing: const Icon(Icons.chevron_right),
                 title: Text(widget.localDrafts
                     ? 'Черновик контура'
                     : 'Сохранённый контур'),
@@ -239,16 +276,49 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                   child: const Text('Загрузить ещё')),
           ],
           if (_image != null && _mask != null) ...[
-            const Text('Оригинальное фото'),
-            Image.memory(_image!,
-                fit: BoxFit.contain, errorBuilder: _imageError),
-            const SizedBox(height: 16),
-            const Text('Сохранённая PNG-маска'),
-            Image.memory(_mask!,
-                fit: BoxFit.contain, errorBuilder: _imageError),
-            const SizedBox(height: 12),
+            ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  color: AppTheme.surface2,
+                  height: 320,
+                  child: _view == 'mask'
+                      ? Image.memory(_mask!,
+                          fit: BoxFit.contain, errorBuilder: _imageError)
+                      : Stack(alignment: Alignment.center, children: [
+                          Image.memory(_image!,
+                              fit: BoxFit.contain, errorBuilder: _imageError),
+                          if (_view == 'overlay')
+                            Positioned.fill(
+                                child: Opacity(
+                                    opacity: .4,
+                                    child: Image.memory(_mask!,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: _imageError))),
+                        ]),
+                )),
+            Wrap(spacing: 8, runSpacing: 4, children: [
+              for (final view in const {
+                'photo': 'Оригинал',
+                'mask': 'PNG-маска',
+                'overlay': 'Наложение'
+              }.entries)
+                ChoiceChip(
+                    label: Text(view.value),
+                    selected: _view == view.key,
+                    onSelected: (_) => setState(() => _view = view.key)),
+            ]),
             Text(
-                'Статус: ${contourStatus(_record?['review_status'] as String? ?? 'pending_review')}'),
+                'Статус: ${contourStatus(_record?['review_status'] as String? ?? 'pending_review')}',
+                style: Theme.of(context).textTheme.titleMedium),
+            ExpansionTile(title: const Text('Сведения о ревизии'), children: [
+              SelectableText(
+                  'Ревизия: ${widget.correctionId}\nАнализ: ${_record?['analysis_id']}'),
+              if (_record?['parent_id'] != null)
+                SelectableText(
+                    'Родительская ревизия: ${_record!['parent_id']}'),
+              SelectableText(
+                  'Код статуса: ${_record?['review_status'] ?? 'pending_review'}'),
+            ]),
             if (widget.reviewOwner == null &&
                 _record?['next_revision_id'] is String)
               OutlinedButton(
@@ -268,18 +338,6 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                   ]),
             const Text(
                 'Принятие касается только маски: высота, DBH и механическая оценка не подтверждаются. Обучение не запускается.'),
-            SwitchListTile(
-                title: const Text('Наложение маски на оригинал'),
-                value: _overlay,
-                onChanged: (v) => setState(() => _overlay = v)),
-            if (_overlay)
-              Stack(children: [
-                Image.memory(_image!, fit: BoxFit.contain),
-                Positioned.fill(
-                    child: Opacity(
-                        opacity: 0.4,
-                        child: Image.memory(_mask!, fit: BoxFit.fill))),
-              ]),
             if (widget.reviewOwner == null)
               OutlinedButton(
                   onPressed: _busy

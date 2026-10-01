@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'admin_service.dart';
+import 'app_theme.dart';
+import 'corrections_service.dart';
 
 /// Экран «Датасет для обучения» — показывает подтверждённые примеры
 /// и даёт возможность исключать/включать их в дообучение.
@@ -18,6 +20,9 @@ class TrainingDatasetPage extends StatefulWidget {
 class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
   bool _loading = true;
   String? _error;
+  String _filter = 'all';
+  bool _invalid = false;
+  final Set<String> _saving = {};
 
   List<VerifiedItem> _items = const [];
 
@@ -27,10 +32,30 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
   @override
   void initState() {
     super.initState();
+    CorrectionsService.authChanges.addListener(_invalidate);
     _load();
   }
 
+  void _invalidate() {
+    if (!mounted) return;
+    setState(() {
+      _invalid = true;
+      _loading = false;
+      _items = [];
+      _detailsCache.clear();
+      _error = 'Аккаунт изменился. Откройте архив заново.';
+    });
+  }
+
+  @override
+  void dispose() {
+    CorrectionsService.authChanges.removeListener(_invalidate);
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    if (_invalid) return;
+    final generation = CorrectionsService.authChanges.value;
     setState(() {
       _loading = true;
       _error = null;
@@ -38,11 +63,21 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
 
     try {
       final list = await widget.service.getVerifiedList();
+      if (!mounted ||
+          _invalid ||
+          generation != CorrectionsService.authChanges.value) {
+        return;
+      }
       setState(() {
         _items = list;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted ||
+          _invalid ||
+          generation != CorrectionsService.authChanges.value) {
+        return;
+      }
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -56,12 +91,19 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
   Future<VerifiedAnalysis> _getDetails(String analysisId) async {
     final cached = _detailsCache[analysisId];
     if (cached != null) return cached;
+    final generation = CorrectionsService.authChanges.value;
     final d = await widget.service.getVerifiedAnalysis(analysisId);
+    if (_invalid || generation != CorrectionsService.authChanges.value) {
+      throw const AdminApiException('Аккаунт изменился.');
+    }
     _detailsCache[analysisId] = d;
     return d;
   }
 
   Future<void> _toggleInclude(VerifiedItem it) async {
+    if (_invalid || _saving.contains(it.analysisId)) return;
+    final generation = CorrectionsService.authChanges.value;
+    _saving.add(it.analysisId);
     final newInclude = it.excludeFromTraining; // если был excluded -> включаем
 
     // optimistic
@@ -82,9 +124,15 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
     });
 
     try {
-      await widget.service.setTrainingInclude(it.analysisId, include: newInclude);
+      await widget.service
+          .setTrainingInclude(it.analysisId, include: newInclude);
     } catch (e) {
-      // rollback
+      // Roll back only within the initiating account.
+      if (!mounted ||
+          _invalid ||
+          generation != CorrectionsService.authChanges.value) {
+        return;
+      }
       setState(() {
         _items = _items
             .map((x) => x.analysisId == it.analysisId
@@ -101,6 +149,8 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
             .toList();
         _error = e.toString();
       });
+    } finally {
+      if (mounted && !_invalid) setState(() => _saving.remove(it.analysisId));
     }
   }
 
@@ -108,11 +158,11 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Датасет для обучения'),
+        title: const Text('Архив примеров'),
         actions: [
           IconButton(
             tooltip: 'Обновить датасет',
-            onPressed: _loading ? null : _load,
+            onPressed: _loading || _invalid ? null : _load,
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -128,31 +178,52 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
                     _ErrorBanner(message: _error!),
                     const SizedBox(height: 12),
                   ],
-
-                  _SummaryCard(
-                    total: _items.length,
-                    included: _includedCount,
-                    excluded: _excludedCount,
-                  ),
+                  if (!_invalid)
+                    _SummaryCard(
+                      total: _items.length,
+                      included: _includedCount,
+                      excluded: _excludedCount,
+                    ),
                   const SizedBox(height: 12),
-
-                  if (_items.isEmpty)
+                  if (!_invalid)
+                    Wrap(spacing: 8, runSpacing: 4, children: [
+                      for (final filter in const {
+                        'all': 'Все',
+                        'included': 'Включены',
+                        'excluded': 'Исключены'
+                      }.entries)
+                        ChoiceChip(
+                            label: Text(filter.value),
+                            selected: _filter == filter.key,
+                            onSelected: (_) =>
+                                setState(() => _filter = filter.key)),
+                    ]),
+                  if (_items.isEmpty && !_invalid)
                     const Padding(
                       padding: EdgeInsets.only(top: 40),
                       child: Center(
                         child: Text(
-                          'Пока нет подтверждённых примеров.\nСначала сделай анализ → нарисуй маску → отправь фидбек → подтверди.',
+                          'В архиве пока нет примеров.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.black54),
+                          style: TextStyle(color: AppTheme.muted),
                         ),
                       ),
                     )
                   else
-                    ..._items.map((it) => _DatasetItemCard(
-                          item: it,
-                          loadDetails: _getDetails,
-                          onToggleInclude: () => _toggleInclude(it),
-                        )),
+                    ..._items
+                        .where((it) =>
+                            _filter == 'all' ||
+                            (_filter == 'excluded'
+                                ? it.excludeFromTraining
+                                : !it.excludeFromTraining))
+                        .map((it) => _DatasetItemCard(
+                              key: ValueKey(it.analysisId),
+                              item: it,
+                              loadDetails: _getDetails,
+                              onToggleInclude: _saving.contains(it.analysisId)
+                                  ? null
+                                  : () => _toggleInclude(it),
+                            )),
                 ],
               ),
             ),
@@ -165,7 +236,8 @@ class _SummaryCard extends StatelessWidget {
   final int included;
   final int excluded;
 
-  const _SummaryCard({required this.total, required this.included, required this.excluded});
+  const _SummaryCard(
+      {required this.total, required this.included, required this.excluded});
 
   @override
   Widget build(BuildContext context) {
@@ -176,20 +248,23 @@ class _SummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Итого в Supabase (verified): $total', style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text('Записей в архиве: $total',
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
               runSpacing: 8,
               children: [
-                _Chip(label: 'В дообучение: $included', icon: Icons.check_circle_outline),
+                _Chip(
+                    label: 'Включены: $included',
+                    icon: Icons.check_circle_outline),
                 _Chip(label: 'Исключено: $excluded', icon: Icons.block),
               ],
             ),
             const SizedBox(height: 10),
             const Text(
-              'Если пример «Исключён», он останется в verified, но воркер retrain_worker.py пропустит его при сборке датасета.',
-              style: TextStyle(color: Colors.black54),
+              'Это прежний каталог. Его флаг не допускает запись к новому обучению: нужна принятая ревизия в разделе «Модели и данные».',
+              style: TextStyle(color: AppTheme.muted),
             ),
           ],
         ),
@@ -201,9 +276,10 @@ class _SummaryCard extends StatelessWidget {
 class _DatasetItemCard extends StatefulWidget {
   final VerifiedItem item;
   final Future<VerifiedAnalysis> Function(String analysisId) loadDetails;
-  final VoidCallback onToggleInclude;
+  final VoidCallback? onToggleInclude;
 
   const _DatasetItemCard({
+    super.key,
     required this.item,
     required this.loadDetails,
     required this.onToggleInclude,
@@ -264,12 +340,14 @@ class _DatasetItemCardState extends State<_DatasetItemCard> {
                     children: [
                       Text(
                         it.species ?? 'Без вида',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'ID: ${it.analysisId}',
-                        style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        style: const TextStyle(
+                            fontSize: 12, color: AppTheme.muted),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -278,7 +356,7 @@ class _DatasetItemCardState extends State<_DatasetItemCard> {
                 ),
                 const SizedBox(width: 10),
                 _Badge(
-                  text: excluded ? 'Исключён' : 'В дообучение',
+                  text: excluded ? 'Исключён' : 'Включён',
                   icon: excluded ? Icons.block : Icons.check_circle_outline,
                 ),
               ],
@@ -288,35 +366,40 @@ class _DatasetItemCardState extends State<_DatasetItemCard> {
               spacing: 10,
               runSpacing: 8,
               children: [
-                if (it.riskCategory != null) _Chip(label: 'Риск: ${it.riskCategory}', icon: Icons.warning_amber_rounded),
-                if (it.trustScore != null) _Chip(label: 'Trust: ${it.trustScore}', icon: Icons.verified_user_outlined),
+                if (it.riskCategory != null)
+                  _Chip(
+                      label: 'Прежняя оценка: ${it.riskCategory}',
+                      icon: Icons.warning_amber_rounded),
+                if (it.trustScore != null)
+                  _Chip(
+                      label: 'Прежний индекс: ${it.trustScore}',
+                      icon: Icons.verified_user_outlined),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: widget.onToggleInclude,
-                    icon: Icon(excluded ? Icons.add_circle_outline : Icons.remove_circle_outline),
-                    label: Text(excluded ? 'Вернуть в обучение' : 'Исключить'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _toggleExpand,
-                    icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
-                    label: Text(_expanded ? 'Свернуть' : 'Просмотр'),
-                  ),
-                ),
-              ],
-            ),
-
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              OutlinedButton.icon(
+                  onPressed: widget.onToggleInclude,
+                  icon: Icon(excluded
+                      ? Icons.add_circle_outline
+                      : Icons.remove_circle_outline),
+                  label: Text(excluded ? 'Включить в архиве' : 'Исключить')),
+              TextButton.icon(
+                  onPressed: _toggleExpand,
+                  icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                  label: Text(_expanded ? 'Свернуть' : 'Просмотр')),
+            ]),
             if (_expanded) ...[
               const SizedBox(height: 12),
-              if (_loading) const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator())),
-              if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: _ErrorBanner(message: _err!)),
+              if (_loading)
+                const Center(
+                    child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator())),
+              if (_err != null)
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _ErrorBanner(message: _err!)),
               if (_details != null) _DetailsBlock(details: _details!),
             ],
           ],
@@ -351,9 +434,16 @@ class _DetailsBlock extends StatelessWidget {
           spacing: 10,
           runSpacing: 8,
           children: [
-            if (height != null) _Chip(label: 'Высота: $height', icon: Icons.height),
-            if (risk['category'] != null) _Chip(label: 'Категория: ${risk['category']}', icon: Icons.shield_outlined),
-            if (trust != null) _Chip(label: 'Trust: $trust', icon: Icons.verified_outlined),
+            if (height != null)
+              _Chip(label: 'Высота: $height', icon: Icons.height),
+            if (risk['category'] != null)
+              _Chip(
+                  label: 'Категория: ${risk['category']}',
+                  icon: Icons.shield_outlined),
+            if (trust != null)
+              _Chip(
+                  label: 'Прежний индекс: $trust',
+                  icon: Icons.verified_outlined),
           ],
         ),
       ],
@@ -388,7 +478,7 @@ class _TwoImages extends StatelessWidget {
           _ImageTile(
             bytes: left,
             overlay: userMask,
-            label: 'Моя маска',
+            label: 'Маска автора',
             height: 180,
           ),
         ],
@@ -425,7 +515,8 @@ class _ImageTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       label,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -473,7 +564,7 @@ class _ImageTile extends StatelessWidget {
             height: height,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.black12),
+              border: Border.all(color: AppTheme.border),
             ),
             clipBehavior: Clip.antiAlias,
             child: Stack(
@@ -494,7 +585,7 @@ class _ImageTile extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black54,
+                color: AppTheme.muted,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(

@@ -33,7 +33,8 @@ class _AppRootState extends State<AppRoot> {
   @override
   void initState() {
     super.initState();
-    _analyzePage = ArborScanPage(key: UniqueKey());
+    _analyzePage =
+        ArborScanPage(key: UniqueKey(), onOpenProfile: () => _selectTab(3));
     _historyPage = const HistoryTabPage();
     _mapPage = const MapPage();
     _profilePage = ProfilePage(onAuthChanged: _handleAuthChanged);
@@ -45,8 +46,17 @@ class _AppRootState extends State<AppRoot> {
     setState(() {
       // Пересоздаём только экран анализа, чтобы он перечитал роль и токен,
       // не затрагивая дизайн и состояние остальных вкладок.
-      _analyzePage = ArborScanPage(key: UniqueKey());
+      _analyzePage =
+          ArborScanPage(key: UniqueKey(), onOpenProfile: () => _selectTab(3));
     });
+  }
+
+  void _selectTab(int value) {
+    setState(() {
+      _visited.add(value);
+      _index = value;
+    });
+    AppNavigation.activate(value);
   }
 
   @override
@@ -58,19 +68,14 @@ class _AppRootState extends State<AppRoot> {
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (value) {
-          setState(() {
-            _visited.add(value);
-            _index = value;
-          });
-          AppNavigation.activate(value);
-        },
+        onDestinationSelected: _selectTab,
         destinations: const [
           NavigationDestination(
-              icon: Icon(Icons.add_a_photo_outlined), label: 'Анализ'),
+              icon: Icon(Icons.eco_outlined), label: 'Анализ'),
           NavigationDestination(
-              icon: Icon(Icons.history_rounded), label: 'История'),
-          NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Карта'),
+              icon: Icon(Icons.schedule_outlined), label: 'История'),
+          NavigationDestination(
+              icon: Icon(Icons.location_on_outlined), label: 'Карта'),
           NavigationDestination(
               icon: Icon(Icons.person_outline), label: 'Профиль'),
         ],
