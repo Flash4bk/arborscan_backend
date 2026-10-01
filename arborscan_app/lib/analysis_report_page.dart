@@ -197,6 +197,7 @@ class AnalysisReportPageV2 extends StatelessWidget {
               trunkSource: _sourceLabel(sourceMap?['trunk_diameter_m']),
             ),
             const SizedBox(height: 12),
+            const Text('Исторические расчёты прежнего метода. Значения ниже сохранены без пересчёта и не являются подтверждённой оценкой β или безопасности дерева.'),
             _BetaCard(beta: beta),
             const SizedBox(height: 12),
             _AnalyticWindModelCard(model: analyticWindModel),
@@ -204,7 +205,7 @@ class AnalysisReportPageV2 extends StatelessWidget {
             Ui.sectionTitle(context, 'ЛОКАЦИЯ'),
             _LocationCard(address: address, lat: lat, lon: lon),
             const SizedBox(height: 24),
-            Ui.sectionTitle(context, 'ФАКТОРЫ РИСКА (SIA)'),
+            Ui.sectionTitle(context, 'Исторические факторы (SIA)'),
             _ExplanationCard(lines: explanation),
             const SizedBox(height: 12),
             _FootnoteCard(raw: raw),
@@ -471,7 +472,7 @@ class _BetaCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'АЭРОДИНАМИКА (β)',
+                  'ИСТОРИЧЕСКИЙ РАСЧЁТ (β)',
                   style: TextStyle(
                       color: AppTheme.text,
                       fontWeight: FontWeight.w900,

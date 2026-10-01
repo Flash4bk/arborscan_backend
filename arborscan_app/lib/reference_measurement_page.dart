@@ -17,6 +17,8 @@ import 'report_history_service.dart';
 import 'geometry_report.dart';
 import 'report_export_button.dart';
 import 'report_export_data.dart';
+import 'survey_environment.dart';
+import 'survey_environment_ui.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -67,6 +69,14 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   late final _service = widget.service ?? CorrectionsService(),
       _store = widget.drafts ?? referenceStore();
   final _length = TextEditingController();
+  final _environment = SurveyEnvironmentController();
+  void _environmentChanged() {
+    if (_busy || _invalid || _image == null || _owner == null) return;
+    _save().catchError((Object e) {
+      if (mounted) setState(() => _error = '$e');
+    });
+  }
+
   String? _token, _owner, _id, _error, _calculationError;
   String _unit = 'm';
   bool _busy = true, _invalid = false, _plane = false;
@@ -83,6 +93,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   void initState() {
     super.initState();
     CorrectionsService.authChanges.addListener(_invalidate);
+    _environment.addListener(_environmentChanged);
     _load();
   }
 
@@ -100,6 +111,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   void dispose() {
     CorrectionsService.authChanges.removeListener(_invalidate);
     _length.dispose();
+    _environment.dispose();
     super.dispose();
   }
 
@@ -152,6 +164,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         _serverSnapshot = d['server_snapshot'] == null
             ? null
             : Map<String, dynamic>.from(d['server_snapshot']);
+        _environment.replace(
+            surveyMap(d['environment'] ?? _serverSnapshot?['environment']));
       }
     } catch (e) {
       _image = null;
@@ -172,6 +186,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           'server_analysis_id': _serverAnalysisId,
           'server_parent_id': _serverParentId,
           'server_snapshot': _serverSnapshot,
+          'environment':
+              _environment.snapshot.isEmpty ? null : _environment.snapshot,
           'method': 'known_object_segment_v$_measurementVersion',
           'coordinates': 'normalized_oriented_image',
           'width': _width,
@@ -241,6 +257,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     _serverParentId = null;
     _serverSnapshot = null;
     _serverMessage = null;
+    _environment.setPoint(surveyPointFromExif(bytes));
   }
 
   Future<void> _uploadReport() async {
@@ -257,7 +274,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         ...result.report,
       },
       'ar': _serverSnapshot?['ar'],
-      'environment': _serverSnapshot?['environment'],
+      'environment':
+          _environment.snapshot.isEmpty ? null : _environment.snapshot,
       'captured_at': _serverSnapshot?['captured_at'],
       'change_source': 'reference',
       if (_serverSnapshot?['correction_id'] != null)
@@ -400,12 +418,21 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                         'reference': result.toJson(),
                         'captured_at': _serverSnapshot?['captured_at'],
                         'ar': _serverSnapshot?['ar'],
-                        'environment': _serverSnapshot?['environment']
+                        'environment': _environment.snapshot.isEmpty
+                            ? null
+                            : _environment.snapshot
                       }, record: {
                         'analysis_id': _serverAnalysisId ?? _id
                       }, photo: _image, local: true)),
-            const Text(
-                'Вертикальный эталон должен стоять рядом с деревом примерно на той же глубине. Снимайте целиком, без сильного наклона камеры. Его высота задаёт вертикальную ось; ширина кроны считается поперёк неё. Перспектива ограничивает метод: один отрезок её не исправляет. Результат — оценка проекции, не подтверждённая точность.'),
+            const ExpansionTile(
+                title: Text('Как измерять по эталону'),
+                leading: Icon(Icons.info_outline),
+                children: [
+                  Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                          'Вертикальный эталон должен стоять рядом с деревом примерно на той же глубине. Снимайте целиком, без сильного наклона камеры. Его высота задаёт вертикальную ось; ширина кроны считается поперёк неё. Перспектива ограничивает метод: один отрезок её не исправляет. Результат — оценка проекции, не подтверждённая точность.'))
+                ]),
             OutlinedButton(
                 onPressed: _busy ? null : () => _run(_pick),
                 child: const Text('Выбрать фото')),
@@ -419,6 +446,8 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 child: const Text('Сохранённые измерения по эталону')),
             if (_image != null) ...[
               Image.memory(_image!, height: 200, fit: BoxFit.contain),
+              SurveyEnvironmentEditor(
+                  controller: _environment, original: _image, enabled: !_busy),
               Ui.sectionTitle(context, '1. Размер эталона'),
               TextField(
                   enabled: !_busy,

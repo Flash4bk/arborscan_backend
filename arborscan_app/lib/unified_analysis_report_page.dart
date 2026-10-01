@@ -10,6 +10,8 @@ import 'geometry_report.dart';
 import 'report_history_service.dart';
 import 'report_export_button.dart';
 import 'report_export_data.dart';
+import 'survey_environment.dart';
+import 'survey_environment_ui.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
   final UnifiedAnalysisResult result;
@@ -28,7 +30,8 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
   });
 
   @override
-  State<UnifiedAnalysisReportPage> createState() => _UnifiedAnalysisReportPageState();
+  State<UnifiedAnalysisReportPage> createState() =>
+      _UnifiedAnalysisReportPageState();
 }
 
 class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
@@ -42,169 +45,241 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   void initState() {
     super.initState();
     CorrectionsService.authChanges.addListener(_invalidateSession);
-    if(widget.allowServerSave && fallbackImageBytes!=null) _stageReport();
+    if (widget.allowServerSave && fallbackImageBytes != null) _stageReport();
   }
-  void _invalidateSession(){if(mounted)setState(()=>_invalidSession=true);}
+
+  void _invalidateSession() {
+    if (mounted) setState(() => _invalidSession = true);
+  }
+
   @override
-  void dispose(){CorrectionsService.authChanges.removeListener(_invalidateSession);super.dispose();}
+  void dispose() {
+    CorrectionsService.authChanges.removeListener(_invalidateSession);
+    super.dispose();
+  }
+
   Future<void> _stageReport() async {
     _savingReport = true;
     try {
       _reportToken = await CorrectionsService.currentToken();
       if (_invalidSession) return;
       final raw = result.raw;
-      await _history.stage(token:_reportToken!,localId:result.analysisId,
-        analysisId:result.analysisId,image:fallbackImageBytes!,snapshot:{
-          'version':1,'kind':'v4','report':raw,'reference':null,
-          'ar':raw['ar_provenance'],'environment':raw['environment_snapshot'],
-          'captured_at':raw['captured_at'] ?? DateTime.now().toUtc().toIso8601String(),
-          'change_source':'analysis'});
-      if(mounted&&!_invalidSession)setState(()=>_saveMessage='Полный отчёт сохранён на устройстве.');
-    } catch(e) {if(mounted)setState(()=>_saveMessage='$e');}
-    finally {if(mounted)setState(()=>_savingReport=false);}
+      await _history.stage(
+          token: _reportToken!,
+          localId: result.analysisId,
+          analysisId: result.analysisId,
+          image: fallbackImageBytes!,
+          snapshot: {
+            'version': 1,
+            'kind': 'v4',
+            'report': raw,
+            'reference': null,
+            'ar': raw['ar_provenance'],
+            'environment': raw['environment_snapshot'],
+            'captured_at':
+                raw['captured_at'] ?? DateTime.now().toUtc().toIso8601String(),
+            'change_source': 'analysis'
+          });
+      if (mounted && !_invalidSession)
+        setState(() => _saveMessage = 'Полный отчёт сохранён на устройстве.');
+    } catch (e) {
+      if (mounted) setState(() => _saveMessage = '$e');
+    } finally {
+      if (mounted) setState(() => _savingReport = false);
+    }
   }
+
   Future<void> _saveReport() async {
-    if(_savingReport||_invalidSession)return;
-    setState(()=>_savingReport=true);
+    if (_savingReport || _invalidSession) return;
+    setState(() => _savingReport = true);
     try {
-      await _history.upload(_reportToken??'',result.analysisId);
-      if(mounted&&!_invalidSession)setState(()=>_saveMessage='Сохранено в аккаунте');
-    }catch(e){if(mounted)setState(()=>_saveMessage='$e');}
-    finally{if(mounted)setState(()=>_savingReport=false);}
+      await _history.upload(_reportToken ?? '', result.analysisId);
+      if (mounted && !_invalidSession)
+        setState(() => _saveMessage = 'Сохранено в аккаунте');
+    } catch (e) {
+      if (mounted) setState(() => _saveMessage = '$e');
+    } finally {
+      if (mounted) setState(() => _savingReport = false);
+    }
   }
+
   Future<void> _editContour() async {
-    if (fallbackImageBytes == null || fallbackImageBytes!.isEmpty || _editing) return;
+    if (fallbackImageBytes == null || fallbackImageBytes!.isEmpty || _editing)
+      return;
     setState(() => _editing = true);
     try {
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) =>
-        ContourWorkspacePage(analysisId:result.analysisId, image:fallbackImageBytes,
-          aiMask:result.maskImageBytes, service:widget.correctionsService)));
-    } finally { if (mounted) setState(() => _editing = false); }
+      await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ContourWorkspacePage(
+              analysisId: result.analysisId,
+              image: fallbackImageBytes,
+              aiMask: result.maskImageBytes,
+              service: widget.correctionsService)));
+    } finally {
+      if (mounted) setState(() => _editing = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if(_invalidSession)return const Scaffold(body:Center(child:Text('Аккаунт изменился. Откройте свой отчёт заново.')));
+    if (_invalidSession)
+      return const Scaffold(
+          body: Center(
+              child: Text('Аккаунт изменился. Откройте свой отчёт заново.')));
     final displayImage = result.annotatedImageBytes ?? fallbackImageBytes;
     final status = _statusPresentation(result.status);
 
     return WillPopScope(
       onWillPop: () async => true,
       child: Scaffold(
-      appBar: AppBar(title: const Text('Результат сканирования')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-          children: [
-            ReportExportButton(load: widget.exportLoader ?? () async => ReportExportData(
-                snapshot: {'kind':'v4', 'report':result.raw, 'captured_at':result.raw['captured_at'],
-                  'ar':result.raw['ar_provenance'], 'environment':result.raw['environment_snapshot']},
-                record: {'analysis_id':result.analysisId}, photo:fallbackImageBytes, local:true)),
-            if(widget.allowServerSave && fallbackImageBytes!=null)...[
-              FilledButton(onPressed:_savingReport?null:_saveReport,
-                child:Text(_savingReport?'Сохранение…':'Сохранить отчёт в аккаунте')),
-              if(_saveMessage!=null)Text(_saveMessage!),
-            ],
-            if (displayImage != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: AspectRatio(
-                  aspectRatio: 4 / 3,
-                  child: Image.memory(
-                    displayImage,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const _ImageErrorBox(),
+        appBar: AppBar(title: const Text('Результат сканирования')),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            children: [
+              ReportExportButton(
+                  load: widget.exportLoader ??
+                      () async => ReportExportData(snapshot: {
+                            'kind': 'v4',
+                            'report': result.raw,
+                            'captured_at': result.raw['captured_at'],
+                            'ar': result.raw['ar_provenance'],
+                            'environment': result.raw['environment_snapshot']
+                          }, record: {
+                            'analysis_id': result.analysisId
+                          }, photo: fallbackImageBytes, local: true)),
+              if (widget.allowServerSave && fallbackImageBytes != null) ...[
+                FilledButton(
+                    onPressed: _savingReport ? null : _saveReport,
+                    child: Text(_savingReport
+                        ? 'Сохранение…'
+                        : 'Сохранить отчёт в аккаунте')),
+                if (_saveMessage != null) Text(_saveMessage!),
+              ],
+              if (displayImage != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: AspectRatio(
+                    aspectRatio: 4 / 3,
+                    child: Image.memory(
+                      displayImage,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const _ImageErrorBox(),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 14),
+              ],
+              OutlinedButton.icon(
+                onPressed:
+                    fallbackImageBytes == null || fallbackImageBytes!.isEmpty
+                        ? null
+                        : _editContour,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Исправить контур'),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                fallbackImageBytes == null || fallbackImageBytes!.isEmpty
+                    ? 'Для редактирования нужно исходное фото. Откройте результат сразу после анализа.'
+                    : 'Сохраните исправленный контур отдельной кнопкой. Исходные измерения не пересчитываются.',
+                style: const TextStyle(color: AppTheme.muted, fontSize: 13),
               ),
               const SizedBox(height: 14),
-            ],
-            OutlinedButton.icon(
-              onPressed: fallbackImageBytes == null || fallbackImageBytes!.isEmpty
-                  ? null : _editContour,
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Исправить контур'),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              fallbackImageBytes == null || fallbackImageBytes!.isEmpty
-                  ? 'Для редактирования нужно исходное фото. Откройте результат сразу после анализа.'
-                  : 'Сохраните исправленный контур отдельной кнопкой. Исходные измерения не пересчитываются.',
-              style: const TextStyle(color: AppTheme.muted, fontSize: 13),
-            ),
-            const SizedBox(height: 14),
-            _StatusCard(
-              title: status.$1,
-              description: status.$2,
-              icon: status.$3,
-              color: status.$4,
-            ),
-            const SizedBox(height: 14),
-            _SpeciesCard(result: result),
-            const SizedBox(height: 18),
-            const _SectionTitle(
-              title: 'Основные измерения',
-              subtitle:
-                  'Размеры сохраняют свой источник. DBH требует отдельного подтверждения места измерения.',
-            ),
-            const SizedBox(height: 10),
-            _MetricCard(
-              title: result.raw['measurement_method_version'] == 2 && result.height.source != 'ar' ? 'Вертикальный размер маски на фото' : 'Высота дерева',
-              icon: Icons.height,
-              metric: result.height,
-              valueDigits: 2,
-            ),
-            const SizedBox(height: 10),
-            _MetricCard(
-              title: 'Ширина кроны',
-              icon: Icons.nature,
-              metric: result.crownWidth,
-              valueDigits: 2,
-            ),
-            const SizedBox(height: 10),
-            _MetricCard(
-              title: result.trunkDiameter.standard == 'dbh_1_3m' ? 'DBH ствола' : 'Диаметр ствола',
-              icon: Icons.circle_outlined,
-              metric: result.trunkDiameter,
-              valueDigits: 3,
-              dbh: true,
-            ),
-            if (result.raw['measurement_method_version'] == 2) const GeometryReport(data: null),
-            const SizedBox(height: 18),
-            const _SectionTitle(
-              title: 'Диагностика исходных данных',
-              subtitle:
-                  'Баллы ниже — инженерные эвристики, не точность и не доверительный интервал измерения.',
-            ),
-            const SizedBox(height: 10),
-            _QualityCard(result: result),
-            const Card(child:Padding(padding:EdgeInsets.all(16),child:Column(
-              crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Text('β — коэффициент сопротивления, кг/с',style:TextStyle(fontWeight:FontWeight.bold)),
-                Text('Пока не определён. Фото, маска и AR-размеры не задают β однозначно. Нужны положения элементов дерева во времени, массы, упругость и проверенная динамическая модель.'),
-              ]))),
-            const SizedBox(height: 18),
-            const _SectionTitle(
-              title: 'Механическая оценка и риск',
-              subtitle:
-                  'Расчёт выполняется только при наличии валидированных физических данных.',
-            ),
-            const SizedBox(height: 10),
-            _RiskCard(result: result),
-            if (result.warnings.isNotEmpty) ...[
+              _StatusCard(
+                title: status.$1,
+                description: status.$2,
+                icon: status.$3,
+                color: status.$4,
+              ),
+              const SizedBox(height: 14),
+              _SpeciesCard(result: result),
+              if (result.raw['environment_snapshot'] is Map)
+                Card(
+                    child: ExpansionTile(
+                        title: const Text('Место и условия'),
+                        childrenPadding: const EdgeInsets.all(16),
+                        children: [
+                      EnvironmentSummary(
+                          snapshot:
+                              surveyMap(result.raw['environment_snapshot']))
+                    ])),
               const SizedBox(height: 18),
               const _SectionTitle(
-                title: 'Замечания',
-                subtitle: 'Причины снижения качества или ограничения анализа.',
+                title: 'Основные измерения',
+                subtitle:
+                    'Размеры сохраняют свой источник. DBH требует отдельного подтверждения места измерения.',
               ),
               const SizedBox(height: 10),
-              _WarningsCard(warnings: result.warnings),
+              _MetricCard(
+                title: result.raw['measurement_method_version'] == 2 &&
+                        result.height.source != 'ar'
+                    ? 'Вертикальный размер маски на фото'
+                    : 'Высота дерева',
+                icon: Icons.height,
+                metric: result.height,
+                valueDigits: 2,
+              ),
+              const SizedBox(height: 10),
+              _MetricCard(
+                title: 'Ширина кроны',
+                icon: Icons.nature,
+                metric: result.crownWidth,
+                valueDigits: 2,
+              ),
+              const SizedBox(height: 10),
+              _MetricCard(
+                title: result.trunkDiameter.standard == 'dbh_1_3m'
+                    ? 'DBH ствола'
+                    : 'Диаметр ствола',
+                icon: Icons.circle_outlined,
+                metric: result.trunkDiameter,
+                valueDigits: 3,
+                dbh: true,
+              ),
+              if (result.raw['measurement_method_version'] == 2)
+                const GeometryReport(data: null),
+              const SizedBox(height: 18),
+              const _SectionTitle(
+                title: 'Диагностика исходных данных',
+                subtitle:
+                    'Баллы ниже — инженерные эвристики, не точность и не доверительный интервал измерения.',
+              ),
+              const SizedBox(height: 10),
+              _QualityCard(result: result),
+              const Card(
+                  child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('β — коэффициент сопротивления, кг/с',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text(
+                                'Пока не определён. Фото, маска и AR-размеры не задают β однозначно. Нужны положения элементов дерева во времени, массы, упругость и проверенная динамическая модель.'),
+                          ]))),
+              const SizedBox(height: 18),
+              const _SectionTitle(
+                title: 'Механическая оценка и риск',
+                subtitle:
+                    'Расчёт выполняется только при наличии валидированных физических данных.',
+              ),
+              const SizedBox(height: 10),
+              _RiskCard(result: result),
+              if (result.warnings.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const _SectionTitle(
+                  title: 'Замечания',
+                  subtitle:
+                      'Причины снижения качества или ограничения анализа.',
+                ),
+                const SizedBox(height: 10),
+                _WarningsCard(warnings: result.warnings),
+              ],
+              const SizedBox(height: 18),
+              _TechnicalCard(result: result),
             ],
-            const SizedBox(height: 18),
-            _TechnicalCard(result: result),
-          ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -355,7 +430,8 @@ class _SpeciesCard extends StatelessWidget {
             if (conf != null) ...[
               const SizedBox(height: 10),
               Ui.badge(
-                text: 'Оценка Pl@ntNet ${conf.toStringAsFixed(3)} — не точность',
+                text:
+                    'Оценка Pl@ntNet ${conf.toStringAsFixed(3)} — не точность',
                 color: conf >= 0.80 ? AppTheme.success : AppTheme.warning,
                 icon: Icons.eco_outlined,
               ),
@@ -420,7 +496,9 @@ class _MetricCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    value != null ? '${value.toStringAsFixed(valueDigits)} м' : '—',
+                    value != null
+                        ? '${value.toStringAsFixed(valueDigits)} м'
+                        : '—',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                         ),

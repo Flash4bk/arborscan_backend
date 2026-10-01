@@ -41,11 +41,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byTooltip('Начать заново'), findsOneWidget);
       final selected = tester.widget<Image>(find.byType(Image).first).image;
-      await tester.scrollUntilVisible(find.text('Измерить дерево в AR'), 250,
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('open-ar')), 250,
           scrollable: find.byType(Scrollable).first);
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
-        await tester.tap(find.text('Измерить дерево в AR'));
+        await tester.tap(find.byKey(const ValueKey('open-ar')));
         await Future<void>.delayed(const Duration(milliseconds: 200));
       });
       await tester.pump(const Duration(milliseconds: 300));

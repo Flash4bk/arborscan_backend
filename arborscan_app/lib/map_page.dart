@@ -1,888 +1,689 @@
-import 'app_navigation.dart';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'analysis_report_page.dart';
+import 'app_navigation.dart';
 import 'app_theme.dart';
 import 'corrections_service.dart';
 import 'location_service.dart';
-import 'api_config.dart'; // Подключаем наш конфиг
-
-String _normalizeAddressRu(String? address) {
-  if (address == null || address.trim().isEmpty) return '';
-  final replacements = <String, String>{
-    'Інтэрнат': 'Интернат',
-    'вуліца': 'улица',
-    'вул.': 'ул.',
-    'Машынабудаўнікоў': 'Машиностроителей',
-    'Аўтазаводскі': 'Автозаводский',
-    'раён': 'район',
-    'Пасёлак': 'Посёлок',
-    'Заводскі': 'Заводской',
-    'Мінск': 'Минск',
-  };
-
-  var out = address;
-  replacements.forEach((from, to) {
-    out = out.replaceAll(from, to);
-  });
-  return out;
-}
+import 'server_report_page.dart';
+import 'survey_environment.dart';
+import 'survey_map_repository.dart';
 
 class LatLngFocus {
-  final double lat;
-  final double lon;
-  final double zoom;
+  final double lat, lon, zoom;
   const LatLngFocus(this.lat, this.lon, {this.zoom = 16});
 }
 
 class MapPage extends StatefulWidget {
   final LatLngFocus? initialFocus;
-  const MapPage({super.key, this.initialFocus});
-
+  final String? focusVersionId;
+  final SurveyMapRepository? repository;
+  const MapPage(
+      {super.key, this.initialFocus, this.focusVersionId, this.repository});
   @override
   State<MapPage> createState() => _MapPageState();
 }
 
 class _MapPageState extends State<MapPage> {
-  static const String _historyKey = 'arborscan_history';
-  static const String _authTokenKey = 'arborscan_auth_token';
-
-  bool _loading = true;
-  String? _error;
-
-  List<_HistoryItem> _items = const [];
-  gmaps.GoogleMapController? _mapController;
-
+  late final SurveyMapRepository _repository;
+  SurveyMapResult _result = const SurveyMapResult([], []);
+  gmaps.GoogleMapController? _controller;
   gmaps.MapType _mapType = gmaps.MapType.normal;
-  bool _is3dMode = false;
-
-  _HistoryItem? _selected;
-
-  // If controller not ready yet, keep focus to apply later
-  LatLngFocus? _pendingFocus;
-
-  // Default fallback (neutral)
-  static const gmaps.LatLng _fallbackCenter =
-      gmaps.LatLng(55.751244, 37.618423);
+  bool _loading = true, _list = false, _threeD = false, _moving = false;
+  String _filter = 'all';
+  String? _selectedKey, _error;
+  int _epoch = 0;
+  bool _focusApplied = false;
+  // This is an overview camera, never coordinates assigned to an observation.
+  static const _overview = gmaps.LatLng(20, 0);
 
   @override
   void initState() {
     super.initState();
-    AppNavigation.mapVisits.addListener(_safeRefresh);
-    CorrectionsService.authChanges.addListener(_authChanged);
-    _pendingFocus = widget.initialFocus;
-    _load();
+    _repository = widget.repository ?? SurveyMapRepository();
+    AppNavigation.mapVisits.addListener(_refresh);
+    CorrectionsService.authChanges.addListener(_accountChanged);
+    _refresh();
   }
 
   @override
   void dispose() {
-    AppNavigation.mapVisits.removeListener(_safeRefresh);
-    CorrectionsService.authChanges.removeListener(_authChanged);
-    _mapController?.dispose();
+    _epoch++;
+    AppNavigation.mapVisits.removeListener(_refresh);
+    CorrectionsService.authChanges.removeListener(_accountChanged);
+    _controller?.dispose();
     super.dispose();
   }
 
-  void _authChanged() {
+  void _accountChanged() {
+    _epoch++;
     setState(() {
-      _items = [];
-      _selected = null;
+      _result = const SurveyMapResult([], []);
+      _selectedKey = null;
+      _error = null;
     });
-    _load();
+    _refresh();
   }
 
-  Future<void> _safeRefresh() async {
-    try {
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Ошибка обновления карты: $e';
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _load() async {
+  Future<void> _refresh() async {
+    final epoch = ++_epoch;
     setState(() {
       _loading = true;
       _error = null;
-      _selected = null;
     });
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_authTokenKey) ?? '';
-      final owner = prefs.getString('arborscan_user_id');
-      final generation = CorrectionsService.authChanges.value;
-      final list = prefs.getStringList(_historyKey) ?? const [];
-
-      final parsed = <_HistoryItem>[];
-      for (final s in list) {
-        try {
-          final m = jsonDecode(s) as Map<String, dynamic>;
-          if (token.isEmpty || owner == null || m['owner_id'] != owner) {
-            continue;
-          }
-          parsed.add(_HistoryItem.fromJson(m));
-        } catch (_) {
-          // ignore broken record
-        }
-      }
-
-      final serverItems = await _loadServerHistoryItems();
-      if (generation != CorrectionsService.authChanges.value ||
-          await CorrectionsService.currentToken() != token) {
-        return;
-      }
-      final byId = <String, _HistoryItem>{
-        for (final item in parsed)
-          if (item.analysisId.isNotEmpty) item.analysisId: item
-      };
-      for (final item in serverItems) {
-        if (item.analysisId.isNotEmpty) {
-          byId[item.analysisId] = item;
-        }
-      }
-      final merged = byId.isNotEmpty ? byId.values.toList() : parsed;
-
-      // Keep only valid geographic coordinates.
-      final withGeo = merged.where((e) {
-        final lat = e.lat;
-        final lon = e.lon;
-        if (lat == null || lon == null) return false;
-        if (lat.isNaN || lon.isNaN) return false;
-        return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
-      }).toList();
-
-      if (!mounted) return;
+    void accept(SurveyMapResult result) {
+      if (!mounted || epoch != _epoch) return;
       setState(() {
-        _items = withGeo;
-        _loading = false;
-      });
-
-      // Apply initial focus if requested
-      if (_pendingFocus != null) {
-        await _tryApplyPendingFocus();
-        return;
-      }
-
-      if (withGeo.isNotEmpty && _mapController != null) {
-        await _animateTo(withGeo.first.lat!, withGeo.first.lon!, zoom: 16);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
+        _result = result;
       });
     }
-  }
 
-  Future<List<_HistoryItem>> _loadServerHistoryItems() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_authTokenKey) ?? '';
-      if (token.isEmpty) return const [];
-
-      // Используем ApiConfig
-      final uri = ApiConfig.v3('/analyses/my').replace(
-        queryParameters: {'token': token, 'limit': '200'},
-      );
-      final res = await http.get(uri).timeout(const Duration(seconds: 12));
-      if (res.statusCode != 200) return const [];
-
-      final data =
-          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-      final items = (data['items'] as List? ?? const []);
-
-      final out = <_HistoryItem>[];
-      for (final raw in items) {
-        if (raw is! Map) continue;
-        final m = raw.cast<String, dynamic>();
-        final createdRaw = m['created_at']?.toString();
-        DateTime ts;
+      var result = await _repository.load(onLocal: accept);
+      if (widget.focusVersionId != null &&
+          !result.positioned.any((e) => e.versionId == widget.focusVersionId)) {
         try {
-          ts = createdRaw != null
-              ? DateTime.parse(createdRaw.replaceFirst('Z', ''))
-              : DateTime.now();
-        } catch (_) {
-          ts = DateTime.now();
-        }
-
-        out.add(_HistoryItem(
-          analysisId: m['analysis_id']?.toString() ?? '',
-          species: m['species']?.toString() ?? 'Неизвестно',
-          height: (m['height_m'] as num?)?.toDouble(),
-          crown: (m['crown_width_m'] as num?)?.toDouble(),
-          trunk: (m['trunk_diameter_m'] as num?)?.toDouble(),
-          scale: null,
-          riskIndex: (m['risk_index'] as num?)?.toDouble(),
-          riskCategory: m['risk_category']?.toString(),
-          lat: (m['lat'] as num?)?.toDouble(),
-          lon: (m['lon'] as num?)?.toDouble(),
-          address: m['address']?.toString(),
-          imageBase64: '',
-          timestamp: ts,
-        ));
+          final focused = await _repository.loadVersion(widget.focusVersionId!);
+          result = SurveyMapResult(
+              mergeSurveyVersions([...result.entries, focused]),
+              result.notices);
+        } catch (_) {/* Keep the remaining account map accessible. */}
       }
-      return out;
+      if (!mounted || epoch != _epoch) return;
+      accept(result);
+      await _applyFocus();
     } catch (_) {
-      return const [];
+      if (mounted && epoch == _epoch) {
+        setState(() => _error =
+            'Не удалось обновить карту. Сохранённые данные остаются доступны.');
+      }
+    } finally {
+      if (mounted && epoch == _epoch) setState(() => _loading = false);
     }
   }
 
-  Future<void> _tryApplyPendingFocus() async {
-    final f = _pendingFocus;
-    if (f == null) return;
-    if (_mapController == null) return;
+  List<SurveyMapEntry> get _visible => _result.entries
+      .where((e) =>
+          _filter == 'all' ||
+          (_filter == 'server' && e.server) ||
+          (_filter == 'local' && !e.server))
+      .toList();
 
-    await _animateTo(f.lat, f.lon, zoom: f.zoom);
-    _pendingFocus = null;
+  Future<void> _applyFocus() async {
+    if (_focusApplied) return;
+    SurveyMapEntry? entry;
+    for (final candidate in _result.entries) {
+      if (candidate.versionId == widget.focusVersionId &&
+          widget.focusVersionId != null) {
+        entry = candidate;
+        break;
+      }
+    }
+    if (entry != null) {
+      _selectedKey = entry.key;
+      if (entry.point == null) {
+        _focusApplied = true;
+        if (mounted) {
+          setState(() {
+            _list = true;
+            _error =
+                'Нет GPS данных, карта недоступна для этой версии. Откройте отчёт и добавьте точку.';
+          });
+        }
+        return;
+      }
+      if (_controller == null) return;
+      await _move(entry.point!.lat, entry.point!.lon);
+      _focusApplied = true;
+    } else if (widget.initialFocus != null && _controller != null) {
+      final focus = widget.initialFocus!;
+      if (SurveyPoint.valid(focus.lat, focus.lon)) {
+        await _move(focus.lat, focus.lon, zoom: focus.zoom);
+      }
+      _focusApplied = true;
+    }
   }
 
-  Future<void> _tryMoveToCurrentLocation() async {
+  Future<void> _move(double lat, double lon, {double zoom = 16}) async {
+    if (!SurveyPoint.valid(lat, lon)) return;
     try {
-      final result = await LocationService.getCurrentPositionDetailed();
-      final pos = result.position;
-      if (pos == null) return;
-      await _animateTo(pos.latitude, pos.longitude, zoom: 14);
-    } catch (_) {}
-  }
-
-  Future<void> _animateTo(
-    double lat,
-    double lon, {
-    double zoom = 15,
-    double? tilt,
-    double? bearing,
-  }) async {
-    final c = _mapController;
-    if (c == null) return;
-
-    try {
-      await c.animateCamera(
-        gmaps.CameraUpdate.newCameraPosition(
+      await _controller?.animateCamera(gmaps.CameraUpdate.newCameraPosition(
           gmaps.CameraPosition(
-            target: gmaps.LatLng(lat, lon),
-            zoom: zoom,
-            tilt: tilt ?? (_is3dMode ? 60 : 0),
-            bearing: bearing ?? (_is3dMode ? 35 : 0),
-          ),
-        ),
-      );
-    } catch (_) {}
-  }
-
-  gmaps.LatLng _bestMapTarget() {
-    if (_selected?.lat != null && _selected?.lon != null) {
-      return gmaps.LatLng(_selected!.lat!, _selected!.lon!);
+              target: gmaps.LatLng(lat, lon),
+              zoom: zoom,
+              tilt: _threeD ? 60 : 0,
+              bearing: _threeD ? 35 : 0)));
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error =
+            'Подложка карты недоступна. Записи можно открыть в списке.');
+      }
     }
-    if (_items.isNotEmpty &&
-        _items.first.lat != null &&
-        _items.first.lon != null) {
-      return gmaps.LatLng(_items.first.lat!, _items.first.lon!);
+  }
+
+  Future<void> _locate() async {
+    if (_moving) return;
+    setState(() => _moving = true);
+    final result = await LocationService.getCurrentPositionDetailed();
+    if (!mounted) return;
+    setState(() => _moving = false);
+    final point = result.position;
+    if (point == null) {
+      _message(result.message);
+      return;
     }
-    return _fallbackCenter;
+    await _move(point.latitude, point.longitude, zoom: 14);
+    if (!mounted) return;
+    _message(result.status == 'last_known'
+        ? 'Обзор по последнему известному положению от ${point.timestamp.toLocal()}. Координаты обследований не изменены.'
+        : 'Камера карты перемещена к устройству. Координаты обследований не изменены.');
   }
 
-  Future<void> _toggleMapType() async {
-    setState(() {
-      _mapType = _mapType == gmaps.MapType.normal
-          ? gmaps.MapType.hybrid
-          : gmaps.MapType.normal;
-    });
+  void _message(String message) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(message)));
+  gmaps.LatLng get _target {
+    if (widget.initialFocus case final focus?
+        when SurveyPoint.valid(focus.lat, focus.lon)) {
+      return gmaps.LatLng(focus.lat, focus.lon);
+    }
+    final matching = _result.positioned
+        .where((e) => e.versionId == widget.focusVersionId)
+        .firstOrNull;
+    final point = matching?.point ?? _result.positioned.firstOrNull?.point;
+    return point == null ? _overview : gmaps.LatLng(point.lat, point.lon);
   }
 
-  Future<void> _toggle3dMode() async {
-    setState(() => _is3dMode = !_is3dMode);
-    final target = _bestMapTarget();
-    await _animateTo(
-      target.latitude,
-      target.longitude,
-      zoom: _is3dMode ? 19 : 16,
-      tilt: _is3dMode ? 65 : 0,
-      bearing: _is3dMode ? 35 : 0,
+  Future<void> _choose(List<SurveyMapEntry> entries) async {
+    final epoch = CorrectionsService.authChanges.value;
+    SurveyMapEntry? entry = entries.first;
+    if (entries.length > 1) {
+      entry = await showModalBottomSheet<SurveyMapEntry>(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) => _sessionView(
+              epoch,
+              SafeArea(
+                  child: SizedBox(
+                      height: MediaQuery.sizeOf(context).height * .65,
+                      child: ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            Text('В этой точке: ${entries.length}',
+                                style: Theme.of(context).textTheme.titleLarge),
+                            const Text(
+                                'Выберите обследование или версию. Совпадение координат не означает одно дерево.'),
+                            for (final e in entries)
+                              ListTile(
+                                  title: Text(e.species),
+                                  subtitle: Text(
+                                      '${e.formattedDate} · ${e.storageLabel}\n${e.versionId == null ? 'Старая запись' : 'Версия ${e.versionId!.substring(0, e.versionId!.length.clamp(0, 8))}'}'),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () => Navigator.pop(context, e)),
+                          ])))));
+    }
+    if (entry == null ||
+        !mounted ||
+        epoch != CorrectionsService.authChanges.value) {
+      return;
+    }
+    setState(() => _selectedKey = entry!.key);
+    if (entry.point != null) await _move(entry.point!.lat, entry.point!.lon);
+    if (!mounted || epoch != CorrectionsService.authChanges.value) return;
+    await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => ValueListenableBuilder<int>(
+            valueListenable: CorrectionsService.authChanges,
+            builder: (context, current, _) => current == epoch
+                ? _SurveyCard(
+                    entry: entry!, repository: _repository, onOpen: _openReport)
+                : const SafeArea(
+                    child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child:
+                            Text('Аккаунт изменился. Закройте карточку.')))));
+  }
+
+  Widget _sessionView(int epoch, Widget child) => ValueListenableBuilder<int>(
+      valueListenable: CorrectionsService.authChanges,
+      builder: (_, current, __) => current == epoch
+          ? child
+          : const SafeArea(
+              child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('Аккаунт изменился. Закройте карточку.'))));
+
+  Future<void> _openReport(
+      SurveyMapEntry entry, Map<String, dynamic>? detail) async {
+    final token = await CorrectionsService.currentToken();
+    await _repository.history.auth.checkSession(token);
+    if (await _repository.history.auth.owner(token) != entry.owner ||
+        !mounted) {
+      return;
+    }
+    Navigator.pop(context); // Close only the current map card.
+    final epoch = CorrectionsService.authChanges.value;
+    Widget page;
+    if (entry.versionId != null) {
+      final local = detail?['local_copy'] == true || !entry.server;
+      page = ServerReportPage(
+          versionId: local ? null : entry.versionId,
+          localId: local ? entry.localId : null,
+          expectedLocalVersionId: local ? entry.versionId : null);
+    } else {
+      final raw = surveyMap(detail?['legacy']);
+      page = raw.containsKey('height_m') || raw.containsKey('gps')
+          ? AnalysisReportPageV2.fromRawResult(
+              raw: raw, annotatedImageBytes: detail?['photo'] as Uint8List?)
+          : AnalysisReportPageV2.fromHistory(
+              species: entry.species,
+              heightM: entry.heightM,
+              crownWidthM: entry.crownM,
+              trunkDiameterM: entry.trunkM,
+              lat: entry.point?.lat,
+              lon: entry.point?.lon,
+              timestamp: entry.capturedAt,
+              imageBase64: entry.metadata['imageBase64']?.toString());
+    }
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => ValueListenableBuilder<int>(
+                valueListenable: CorrectionsService.authChanges,
+                builder: (_, current, __) => current == epoch
+                    ? page
+                    : const Scaffold(
+                        body: Center(child: Text('Аккаунт изменился.'))))));
+    if (mounted) _refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final positioned = _visible.where((e) => e.point != null).toList();
+    final groups = groupSurveyPoints(positioned);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Карта обследований'), actions: [
+        IconButton(
+            tooltip: _list ? 'Показать карту' : 'Показать список',
+            onPressed: () => setState(() => _list = !_list),
+            icon: Icon(_list ? Icons.map_outlined : Icons.list_alt)),
+        IconButton(
+            tooltip: 'Обновить карту',
+            onPressed: _loading ? null : _refresh,
+            icon: const Icon(Icons.refresh)),
+      ]),
+      body: SafeArea(
+          child: Column(children: [
+        if (_loading) const LinearProgressIndicator(minHeight: 2),
+        ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * .38),
+            child: SingleChildScrollView(
+                child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              '${positioned.length} с координатами · ${_visible.length - positioned.length} без точки',
+                              style: Theme.of(context).textTheme.titleSmall),
+                          const SizedBox(height: 8),
+                          Wrap(spacing: 8, runSpacing: 4, children: [
+                            for (final option in const [
+                              ('all', 'Все'),
+                              ('server', 'Аккаунт'),
+                              ('local', 'На устройстве')
+                            ])
+                              ChoiceChip(
+                                  label: Text(option.$2),
+                                  selected: _filter == option.$1,
+                                  onSelected: (_) =>
+                                      setState(() => _filter = option.$1)),
+                          ]),
+                          if (_error != null)
+                            Text(_error!,
+                                style: const TextStyle(color: AppTheme.danger)),
+                          if (_result.notices.isNotEmpty)
+                            ExpansionTile(
+                                tilePadding: EdgeInsets.zero,
+                                title: Text(_loading
+                                    ? 'Загрузка списка…'
+                                    : 'Доступность данных'),
+                                children: [
+                                  for (final notice in _result.notices)
+                                    Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 8),
+                                        child: Text(notice))
+                                ]),
+                        ])))),
+        Expanded(
+            child: _list || positioned.isEmpty
+                ? _entriesList()
+                : Stack(children: [
+                    gmaps.GoogleMap(
+                      initialCameraPosition: gmaps.CameraPosition(
+                          target: _target,
+                          zoom: widget.initialFocus?.zoom ?? 13),
+                      mapType: _mapType,
+                      myLocationButtonEnabled: false,
+                      myLocationEnabled: false,
+                      mapToolbarEnabled: false,
+                      zoomControlsEnabled: false,
+                      compassEnabled: true,
+                      padding: const EdgeInsets.only(top: 52, bottom: 65),
+                      onMapCreated: (controller) {
+                        _controller = controller;
+                        _applyFocus();
+                      },
+                      markers: groups.entries
+                          .map((group) => gmaps.Marker(
+                                markerId: gmaps.MarkerId(group.key),
+                                position: gmaps.LatLng(
+                                    group.value.first.point!.lat,
+                                    group.value.first.point!.lon),
+                                // The icon distinguishes selection only; it never encodes risk.
+                                icon:
+                                    gmaps.BitmapDescriptor.defaultMarkerWithHue(
+                                        group.value.any(
+                                                (e) => e.key == _selectedKey)
+                                            ? gmaps.BitmapDescriptor.hueOrange
+                                            : gmaps.BitmapDescriptor.hueGreen),
+                                infoWindow: gmaps.InfoWindow(
+                                    title: group.value.length > 1
+                                        ? '${group.value.length} обследования / версии'
+                                        : group.value.first.species),
+                                onTap: () => _choose(group.value),
+                              ))
+                          .toSet(),
+                    ),
+                    Positioned(
+                        left: 12,
+                        right: 12,
+                        top: 8,
+                        child: Wrap(spacing: 8, runSpacing: 6, children: [
+                          IconButton.filledTonal(
+                              tooltip: 'Переместить обзор к устройству',
+                              onPressed: _moving ? null : _locate,
+                              icon: const Icon(Icons.my_location)),
+                          IconButton.filledTonal(
+                              tooltip: _mapType == gmaps.MapType.normal
+                                  ? 'Спутниковый слой'
+                                  : 'Обычная карта',
+                              onPressed: () => setState(() => _mapType =
+                                  _mapType == gmaps.MapType.normal
+                                      ? gmaps.MapType.hybrid
+                                      : gmaps.MapType.normal),
+                              icon: const Icon(Icons.layers_outlined)),
+                          IconButton.filledTonal(
+                              tooltip: _threeD
+                                  ? 'Плоский обзор 2D'
+                                  : 'Наклонный обзор 3D',
+                              onPressed: () {
+                                setState(() => _threeD = !_threeD);
+                                _move(_target.latitude, _target.longitude);
+                              },
+                              icon: Icon(_threeD
+                                  ? Icons.map_outlined
+                                  : Icons.threed_rotation)),
+                        ])),
+                    Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 8,
+                        child: Material(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Text(
+                                    'Подложке Google Maps нужна сеть. Если она не загрузилась, откройте список.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall)))),
+                  ])),
+      ])),
     );
   }
 
-  Set<gmaps.Marker> _buildMarkers() {
-    return _items.map((e) {
-      final id = e.analysisId.isNotEmpty ? e.analysisId : e.timestampIso;
-      return gmaps.Marker(
-        markerId: gmaps.MarkerId(id),
-        position: gmaps.LatLng(e.lat!, e.lon!),
-        onTap: () async {
-          setState(() => _selected = e);
-          await _animateTo(
-            e.lat!,
-            e.lon!,
-            zoom: _is3dMode ? 19 : 17,
-            tilt: _is3dMode ? 65 : 0,
-            bearing: _is3dMode ? 35 : 0,
-          );
-          _showDetailsSheet(e);
-        },
-      );
-    }).toSet();
+  Widget _entriesList() =>
+      ListView(padding: const EdgeInsets.all(16), children: [
+        if (_visible.isEmpty)
+          const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Column(children: [
+                Icon(Icons.location_on_outlined, size: 48),
+                SizedBox(height: 12),
+                Text('Пока нет сохранённых обследований'),
+                Text(
+                    'Добавьте точку во время исследования или в новой версии отчёта. GPS не обязателен.'),
+              ])),
+        if (_visible.isNotEmpty && !_list)
+          const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                  'Нет GPS данных, карта недоступна для этих записей. Откройте отчёт, чтобы добавить точку.')),
+        for (final entry in _visible)
+          Card(
+              child: ListTile(
+            selected: entry.key == _selectedKey,
+            leading: Icon(entry.point == null
+                ? Icons.location_off_outlined
+                : Icons.location_on_outlined),
+            title: Text(entry.species),
+            subtitle: Text(
+                '${entry.formattedDate} · ${entry.storageLabel}\n${entry.point?.coordinates ?? 'Нет координат'}'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _choose([entry]),
+          )),
+      ]);
+}
+
+class _SurveyCard extends StatefulWidget {
+  final SurveyMapEntry entry;
+  final SurveyMapRepository repository;
+  final Future<void> Function(SurveyMapEntry, Map<String, dynamic>?) onOpen;
+  const _SurveyCard(
+      {required this.entry, required this.repository, required this.onOpen});
+  @override
+  State<_SurveyCard> createState() => _SurveyCardState();
+}
+
+class _SurveyCardState extends State<_SurveyCard> {
+  Map<String, dynamic>? _detail;
+  String? _error;
+  bool _busy = true;
+  @override
+  void initState() {
+    super.initState();
+    _load();
   }
 
-  Future<void> _openStreetView(_HistoryItem item) async {
-    final lat = item.lat;
-    final lon = item.lon;
-    if (lat == null || lon == null) return;
-
-    final nativeStreetView =
-        Uri.parse('google.streetview:cbll=$lat,$lon&cbp=0,0,0,0,0');
-    final mapsLayerStreetView =
-        Uri.parse('https://www.google.com/maps?layer=c&cbll=$lat,$lon');
-    final webStreetView = Uri.parse(
-      'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=$lat,$lon',
-    );
-
+  Future<void> _load() async {
     try {
-      if (await canLaunchUrl(nativeStreetView)) {
-        await launchUrl(nativeStreetView, mode: LaunchMode.externalApplication);
+      final data = await widget.repository.detail(widget.entry);
+      if (mounted) setState(() => _detail = data);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error =
+            'Фото или полный отчёт сейчас недоступны. Сохранённые сведения показаны ниже.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _external(Uri uri,
+      {LaunchMode mode = LaunchMode.externalApplication}) async {
+    try {
+      if (!await launchUrl(uri, mode: mode)) throw StateError('unavailable');
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Не удалось открыть внешнюю карту.');
+    }
+  }
+
+  Future<void> _streetView(SurveyPoint point) async {
+    final native = Uri.parse(
+        'google.streetview:cbll=${point.lat},${point.lon}&cbp=0,0,0,0,0');
+    try {
+      if (await canLaunchUrl(native) &&
+          await launchUrl(native, mode: LaunchMode.externalApplication)) {
         return;
       }
-    } catch (_) {}
-
-    try {
-      await launchUrl(mapsLayerStreetView,
-          mode: LaunchMode.externalApplication);
-      return;
-    } catch (_) {}
-
-    await launchUrl(webStreetView, mode: LaunchMode.inAppBrowserView);
+    } catch (_) {/* Fall through to the existing Google Maps web view. */}
+    await _external(Uri.parse(
+        'https://www.google.com/maps?layer=c&cbll=${point.lat},${point.lon}'));
   }
 
-  Future<void> _openStreetViewInBrowser(_HistoryItem item) async {
-    final lat = item.lat;
-    final lon = item.lon;
-    if (lat == null || lon == null) return;
-
-    final uri = Uri.parse('https://www.google.com/maps?layer=c&cbll=$lat,$lon');
-    await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
-  }
-
-  void _showDetailsSheet(_HistoryItem item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (_) {
-        final bytes =
-            item.imageBase64.isNotEmpty ? _safeB64(item.imageBase64) : null;
-
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.58,
-          minChildSize: 0.32,
-          maxChildSize: 0.92,
-          builder: (context, scrollController) {
-            return SafeArea(
-              child: SingleChildScrollView(
-                controller: scrollController,
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  8,
-                  16,
-                  16 + MediaQuery.of(context).padding.bottom,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Ui.badge(
-                          text: item.riskCategory?.isNotEmpty == true
-                              ? item.riskCategory!
-                              : 'Анализ',
-                          color: AppTheme.primary,
-                          icon: Icons.location_on,
-                        ),
-                        const Spacer(),
-                        Text(
-                          item.formattedTs,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: AppTheme.muted),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      item.species.isNotEmpty ? item.species : 'Неизвестно',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 8),
-                    if (bytes != null) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: Image.memory(
-                          bytes,
-                          height: 140,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            height: 140,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.04),
+  @override
+  Widget build(BuildContext context) {
+    final entry = widget.entry.versionId != null && _detail?['snapshot'] != null
+        ? SurveyMapEntry.version({
+            ...widget.entry.metadata,
+            ...surveyMap(_detail?['record']),
+            'snapshot': _detail!['snapshot']
+          }, widget.entry.owner,
+            server: widget.entry.server,
+            cached: widget.entry.cached,
+            localId: widget.entry.localId)
+        : widget.entry;
+    final point = entry.point;
+    final photo = _detail?['photo'] as Uint8List?;
+    return DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .58,
+        minChildSize: .35,
+        maxChildSize: .94,
+        builder: (context, scroll) => SafeArea(
+                child: ListView(
+                    controller: scroll,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    children: [
+                  if (_busy) const LinearProgressIndicator(minHeight: 2),
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    if (photo != null)
+                      Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: ClipRRect(
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppTheme.border),
-                            ),
-                            child: const Icon(Icons.image_not_supported),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        if (item.height != null)
-                          Ui.badge(
-                            text: 'H: ${item.height!.toStringAsFixed(2)} м',
-                            color: AppTheme.success,
-                            icon: Icons.height,
-                          ),
-                        if (item.crown != null)
-                          Ui.badge(
-                            text: 'Крона: ${item.crown!.toStringAsFixed(2)} м',
-                            color: AppTheme.success,
-                            icon: Icons.nature,
-                          ),
-                        if (item.trunk != null)
-                          Ui.badge(
-                            text: 'Ствол: ${item.trunk!.toStringAsFixed(2)} м',
-                            color: AppTheme.success,
-                            icon: Icons.circle,
-                          ),
-                        if (item.riskIndex != null)
-                          Ui.badge(
-                            text: 'Риск: ${item.riskIndex!.toStringAsFixed(2)}',
-                            color: AppTheme.warning,
-                            icon: Icons.shield,
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () => _openStreetView(item),
-                          icon: const Icon(Icons.threesixty),
-                          label: const Text('Street View'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () => _openStreetViewInBrowser(item),
-                          icon: const Icon(Icons.public),
-                          label: const Text('В браузере'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final lat = item.lat;
-                            final lon = item.lon;
-                            if (lat == null || lon == null) return;
-                            final uri = Uri.parse(
-                              'https://www.google.com/maps/search/?api=1&query=$lat,$lon',
-                            );
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
-                          },
-                          icon: const Icon(Icons.near_me_outlined),
-                          label: const Text('Точка'),
-                        ),
-                      ],
-                    ),
-                    const Text(
-                      'Просмотр улиц доступен не везде. Если Google пишет, что он недоступен, значит рядом с этой точкой нет панорамы Street View.',
-                      style: TextStyle(
-                        color: AppTheme.muted,
-                        fontSize: 12,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    if (item.address != null &&
-                        _normalizeAddressRu(item.address).isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Text(_normalizeAddressRu(item.address),
-                          style: Theme.of(context).textTheme.bodyMedium),
-                    ],
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              Navigator.of(context).pop();
-                              await _animateTo(item.lat!, item.lon!, zoom: 17);
-                            },
-                            icon: const Icon(Icons.center_focus_strong),
-                            label: const Text('Показать'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.check),
-                            label: const Text('Ок'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Uint8List? _safeB64(String b64) {
-    try {
-      return base64Decode(b64);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Карта'),
-        actions: [
-          IconButton(
-            tooltip: 'Обновить',
-            icon: const Icon(Icons.refresh),
-            onPressed: _safeRefresh,
-          ),
-          IconButton(
-            tooltip: 'Настройки геолокации',
-            icon: const Icon(Icons.settings),
-            onPressed: () async {
-              await Geolocator.openLocationSettings();
-            },
-          ),
-        ],
-      ),
-      body: _error != null
-          ? _ErrorState(message: _error!, onRetry: _load)
-          : _items.isEmpty
-              ? _EmptyState(onRetry: _load)
-              : Stack(
-                  children: [
-                    gmaps.GoogleMap(
-                      initialCameraPosition: const gmaps.CameraPosition(
-                        target: _fallbackCenter,
-                        zoom: 10,
-                      ),
-                      mapType: _mapType,
-                      buildingsEnabled: true,
-                      compassEnabled: true,
-                      rotateGesturesEnabled: true,
-                      tiltGesturesEnabled: true,
-                      zoomControlsEnabled: false,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: true,
-                      markers: _buildMarkers(),
-                      onMapCreated: (c) async {
-                        _mapController = c;
-                        // If there is pending focus (from history), apply now
-                        await _tryApplyPendingFocus();
-                      },
-                      onTap: (_) => setState(() => _selected = null),
-                    ),
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _MapControlButton(
-                            icon: _mapType == gmaps.MapType.normal
-                                ? Icons.satellite_alt_outlined
-                                : Icons.map_outlined,
-                            label: _mapType == gmaps.MapType.normal
-                                ? 'Спутник'
-                                : 'Карта',
-                            onTap: _toggleMapType,
-                          ),
-                          const SizedBox(height: 8),
-                          _MapControlButton(
-                            icon: Icons.threed_rotation,
-                            label: _is3dMode ? '2D' : '3D',
-                            active: _is3dMode,
-                            onTap: _toggle3dMode,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          child: Row(
+                              child: Image.memory(photo,
+                                  width: 88,
+                                  height: 96,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const SizedBox(
+                                      width: 88,
+                                      height: 96,
+                                      child: Icon(Icons
+                                          .image_not_supported_outlined))))),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.info_outline, size: 18),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Тап по маркеру — детали анализа',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(color: AppTheme.muted),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: _safeRefresh,
-                                child: const Text('Обновить'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-    );
-  }
-}
-
-class _MapControlButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool active;
-
-  const _MapControlButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.active = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: active
-          ? AppTheme.primary.withOpacity(0.92)
-          : AppTheme.surface.withOpacity(0.92),
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: active ? AppTheme.primary : AppTheme.border,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: active ? Colors.white : AppTheme.text,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: active ? Colors.white : AppTheme.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final VoidCallback onRetry;
-
-  const _EmptyState({required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Ui.paddedCard(
-          context,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.map_outlined),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Пока нет точек на карте.\n\n'
-                  'Сделай анализ с включённой геолокацией — и результаты появятся здесь.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: AppTheme.muted),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: onRetry,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Обновить'),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: () async => Geolocator.openLocationSettings(),
-          icon: const Icon(Icons.settings),
-          label: const Text('Настройки геолокации'),
-        ),
-      ],
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-
-  const _ErrorState({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Ui.paddedCard(
-          context,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.error_outline, color: AppTheme.danger),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: AppTheme.danger),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: onRetry,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Повторить'),
-        ),
-      ],
-    );
-  }
-}
-
-class _HistoryItem {
-  final String analysisId;
-  final String species;
-  final double? height;
-  final double? crown;
-  final double? trunk;
-  final double? scale;
-  final double? riskIndex;
-  final String? riskCategory;
-
-  final double? lat;
-  final double? lon;
-  final String? address;
-
-  final String imageBase64;
-  final DateTime timestamp;
-
-  _HistoryItem({
-    required this.analysisId,
-    required this.species,
-    required this.imageBase64,
-    required this.timestamp,
-    this.height,
-    this.crown,
-    this.trunk,
-    this.scale,
-    this.riskIndex,
-    this.riskCategory,
-    this.lat,
-    this.lon,
-    this.address,
-  });
-
-  String get timestampIso => timestamp.toIso8601String();
-
-  String get formattedTs {
-    String two(int v) => v.toString().padLeft(2, '0');
-    return '${two(timestamp.day)}.${two(timestamp.month)}.${timestamp.year} '
-        '${two(timestamp.hour)}:${two(timestamp.minute)}';
-  }
-
-  factory _HistoryItem.fromJson(Map<String, dynamic> json) {
-    return _HistoryItem(
-      analysisId: (json['analysisId'] ?? '') as String,
-      species: (json['species'] ?? 'Неизвестно') as String,
-      height: (json['height'] as num?)?.toDouble(),
-      crown: (json['crown'] as num?)?.toDouble(),
-      trunk: (json['trunk'] as num?)?.toDouble(),
-      scale: (json['scale'] as num?)?.toDouble(),
-      riskIndex: (json['riskIndex'] as num?)?.toDouble(),
-      riskCategory: json['riskCategory'] as String?,
-      lat: (json['lat'] as num?)?.toDouble(),
-      lon: (json['lon'] as num?)?.toDouble(),
-      address: json['address'] as String?,
-      imageBase64: (json['imageBase64'] ?? '') as String,
-      timestamp: DateTime.tryParse((json['timestamp'] ?? '') as String) ??
-          DateTime.now(),
-    );
+                          Text(entry.species,
+                              style: Theme.of(context).textTheme.titleLarge),
+                          Text(entry.speciesStatus,
+                              style: Theme.of(context).textTheme.bodySmall),
+                          const SizedBox(height: 6),
+                          Text(
+                              '${entry.formattedDate} · ${entry.storageLabel}'),
+                        ])),
+                  ]),
+                  const SizedBox(height: 14),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    if (entry.heightM != null)
+                      Ui.badge(
+                          text: 'Высота ${entry.heightM!.toStringAsFixed(2)} м',
+                          color: AppTheme.primary),
+                    if (entry.crownM != null)
+                      Ui.badge(
+                          text: 'Крона ${entry.crownM!.toStringAsFixed(2)} м',
+                          color: AppTheme.primary),
+                    if (entry.trunkM != null)
+                      Ui.badge(
+                          text:
+                              'Ствол ${(entry.trunkM! * 100).toStringAsFixed(1)} см',
+                          color: AppTheme.primary),
+                  ]),
+                  const SizedBox(height: 14),
+                  Text(
+                      point?.coordinates ?? 'Нет GPS данных, карта недоступна'),
+                  if (point != null)
+                    Text(point.label,
+                        style: const TextStyle(color: AppTheme.muted)),
+                  if (_error != null)
+                    Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(_error!,
+                            style: const TextStyle(color: AppTheme.warning))),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                      onPressed: () async {
+                        try {
+                          await widget.onOpen(entry, _detail);
+                        } catch (_) {
+                          if (mounted) {
+                            setState(() => _error =
+                                'Не удалось открыть отчёт. Обновите список и повторите.');
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.description_outlined),
+                      label: Text(point == null
+                          ? 'Открыть отчёт / добавить точку'
+                          : 'Открыть эту версию')),
+                  ExpansionTile(
+                      title: const Text('Источники и условия'),
+                      children: [
+                        if (point != null) ...[
+                          Text(
+                              'Система координат: WGS84. ${point.positionKind == 'tree' ? 'Точка дерева' : 'Положение камеры или устройства'}. '
+                              '${point.accuracyM == null ? 'Точность не записана.' : 'Записанная точность: ${point.accuracyM} м.'}'),
+                          if (point.isLastKnown)
+                            const Text(
+                                'Использовано последнее известное положение.'),
+                          if (point.retrievedAt.isNotEmpty)
+                            Text('Координаты получены: ${point.retrievedAt}'),
+                        ],
+                        if (entry.environment['weather'] != null)
+                          const Text(
+                              'В этой версии есть снимок погоды. Параметры и дата доступны в отчёте.'),
+                        if (entry.environment['soil'] != null)
+                          const Text(
+                              'В этой версии есть снимок почвенных данных. Параметры и глубина доступны в отчёте.'),
+                        if (entry.environment['weather'] == null &&
+                            entry.environment['soil'] == null)
+                          const Text(
+                              'Условия среды в этой версии не записаны.'),
+                        if (entry.metadata['riskIndex'] != null ||
+                            entry.metadata['risk_index'] != null)
+                          const Text(
+                              'Старая запись содержит историческую эвристику риска. Она не подтверждает безопасность дерева.'),
+                        if (entry.versionId != null)
+                          SelectableText('Версия: ${entry.versionId}'),
+                      ]),
+                  if (point != null)
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      OutlinedButton.icon(
+                          onPressed: () => _streetView(point),
+                          icon: const Icon(Icons.threesixty),
+                          label: const Text('Street View')),
+                      OutlinedButton.icon(
+                          onPressed: () => _external(
+                              Uri.parse(
+                                  'https://www.google.com/maps?layer=c&cbll=${point.lat},${point.lon}'),
+                              mode: LaunchMode.inAppBrowserView),
+                          icon: const Icon(Icons.public),
+                          label: const Text('В браузере')),
+                      OutlinedButton.icon(
+                          onPressed: () => _external(Uri.parse(
+                              'https://www.google.com/maps/dir/?api=1&destination=${point.lat},${point.lon}')),
+                          icon: const Icon(Icons.directions_outlined),
+                          label: const Text('Маршрут')),
+                    ]),
+                ])));
   }
 }

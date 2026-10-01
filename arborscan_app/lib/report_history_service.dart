@@ -22,6 +22,10 @@ ContourDrafts reportStore() => ContourDrafts(
     directory: () async => Directory(
         '${(await getApplicationSupportDirectory()).path}/report-history-v1'));
 
+ContourDrafts reportCacheStore() => ContourDrafts(
+    directory: () async => Directory(
+        '${(await getApplicationSupportDirectory()).path}/report-cache-v1'));
+
 class ReportHistoryService {
   static Future<void> _operations = Future.value();
   Future<T> _serial<T>(Future<T> Function() action) {
@@ -33,13 +37,16 @@ class ReportHistoryService {
 
   final CorrectionsService auth;
   final ContourDrafts journal;
+  final ContourDrafts cache;
   final http.Client Function() clientFactory;
   ReportHistoryService(
       {CorrectionsService? auth,
       ContourDrafts? journal,
+      ContourDrafts? cache,
       http.Client Function()? clientFactory})
       : auth = auth ?? CorrectionsService(),
         journal = journal ?? reportStore(),
+        cache = cache ?? reportCacheStore(),
         clientFactory = clientFactory ?? http.Client.new;
 
   Future<Map<String, dynamic>> request(
@@ -100,10 +107,44 @@ class ReportHistoryService {
                 'offset': '$offset',
                 if (analysisId != null) 'analysis_id': analysisId
               })));
-  Future<Map<String, dynamic>> record(String token, String id) => request(
-      token,
-      http.Request(
-          'GET', ApiConfig.v4('/v4/reports/${Uri.encodeComponent(id)}')));
+  Future<Map<String, dynamic>> record(String token, String id) async {
+    final owner = await auth.owner(token);
+    try {
+      final result = await request(
+          token,
+          http.Request(
+              'GET', ApiConfig.v4('/v4/reports/${Uri.encodeComponent(id)}')));
+      final snapshot = Map<String, dynamic>.from(result['snapshot']);
+      final encoded = (snapshot.remove('image') as Map?)?['original_base64'];
+      if (encoded is String) {
+        try {
+          await cache.save(
+              owner,
+              id,
+              {'record': result['record'], 'snapshot': snapshot},
+              base64Decode(encoded));
+        } catch (_) {
+          /* A full disk must not hide a successfully fetched report. */
+        }
+      }
+      await auth.checkSession(token);
+      return result;
+    } on CorrectionException catch (e) {
+      if ([401, 403, 404].contains(e.statusCode)) rethrow;
+      await auth.checkSession(token);
+      final cached = await cache.load(owner, id);
+      await auth.checkSession(token);
+      if (cached == null) rethrow;
+      return {
+        'record': cached['record'],
+        'snapshot': {
+          ...cached['snapshot'],
+          'image': {'original_base64': base64Encode(cached['image'])}
+        },
+        'cached': true
+      };
+    }
+  }
 
   Future<Map<String, dynamic>> stage(
           {required String token,
@@ -167,12 +208,19 @@ class ReportHistoryService {
     if (d == null) {
       throw const CorrectionException('Локальный отчёт недоступен.');
     }
-    if (d['snapshot']?['reference']?['version'] == 2) {
+    if (d['snapshot']?['reference']?['version'] == 2 ||
+        d['snapshot']?['environment']?['version'] == 1) {
       final caps = await this.request(
           token, http.Request('GET', ApiConfig.v4('/v4/reports/capabilities')));
-      if (!(caps['reference_versions'] as List? ?? []).contains(2)) {
+      if (d['snapshot']?['reference']?['version'] == 2 &&
+          !(caps['reference_versions'] as List? ?? []).contains(2)) {
         throw const CorrectionException(
             'Сервер пока не поддерживает новую геометрию. Измерение сохранено локально; требуется обновление API.');
+      }
+      if (d['snapshot']?['environment']?['version'] == 1 &&
+          caps['environment_version'] != 1) {
+        throw const CorrectionException(
+            'Сервер пока не поддерживает снимок места и условий. Отчёт сохранён на устройстве; требуется обновление API. Прежние отчёты доступны.');
       }
     }
     final request = http.MultipartRequest('POST', ApiConfig.v4('/v4/reports'))
@@ -199,7 +247,7 @@ class ReportHistoryService {
     } on CorrectionException catch (e) {
       if (d['upload_attempted'] != true &&
           [400, 401, 403, 404, 405, 409, 413, 422, 429]
-          .contains(e.statusCode)) {
+              .contains(e.statusCode)) {
         await auth.checkSession(token);
         await journal.save(
             owner,

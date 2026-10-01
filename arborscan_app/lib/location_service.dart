@@ -19,7 +19,7 @@ class LocationService {
   ///
   /// Почему так:
   /// - getCurrentPosition часто не успевает за 6 секунд в помещении;
-  /// - lastKnownPosition часто уже есть и подходит для анализа;
+  /// - lastKnownPosition возвращается отдельно и требует подтверждения пользователя;
   /// - Android может вернуть null без явной ошибки.
   static Future<LocationResult> getCurrentPositionDetailed() async {
     try {
@@ -71,7 +71,7 @@ class LocationService {
           return LocationResult(
             position: last,
             status: 'last_known',
-            message: 'Использованы последние известные GPS-координаты.',
+            message: 'Доступно только последнее известное положение. Подтвердите его перед использованием.',
           );
         }
 

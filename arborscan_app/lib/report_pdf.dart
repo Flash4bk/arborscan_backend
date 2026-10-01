@@ -158,15 +158,20 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
       title: 'ArborScan — отчёт об обследовании дерева', author: 'ArborScan');
   final theme = pw.ThemeData.withFont(
       base: font, bold: font, italic: font, boldItalic: font);
-  const green = PdfColor.fromInt(0xff185746);
+  const green = PdfColor.fromInt(0xff263d2c);
+  const paper = PdfColor.fromInt(0xfff5f4ea);
+  const olive = PdfColor.fromInt(0xff657147);
+  const accent = PdfColor.fromInt(0xffdce7b8);
   pw.Widget text(String value) => pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 6),
+      padding: const pw.EdgeInsets.only(bottom: 5),
       child: pw.Text(exportText(value),
-          style: const pw.TextStyle(fontSize: 11, lineSpacing: 3)));
+          style:
+              const pw.TextStyle(fontSize: 10, lineSpacing: 2, color: green)));
   pw.Widget heading(String value) => pw.Header(
       level: 1,
       child: pw.Text(value,
-          style: const pw.TextStyle(fontSize: 16, color: green)));
+          style: pw.TextStyle(
+              fontSize: 15, color: green, fontWeight: pw.FontWeight.bold)));
   pw.Widget image(Uint8List bytes) => pw.Center(
       child: pw.SizedBox(
           height: 340,
@@ -174,22 +179,52 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
           child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain)));
   final s = data.snapshot;
   pdf.addPage(pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
-      theme: theme,
-      margin: const pw.EdgeInsets.all(36),
+      pageTheme: pw.PageTheme(
+          pageFormat: PdfPageFormat.a4,
+          theme: theme,
+          margin: const pw.EdgeInsets.all(36),
+          buildBackground: (_) => pw.FullPage(
+              ignoreMargins: true, child: pw.Container(color: paper))),
+      header: (context) => context.pageNumber == 1
+          ? pw.SizedBox()
+          : pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 14),
+              child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('ArborScan',
+                        style: const pw.TextStyle(color: green, fontSize: 12)),
+                    pw.Text('Обследование дерева',
+                        style: const pw.TextStyle(color: olive, fontSize: 9)),
+                  ])),
       maxPages: 100,
       footer: (c) => pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text('ArborScan • сохранённый результат',
-                    style: const pw.TextStyle(fontSize: 8)),
+                    style: const pw.TextStyle(fontSize: 8, color: olive)),
                 pw.Text('${c.pageNumber} / ${c.pagesCount}',
-                    style: const pw.TextStyle(fontSize: 8)),
+                    style: const pw.TextStyle(fontSize: 8, color: olive)),
               ]),
       build: (_) => [
-            pw.Text('ArborScan',
-                style: const pw.TextStyle(fontSize: 24, color: green)),
-            heading('Отчёт об обследовании дерева'),
+            pw.Container(
+                width: double.infinity,
+                padding:
+                    const pw.EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                margin: const pw.EdgeInsets.only(bottom: 14),
+                decoration: pw.BoxDecoration(
+                    color: green, borderRadius: pw.BorderRadius.circular(14)),
+                child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('ArborScan',
+                          style: const pw.TextStyle(
+                              fontSize: 27, color: PdfColors.white)),
+                      pw.SizedBox(height: 5),
+                      pw.Text('Отчёт об обследовании дерева',
+                          style:
+                              const pw.TextStyle(fontSize: 12, color: accent)),
+                    ])),
             if (partial)
               text(
                   'НЕПОЛНЫЙ ОТЧЁТ: исходное фото недоступно; экспортированы только доступные данные.'),
@@ -198,7 +233,7 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
                 : 'Снимок выбранной версии отчёта из аккаунта.'),
             text('Запись: ${data.id}\nВерсия: ${data.version}'),
             text(
-                'Дата обследования / анализа: ${exportText(s['kind'] == 'v4' ? data.report['captured_at'] : s['captured_at'])}\nСохранение версии: ${exportText(data.record['created_at'])}\nФормирование PDF (UTC): ${(generatedAt ?? DateTime.now()).toUtc().toIso8601String()}'),
+                'Дата обследования / анализа: ${exportText(s['captured_at'] ?? data.report['captured_at'])}\nСохранение версии: ${exportText(data.record['created_at'])}\nФормирование PDF (UTC): ${(generatedAt ?? DateTime.now()).toUtc().toIso8601String()}'),
             if (images.original != null) ...[
               pw.Column(
                   children: [heading('Исходное фото'), image(images.original!)])
@@ -209,20 +244,22 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
             text(data.method),
             for (final m in data.metrics) ...[
               pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300),
+                  border: pw.TableBorder.all(color: accent),
                   columnWidths: {
                     0: const pw.FlexColumnWidth(3),
                     1: const pw.FlexColumnWidth(1)
                   },
                   children: [
-                    pw.TableRow(children: [
-                      pw.Padding(
-                          padding: const pw.EdgeInsets.all(7),
-                          child: pw.Text(m.label)),
-                      pw.Padding(
-                          padding: const pw.EdgeInsets.all(7),
-                          child: pw.Text(m.display)),
-                    ])
+                    pw.TableRow(
+                        decoration: const pw.BoxDecoration(color: accent),
+                        children: [
+                          pw.Padding(
+                              padding: const pw.EdgeInsets.all(7),
+                              child: pw.Text(m.label)),
+                          pw.Padding(
+                              padding: const pw.EdgeInsets.all(7),
+                              child: pw.Text(m.display)),
+                        ])
                   ]),
               text('Источник / метод: ${m.source}'),
               text(m.limitation),
@@ -242,15 +279,29 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
               text(
                   'Зелёное наложение: PNG-маска ревизии ${exportText(s['correction_id'])}. Текущее решение модерации не подставляется в исторический снимок.')
             ],
-            heading('Происхождение и ограничения'),
+            if (data.historicalValues.isNotEmpty) ...[
+              heading('Исторические вычисления'),
+              text(
+                  'Ниже дословно воспроизведены сохранённые показатели прежнего отчёта. Их методы и точность не подтверждены; категория риска и прежний β не являются оценкой безопасности или новым расчётом. Экспорт их не пересчитывает.'),
+              ...data.historicalValues.map(text),
+            ],
+            heading('Служебные сведения и происхождение'),
             ...data.provenance.map(text),
             heading('Сохранённые условия'),
             ...data.environment.map(text),
+            for (final link in data.environmentAttributionLinks.entries)
+              pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 5),
+                  child: pw.UrlLink(
+                      destination: link.value,
+                      child: pw.Text('${link.key}: ${link.value}',
+                          style:
+                              const pw.TextStyle(fontSize: 9, color: olive)))),
             heading('Границы применения'),
             text(
                 'Полевая точность не подтверждена. Двумерные проекции не определяют полную пространственную геометрию.'),
             text(
-                'β (кг/с): расчёт отсутствует. Необходимы динамический эксперимент и подтверждённая модель.'),
+                'β (кг/с): подтверждённый расчёт отсутствует. Необходимы динамический эксперимент и проверенная модель; прежние значения, если сохранены, приведены отдельно.'),
             text(
                 'Этот документ не является экспертным заключением или подтверждением безопасности дерева. Экспорт не выполняет новый анализ и не обновляет внешние данные.'),
             text(

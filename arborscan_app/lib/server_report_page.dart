@@ -11,10 +11,16 @@ import 'report_export_loader.dart';
 import 'contour_workspace_page.dart';
 import 'unified_analysis_models.dart';
 import 'unified_analysis_report_page.dart';
+import 'survey_environment.dart';
+import 'survey_environment_ui.dart';
+import 'environment_revision_page.dart';
+import 'map_page.dart';
 
 class ServerReportPage extends StatefulWidget {
   final String? versionId, localId;
-  const ServerReportPage({super.key, this.versionId, this.localId});
+  final String? expectedLocalVersionId;
+  const ServerReportPage(
+      {super.key, this.versionId, this.localId, this.expectedLocalVersionId});
   @override
   State<ServerReportPage> createState() => _ServerReportPageState();
 }
@@ -57,6 +63,11 @@ class _ServerReportPageState extends State<ServerReportPage> {
         final owner = await _service.auth.owner(_token!);
         final d = await _service.journal.load(owner, widget.localId!);
         if (d == null) throw const FormatException('Отчёт не найден.');
+        if (widget.expectedLocalVersionId != null &&
+            d['version_id'] != widget.expectedLocalVersionId) {
+          throw const FormatException(
+              'Локальная запись уже изменена. Откройте нужную версию из истории аккаунта.');
+        }
         data = {
           'record': d,
           'snapshot': {
@@ -102,15 +113,67 @@ class _ServerReportPageState extends State<ServerReportPage> {
           if (_error != null) Text(_error!),
           if (s != null && !_invalid) ...[
             Text(widget.versionId != null
-                ? 'Сохранено в аккаунте'
+                ? (_data?['cached'] == true
+                    ? 'Локальная копия серверной версии · без сети'
+                    : 'Сохранено в аккаунте')
                 : 'Локальная запись'),
-            ReportExportButton(enabled: !_busy, load: () => loadReportExport(
-                snapshot: Map<String, dynamic>.from(s), record: Map<String, dynamic>.from(row!),
-                photo: photo, local: widget.versionId == null && row['saved'] != true, token: _token!)),
+            ReportExportButton(
+                enabled: !_busy,
+                load: () => loadReportExport(
+                    snapshot: Map<String, dynamic>.from(s),
+                    record: Map<String, dynamic>.from(row!),
+                    photo: photo,
+                    local: widget.versionId == null && row['saved'] != true,
+                    token: _token!)),
             if (photo != null)
               Image.memory(photo, height: 240, fit: BoxFit.contain),
             Text('Снимок отчёта от ${s['captured_at'] ?? 'дата неизвестна'}'),
             const Text('Повторный анализ и обновление погоды не выполнялись.'),
+            if (SurveyPoint.fromJson(surveyMap(s['environment'])['gps']) !=
+                null)
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Показать эту версию на карте'),
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  MapPage(focusVersionId: row?['version_id']))))
+            else
+              const Text(
+                  'Нет GPS данных, карта недоступна. Добавьте точку через «Уточнить место / условия».'),
+            Card(
+                child: ExpansionTile(
+                    title: const Text('Место и условия'),
+                    childrenPadding: const EdgeInsets.all(16),
+                    children: [
+                  EnvironmentSummary(snapshot: surveyMap(s['environment']))
+                ])),
+            if (photo != null)
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_location_alt_outlined),
+                  label: const Text('Уточнить место / условия'),
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          final version = await Navigator.push<String>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => EnvironmentRevisionPage(
+                                      localId: widget.localId,
+                                      snapshot: Map<String, dynamic>.from(s),
+                                      record: Map<String, dynamic>.from(row!),
+                                      photo: photo)));
+                          if (version != null && context.mounted && !_invalid) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        ServerReportPage(versionId: version)));
+                          }
+                        }),
             OutlinedButton(
                 onPressed: _busy
                     ? null
@@ -129,12 +192,18 @@ class _ServerReportPageState extends State<ServerReportPage> {
                           context,
                           MaterialPageRoute(
                               builder: (_) => UnifiedAnalysisReportPage(
-                                  result: UnifiedAnalysisResult.fromJson(
-                                      Map<String, dynamic>.from(s['report'])),
+                                  result: UnifiedAnalysisResult.fromJson({
+                                    ...Map<String, dynamic>.from(s['report']),
+                                    'environment_snapshot': s['environment']
+                                  }),
                                   fallbackImageBytes: photo,
                                   exportLoader: () => loadReportExport(
-                                    snapshot: Map<String,dynamic>.from(s), record: Map<String,dynamic>.from(row!),
-                                    photo:photo, local:widget.versionId == null && row['saved'] != true, token:_token!),
+                                      snapshot: Map<String, dynamic>.from(s),
+                                      record: Map<String, dynamic>.from(row!),
+                                      photo: photo,
+                                      local: widget.versionId == null &&
+                                          row['saved'] != true,
+                                      token: _token!),
                                   allowServerSave: false))),
                   child: const Text('Открыть отчёт анализа')),
             if (ref != null)
