@@ -16,6 +16,13 @@ import 'survey_environment_ui.dart';
 import 'environment_revision_page.dart';
 import 'map_page.dart';
 
+String _lengthLabel(dynamic value) {
+  final number = value is num ? value.toDouble() : double.tryParse('$value');
+  return number != null && number.isFinite
+      ? '${number.toStringAsFixed(2)} м'
+      : 'нет данных';
+}
+
 class ServerReportPage extends StatefulWidget {
   final String? versionId, localId;
   final String? expectedLocalVersionId;
@@ -368,8 +375,9 @@ class _ServerReportPageState extends State<ServerReportPage> {
                           }),
                   child: const Text('Сохранить на сервере / повторить')),
             if (ref != null) ...[
-              Text('Высота: ${s['report']['height_m']} м'),
-              Text('Ширина кроны: ${s['report']['crown_width_m']} м'),
+              Text('Высота: ${_lengthLabel(s['report']['height_m'])}'),
+              Text(
+                  'Ширина кроны: ${_lengthLabel(s['report']['crown_width_m'])}'),
               const Text(
                   'Источник: эталон. Проекционные размеры. β не рассчитан.'),
               GeometryReport(data: s['report']['geometry']),

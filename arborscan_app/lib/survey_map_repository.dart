@@ -116,8 +116,9 @@ class SurveyMapEntry {
         server: server,
         cached: cached,
         metadata: Map<String, dynamic>.from(row),
-        environment: _map(row['environment']),
-        point: SurveyPoint.fromJson(_map(row['environment'])['gps']) ??
+        environment: _map(row['environment'] ?? row['environment_snapshot']),
+        point: SurveyPoint.fromJson(_map(
+                row['environment'] ?? row['environment_snapshot'])['gps']) ??
             SurveyPoint.fromJson(row['gps']) ??
             SurveyPoint.fromJson(row),
         capturedAt: DateTime.tryParse(
@@ -158,8 +159,26 @@ class SurveyMapEntry {
 }
 
 List<SurveyMapEntry> mergeSurveyVersions(Iterable<SurveyMapEntry> entries) {
+  final values = entries.toList();
+  // The automatic preferences row is a fallback summary of the initial
+  // analysis, not another saved version. Suppress it only when that exact
+  // owner's full initial analysis is available; all real revisions remain.
+  final structuredAnalyses = {
+    for (final entry in values)
+      if (entry.versionId?.isNotEmpty == true &&
+          entry.analysisId.isNotEmpty &&
+          _map(entry.metadata['snapshot'])['kind'] == 'v4' &&
+          _map(entry.metadata['snapshot'])['change_source'] == 'analysis')
+        (entry.owner, entry.analysisId)
+  };
   final result = <String, SurveyMapEntry>{};
-  for (final entry in entries) {
+  for (final entry in values) {
+    if (entry.key.startsWith('legacy-local:') &&
+        entry.metadata.containsKey('environment_snapshot') &&
+        entry.metadata['analysisId'] == entry.analysisId &&
+        structuredAnalyses.contains((entry.owner, entry.analysisId))) {
+      continue;
+    }
     final old = result[entry.key];
     if (old == null) {
       result[entry.key] = entry;

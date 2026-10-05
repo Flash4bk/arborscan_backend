@@ -113,6 +113,118 @@ void main() {
   });
 
   test(
+      'Only the automatic summary is hidden by a full initial analysis; revisions and independent observations remain',
+      () {
+    final initial = SurveyMapEntry.version({
+      ...row('v1'),
+      'snapshot': {
+        ...snapshot(0, 30),
+        'change_source': 'analysis',
+      }
+    }, ownerA, server: false, localId: 'initial');
+    final revision = SurveyMapEntry.version({
+      ...row('v2'),
+      'snapshot': {
+        ...snapshot(0, 30),
+        'change_source': 'environment_edit',
+      }
+    }, ownerA, server: true);
+    SurveyMapEntry summary(String analysis, String identity,
+            {String owner = ownerA, bool automatic = true}) =>
+        SurveyMapEntry.legacy({
+          'analysisId': analysis,
+          'species': 'DEMO summary',
+          'lat': 0.0,
+          'lon': 30.0,
+          if (automatic) 'environment_snapshot': environment(0, 30),
+        }, owner, server: false, identity: identity);
+    final automatic = summary('same-image', 'automatic');
+    final independent = summary('another-image', 'independent');
+    final unknownLegacy = summary('same-image', 'old', automatic: false);
+    final foreignOwner = summary('same-image', 'foreign', owner: ownerB);
+    final combined = mergeSurveyVersions([
+      initial,
+      revision,
+      automatic,
+      independent,
+      unknownLegacy,
+      foreignOwner,
+    ]);
+    expect(combined.map((e) => e.key), isNot(contains(automatic.key)));
+    expect(
+        combined.map((e) => e.key),
+        containsAll([
+          initial.key,
+          revision.key,
+          independent.key,
+          unknownLegacy.key,
+          foreignOwner.key
+        ]));
+    expect(combined, hasLength(5));
+    expect(mergeSurveyVersions([revision, automatic]), hasLength(2));
+    final reference = SurveyMapEntry.version({
+      ...row('reference-v1'),
+      'snapshot': {
+        ...snapshot(0, 30),
+        'kind': 'reference',
+        'change_source': 'reference'
+      }
+    }, ownerA, server: true);
+    expect(mergeSurveyVersions([reference, automatic]), hasLength(2));
+  });
+
+  test(
+      'Automatic local analysis history keeps the frozen location and conditions offline',
+      () async {
+    final savedEnvironment = {
+      'version': 1,
+      'gps': {
+        'value': {'lat': 0.0, 'lon': 30.0, 'crs': 'EPSG:4326'},
+        'source': 'device',
+        'position_kind': 'camera_or_device',
+        'retrieved_at': '2026-10-01T10:00:00Z',
+        'observed_at': '2026-10-01T09:55:00Z',
+        'accuracy_m': 20,
+        'is_last_known': true,
+      },
+      'weather': {
+        'source': 'OpenWeather',
+        'kind': 'current',
+        'value': {'temperature_c': 0, 'wind_speed_m_s': 2.5},
+        'data_at': '2026-10-01T09:50:00Z',
+        'retrieved_at': '2026-10-01T10:00:00Z',
+      },
+    };
+    final localAnalysis = {
+      'owner_id': ownerA,
+      'analysisId': 'automatic-local-analysis',
+      'species': 'DEMO location history',
+      'height': 12,
+      'lat': 0.0,
+      'lon': 30.0,
+      'environment_snapshot': savedEnvironment,
+      'timestamp': '2026-10-01T10:00:00Z',
+    };
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('arborscan_history', [jsonEncode(localAnalysis)]);
+    final result = await repository(
+        (_) async => throw const SocketException('synthetic offline')).load();
+    final entry = result.entries.single;
+    expect(entry.server, isFalse);
+    expect(entry.point!.lat, 0);
+    expect(entry.point!.source, 'device');
+    expect(entry.point!.positionKind, 'camera_or_device');
+    expect(entry.point!.retrievedAt, '2026-10-01T10:00:00Z');
+    expect(entry.point!.observedAt, '2026-10-01T09:55:00Z');
+    expect(entry.point!.accuracyM, 20);
+    expect(entry.point!.isLastKnown, isTrue);
+    expect(entry.environment, savedEnvironment);
+    expect(entry.environment['weather']['value']['temperature_c'], 0);
+    expect(entry.environment['weather']['data_at'], '2026-10-01T09:50:00Z');
+    expect(entry.capturedAt, DateTime.utc(2026, 10, 1, 10));
+  });
+
+  test(
       'Local/server versions merge by exact version and metadata remains owner-isolated offline',
       () async {
     await journal.save(

@@ -80,8 +80,9 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 raw['captured_at'] ?? DateTime.now().toUtc().toIso8601String(),
             'change_source': 'analysis'
           });
-      if (mounted && !_invalidSession)
+      if (mounted && !_invalidSession) {
         setState(() => _saveMessage = 'Полный отчёт сохранён на устройстве.');
+      }
     } catch (e) {
       if (mounted) setState(() => _saveMessage = '$e');
     } finally {
@@ -94,8 +95,9 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
     setState(() => _savingReport = true);
     try {
       await _history.upload(_reportToken ?? '', result.analysisId);
-      if (mounted && !_invalidSession)
+      if (mounted && !_invalidSession) {
         setState(() => _saveMessage = 'Сохранено в аккаунте');
+      }
     } catch (e) {
       if (mounted) setState(() => _saveMessage = '$e');
     } finally {
@@ -104,8 +106,9 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   }
 
   Future<void> _editContour() async {
-    if (fallbackImageBytes == null || fallbackImageBytes!.isEmpty || _editing)
+    if (fallbackImageBytes == null || fallbackImageBytes!.isEmpty || _editing) {
       return;
+    }
     setState(() => _editing = true);
     try {
       await Navigator.of(context).push(MaterialPageRoute(
@@ -121,10 +124,11 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_invalidSession)
+    if (_invalidSession) {
       return const Scaffold(
           body: Center(
               child: Text('Аккаунт изменился. Откройте свой отчёт заново.')));
+    }
     final displayImage = result.annotatedImageBytes ?? fallbackImageBytes;
     final status = _statusPresentation(result.status);
 
