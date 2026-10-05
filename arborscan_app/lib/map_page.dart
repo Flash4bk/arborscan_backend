@@ -37,6 +37,7 @@ class _MapPageState extends State<MapPage> {
   String _filter = 'all';
   String? _selectedKey, _error;
   int _epoch = 0;
+  int _mapGeneration = 0;
   bool _focusApplied = false;
   // This is an overview camera, never coordinates assigned to an observation.
   static const _overview = gmaps.LatLng(20, 0);
@@ -55,7 +56,8 @@ class _MapPageState extends State<MapPage> {
     _epoch++;
     AppNavigation.mapVisits.removeListener(_refresh);
     CorrectionsService.authChanges.removeListener(_accountChanged);
-    _controller?.dispose();
+    // GoogleMap owns and disposes its controller when its widget is removed.
+    _controller = null;
     super.dispose();
   }
 
@@ -63,6 +65,7 @@ class _MapPageState extends State<MapPage> {
     _epoch++;
     setState(() {
       _result = const SurveyMapResult([], []);
+      _forgetMapController();
       _selectedKey = null;
       _error = null;
     });
@@ -79,6 +82,7 @@ class _MapPageState extends State<MapPage> {
       if (!mounted || epoch != _epoch) return;
       setState(() {
         _result = result;
+        if (!_mapVisible) _forgetMapController();
       });
     }
 
@@ -113,6 +117,15 @@ class _MapPageState extends State<MapPage> {
           (_filter == 'local' && !e.server))
       .toList();
 
+  bool get _mapVisible =>
+      !_list && _visible.any((entry) => entry.point != null);
+
+  void _forgetMapController() {
+    _controller = null;
+    // Also reject an onMapCreated callback from a previous native map.
+    _mapGeneration++;
+  }
+
   Future<void> _applyFocus() async {
     if (_focusApplied) return;
     SurveyMapEntry? entry;
@@ -130,6 +143,7 @@ class _MapPageState extends State<MapPage> {
         if (mounted) {
           setState(() {
             _list = true;
+            _forgetMapController();
             _error =
                 'Нет GPS данных, карта недоступна для этой версии. Откройте отчёт и добавьте точку.';
           });
@@ -149,16 +163,22 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _move(double lat, double lon, {double zoom = 16}) async {
-    if (!SurveyPoint.valid(lat, lon)) return;
+    final controller = _controller;
+    if (!mounted ||
+        !_mapVisible ||
+        controller == null ||
+        !SurveyPoint.valid(lat, lon)) {
+      return;
+    }
     try {
-      await _controller?.animateCamera(gmaps.CameraUpdate.newCameraPosition(
+      await controller.animateCamera(gmaps.CameraUpdate.newCameraPosition(
           gmaps.CameraPosition(
               target: gmaps.LatLng(lat, lon),
               zoom: zoom,
               tilt: _threeD ? 60 : 0,
               bearing: _threeD ? 35 : 0)));
     } catch (_) {
-      if (mounted) {
+      if (mounted && _mapVisible && identical(_controller, controller)) {
         setState(() => _error =
             'Подложка карты недоступна. Записи можно открыть в списке.');
       }
@@ -305,11 +325,15 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     final positioned = _visible.where((e) => e.point != null).toList();
     final groups = groupSurveyPoints(positioned);
+    final mapGeneration = _mapGeneration;
     return Scaffold(
       appBar: AppBar(title: const Text('Карта обследований'), actions: [
         IconButton(
             tooltip: _list ? 'Показать карту' : 'Показать список',
-            onPressed: () => setState(() => _list = !_list),
+            onPressed: () => setState(() {
+                  _list = !_list;
+                  if (_list) _forgetMapController();
+                }),
             icon: Icon(_list ? Icons.map_outlined : Icons.list_alt)),
         IconButton(
             tooltip: 'Обновить карту',
@@ -341,8 +365,12 @@ class _MapPageState extends State<MapPage> {
                               ChoiceChip(
                                   label: Text(option.$2),
                                   selected: _filter == option.$1,
-                                  onSelected: (_) =>
-                                      setState(() => _filter = option.$1)),
+                                  onSelected: (_) => setState(() {
+                                        _filter = option.$1;
+                                        if (!_mapVisible) {
+                                          _forgetMapController();
+                                        }
+                                      })),
                           ]),
                           if (_error != null)
                             Text(_error!,
@@ -366,6 +394,7 @@ class _MapPageState extends State<MapPage> {
                 ? _entriesList()
                 : Stack(children: [
                     gmaps.GoogleMap(
+                      key: ValueKey(mapGeneration),
                       initialCameraPosition: gmaps.CameraPosition(
                           target: _target,
                           zoom: widget.initialFocus?.zoom ?? 13),
@@ -377,6 +406,11 @@ class _MapPageState extends State<MapPage> {
                       compassEnabled: true,
                       padding: const EdgeInsets.only(top: 52, bottom: 65),
                       onMapCreated: (controller) {
+                        if (!mounted ||
+                            !_mapVisible ||
+                            mapGeneration != _mapGeneration) {
+                          return;
+                        }
                         _controller = controller;
                         _applyFocus();
                       },
