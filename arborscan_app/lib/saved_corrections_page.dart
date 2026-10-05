@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
+import 'binary_mask_overlay.dart';
 import 'corrections_service.dart';
 import 'contour_drafts.dart';
 import 'contour_workspace_page.dart';
@@ -183,6 +184,23 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
     });
   }
 
+  String _listStatus(Map<String, dynamic> item) {
+    final status = item['review_status'] ?? item['status'];
+    if (status is String && status.isNotEmpty) return contourStatus(status);
+    return widget.localDrafts
+        ? contourStatus('draft')
+        : 'Статус доступен после открытия';
+  }
+
+  String _displayDate(dynamic value) {
+    final raw = value?.toString();
+    final date = raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+    if (date == null) return raw ?? 'Дата не указана';
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${two(date.day)}.${two(date.month)}.${date.year} '
+        '${two(date.hour)}:${two(date.minute)}';
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
@@ -250,7 +268,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                     ? 'Черновик контура'
                     : 'Сохранённый контур'),
                 subtitle: Text(
-                    '${item['created_at'] ?? 'На этом устройстве'}\n${contourStatus(item['review_status'] as String? ?? 'draft')}'),
+                    '${_displayDate(item['created_at'] ?? (widget.localDrafts ? 'На этом устройстве' : null))}\n${_listStatus(item)}'),
                 onTap: () async {
                   final token = await _session;
                   if (!context.mounted || _invalidSession) return;
@@ -284,17 +302,20 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                   child: _view == 'mask'
                       ? Image.memory(_mask!,
                           fit: BoxFit.contain, errorBuilder: _imageError)
-                      : Stack(alignment: Alignment.center, children: [
-                          Image.memory(_image!,
-                              fit: BoxFit.contain, errorBuilder: _imageError),
-                          if (_view == 'overlay')
-                            Positioned.fill(
-                                child: Opacity(
-                                    opacity: .4,
-                                    child: Image.memory(_mask!,
-                                        fit: BoxFit.contain,
-                                        errorBuilder: _imageError))),
-                        ]),
+                      : Stack(
+                          fit: StackFit.expand,
+                          alignment: Alignment.center,
+                          children: [
+                              Image.memory(_image!,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: _imageError),
+                              if (_view == 'overlay')
+                                Positioned.fill(
+                                    child: BinaryMaskOverlay(
+                                        bytes: _mask!,
+                                        color: Colors.blue
+                                            .withValues(alpha: .35))),
+                            ]),
                 )),
             Wrap(spacing: 8, runSpacing: 4, children: [
               for (final view in const {
@@ -318,6 +339,9 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                     'Родительская ревизия: ${_record!['parent_id']}'),
               SelectableText(
                   'Код статуса: ${_record?['review_status'] ?? 'pending_review'}'),
+              if (_record?['created_at'] != null)
+                SelectableText(
+                    'Создано (исходное время): ${_record!['created_at']}'),
             ]),
             if (widget.reviewOwner == null &&
                 _record?['next_revision_id'] is String)
@@ -331,9 +355,12 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
             for (final event in (_record?['decisions'] as List? ?? []))
               ExpansionTile(
                   title: Text(
-                      '${contourStatus(event['action'] as String? ?? '')} · ${event['at']}'),
+                      '${contourStatus(event['action'] as String? ?? '')} · ${_displayDate(event['at'])}'),
                   subtitle: Text(event['reason']?.toString() ?? ''),
                   children: [
+                    if (event['at'] != null)
+                      SelectableText(
+                          'Время решения (исходное): ${event['at']}'),
                     SelectableText('Автор решения: ${event['actor_id']}')
                   ]),
             const Text(

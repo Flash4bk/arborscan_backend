@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:arborscan_app/corrections_service.dart';
 import 'package:arborscan_app/api_config.dart';
+import 'package:arborscan_app/binary_mask_overlay.dart';
 import 'package:arborscan_app/saved_corrections_page.dart';
 import 'package:arborscan_app/unified_analysis_report_page.dart';
 import 'package:arborscan_app/unified_analysis_models.dart';
@@ -98,7 +99,8 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
     await tester.tap(find.text('Наложение'));
     await tester.pumpAndSettle();
-    expect(find.byType(Image), findsNWidgets(2));
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.byType(BinaryMaskOverlay), findsOneWidget);
     await tester.tap(find.text('PNG-маска'));
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsOneWidget);
@@ -110,6 +112,7 @@ void main() {
     CorrectionsService.authChanges.value++;
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsNothing);
+    expect(find.byType(BinaryMaskOverlay), findsNothing);
     expect(find.textContaining('Сессия изменилась'), findsOneWidget);
   });
 

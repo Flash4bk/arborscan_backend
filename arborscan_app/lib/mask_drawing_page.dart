@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'binary_mask_overlay.dart';
 import 'contour_editor_state.dart';
 import 'corrections_service.dart';
 
@@ -336,21 +337,19 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     );
 
     if (_aiMaskImage != null) {
-      canvas.drawImageRect(
+      drawBinaryMaskOverlay(
+        canvas,
         _aiMaskImage!,
         Rect.fromLTWH(0, 0, _aiMaskImage!.width.toDouble(),
             _aiMaskImage!.height.toDouble()),
         Rect.fromLTWH(0, 0, previewWidth, previewHeight),
-        Paint()
-          ..colorFilter = ColorFilter.mode(
-            Colors.green.withOpacity(0.3),
-            BlendMode.srcATop,
-          ),
+        Colors.green.withValues(alpha: 0.25),
       );
     }
 
     if (_initialMaskImage != null) {
-      canvas.drawImageRect(
+      drawBinaryMaskOverlay(
+        canvas,
         _initialMaskImage!,
         Rect.fromLTWH(
           0,
@@ -359,11 +358,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           _initialMaskImage!.height.toDouble(),
         ),
         Rect.fromLTWH(0, 0, previewWidth, previewHeight),
-        Paint()
-          ..colorFilter = ColorFilter.mode(
-            Colors.blue.withOpacity(0.35),
-            BlendMode.srcATop,
-          ),
+        Colors.blue.withValues(alpha: 0.35),
       );
     }
 
@@ -1040,7 +1035,8 @@ class _EnhancedMaskPainter extends CustomPainter {
     );
 
     if (aiMaskImage != null) {
-      canvas.drawImageRect(
+      drawBinaryMaskOverlay(
+        canvas,
         aiMaskImage!,
         Rect.fromLTWH(
           0,
@@ -1049,16 +1045,13 @@ class _EnhancedMaskPainter extends CustomPainter {
           aiMaskImage!.height.toDouble(),
         ),
         Rect.fromLTWH(0, 0, size.width, size.height),
-        Paint()
-          ..colorFilter = ColorFilter.mode(
-            Colors.green.withOpacity(0.25),
-            BlendMode.srcATop,
-          ),
+        Colors.green.withValues(alpha: 0.25),
       );
     }
 
     if (initialMaskImage != null) {
-      canvas.drawImageRect(
+      drawBinaryMaskOverlay(
+        canvas,
         initialMaskImage!,
         Rect.fromLTWH(
           0,
@@ -1067,11 +1060,7 @@ class _EnhancedMaskPainter extends CustomPainter {
           initialMaskImage!.height.toDouble(),
         ),
         Rect.fromLTWH(0, 0, size.width, size.height),
-        Paint()
-          ..colorFilter = ColorFilter.mode(
-            Colors.blue.withOpacity(0.35),
-            BlendMode.srcATop,
-          ),
+        Colors.blue.withValues(alpha: 0.35),
       );
     }
 
