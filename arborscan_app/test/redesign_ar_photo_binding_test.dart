@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:arborscan_app/analyze_page.dart';
 import 'package:arborscan_app/app_theme.dart';
+import 'package:arborscan_app/corrections_service.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -180,5 +181,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('open-ar')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'Account change while confirming AR photo discards the old selection and binding',
+      (tester) async {
+    await setup(tester);
+    await tapAsync(tester, find.byKey(const ValueKey('open-ar')));
+    await tapAsync(tester, find.text('Галерея'));
+    expect(find.text('Связать фото с измерением AR'), findsOneWidget);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('arborscan_auth_token', 'different-synthetic-token');
+    await prefs.setString('arborscan_user_id', 'different-synthetic-owner');
+    CorrectionsService.authChanges.value++;
+    await tester.pump();
+    await tapAsync(tester, find.text('Это то же дерево'));
+
+    expect(find.text('Фото добавлено'), findsNothing);
+    expect(find.text('Связано с этим фото'), findsNothing);
+    expect(find.text('Добавьте фото измеренного дерева'), findsNothing);
+    final analyze = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('analyze-photo')));
+    expect(analyze.onPressed, isNull);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
   });
 }

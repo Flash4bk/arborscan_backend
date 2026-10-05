@@ -102,9 +102,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
         }
         retainAr = sameTree;
         if (retainAr) {
-          boundHash =
-              sha256.convert(await selectedImage.readAsBytes()).toString();
-          if (!mounted) return;
+          // Bind the bytes already read for this photo. Keep this synchronous:
+          // an account change must not restore a canceled selection afterward.
+          boundHash = sha256.convert(original).toString();
         }
       }
 
