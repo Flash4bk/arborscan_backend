@@ -1,0 +1,16 @@
+{
+  "environment": "emulator-5582, Android 16, APK versionCode 10",
+  "ui_created_version_id": "5851a8dc-a3d1-47f3-8c22-664e6fecffce",
+  "parent_id": "cf94cbf5-d7ae-4b05-9bee-b083c477431d",
+  "overlap_coordinates": {
+    "lat": 50.3,
+    "lon": 10.3
+  },
+  "report_and_original_photo_preserved": true,
+  "ui_evidence": [
+    "avd-code10-overlap-chooser.png",
+    "avd-code10-map-satellite.png",
+    "avd-code10-map-3d.png"
+  ],
+  "api_is_separate_from_ui_evidence": true
+}

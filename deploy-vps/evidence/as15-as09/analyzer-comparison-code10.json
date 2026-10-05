@@ -1,0 +1,49 @@
+{
+  "baseline_file": "deploy-vps\\evidence\\as15\\flutter-analyze.txt",
+  "current_file": "output\\as09\\flutter-analyze-code10.txt",
+  "baseline_raw": 73,
+  "current_raw": 53,
+  "counts": {
+    "info": 48,
+    "warning": 5
+  },
+  "new_normalized": [],
+  "removed_normalized": [
+    [
+      "info",
+      "lib/admin_panel_page.dart",
+      "'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre",
+      "deprecated_member_use"
+    ],
+    [
+      "info",
+      "lib/analyze_page.dart",
+      "'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss",
+      "deprecated_member_use"
+    ],
+    [
+      "info",
+      "lib/analyze_page.dart",
+      "Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check",
+      "use_build_context_synchronously"
+    ],
+    [
+      "info",
+      "lib/app_theme.dart",
+      "'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss",
+      "deprecated_member_use"
+    ],
+    [
+      "info",
+      "lib/map_page.dart",
+      "'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss",
+      "deprecated_member_use"
+    ],
+    [
+      "warning",
+      "lib/map_page.dart",
+      "The declaration '_tryMoveToCurrentLocation' isn't referenced",
+      "unused_element"
+    ]
+  ]
+}

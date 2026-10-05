@@ -1,0 +1,13 @@
+test_changed_operator_config_stops_before_any_mutation (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_changed_operator_config_stops_before_any_mutation) ... ok
+test_corrupt_copy_does_not_create_prepared_marker (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_corrupt_copy_does_not_create_prepared_marker) ... ok
+test_deploy_targets_only_v4_pinned_image_with_bounded_recreate (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_deploy_targets_only_v4_pinned_image_with_bounded_recreate) ... ok
+test_missing_effective_key_is_rejected (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_missing_effective_key_is_rejected) ... ok
+test_nonweather_environment_change_is_rejected (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_nonweather_environment_change_is_rejected) ... ok
+test_prepare_verifies_private_copies_and_never_recreates_container (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_prepare_verifies_private_copies_and_never_recreates_container) ... ok
+test_rollbacks_clear_aliases_only_for_weather_and_keep_shared_config (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_rollbacks_clear_aliases_only_for_weather_and_keep_shared_config) ... ok
+test_unverified_image_is_rejected_before_snapshot (tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest.test_unverified_image_is_rejected_before_snapshot) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.164s
+
+OK

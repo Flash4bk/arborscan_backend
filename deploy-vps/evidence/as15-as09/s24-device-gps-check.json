@@ -1,0 +1,14 @@
+{
+  "environment": "S24 Ultra Android16 final APK versionCode12",
+  "explicit_device_gps_action": true,
+  "actual_coordinates_obtained_and_validated_privately": true,
+  "confirmation_dialog_shown": true,
+  "accuracy_timestamp_age_visible": true,
+  "last_known_position_warning_visible": false,
+  "approximate_position_warning_visible": false,
+  "cancel_clicked": true,
+  "prior_manual_demo_point_retained": true,
+  "device_position_not_saved_to_server": true,
+  "real_coordinates_and_screenshot_not_published": true,
+  "metric_accuracy_not_validated": true
+}

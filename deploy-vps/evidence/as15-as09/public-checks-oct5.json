@@ -1,0 +1,149 @@
+{
+  "checked_at": "2026-10-05T17:48:59.699125+00:00",
+  "checks": [
+    {
+      "path": "/api/v3/health",
+      "status": 200,
+      "response": {
+        "status": "ok",
+        "api_version": "3.0.3",
+        "schema_version": "1.0.0",
+        "build": {
+          "git_commit": "a34400f",
+          "build_time": null
+        },
+        "models_ready": true,
+        "tree_model": {
+          "loaded": true,
+          "version": 4,
+          "path": "/app/models/model_v4.pt",
+          "source": "bundled",
+          "size_bytes": 26626466,
+          "loaded_at": "2026-09-07T17:36:23Z",
+          "last_error": null
+        },
+        "stick_model": {
+          "loaded": true,
+          "path": "/app/models/stick_model.pt",
+          "source": "bundled",
+          "size_bytes": 22585059,
+          "loaded_at": "2026-09-07T17:36:23Z",
+          "last_error": null
+        },
+        "coco_model_loaded": true,
+        "available_tree_models": [
+          {
+            "version": 1,
+            "is_active": false,
+            "is_loaded": false,
+            "sources": [
+              "bundled",
+              "local",
+              "supabase"
+            ],
+            "local_path": "/app/models/model_v1.pt",
+            "size_bytes": 23873901
+          },
+          {
+            "version": 2,
+            "is_active": false,
+            "is_loaded": false,
+            "sources": [
+              "bundled",
+              "local",
+              "supabase"
+            ],
+            "local_path": "/app/models/model_v2.pt",
+            "size_bytes": 23888685
+          },
+          {
+            "version": 3,
+            "is_active": false,
+            "is_loaded": false,
+            "sources": [
+              "supabase"
+            ],
+            "local_path": null,
+            "size_bytes": null
+          },
+          {
+            "version": 4,
+            "is_active": true,
+            "is_loaded": true,
+            "sources": [
+              "bundled",
+              "local",
+              "supabase"
+            ],
+            "local_path": "/app/models/model_v4.pt",
+            "size_bytes": 26626466
+          }
+        ],
+        "paths": {
+          "project_root": "/app",
+          "model_dir": "/app/models",
+          "model_cache_dir": "/tmp/arborscan-models"
+        },
+        "supabase": {
+          "configured": true,
+          "reachable": null,
+          "error": null
+        },
+        "plantnet": {
+          "configured": true,
+          "project": "all",
+          "language": "ru"
+        },
+        "rembg": {
+          "loaded": false,
+          "preload_enabled": false
+        },
+        "checked_at": "2026-10-05T17:49:01Z"
+      }
+    },
+    {
+      "path": "/api/v4/health",
+      "status": 200,
+      "response": {
+        "status": "ok",
+        "api_version": "4.0.0-alpha.1",
+        "schema_version": "4.0.0-alpha.1",
+        "model": {
+          "loaded": true,
+          "version": 4,
+          "path": "/app/models/model_v4.pt",
+          "task": "segment",
+          "names": {
+            "0": "tree"
+          },
+          "confidence_threshold": 0.25,
+          "imgsz": 1024
+        },
+        "plantnet": {
+          "configured": true
+        },
+        "accuracy_policy": {
+          "fake_mask_fallback": false,
+          "species_height_scale_fallback": false,
+          "person_car_assumed_scale": false,
+          "species_mechanical_fallback": false,
+          "risk_enabled": false
+        }
+      }
+    },
+    {
+      "path": "/api/v4/v4/reports",
+      "status": 401,
+      "response": {
+        "detail": "Sign in before saving a correction"
+      }
+    },
+    {
+      "path": "/api/v4/v4/environment?lat=50.2&lon=10.2",
+      "status": 401,
+      "response": {
+        "detail": "Sign in before saving a correction"
+      }
+    }
+  ]
+}

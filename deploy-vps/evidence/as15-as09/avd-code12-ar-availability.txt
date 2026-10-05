@@ -1,0 +1,2 @@
+W/ArMeasureActivity(14329): AR unavailable: UnavailableException
+W/ArMeasureActivity(14329): AR unavailable: UnavailableException

@@ -1,0 +1,15 @@
+Command: flutter test --no-pub test/redesign_ar_photo_binding_test.dart
+Environment: Windows, D:\arborscan_backend\arborscan_app
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart
+00:00 +0: AR → photo binds only after explicit confirmation
+00:01 +1: Photo → AR binds only after explicit confirmation
+00:01 +2: A different tree explicitly drops AR; canceled photo binding keeps pending AR
+00:02 +3: Photo-first cancellation keeps old AR and photo; reset removes binding
+00:03 +4: Pending native call disables photo changes and a second AR entry
+00:03 +5: Account change while confirming AR photo discards the old selection and binding
+00:03 +6: All tests passed!
+Process exit code: 0
+
+The new account-switch case checks the retained confirmation-dialog async
+boundary. The removed second file-read await no longer exists. Existing request
+tests compare multipart ar_photo_sha256 with the actual selected original bytes.

@@ -1,0 +1,45 @@
+{
+  "environment": "emulator-5582 Android16 APK1.3.0-geo.8c15e35 versionCode11",
+  "ui_created_version_id": "3687a301-613d-410f-873a-7728fe270feb",
+  "parent_id": "5851a8dc-a3d1-47f3-8c22-664e6fecffce",
+  "ui_explicit_fetch": true,
+  "ui_coldrestart_reopen": true,
+  "weather_source": "OpenWeather",
+  "weather_status": "ok",
+  "weather_data_at": "2026-10-05T23:10:07+03:00",
+  "weather_retrieved_at": "2026-10-05T23:10:07.36344+03:00",
+  "weather_cached": true,
+  "weather_values": {
+    "pressure_hpa": 1023,
+    "relative_humidity_pct": 79,
+    "temperature_c": 11.77,
+    "wind_direction_deg": 281,
+    "wind_gust_m_s": 0.99,
+    "wind_speed_m_s": 0.47
+  },
+  "soil_source": "SoilGrids",
+  "soil_status": "ok",
+  "original_photo_report_gps_preserved": true,
+  "parent_weather_and_soil_remain_absent": true,
+  "pdf_path": "output\\pdf\\as15-as09\\live-weather\\DEMO-AS09-live-weather-code11.pdf",
+  "pdf_pages": 4,
+  "pdf_bytes": 47174,
+  "pdf_sha256": "85c76357db8ac1bc34671faed9e1e142241ade286df0b4126a90b09f0949d362",
+  "pdf_photo_dimensions_equal_original": true,
+  "pdf_photo_format": "JPEG (existing exporter quality90)",
+  "pdf_photo_mean_pixel_difference_per_channel": [
+    0.33465416666666664,
+    0.184225,
+    0.9231166666666667
+  ],
+  "pdf_photo_rms_pixel_difference_per_channel": [
+    1.181642571451565,
+    0.9171968163922071,
+    1.4570375195352154
+  ],
+  "pdf_text_values_units_and_provenance_match": true,
+  "all_pdf_pages_rendered_and_visually_inspected": true,
+  "saf_save_ui": true,
+  "api_separate_from_ui": true,
+  "pdf_open_ui": "Google Drive PdfViewerActivity, newly generated PDF of same version; saved SAF file not separately reopened"
+}

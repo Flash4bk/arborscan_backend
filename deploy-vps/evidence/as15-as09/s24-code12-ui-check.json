@@ -1,0 +1,24 @@
+{
+  "environment": "S24 Ultra Android 16 APK 1.3.0-geo.ecb1df1 versionCode12",
+  "cold_start_ms": 1287,
+  "history_saved_weather_row_reopened": true,
+  "analysis_id": "a73d8207-f0fb-43ad-9372-3aa0cc1d1b17",
+  "selected_row_created_at": "2026-10-05T20:17:20.398239+00:00",
+  "weather_six_values_and_both_timestamps_equal_to_code11": true,
+  "weather_fetch_not_repeated": true,
+  "ar_without_photo_activity_opened": true,
+  "back_returned_main_activity": true,
+  "field_tracking_or_accuracy_not_asserted": true,
+  "account_switch_on_s24_not_performed": true,
+  "account_confirmation_boundary_covered_by_widget_test": true,
+  "pid": 14294,
+  "fatal_exception_count": 0,
+  "no_such_method_count": 0,
+  "maps_auth_failure_count": 0,
+  "raw_log_not_published": true,
+  "network_restored": {
+    "airplane_mode_on": 0,
+    "mobile_data": 1
+  },
+  "font_scale_restored": 1.0
+}

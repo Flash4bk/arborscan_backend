@@ -1,0 +1,38 @@
+[
+  {
+    "file": "s24-environment-v1.pdf",
+    "bytes": 55533,
+    "pages": 5,
+    "sha256": "7fd981e8bc0d7dbe68968f878afacd2b7ab3576a897379d670d762b3e1899075",
+    "checks": {
+      "version_id": true,
+      "coordinates": true,
+      "height_4_8_m": true,
+      "crown_2_1_m": true,
+      "clay_29_5_percent": true,
+      "carbon_54_9_g_kg": true,
+      "no_email_or_token": true,
+      "original_photo_dimensions_and_jpeg_content": true
+    },
+    "all_pages_rendered_and_visually_reviewed": true,
+    "source_environment": "S24 Android16, APK8; source PDF code unchanged through APK10"
+  },
+  {
+    "file": "s24-environment-v2.pdf",
+    "bytes": 55540,
+    "pages": 5,
+    "sha256": "ab78063ed96416084e5ab279c00d0286a54276b37f3e5e26b02e5fd3fb9c9c92",
+    "checks": {
+      "version_id": true,
+      "coordinates": true,
+      "height_4_8_m": true,
+      "crown_2_1_m": true,
+      "clay_29_5_percent": true,
+      "carbon_54_9_g_kg": true,
+      "no_email_or_token": true,
+      "original_photo_dimensions_and_jpeg_content": true
+    },
+    "all_pages_rendered_and_visually_reviewed": true,
+    "source_environment": "S24 Android16, APK8; source PDF code unchanged through APK10"
+  }
+]

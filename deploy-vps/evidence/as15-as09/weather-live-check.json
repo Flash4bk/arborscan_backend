@@ -1,0 +1,125 @@
+{
+  "checked_at": "2026-10-05T20:10:00.835098+00:00",
+  "tls_verification": "default enabled",
+  "environment": "public HTTPS; separate synthetic UI author",
+  "public_checks": {
+    "/api/v3/health": 200,
+    "/api/v4/health": 200,
+    "/api/v4/v4/environment?lat=50.3&lon=10.3": 401,
+    "/api/v4/v4/reports": 401
+  },
+  "environment_version": 1,
+  "authorized_status": 200,
+  "environment_response": {
+    "environment_version": 1,
+    "weather": {
+      "value": {
+        "temperature_c": 11.77,
+        "wind_speed_m_s": 0.47,
+        "wind_gust_m_s": 0.99,
+        "wind_direction_deg": 281,
+        "pressure_hpa": 1023,
+        "relative_humidity_pct": 79
+      },
+      "source": "OpenWeather",
+      "retrieved_at": "2026-10-05T20:10:07.363440+00:00",
+      "data_at": "2026-10-05T20:10:07+00:00",
+      "kind": "current",
+      "request_point": {
+        "lat": 50.3,
+        "lon": 10.3
+      },
+      "status": "ok",
+      "reason": null,
+      "cached": false,
+      "attribution": "OpenWeather https://openweathermap.org/",
+      "limitations": [
+        "Текущие условия по точке запроса; это не погода на момент съёмки старого фото.",
+        "Данные провайдера объединяют модели, наблюдения и спутниковые данные; не измерение у дерева."
+      ],
+      "units": "C_m/s_degrees_hPa_percent"
+    },
+    "soil": {
+      "value": {
+        "properties": [
+          {
+            "name": "clay",
+            "value": 32.6,
+            "unit": "%",
+            "depth_cm": [
+              0,
+              5
+            ],
+            "q05": null,
+            "q95": null
+          },
+          {
+            "name": "sand",
+            "value": 23.4,
+            "unit": "%",
+            "depth_cm": [
+              0,
+              5
+            ],
+            "q05": null,
+            "q95": null
+          },
+          {
+            "name": "silt",
+            "value": 44.0,
+            "unit": "%",
+            "depth_cm": [
+              0,
+              5
+            ],
+            "q05": null,
+            "q95": null
+          },
+          {
+            "name": "soc",
+            "value": 58.1,
+            "unit": "g/kg",
+            "depth_cm": [
+              0,
+              5
+            ],
+            "q05": null,
+            "q95": null
+          },
+          {
+            "name": "phh2o",
+            "value": 5.4,
+            "unit": "pH",
+            "depth_cm": [
+              0,
+              5
+            ],
+            "q05": null,
+            "q95": null
+          }
+        ]
+      },
+      "source": "SoilGrids",
+      "retrieved_at": "2026-10-05T20:10:07.624533+00:00",
+      "data_at": null,
+      "kind": "modelled_grid",
+      "request_point": {
+        "lat": 50.3,
+        "lon": 10.3
+      },
+      "status": "ok",
+      "reason": null,
+      "cached": false,
+      "attribution": "ISRIC — World Soil Information; SoilGrids 2.0, CC BY 4.0; Poggio et al. (2021), https://doi.org/10.5194/soil-7-217-2021",
+      "limitations": [
+        "Сетка 250 м, модельная оценка слоя 0–5 см; не проба почвы у корня.",
+        "Интервал неопределённости 90% у источника существует, но в этом запросе не получен.",
+        "Дата отбора пробы и дата обновления конкретной ячейки неизвестны.",
+        "Не определяет состояние корней, несущую способность или устойчивость дерева."
+      ],
+      "dataset_version": "2.0",
+      "resolution_m": 250,
+      "access_method": "WCS_nearest_cell"
+    }
+  }
+}

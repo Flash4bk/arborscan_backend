@@ -1,0 +1,9 @@
+........................................................................ [ 75%]
+........................                                              [100%]
+============================== warnings summary ===============================
+output\as09\test-deps\fastapi\testclient.py:1
+  D:\arborscan_backend\output\as09\test-deps\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+96 passed, 1 warning, 3 subtests passed in 1.37s

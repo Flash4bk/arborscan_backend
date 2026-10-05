@@ -1,0 +1,45 @@
+{
+  "checked_at": "2026-10-05T20:12:29.879323+00:00",
+  "environment": "read-only SSH/post-deploy independent verification",
+  "plan": "/home/arborscan/as09-weather-20261005T200900Z",
+  "production_api_image": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+  "production_api_revision": "4483d48100514ec249bb7e72cff6565f0f7eb324",
+  "production_api_started_at": "2026-10-05T20:08:35.590878368Z",
+  "production_api_health": "healthy",
+  "same_verified_image": true,
+  "same_verified_revision": true,
+  "api_v4_recreated": true,
+  "v3_unchanged": true,
+  "worker_unchanged": true,
+  "model_files_unchanged": true,
+  "original_compose_files_unchanged": true,
+  "operator_config_unchanged_after_prepare": true,
+  "runtime_weather_key_present": true,
+  "nonweather_runtime_unchanged": true,
+  "runtime_matches_prepared_deploy": true,
+  "runtime_matches_private_state": true,
+  "snapshot_manifest_matches": true,
+  "private_directory_mode": "0o700",
+  "private_files_all_600": true,
+  "production_restarts_executed_by_this_auditor": 0,
+  "tls_verification": "standard Python HTTPS verification enabled",
+  "startup_logs": {
+    "scope": "new API-v4 container since StartedAt, last500 lines; raw logs not published",
+    "read_success": true,
+    "application_startup_complete_count": 1,
+    "uvicorn_running_count": 1,
+    "error_word_count": 0,
+    "fatal_word_count": 0,
+    "traceback_count": 0,
+    "warning_word_count": 1,
+    "warning_categories": [
+      "Ultralytics writable configuration directory fallback"
+    ]
+  },
+  "public_checks": {
+    "/api/v3/health": 200,
+    "/api/v4/health": 200,
+    "/api/v4/v4/reports": 401,
+    "/api/v4/v4/environment?lat=50.3&lon=10.3": 401
+  }
+}

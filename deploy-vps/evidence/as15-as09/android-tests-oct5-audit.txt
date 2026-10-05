@@ -1,0 +1,350 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+Configuration on demand is an incubating feature.
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:pluginDescriptors
+> Task :gradle:processResources
+
+> Task :gradle:compileKotlin
+w: file:///C:/src/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPlugin.kt:11:37 'ApkVariant' is deprecated. Deprecated in Java
+w: file:///C:/src/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPlugin.kt:614:69 'ApkVariant' is deprecated. Deprecated in Java
+w: file:///C:/src/flutter/packages/flutter_tools/gradle/src/main/kotlin/plugins/PluginHandler.kt:186:64 Unchecked cast: NamedDomainObjectContainer<out BuildType> to NamedDomainObjectContainer<BuildType>
+w: file:///C:/src/flutter/packages/flutter_tools/gradle/src/main/kotlin/plugins/PluginHandler.kt:187:69 Unchecked cast: NamedDomainObjectContainer<out BuildType> to NamedDomainObjectContainer<BuildType>
+
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:classes
+> Task :gradle:jar
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:compileFlutterBuildDebug
+> Task :app:packJniLibsflutterBuildDebug
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :flutter_native_splash:preBuild UP-TO-DATE
+> Task :flutter_native_splash:preDebugBuild UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:preBuild UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:preDebugBuild UP-TO-DATE
+> Task :flutter_native_splash:writeDebugAarMetadata
+> Task :geolocator_android:preBuild UP-TO-DATE
+> Task :geolocator_android:preDebugBuild UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:writeDebugAarMetadata
+> Task :google_maps_flutter_android:preBuild UP-TO-DATE
+> Task :google_maps_flutter_android:preDebugBuild UP-TO-DATE
+> Task :geolocator_android:writeDebugAarMetadata
+> Task :google_sign_in_android:preBuild UP-TO-DATE
+> Task :google_sign_in_android:preDebugBuild UP-TO-DATE
+> Task :google_maps_flutter_android:writeDebugAarMetadata
+> Task :image_picker_android:preBuild UP-TO-DATE
+> Task :image_picker_android:preDebugBuild UP-TO-DATE
+> Task :google_sign_in_android:writeDebugAarMetadata
+> Task :path_provider_android:preBuild UP-TO-DATE
+> Task :image_picker_android:writeDebugAarMetadata
+> Task :path_provider_android:preDebugBuild UP-TO-DATE
+> Task :printing:preBuild UP-TO-DATE
+> Task :printing:preDebugBuild UP-TO-DATE
+> Task :path_provider_android:writeDebugAarMetadata
+> Task :shared_preferences_android:preBuild UP-TO-DATE
+> Task :shared_preferences_android:preDebugBuild UP-TO-DATE
+> Task :printing:writeDebugAarMetadata
+> Task :url_launcher_android:preBuild UP-TO-DATE
+> Task :url_launcher_android:preDebugBuild UP-TO-DATE
+> Task :shared_preferences_android:writeDebugAarMetadata
+> Task :url_launcher_android:writeDebugAarMetadata
+> Task :app:cleanMergeDebugAssets
+> Task :app:checkDebugAarMetadata
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :flutter_native_splash:mergeDebugShaders
+> Task :flutter_native_splash:compileDebugShaders NO-SOURCE
+> Task :flutter_native_splash:generateDebugAssets UP-TO-DATE
+> Task :flutter_native_splash:mergeDebugAssets
+> Task :flutter_plugin_android_lifecycle:mergeDebugShaders
+> Task :flutter_plugin_android_lifecycle:compileDebugShaders NO-SOURCE
+> Task :flutter_plugin_android_lifecycle:generateDebugAssets UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeDebugAssets
+> Task :geolocator_android:mergeDebugShaders
+> Task :geolocator_android:compileDebugShaders NO-SOURCE
+> Task :geolocator_android:generateDebugAssets UP-TO-DATE
+> Task :geolocator_android:mergeDebugAssets
+> Task :google_maps_flutter_android:mergeDebugShaders
+> Task :google_maps_flutter_android:compileDebugShaders NO-SOURCE
+> Task :google_maps_flutter_android:generateDebugAssets UP-TO-DATE
+> Task :google_maps_flutter_android:mergeDebugAssets
+> Task :google_sign_in_android:mergeDebugShaders
+> Task :google_sign_in_android:compileDebugShaders NO-SOURCE
+> Task :google_sign_in_android:generateDebugAssets UP-TO-DATE
+> Task :google_sign_in_android:mergeDebugAssets
+> Task :image_picker_android:mergeDebugShaders
+> Task :image_picker_android:compileDebugShaders NO-SOURCE
+> Task :image_picker_android:generateDebugAssets UP-TO-DATE
+> Task :image_picker_android:mergeDebugAssets
+> Task :path_provider_android:mergeDebugShaders
+> Task :path_provider_android:compileDebugShaders NO-SOURCE
+> Task :path_provider_android:generateDebugAssets UP-TO-DATE
+> Task :path_provider_android:mergeDebugAssets
+> Task :printing:mergeDebugShaders
+> Task :printing:compileDebugShaders NO-SOURCE
+> Task :printing:generateDebugAssets UP-TO-DATE
+> Task :printing:mergeDebugAssets
+> Task :shared_preferences_android:mergeDebugShaders
+> Task :shared_preferences_android:compileDebugShaders NO-SOURCE
+> Task :shared_preferences_android:generateDebugAssets UP-TO-DATE
+> Task :shared_preferences_android:mergeDebugAssets
+> Task :url_launcher_android:mergeDebugShaders
+> Task :url_launcher_android:compileDebugShaders NO-SOURCE
+> Task :url_launcher_android:generateDebugAssets UP-TO-DATE
+> Task :url_launcher_android:mergeDebugAssets
+> Task :app:mergeDebugAssets
+> Task :app:copyFlutterAssetsDebug
+> Task :app:generateDebugResValues
+> Task :flutter_native_splash:generateDebugResValues
+> Task :flutter_native_splash:generateDebugResources
+> Task :flutter_native_splash:packageDebugResources
+> Task :flutter_plugin_android_lifecycle:generateDebugResValues
+> Task :flutter_plugin_android_lifecycle:generateDebugResources
+> Task :flutter_plugin_android_lifecycle:packageDebugResources
+> Task :geolocator_android:generateDebugResValues
+> Task :geolocator_android:generateDebugResources
+> Task :geolocator_android:packageDebugResources
+> Task :google_maps_flutter_android:generateDebugResValues
+> Task :google_maps_flutter_android:generateDebugResources
+> Task :google_maps_flutter_android:packageDebugResources
+> Task :google_sign_in_android:generateDebugResValues
+> Task :google_sign_in_android:generateDebugResources
+> Task :google_sign_in_android:packageDebugResources
+> Task :image_picker_android:generateDebugResValues
+> Task :image_picker_android:generateDebugResources
+> Task :image_picker_android:packageDebugResources
+> Task :path_provider_android:generateDebugResValues
+> Task :path_provider_android:generateDebugResources
+> Task :path_provider_android:packageDebugResources
+> Task :printing:generateDebugResValues
+> Task :printing:generateDebugResources
+> Task :printing:packageDebugResources
+> Task :shared_preferences_android:generateDebugResValues
+> Task :shared_preferences_android:generateDebugResources
+> Task :shared_preferences_android:packageDebugResources
+> Task :url_launcher_android:generateDebugResValues
+> Task :url_launcher_android:generateDebugResources
+> Task :url_launcher_android:packageDebugResources
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :flutter_native_splash:extractDeepLinksDebug
+> Task :flutter_plugin_android_lifecycle:extractDeepLinksDebug
+> Task :geolocator_android:extractDeepLinksDebug
+> Task :google_maps_flutter_android:extractDeepLinksDebug
+> Task :google_sign_in_android:extractDeepLinksDebug
+> Task :image_picker_android:extractDeepLinksDebug
+> Task :path_provider_android:extractDeepLinksDebug
+> Task :printing:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :shared_preferences_android:extractDeepLinksDebug
+> Task :url_launcher_android:extractDeepLinksDebug
+
+> Task :flutter_native_splash:processDebugManifest
+package="net.jonhanson.flutter_native_splash" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_native_splash-2.4.4\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="net.jonhanson.flutter_native_splash" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_native_splash-2.4.4\android\src\main\AndroidManifest.xml.
+
+> Task :path_provider_android:processDebugManifest
+package="io.flutter.plugins.pathprovider" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.2.23\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.pathprovider" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.2.23\android\src\main\AndroidManifest.xml.
+
+> Task :geolocator_android:processDebugManifest
+package="com.baseflow.geolocator" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\geolocator_android-4.6.2\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.baseflow.geolocator" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\geolocator_android-4.6.2\android\src\main\AndroidManifest.xml.
+
+> Task :printing:processDebugManifest
+package="net.nfet.flutter.printing" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\printing-5.14.3\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="net.nfet.flutter.printing" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\printing-5.14.3\android\src\main\AndroidManifest.xml.
+
+> Task :image_picker_android:processDebugManifest
+package="io.flutter.plugins.imagepicker" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.13+9\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.imagepicker" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\image_picker_android-0.8.13+9\android\src\main\AndroidManifest.xml.
+
+> Task :google_sign_in_android:processDebugManifest
+package="io.flutter.plugins.googlesignin" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\google_sign_in_android-6.2.1\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.googlesignin" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\google_sign_in_android-6.2.1\android\src\main\AndroidManifest.xml.
+
+> Task :shared_preferences_android:processDebugManifest
+package="io.flutter.plugins.sharedpreferences" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_android-2.4.16\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.sharedpreferences" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_android-2.4.16\android\src\main\AndroidManifest.xml.
+
+> Task :google_maps_flutter_android:processDebugManifest
+package="io.flutter.plugins.googlemaps" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\google_maps_flutter_android-2.18.5\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.googlemaps" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\google_maps_flutter_android-2.18.5\android\src\main\AndroidManifest.xml.
+
+> Task :flutter_plugin_android_lifecycle:processDebugManifest
+package="io.flutter.plugins.flutter_plugin_android_lifecycle" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.32\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.flutter_plugin_android_lifecycle" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.32\android\src\main\AndroidManifest.xml.
+
+> Task :url_launcher_android:processDebugManifest
+package="io.flutter.plugins.urllauncher" found in source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\url_launcher_android-6.3.26\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="io.flutter.plugins.urllauncher" from the source AndroidManifest.xml: C:\Users\danik\AppData\Local\Pub\Cache\hosted\pub.dev\url_launcher_android-6.3.26\android\src\main\AndroidManifest.xml.
+
+> Task :flutter_native_splash:compileDebugLibraryResources
+> Task :app:mergeDebugResources
+
+> Task :app:processDebugMainManifest
+[org.tensorflow:tensorflow-lite:2.14.0] C:\Users\danik\.gradle\caches\8.11.1\transforms\61a28653b90b8530b779846e78b76dc4\transformed\jetified-tensorflow-lite-2.14.0\AndroidManifest.xml Warning:
+	Namespace 'org.tensorflow.lite' is used in multiple modules and/or libraries: org.tensorflow:tensorflow-lite:2.14.0, org.tensorflow:tensorflow-lite-api:2.14.0. Please ensure that all modules and libraries have a unique namespace. For more information, See https://developer.android.com/studio/build/configure-app-module#set-namespace
+[org.tensorflow:tensorflow-lite-support:0.4.4] C:\Users\danik\.gradle\caches\8.11.1\transforms\790137f8af6e851c421af36f99a8403a\transformed\jetified-tensorflow-lite-support-0.4.4\AndroidManifest.xml Warning:
+	Namespace 'org.tensorflow.lite.support' is used in multiple modules and/or libraries: org.tensorflow:tensorflow-lite-support:0.4.4, org.tensorflow:tensorflow-lite-support-api:0.4.4. Please ensure that all modules and libraries have a unique namespace. For more information, See https://developer.android.com/studio/build/configure-app-module#set-namespace
+
+> Task :app:outputDebugAppLinkSettings
+> Task :app:processDebugManifest
+> Task :flutter_native_splash:parseDebugLocalResources
+> Task :flutter_plugin_android_lifecycle:compileDebugLibraryResources
+> Task :flutter_plugin_android_lifecycle:parseDebugLocalResources
+> Task :geolocator_android:compileDebugLibraryResources
+> Task :geolocator_android:parseDebugLocalResources
+> Task :flutter_native_splash:generateDebugRFile
+> Task :flutter_plugin_android_lifecycle:generateDebugRFile
+> Task :google_maps_flutter_android:compileDebugLibraryResources
+> Task :geolocator_android:generateDebugRFile
+> Task :google_maps_flutter_android:parseDebugLocalResources
+> Task :google_sign_in_android:compileDebugLibraryResources
+> Task :google_maps_flutter_android:generateDebugRFile
+> Task :google_sign_in_android:parseDebugLocalResources
+> Task :image_picker_android:compileDebugLibraryResources
+> Task :google_sign_in_android:generateDebugRFile
+> Task :image_picker_android:parseDebugLocalResources
+> Task :path_provider_android:compileDebugLibraryResources
+> Task :image_picker_android:generateDebugRFile
+> Task :path_provider_android:parseDebugLocalResources
+> Task :printing:compileDebugLibraryResources
+> Task :path_provider_android:generateDebugRFile
+> Task :printing:parseDebugLocalResources
+> Task :shared_preferences_android:compileDebugLibraryResources
+> Task :printing:generateDebugRFile
+> Task :shared_preferences_android:parseDebugLocalResources
+> Task :url_launcher_android:compileDebugLibraryResources
+> Task :shared_preferences_android:generateDebugRFile
+> Task :url_launcher_android:parseDebugLocalResources
+> Task :flutter_native_splash:javaPreCompileDebug
+> Task :url_launcher_android:generateDebugRFile
+
+> Task :flutter_native_splash:compileDebugJavaWithJavac
+Java compiler version 21 has deprecated support for compiling with source/target version 8.
+Try one of the following options:
+    1. [Recommended] Use Java toolchain with a lower language version
+    2. Set a higher source/target version
+    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
+For more details on how to configure these settings, see https://developer.android.com/build/jdks.
+To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+
+> Task :flutter_plugin_android_lifecycle:javaPreCompileDebug
+> Task :geolocator_android:javaPreCompileDebug
+> Task :flutter_native_splash:bundleLibCompileToJarDebug
+> Task :flutter_plugin_android_lifecycle:compileDebugJavaWithJavac
+> Task :flutter_plugin_android_lifecycle:bundleLibCompileToJarDebug
+
+> Task :geolocator_android:compileDebugJavaWithJavac
+Java compiler version 21 has deprecated support for compiling with source/target version 8.
+Try one of the following options:
+    1. [Recommended] Use Java toolchain with a lower language version
+    2. Set a higher source/target version
+    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
+For more details on how to configure these settings, see https://developer.android.com/build/jdks.
+To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+
+> Task :google_maps_flutter_android:javaPreCompileDebug
+> Task :google_sign_in_android:javaPreCompileDebug
+> Task :geolocator_android:bundleLibCompileToJarDebug
+> Task :google_maps_flutter_android:compileDebugJavaWithJavac
+> Task :google_maps_flutter_android:bundleLibCompileToJarDebug
+> Task :google_sign_in_android:compileDebugJavaWithJavac
+> Task :image_picker_android:javaPreCompileDebug
+> Task :path_provider_android:javaPreCompileDebug
+> Task :google_sign_in_android:bundleLibCompileToJarDebug
+> Task :image_picker_android:compileDebugJavaWithJavac
+> Task :image_picker_android:bundleLibCompileToJarDebug
+> Task :path_provider_android:compileDebugJavaWithJavac
+> Task :shared_preferences_android:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :printing:javaPreCompileDebug
+> Task :path_provider_android:bundleLibCompileToJarDebug
+
+> Task :printing:compileDebugJavaWithJavac
+Java compiler version 21 has deprecated support for compiling with source/target version 8.
+Try one of the following options:
+    1. [Recommended] Use Java toolchain with a lower language version
+    2. Set a higher source/target version
+    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
+For more details on how to configure these settings, see https://developer.android.com/build/jdks.
+To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+
+> Task :shared_preferences_android:javaPreCompileDebug
+> Task :printing:bundleLibCompileToJarDebug
+> Task :url_launcher_android:generateDebugBuildConfig
+> Task :url_launcher_android:javaPreCompileDebug
+> Task :app:javaPreCompileDebug
+> Task :url_launcher_android:compileDebugJavaWithJavac
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :url_launcher_android:bundleLibCompileToJarDebug
+> Task :flutter_native_splash:processDebugJavaRes NO-SOURCE
+> Task :flutter_native_splash:bundleLibRuntimeToJarDebug
+> Task :flutter_plugin_android_lifecycle:processDebugJavaRes NO-SOURCE
+> Task :flutter_plugin_android_lifecycle:bundleLibRuntimeToJarDebug
+> Task :geolocator_android:processDebugJavaRes NO-SOURCE
+> Task :google_maps_flutter_android:processDebugJavaRes NO-SOURCE
+> Task :google_sign_in_android:processDebugJavaRes NO-SOURCE
+> Task :geolocator_android:bundleLibRuntimeToJarDebug
+> Task :image_picker_android:processDebugJavaRes NO-SOURCE
+> Task :google_sign_in_android:bundleLibRuntimeToJarDebug
+> Task :path_provider_android:processDebugJavaRes NO-SOURCE
+> Task :path_provider_android:bundleLibRuntimeToJarDebug
+> Task :printing:processDebugJavaRes NO-SOURCE
+> Task :image_picker_android:bundleLibRuntimeToJarDebug
+> Task :url_launcher_android:processDebugJavaRes NO-SOURCE
+> Task :printing:bundleLibRuntimeToJarDebug
+> Task :url_launcher_android:bundleLibRuntimeToJarDebug
+> Task :google_maps_flutter_android:bundleLibRuntimeToJarDebug
+> Task :app:processDebugResources
+> Task :shared_preferences_android:compileDebugKotlin
+> Task :shared_preferences_android:compileDebugJavaWithJavac
+> Task :shared_preferences_android:bundleLibCompileToJarDebug
+> Task :shared_preferences_android:bundleLibRuntimeToJarDebug
+> Task :shared_preferences_android:processDebugJavaRes
+
+> Task :app:compileDebugKotlin
+w: file:///D:/arborscan_backend/arborscan_app/android/app/src/main/kotlin/com/example/arborscan_app/ArMeasureActivity.kt:968:53 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+[Incubating] Problems report is available at: file:///D:/arborscan_backend/arborscan_app/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1m 51s
+187 actionable tasks: 187 executed

@@ -1,0 +1,11 @@
+{
+  "pid": 16373,
+  "scope": "last5000 log entries for installed APK10 process only",
+  "counts": {
+    "FATAL EXCEPTION": 0,
+    "NoSuchMethodError": 0,
+    "Authorization failure": 0,
+    "Google Maps Android API: Authorization": 0,
+    "API key not found": 0
+  }
+}

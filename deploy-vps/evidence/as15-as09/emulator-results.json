@@ -1,0 +1,75 @@
+{
+  "task_ids": [
+    "AS-15",
+    "AS-09"
+  ],
+  "checked_at": "2026-10-05",
+  "user_visual_acceptance": false,
+  "field_accuracy_validated": false,
+  "real_user_records_modified": false,
+  "s24_controlled_by_this_agent": false,
+  "environments": [
+    {
+      "serial": "emulator-5582",
+      "avd": "Codex_AS12_20260925",
+      "android": "16",
+      "full_cycle_version_code": 8,
+      "final_regression_version_code": 11,
+      "final_version_name": "1.3.0-geo.8c15e35",
+      "install": "Success -r, existing data preserved"
+    },
+    {
+      "serial": "emulator-5584",
+      "avd": "Medium_Phone_API_36.1",
+      "android": "16",
+      "version_code": 9,
+      "version_name": "1.3.0-geo.1dc4085",
+      "scope": "second UI client, offline coldrestart, GPS denial, font200 registration/home"
+    }
+  ],
+  "passed_ui": [
+    "new synthetic account registration",
+    "system photo picker and analysis honest tree-not-found result on synthetic illustration",
+    "report save and history reopen after coldrestart",
+    "new manual point -> child report version -> original retains no GPS",
+    "manual 8-point contour -> save -> submit",
+    "author sees exact admin rejection reason -> restored points -> new revision -> resubmit",
+    "author sees accepted concrete revision -> new edit -> saved child draft requires review",
+    "second UI login loads both server versions without file transfer",
+    "map version list and actual GPS/no-point counts",
+    "offline network:none coldrestart -> cached map list -> cached report/photo",
+    "system GPS denial -> explicit error and existing manual point preserved",
+    "font200 registration wrap, keyboard and primary actions reachable",
+    "font200 home actions reachable by scrolling",
+    "three help pages",
+    "mailto opens Gmail setup -> cancel -> return without sending",
+    "known-object 1m -> contour/3 segments -> result -> local and server save -> reopen after update/coldrestart",
+    "final10 honest unknown list status, short contour dates, actual detail status",
+    "final10 restored editor points, photo remains visible through PNG overlay",
+    "final10 preview -> close -> identical editor image-region pixels",
+    "final10 saved contour detail PNG overlay keeps original visible outside mask",
+    "final10 explicit same point creates child version; marker overlap chooser preserves both exact versions",
+    "final10 Google Maps live normal and satellite tiles; actual 3D tilted view and return to2D",
+    "final11 installed preserving test account/data; map -> list -> coordinate card -> recreatedmap3D has no false unavailable error",
+    "final11 explicit current conditions -> real OpenWeather/SoilGrids server cache -> child save -> force-stop -> reopen same frozen snapshot",
+    "final11 weather child actual4-pagePDF generated; SAFDownloads save -> pull -> all pages rendered/visuallychecked; PDFViewer opened same version separately"
+  ],
+  "passed_api_separate_from_ui": [
+    "independent client test login and 2 exact versions",
+    "report fields and original photo hash equal in parent and child",
+    "manual coordinates exactly50.3,10.3 in child only",
+    "ordinary author admin queue403",
+    "rejected -> accepted -> childdraft, eligible_for_training false",
+    "third DEMO version parent confirmed; same manual coordinate, immutable report and photo hash",
+    "weather child exact3687a301 parent5851a8dc, realweather/soil, report/GPS/photo unchanged; oldparentweather/soil absent"
+  ],
+  "limitations": [
+    "synthetic illustration does not validate segmentation or physical measurement accuracy",
+    "emulator is not S24 AR tracking evidence",
+    "local known-object list retains ISO datetime formatting",
+    "unrouted legacy FeedbackPage is not active UI evidence",
+    "moderator UI actions were performed and recorded separately by root on S24"
+  ],
+  "evidence": "emulator-checks.md; emulator-overlap-check.json; emulator-live-weather-check.json; avd-code10-overlap-chooser.png; avd-code10-map-3d.png; avd-code11-list-card-no-false-map-error.png; avd-code11-recreated-map-3d.png; avd-code11-live-weather-reopened.png; avd-live-weather-code11.pdf",
+  "private_files_do_not_publish": "account.private.json, *.private.json, ../emulator/registered.png"
+}

@@ -1,0 +1,125 @@
+00:00 +0: loading D:/arborscan_backend/arborscan_app/test/api_config_test.dart
+00:00 +0: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: defaults and dart-define overrides are used
+00:00 +1: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: endpoint paths retain nginx prefixes and intentional repeated v4
+00:00 +2: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: relative images retain prefix, absolute URLs are preserved
+00:00 +3: D:/arborscan_backend/arborscan_app/test/api_config_test.dart: tunnel hints appear only for loopback configurations
+00:00 +4: D:/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: AR exports direct measurements without inventing photo or crown scale
+00:00 +5: D:/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: invalid AR distance is rejected instead of replaced with tree height
+00:00 +6: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: opaque black/white PNG reveals original outside and blends blue inside
+00:00 +7: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: green overlay respects mask alpha and keeps original photo visible
+00:00 +8: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:00 +9: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +10: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +11: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +12: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +13: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +14: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +15: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +16: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +17: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +18: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +19: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +20: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +21: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +22: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +23: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:01 +24: D:/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +25: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +26: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +27: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +28: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +29: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +30: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +31: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:02 +32: D:/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:03 +33: D:/arborscan_backend/arborscan_app/test/data_presentation_test.dart: real rows drive counts, filters preserve revisions and raw reasons
+00:03 +34: D:/arborscan_backend/arborscan_app/test/data_presentation_test.dart: real rows drive counts, filters preserve revisions and raw reasons
+00:03 +35: D:/arborscan_backend/arborscan_app/test/data_presentation_test.dart: real rows drive counts, filters preserve revisions and raw reasons
+00:03 +36: D:/arborscan_backend/arborscan_app/test/data_presentation_test.dart: real rows drive counts, filters preserve revisions and raw reasons
+00:03 +37: D:/arborscan_backend/arborscan_app/test/data_presentation_test.dart: real rows drive counts, filters preserve revisions and raw reasons
+00:04 +38: D:/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:04 +39: D:/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:04 +40: D:/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:04 +41: D:/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:05 +42: D:/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:05 +43: D:/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:05 +44: D:/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:05 +45: D:/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:05 +46: D:/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:05 +47: D:/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: AR → photo binds only after explicit confirmation
+00:05 +48: D:/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: AR → photo binds only after explicit confirmation
+00:06 +49: D:/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: AR → photo binds only after explicit confirmation
+00:06 +50: D:/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:07 +51: D:/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:07 +52: D:/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Feedback keeps unavailable dimensions and validates edits / 200%
+00:07 +53: D:/arborscan_backend/arborscan_app/test/redesign_line_navigation_test.dart: Back warns about unapplied points; continue keeps them, explicit discard exits
+00:07 +54: D:/arborscan_backend/arborscan_app/test/redesign_line_navigation_test.dart: Back warns about unapplied points; continue keeps them, explicit discard exits
+00:07 +55: D:/arborscan_backend/arborscan_app/test/redesign_line_navigation_test.dart: Back warns about unapplied points; continue keeps them, explicit discard exits
+00:07 +56: D:/arborscan_backend/arborscan_app/test/redesign_line_navigation_test.dart: Back warns about unapplied points; continue keeps them, explicit discard exits
+00:07 +57: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:08 +58: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:08 +59: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:08 +60: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:08 +61: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:08 +62: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:08 +63: D:/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:08 +64: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:09 +65: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:09 +66: D:/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:09 +67: D:/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: Photo-first cancellation keeps old AR and photo; reset removes binding
+00:09 +68: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:09 +69: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:09 +70: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:09 +71: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:10 +72: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:10 +73: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:10 +74: D:/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:10 +75: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +76: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +77: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +78: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +79: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +80: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +81: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +82: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +83: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +84: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +85: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:10 +86: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +87: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +88: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +89: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +90: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +91: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +92: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +93: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +94: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +95: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +96: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +97: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +98: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +99: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +100: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +101: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:11 +102: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +103: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +104: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +105: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +106: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +107: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +108: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +109: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +110: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +111: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:12 +112: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +113: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +114: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +115: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +116: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +117: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +118: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +119: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +120: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:13 +121: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:14 +122: D:/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:24 +123: All tests passed!
