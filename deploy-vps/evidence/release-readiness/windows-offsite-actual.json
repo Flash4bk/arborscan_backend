@@ -1,0 +1,68 @@
+{
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "observed_at_utc": "2026-10-06T20:00:13.872172+00:00",
+  "scheduler_task": "ArborScan Offsite Backup",
+  "last_task_result": 0,
+  "next_run_local": "2026-10-07T08:00:00+03:00",
+  "state_after_last_run": "Ready",
+  "runs": [
+    {
+      "started_at_utc": "2026-10-06T15:26:46.667121+00:00",
+      "completed_at_utc": "2026-10-06T15:40:01.676925+00:00",
+      "verified_selected_sets": 14,
+      "retry_events": [
+        {
+          "at": "2026-10-06T15:35:01.717546+00:00",
+          "event": "sftp_failed",
+          "exit_code": 255,
+          "categories": [
+            "connection closed"
+          ]
+        },
+        {
+          "at": "2026-10-06T15:35:01.717955+00:00",
+          "event": "retry_transfer",
+          "backup": "20261006T131325Z",
+          "attempt": 2
+        }
+      ],
+      "downloaded_verified": 1,
+      "verified_existing": 13,
+      "seconds": 795.01
+    },
+    {
+      "started_at_utc": "2026-10-06T19:54:16.199203+00:00",
+      "completed_at_utc": "2026-10-06T19:56:56.303076+00:00",
+      "verified_selected_sets": 14,
+      "retry_events": [],
+      "downloaded_verified": 0,
+      "verified_existing": 14,
+      "seconds": 160.104
+    }
+  ],
+  "latest_received_set": "20261006T131325Z",
+  "outer_verified_files": 30,
+  "outer_verified_bytes": 979475430,
+  "outer_manifest_sha256": "65fb5865cdc25971f8852a82e11132b3baac93c5bf8b150b241ae6985f99abdc",
+  "native_verified_files": 4,
+  "native_verified_bytes": 52162724,
+  "offline_application_restore": {
+    "files_restored": 2261,
+    "bytes": 828152403,
+    "reports_linked": 16,
+    "seconds": 3.857,
+    "database_restored": false,
+    "production_credentials_loaded": false
+  },
+  "installed_module_sha256": "4cb9ec25e3dcf8186b77abd7dd605137f182ab27e4dd42da0716ae1f4e760c4e",
+  "historical_extra_copy_preserved": "20260927T032112Z",
+  "source_archives_preserved": true,
+  "independent_of_vps": true,
+  "independent_of_windows_pc": false,
+  "always_on_receiver_confirmed": false,
+  "new_sql_restore_executed": false,
+  "archive_contents_unchanged_during_manifest_lf_repair": true
+}

@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "destination_id": "arborscan-independent-backup",
+  "host": "REPLACE_WITH_AUTHORIZED_INDEPENDENT_HOST",
+  "user": "arborscan_backup",
+  "port": 22,
+  "remote_root": "/srv/arborscan-private-backups",
+  "receiver_script": "/srv/arborscan-backup-tools/ops_offsite_receiver.py",
+  "identity_file": "/home/arborscan/.ssh/arborscan_offsite",
+  "known_hosts_file": "/home/arborscan/.ssh/arborscan_offsite_known_hosts",
+  "is_independent": true,
+  "always_on": true
+}

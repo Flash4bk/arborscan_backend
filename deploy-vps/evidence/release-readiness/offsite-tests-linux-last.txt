@@ -1,0 +1,25 @@
+test_bad_prefix_is_discarded_only_in_staging (tests_v4.test_ops_offsite_push.ExternalPushTests.test_bad_prefix_is_discarded_only_in_staging) ... ok
+test_concurrent_real_writes_cannot_publish_duplicate_chunk (tests_v4.test_ops_offsite_push.ExternalPushTests.test_concurrent_real_writes_cannot_publish_duplicate_chunk) ... ok
+test_duplicate_chunk_rejected_then_probe_allows_resume (tests_v4.test_ops_offsite_push.ExternalPushTests.test_duplicate_chunk_rejected_then_probe_allows_resume) ... ok
+test_full_native_runtime_transfer_readback_and_idempotency (tests_v4.test_ops_offsite_push.ExternalPushTests.test_full_native_runtime_transfer_readback_and_idempotency) ... ok
+test_lost_write_reply_resumes_without_duplicate_or_complete (tests_v4.test_ops_offsite_push.ExternalPushTests.test_lost_write_reply_resumes_without_duplicate_or_complete) ... ok
+test_new_runtime_contract_corrupt_asset_is_refused (tests_v4.test_ops_offsite_push.ExternalPushTests.test_new_runtime_contract_corrupt_asset_is_refused) ... ok
+test_new_runtime_contract_wrong_image_or_uncovered_manifest_is_refused (tests_v4.test_ops_offsite_push.ExternalPushTests.test_new_runtime_contract_wrong_image_or_uncovered_manifest_is_refused) ... ok
+test_new_runtime_dependency_contract_recovers_without_rewriting_absolute_paths (tests_v4.test_ops_offsite_push.ExternalPushTests.test_new_runtime_dependency_contract_recovers_without_rewriting_absolute_paths) ... ok
+test_old_find_dot_slash_manifest_exports_without_changing_source (tests_v4.test_ops_offsite_push.ExternalPushTests.test_old_find_dot_slash_manifest_exports_without_changing_source) ... ok
+test_package_conflict_never_replaces_completed_backup (tests_v4.test_ops_offsite_push.ExternalPushTests.test_package_conflict_never_replaces_completed_backup) ... ok
+test_path_traversal_and_missing_native_refused (tests_v4.test_ops_offsite_push.ExternalPushTests.test_path_traversal_and_missing_native_refused) ... ok
+test_readback_checks_content_not_remote_success (tests_v4.test_ops_offsite_push.ExternalPushTests.test_readback_checks_content_not_remote_success) ... ok
+test_real_receiver_cli_protocol_and_advisory_lock (tests_v4.test_ops_offsite_push.ExternalPushTests.test_real_receiver_cli_protocol_and_advisory_lock) ... ok
+test_receipt_is_private_and_records_actual_runtime_content (tests_v4.test_ops_offsite_push.ExternalPushTests.test_receipt_is_private_and_records_actual_runtime_content) ... ok
+test_receiver_refusal_keeps_all_local_archives (tests_v4.test_ops_offsite_push.ExternalPushTests.test_receiver_refusal_keeps_all_local_archives) ... ok
+test_recovery_downloads_all_parts_and_checks_same_native_manifest (tests_v4.test_ops_offsite_push.ExternalPushTests.test_recovery_downloads_all_parts_and_checks_same_native_manifest) ... ok
+test_remote_corrupt_complete_is_not_trusted (tests_v4.test_ops_offsite_push.ExternalPushTests.test_remote_corrupt_complete_is_not_trusted) ... ok
+test_runtime_archive_and_unmapped_image_must_be_present (tests_v4.test_ops_offsite_push.ExternalPushTests.test_runtime_archive_and_unmapped_image_must_be_present) ... ok
+test_same_vps_is_refused_without_ssh_or_secrets (tests_v4.test_ops_offsite_push.ExternalPushTests.test_same_vps_is_refused_without_ssh_or_secrets) ... ok
+test_symlink_cannot_redirect_source_or_receiver (tests_v4.test_ops_offsite_push.ExternalPushTests.test_symlink_cannot_redirect_source_or_receiver) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 29.118s
+
+OK

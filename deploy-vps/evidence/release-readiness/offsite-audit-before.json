@@ -1,0 +1,41 @@
+{
+  "task_ids": ["AS-14", "AS-16"],
+  "observed_at_utc": "2026-10-06T15:07:09Z",
+  "mode": "read-only operational audit",
+  "vps": {
+    "timer": "active/enabled",
+    "last_trigger_utc": "2026-10-06T03:20:22Z",
+    "next_trigger_utc": "2026-10-07T03:19:03Z",
+    "service_result": "exit-code",
+    "service_exit_status": 1,
+    "reason": "14 complete copies retained by guard",
+    "complete_set_count": 14,
+    "latest_manual_backup": "20261006T131325Z",
+    "disk_free_bytes": 67755819008,
+    "pg_service_and_pgpass_mode": "600",
+    "sudo_noninteractive_returncode": 1,
+    "approved_always_on_external_receiver_found": false,
+    "existing_supabase_project_is_independent_destination": false,
+    "release_root_before_current_package": "historical image/source archives present; complete runtime index not present"
+  },
+  "windows": {
+    "task": "ArborScan Offsite Backup",
+    "state": "Ready",
+    "last_task_result": 0,
+    "last_run_utc": "2026-10-06T07:21:57Z",
+    "last_success_event_utc": "2026-10-06T07:26:36.126589Z",
+    "verified_sets": 14,
+    "latest_verified_set": "20261005T032052Z",
+    "next_run_local": "2026-10-07T08:00:00+03:00",
+    "root": "D:/ArborScanBackups",
+    "requires_pc_on_and_signed_in": true,
+    "start_when_available": true,
+    "retry_count": 3,
+    "retry_interval": "PT15M",
+    "concurrency_policy": "IgnoreNew"
+  },
+  "privacy": "Only config presence, variable names and safe operational metadata were inspected; no secret values or user records printed.",
+  "external_transfer_actual": false,
+  "external_restore_actual": false,
+  "isolated_mock_is_not_external_copy": true
+}

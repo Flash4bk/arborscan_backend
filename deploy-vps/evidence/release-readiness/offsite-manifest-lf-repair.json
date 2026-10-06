@@ -1,0 +1,13 @@
+{
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "at_utc": "2026-10-06T19:54:15.139731+00:00",
+  "module_sha256": "4cb9ec25e3dcf8186b77abd7dd605137f182ab27e4dd42da0716ae1f4e760c4e",
+  "source_manifest_sha256": "65fb5865cdc25971f8852a82e11132b3baac93c5bf8b150b241ae6985f99abdc",
+  "local_manifest_sha256_before_lf_repair": "2ec19a54d12131cfb5df2ccd3a007d61bd5b297f6ecf1aa5bbd18729386d71a9",
+  "local_manifest_sha256_after_lf_repair": "65fb5865cdc25971f8852a82e11132b3baac93c5bf8b150b241ae6985f99abdc",
+  "archive_contents_unchanged": true,
+  "action": "fresh copied Windows outer manifest LF repair; historical sets preserved"
+}

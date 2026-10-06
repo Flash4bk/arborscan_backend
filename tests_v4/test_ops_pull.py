@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'deploy-vps'))
 from ops_pull_backups import entries, transfer
@@ -46,6 +47,33 @@ class PullTest(unittest.TestCase):
     def test_low_disk(self):
         with self.assertRaises(ValueError):transfer(self.root,self.record,self.download,lambda p:shutil._ntuple_diskusage(1,1,0))
         self.assertFalse((self.root/self.record['name']).exists())
+    def test_covered_native_checksum_preserved_exactly_on_windows(self):
+        native=('database.dump','roles.sql','source.json','archive-list.private.txt')
+        original=''.join(hashlib.sha256(self.files['postgres/'+n]).hexdigest()+'  '+n+'\n' for n in native).encode()
+        self.files['postgres/SHA256SUMS']=original
+        self.record['manifest']=''.join(hashlib.sha256(b).hexdigest()+'  '+n+'\n' for n,b in self.files.items())
+        transfer(self.root,self.record,self.download)
+        destination=self.root/self.record['name']
+        self.assertEqual((destination/'postgres/SHA256SUMS').read_bytes(),original)
+        from ops_verify_offsite import verify
+        def check_existing(path):
+            self.assertTrue((path/'COMPLETE').exists())
+            return verify(path)
+        with patch('ops_pull_backups.verify',side_effect=check_existing):
+            self.assertEqual(transfer(self.root,self.record,self.download),'verified_existing')
+        self.assertEqual((destination/'postgres/SHA256SUMS').read_bytes(),original)
+    def test_old_native_checksum_reconstructed_with_lf_bytes(self):
+        transfer(self.root,self.record,self.download)
+        raw=(self.root/self.record['name']/'postgres/SHA256SUMS').read_bytes()
+        self.assertNotIn(b'\r\n',raw)
+        self.assertEqual(len(raw.splitlines()),4)
+    def test_outer_manifest_preserves_trusted_source_bytes_on_windows(self):
+        transfer(self.root,self.record,self.download)
+        expected=self.record['manifest'].encode('utf-8')
+        manifest=self.root/self.record['name']/'SHA256SUMS'
+        self.assertEqual(manifest.read_bytes(),expected)
+        self.assertEqual(transfer(self.root,self.record,lambda *a:self.fail('duplicate download')),'verified_existing')
+        self.assertEqual(manifest.read_bytes(),expected)
 
 
 if __name__=='__main__':unittest.main()

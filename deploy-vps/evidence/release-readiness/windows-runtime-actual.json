@@ -1,0 +1,39 @@
+{
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "started_at_utc": "2026-10-06T19:59:32.580391+00:00",
+  "verified_at_utc": "2026-10-06T19:59:58.322014+00:00",
+  "seconds": 25.742,
+  "files": [
+    {
+      "source_path": "/home/arborscan/ops-runtime/api-v4-0437e98.tar",
+      "local_path": "D:\\ArborScanBackups\\runtime-current-20261006.private\\api-v4-0437e98.tar",
+      "sha256": "a232aeff128924ce45ae0fd4a5ac312459f504b62702f9ad181f72815074b43f",
+      "bytes": 608791552
+    },
+    {
+      "source_path": "/home/arborscan/recovery-releases/reliability-691fb77/images.tar.zst",
+      "local_path": "D:\\ArborScanBackups\\releases\\reliability-691fb77\\images.tar.zst",
+      "sha256": "3f8d154c102db8ee06a0d3fd7e72df67d4b423b9c7a190d29ff54c3c02ad5140",
+      "bytes": 2563869234
+    },
+    {
+      "source_path": "/home/arborscan/recovery-releases/reliability-691fb77/candidate-eaa39f4.tar",
+      "local_path": "D:\\ArborScanBackups\\runtime-current-20261006.private\\candidate-eaa39f4.tar",
+      "sha256": "7a3e499fd51e7c5ede7a69a08b556c042b8c6d107450545db0b9a0b5ff8efe7a",
+      "bytes": 608723456
+    }
+  ],
+  "images": [
+    "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+    "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a"
+  ],
+  "source_preserved": true,
+  "method": "reuse verified existing OCI base/delta; trusted SSH headers and missing blobs; exact tar SHA",
+  "missing_runtime_blob_download_bytes": 0,
+  "windows_pc_required": true,
+  "independent_always_on_receiver": false,
+  "database_restore_performed": false
+}

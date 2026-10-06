@@ -67,10 +67,14 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
         # Older manually copied sets may lack our COMPLETE; verify before marking.
         if (final/'SHA256SUMS').read_text() != record['manifest']:
             raise ValueError('existing_set_manifest_changed')
-        (final/'COMPLETE').unlink(missing_ok=True)
-        verify(final)
-        if 'postgres/database.dump' in files:
-            (final/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native))
+        try:
+            verify(final)
+        except (ValueError, OSError):
+            # Revoke a genuinely damaged set, not a valid set while checking.
+            (final/'COMPLETE').unlink(missing_ok=True)
+            raise
+        if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
+            (final/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
         (final/'COMPLETE').touch()
         return 'verified_existing'
     partial = root / (name+'.partial')
@@ -106,12 +110,14 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
             temporary.rename(quarantine/(name+'-'+str(time.time_ns())+'.bad-sha'))
             raise ValueError('checksum_mismatch')
         os.replace(temporary, target)
-    (partial/'SHA256SUMS').write_text(record['manifest'])
+    # Preserve the trusted SSH manifest byte for byte on Windows as well.
+    # Translating LF to CRLF would change its hash used by external receipts.
+    (partial/'SHA256SUMS').write_text(record['manifest'], encoding='utf-8', newline='\n')
     result = verify(partial)
-    if 'postgres/database.dump' in files:
+    if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
         # Parent manifest covers native files; native manifest may be omitted by
         # outer find. The required four native files must all be present.
-        (partial/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native))
+        (partial/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
         result['scope'] = 'one application/configuration/native PostgreSQL backup set'
     (partial/'OFFSITE_VERIFIED.json').write_text(json.dumps(result,indent=2))
     (partial/'COMPLETE').touch()

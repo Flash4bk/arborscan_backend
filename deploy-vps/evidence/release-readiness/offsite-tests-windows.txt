@@ -1,0 +1,43 @@
+test_bad_prefix_is_discarded_only_in_staging (tests_v4.test_ops_offsite_push.ExternalPushTests.test_bad_prefix_is_discarded_only_in_staging) ... ok
+test_concurrent_real_writes_cannot_publish_duplicate_chunk (tests_v4.test_ops_offsite_push.ExternalPushTests.test_concurrent_real_writes_cannot_publish_duplicate_chunk) ... skipped 'receiver lock is a Linux service primitive'
+test_duplicate_chunk_rejected_then_probe_allows_resume (tests_v4.test_ops_offsite_push.ExternalPushTests.test_duplicate_chunk_rejected_then_probe_allows_resume) ... ok
+test_full_native_runtime_transfer_readback_and_idempotency (tests_v4.test_ops_offsite_push.ExternalPushTests.test_full_native_runtime_transfer_readback_and_idempotency) ... ok
+test_lost_write_reply_resumes_without_duplicate_or_complete (tests_v4.test_ops_offsite_push.ExternalPushTests.test_lost_write_reply_resumes_without_duplicate_or_complete) ... ok
+test_new_runtime_contract_corrupt_asset_is_refused (tests_v4.test_ops_offsite_push.ExternalPushTests.test_new_runtime_contract_corrupt_asset_is_refused) ... ok
+test_new_runtime_contract_wrong_image_or_uncovered_manifest_is_refused (tests_v4.test_ops_offsite_push.ExternalPushTests.test_new_runtime_contract_wrong_image_or_uncovered_manifest_is_refused) ... ok
+test_new_runtime_dependency_contract_recovers_without_rewriting_absolute_paths (tests_v4.test_ops_offsite_push.ExternalPushTests.test_new_runtime_dependency_contract_recovers_without_rewriting_absolute_paths) ... ok
+test_old_find_dot_slash_manifest_exports_without_changing_source (tests_v4.test_ops_offsite_push.ExternalPushTests.test_old_find_dot_slash_manifest_exports_without_changing_source) ... ok
+test_package_conflict_never_replaces_completed_backup (tests_v4.test_ops_offsite_push.ExternalPushTests.test_package_conflict_never_replaces_completed_backup) ... ok
+test_path_traversal_and_missing_native_refused (tests_v4.test_ops_offsite_push.ExternalPushTests.test_path_traversal_and_missing_native_refused) ... ok
+test_readback_checks_content_not_remote_success (tests_v4.test_ops_offsite_push.ExternalPushTests.test_readback_checks_content_not_remote_success) ... ok
+test_real_receiver_cli_protocol_and_advisory_lock (tests_v4.test_ops_offsite_push.ExternalPushTests.test_real_receiver_cli_protocol_and_advisory_lock) ... skipped 'receiver lock is a Linux service primitive'
+test_receipt_is_private_and_records_actual_runtime_content (tests_v4.test_ops_offsite_push.ExternalPushTests.test_receipt_is_private_and_records_actual_runtime_content) ... ok
+test_receiver_refusal_keeps_all_local_archives (tests_v4.test_ops_offsite_push.ExternalPushTests.test_receiver_refusal_keeps_all_local_archives) ... ok
+test_recovery_downloads_all_parts_and_checks_same_native_manifest (tests_v4.test_ops_offsite_push.ExternalPushTests.test_recovery_downloads_all_parts_and_checks_same_native_manifest) ... ok
+test_remote_corrupt_complete_is_not_trusted (tests_v4.test_ops_offsite_push.ExternalPushTests.test_remote_corrupt_complete_is_not_trusted) ... ok
+test_runtime_archive_and_unmapped_image_must_be_present (tests_v4.test_ops_offsite_push.ExternalPushTests.test_runtime_archive_and_unmapped_image_must_be_present) ... ok
+test_same_vps_is_refused_without_ssh_or_secrets (tests_v4.test_ops_offsite_push.ExternalPushTests.test_same_vps_is_refused_without_ssh_or_secrets) ... ok
+test_symlink_cannot_redirect_source_or_receiver (tests_v4.test_ops_offsite_push.ExternalPushTests.test_symlink_cannot_redirect_source_or_receiver) ... ok
+test_corruption_not_verified (tests_v4.test_ops_offsite.OffsiteVerificationTest.test_corruption_not_verified) ... ok
+test_native_postgres_manifest (tests_v4.test_ops_offsite.OffsiteVerificationTest.test_native_postgres_manifest) ... ok
+test_path_escape_rejected (tests_v4.test_ops_offsite.OffsiteVerificationTest.test_path_escape_rejected) ... ok
+test_verified_copy (tests_v4.test_ops_offsite.OffsiteVerificationTest.test_verified_copy) ... ok
+test_candidate_overlay_and_base_can_share_one_release (tests_v4.test_release_bundle.ReleaseBundleTests.test_candidate_overlay_and_base_can_share_one_release) ... ok
+test_corruption_is_refused_even_with_complete_marker (tests_v4.test_release_bundle.ReleaseBundleTests.test_corruption_is_refused_even_with_complete_marker) ... ok
+test_new_deployment_without_archived_image_is_refused (tests_v4.test_release_bundle.ReleaseBundleTests.test_new_deployment_without_archived_image_is_refused) ... ok
+test_overlay_from_different_base_is_refused (tests_v4.test_release_bundle.ReleaseBundleTests.test_overlay_from_different_base_is_refused) ... ok
+test_path_outside_offsite_root_is_refused (tests_v4.test_release_bundle.ReleaseBundleTests.test_path_outside_offsite_root_is_refused) ... ok
+test_required_archive_cannot_be_omitted_from_checksums (tests_v4.test_release_bundle.ReleaseBundleTests.test_required_archive_cannot_be_omitted_from_checksums) ... ok
+test_resolves_shared_runtime_archive_without_copying_it (tests_v4.test_release_bundle.ReleaseBundleTests.test_resolves_shared_runtime_archive_without_copying_it) ... ok
+test_unfinished_transfer_is_not_a_complete_release (tests_v4.test_release_bundle.ReleaseBundleTests.test_unfinished_transfer_is_not_a_complete_release) ... ok
+test_bad_hash_never_published (tests_v4.test_ops_pull.PullTest.test_bad_hash_never_published) ... ok
+test_covered_native_checksum_preserved_exactly_on_windows (tests_v4.test_ops_pull.PullTest.test_covered_native_checksum_preserved_exactly_on_windows) ... ok
+test_interrupted_resume_and_repeat (tests_v4.test_ops_pull.PullTest.test_interrupted_resume_and_repeat) ... ok
+test_low_disk (tests_v4.test_ops_pull.PullTest.test_low_disk) ... ok
+test_old_native_checksum_reconstructed_with_lf_bytes (tests_v4.test_ops_pull.PullTest.test_old_native_checksum_reconstructed_with_lf_bytes) ... ok
+test_unsafe_manifest (tests_v4.test_ops_pull.PullTest.test_unsafe_manifest) ... ok
+
+----------------------------------------------------------------------
+Ran 38 tests in 5.579s
+
+OK (skipped=2)

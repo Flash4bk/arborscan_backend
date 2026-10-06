@@ -1,0 +1,6 @@
+test_ssh_host_key_policy_and_transport_error_redaction (tests_v4.test_ops_offsite_push.ExternalPushTests.test_ssh_host_key_policy_and_transport_error_redaction) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.035s
+
+OK
