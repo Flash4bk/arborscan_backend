@@ -1,0 +1,25 @@
+{
+  "format_version": 1,
+  "application_id": "com.example.arborscan_app",
+  "min_sdk": 24,
+  "rotation_min_sdk": 33,
+  "build_tools": "C:/Users/OPERATOR/AppData/Local/Android/Sdk/build-tools/36.1.0",
+  "java_home": "C:/Program Files/Android/openjdk/jdk-21.0.8",
+  "lineage": "D:/ArborScanSigning/private/debug-to-release.lineage",
+  "old_signer": {
+    "keystore": "D:/ArborScanSigning/private/previous-debug.keystore",
+    "alias": "androiddebugkey",
+    "store_password": "file:D:/ArborScanSigning/private/old-password.txt",
+    "key_password": "file:D:/ArborScanSigning/private/old-password.txt",
+    "sha256": "REPLACE_WITH_PREVIOUS_PUBLIC_CERTIFICATE_SHA256",
+    "sha1": "REPLACE_WITH_PREVIOUS_PUBLIC_CERTIFICATE_SHA1"
+  },
+  "new_signer": {
+    "keystore": "D:/ArborScanSigning/private/arborscan-release.p12",
+    "alias": "arborscan-release",
+    "store_password": "file:D:/ArborScanSigning/private/release-password.txt",
+    "key_password": "file:D:/ArborScanSigning/private/release-password.txt",
+    "sha256": "REPLACE_WITH_NEW_PUBLIC_CERTIFICATE_SHA256",
+    "sha1": "REPLACE_WITH_NEW_PUBLIC_CERTIFICATE_SHA1"
+  }
+}

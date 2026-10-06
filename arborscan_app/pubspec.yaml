@@ -2,7 +2,7 @@ name: arborscan_app
 description: ArborScan mobile application
 publish_to: 'none'
 
-version: 1.3.0+15
+version: 1.3.0+17
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

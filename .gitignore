@@ -42,3 +42,6 @@ __pycache__/
 /output/as15/
 /output/as16/
 /output/pdf/as15-as09/
+
+# AS-14/AS-16 release-readiness: raw sessions, APKs and private recovery work.
+/output/release-readiness/
