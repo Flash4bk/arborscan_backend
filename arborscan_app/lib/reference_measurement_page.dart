@@ -409,7 +409,11 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) Text(_error!),
           if (!_invalid) ...[
-            if (result != null)
+            // Keep this list slot when an incomplete size hides the export.
+            // Removing it shifts the lazy list and disposes the focused input.
+            if (result == null)
+              const SizedBox.shrink()
+            else
               ReportExportButton(
                   enabled: !_busy,
                   load: () async => ReportExportData(snapshot: {
@@ -450,6 +454,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                   controller: _environment, original: _image, enabled: !_busy),
               Ui.sectionTitle(context, '1. Размер эталона'),
               TextField(
+                  key: const ValueKey('reference-length-input'),
                   enabled: !_busy,
                   controller: _length,
                   keyboardType:
