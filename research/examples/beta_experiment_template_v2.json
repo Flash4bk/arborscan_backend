@@ -1,0 +1,175 @@
+{
+  "_template": {
+    "runnable": false,
+    "purpose": "AS-10 experimental input template, not measured data and not synthetic trajectories",
+    "instructions": "Replace every required null and REQUIRED marker with independently measured or explicitly justified values/sources. Two bodies and three times are structural placeholders. Do not infer field values from species or published beta tables. Keep unknown standard_uncertainty null rather than inventing zero.",
+    "body_limit": "This schema supports midpoint COM on a uniform grid only. Confirm that assumption or do not use this model.",
+    "calibration_limit": "Supply calibrated pre-contact x,z tracks, initial-state time origin, original video/calibration references and actual lowercase SHA256 digests. Asset references/digests below are intentionally null.",
+    "identification_limit": "Fill numerical tolerances/search bounds from a documented research protocol; they are settings, not measured tree properties. Every observation must precede first contact. No missing/invisible tracks are supported."
+  },
+  "schema_version": 2,
+  "model": "planar-hinge-chain-v1",
+  "synthetic": false,
+  "dataset_id": "REQUIRED: independent experiment/specimen identifier",
+  "units": {
+    "length": "m",
+    "time": "s",
+    "mass": "kg",
+    "angle": "rad",
+    "beta": "kg/s",
+    "elastic_modulus": "Pa",
+    "inertia": "kg m^2"
+  },
+  "frame": {
+    "coordinates": ["x", "z"],
+    "x": "horizontal",
+    "z": "up",
+    "angle": "from_vertical_toward_positive_x",
+    "origin": "fixed_world"
+  },
+  "support": "fixed_hinge_free_tip",
+  "air_model": "constant_velocity",
+  "initial_velocity_mode": "supplied",
+  "body": {
+    "mode": "measured_midpoint_inertias",
+    "midpoint_assumption": "REQUIRED: measured or explicitly justified midpoint COM for each full stem-plus-crown body"
+  },
+  "parameters": {
+    "lengths_m": {
+      "value": [null, null],
+      "unit": "m",
+      "source": "REQUIRED: measured equal body lengths and specimen subdivision",
+      "standard_uncertainty": null
+    },
+    "diameters_m": {
+      "value": [null, null],
+      "unit": "m",
+      "source": "REQUIRED: measured midpoint diameters, not radii",
+      "standard_uncertainty": null
+    },
+    "joint_diameters_m": {
+      "value": [null],
+      "unit": "m",
+      "source": "REQUIRED: section diameter at the actual connection",
+      "standard_uncertainty": null
+    },
+    "masses_kg": {
+      "value": [null, null],
+      "unit": "kg",
+      "source": "REQUIRED: full measured stem-plus-crown body masses",
+      "standard_uncertainty": null
+    },
+    "inertias_kg_m2": {
+      "value": [null, null],
+      "unit": "kg m^2",
+      "source": "REQUIRED: mass inertias about each supplied midpoint COM, including crown contribution",
+      "standard_uncertainty": null
+    },
+    "elastic_modulus_pa": {
+      "value": null,
+      "unit": "Pa",
+      "source": "REQUIRED: independently measured or explicitly justified elastic modulus",
+      "standard_uncertainty": null
+    },
+    "base_position_m": {
+      "value": [null, null],
+      "unit": "m",
+      "source": "REQUIRED: calibrated fixed-hinge x,z origin in the common frame",
+      "standard_uncertainty": null
+    },
+    "gravity_m_s2": {
+      "value": null,
+      "unit": "m/s^2",
+      "source": "REQUIRED: declared gravity and its justification",
+      "standard_uncertainty": null
+    },
+    "ground_z_m": {
+      "value": null,
+      "unit": "m",
+      "source": "REQUIRED: calibrated horizontal ground plane in the common frame",
+      "standard_uncertainty": null
+    },
+    "air_velocity_m_s": {
+      "value": [null, null],
+      "unit": "m/s",
+      "source": "REQUIRED: measured or explicitly assumed constant air x,z velocity; set air_model=still only with explicit zero-velocity assumption",
+      "standard_uncertainty": null
+    },
+    "initial_angles_rad": {
+      "value": [null, null],
+      "unit": "rad",
+      "source": "REQUIRED: calibrated initial absolute body angles from upward vertical",
+      "standard_uncertainty": null
+    },
+    "initial_angular_velocities_rad_s": {
+      "value": [null, null],
+      "unit": "rad/s",
+      "source": "REQUIRED: independently supplied initial angular velocities; do not substitute implicit zero",
+      "standard_uncertainty": null
+    }
+  },
+  "load_profile": {
+    "kind": "crown_mass_fractions",
+    "source": "REQUIRED: selected measured crown-mass distribution and provenance",
+    "crown_masses_kg": {
+      "value": [null, null],
+      "unit": "kg",
+      "source": "REQUIRED: measured nonnegative crown masses, included in full body masses, with positive total",
+      "standard_uncertainty": null
+    }
+  },
+  "observations": {
+    "time_origin": "initial_state",
+    "times_s": {
+      "value": [null, null, null],
+      "unit": "s",
+      "source": "REQUIRED: calibrated increasing timestamps starting at supplied initial-state t=0",
+      "standard_uncertainty": null
+    },
+    "positions_m": {
+      "value": [
+        [[null, null], [null, null]],
+        [[null, null], [null, null]],
+        [[null, null], [null, null]]
+      ],
+      "unit": "m",
+      "source": "REQUIRED: calibrated COM x,z coordinates for each time and selected body",
+      "standard_uncertainty": null
+    },
+    "points": {
+      "kind": "com",
+      "indices": [0, 1]
+    },
+    "calibration": {
+      "kind": "calibrated_planar_video",
+      "source": "REQUIRED: original experiment and camera calibration",
+      "metric_mapping": "REQUIRED: pixel-to-world x,z mapping, distortion correction and independent scale",
+      "time_origin_description": "REQUIRED: definition and synchronization of t=0 with supplied theta0/omega0",
+      "plane_assumption": "REQUIRED: evidence for motion in the calibrated x,z plane and fixed hinge",
+      "uncertainty_note": "REQUIRED: coordinate, timestamp, scale and physical-point uncertainty; unknown terms must be identified",
+      "assets": [
+        {"reference": null, "sha256": null},
+        {"reference": null, "sha256": null}
+      ]
+    }
+  },
+  "identification": {
+    "bounds_kg_s": [null, null],
+    "bounds_reason": "REQUIRED: finite nonnegative research search interval and its basis; no species/table beta constants",
+    "method": "Radau",
+    "max_step_s": null,
+    "rtol": null,
+    "atol": null,
+    "grid_size": null,
+    "max_rhs_calls": null,
+    "beta_tolerance_kg_s": null,
+    "trajectory_tolerance_m": null,
+    "beta_step_convergence_kg_s": null,
+    "residual_tolerance_m": null,
+    "energy_relative_tolerance": null,
+    "geometry_tolerance_m": null,
+    "sensitivity_fraction": null,
+    "initial_speed_perturbation_rad_s": null,
+    "tolerance_reason": "REQUIRED: documented numerical error budget and physically relevant tolerances"
+  }
+}

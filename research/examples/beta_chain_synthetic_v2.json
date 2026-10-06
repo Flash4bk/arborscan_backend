@@ -1,0 +1,604 @@
+{
+  "schema_version": 2,
+  "model": "planar-hinge-chain-v1",
+  "synthetic": true,
+  "dataset_id": "SYNTHETIC-AS10-THREE-BODY",
+  "units": {
+    "length": "m",
+    "time": "s",
+    "mass": "kg",
+    "angle": "rad",
+    "beta": "kg/s",
+    "elastic_modulus": "Pa",
+    "inertia": "kg m^2"
+  },
+  "frame": {
+    "coordinates": [
+      "x",
+      "z"
+    ],
+    "x": "horizontal",
+    "z": "up",
+    "angle": "from_vertical_toward_positive_x",
+    "origin": "fixed_world"
+  },
+  "support": "fixed_hinge_free_tip",
+  "air_model": "still",
+  "initial_velocity_mode": "supplied",
+  "body": {
+    "mode": "effective_midpoint_cylinders",
+    "midpoint_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia.",
+    "effective_body_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia."
+  },
+  "parameters": {
+    "lengths_m": {
+      "value": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "unit": "m",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+      "standard_uncertainty": 0
+    },
+    "diameters_m": {
+      "value": [
+        0.08,
+        0.08,
+        0.08
+      ],
+      "unit": "m",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+      "standard_uncertainty": 0
+    },
+    "joint_diameters_m": {
+      "value": [
+        0.08,
+        0.08
+      ],
+      "unit": "m",
+      "source": "Synthetic uniform cylinder: explicitly specified joint diameters, not inferred from midpoint taper",
+      "standard_uncertainty": 0
+    },
+    "elastic_modulus_pa": {
+      "value": 5000000.0,
+      "unit": "Pa",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+      "standard_uncertainty": 0
+    },
+    "masses_kg": {
+      "value": [
+        3.767256359733385,
+        4.267256359733385,
+        4.767256359733385
+      ],
+      "unit": "kg",
+      "source": "Correct physical cylinder mass rho*pi*d^2*length/4 plus the explicit synthetic crown masses; not the printed dissertation typo",
+      "standard_uncertainty": 0
+    },
+    "density_kg_m3": {
+      "value": 650.0,
+      "unit": "kg/m^3",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+      "standard_uncertainty": 0
+    },
+    "base_position_m": {
+      "value": [
+        0.0,
+        0.0
+      ],
+      "unit": "m",
+      "source": "Synthetic fixed hinge at the world origin",
+      "standard_uncertainty": 0
+    },
+    "gravity_m_s2": {
+      "value": 9.81,
+      "unit": "m/s^2",
+      "source": "Declared synthetic constant gravity",
+      "standard_uncertainty": 0
+    },
+    "ground_z_m": {
+      "value": 0.0,
+      "unit": "m",
+      "source": "Synthetic horizontal zero-width centreline contact plane",
+      "standard_uncertainty": 0
+    },
+    "air_velocity_m_s": {
+      "value": [
+        0.0,
+        0.0
+      ],
+      "unit": "m/s",
+      "source": "Synthetic still air, explicitly specified",
+      "standard_uncertainty": 0
+    },
+    "initial_angles_rad": {
+      "value": [
+        0.15,
+        0.18,
+        0.2
+      ],
+      "unit": "rad",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+      "standard_uncertainty": 0
+    },
+    "initial_angular_velocities_rad_s": {
+      "value": [
+        0.2,
+        0.1,
+        0.05
+      ],
+      "unit": "rad/s",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree; supplied state, not inferred or silently defaulted",
+      "standard_uncertainty": 0
+    }
+  },
+  "load_profile": {
+    "kind": "crown_mass_fractions",
+    "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+    "crown_masses_kg": {
+      "value": [
+        0.5,
+        1.0,
+        1.5
+      ],
+      "unit": "kg",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+      "standard_uncertainty": 0
+    }
+  },
+  "observations": {
+    "time_origin": "initial_state",
+    "times_s": {
+      "value": [
+        0.0,
+        0.025,
+        0.05,
+        0.07500000000000001,
+        0.1,
+        0.125,
+        0.15000000000000002,
+        0.17500000000000002,
+        0.2,
+        0.225,
+        0.25,
+        0.275,
+        0.30000000000000004,
+        0.325,
+        0.35000000000000003,
+        0.375,
+        0.4
+      ],
+      "unit": "s",
+      "source": "Explicit synthetic fixture chosen by verify_beta_dynamics.py; not a measured tree",
+      "standard_uncertainty": 0
+    },
+    "positions_m": {
+      "value": [
+        [
+          [
+            0.07471906623679961,
+            0.4943855389680211
+          ],
+          [
+            0.2389529191865113,
+            1.480692924330103
+          ],
+          [
+            0.42780237129695403,
+            2.4626480596447844
+          ]
+        ],
+        [
+          [
+            0.0773685716922838,
+            0.49397783767523007
+          ],
+          [
+            0.24556011079825668,
+            1.4796376748076012
+          ],
+          [
+            0.43635678390047733,
+            2.4612229893901887
+          ]
+        ],
+        [
+          [
+            0.0803989490701792,
+            0.4934936767461268
+          ],
+          [
+            0.2530602031156484,
+            1.478401300262842
+          ],
+          [
+            0.44598911651597634,
+            2.459576652156578
+          ]
+        ],
+        [
+          [
+            0.08385333174176204,
+            0.4929184706985588
+          ],
+          [
+            0.26149621969895653,
+            1.4769616904628844
+          ],
+          [
+            0.456701093561503,
+            2.457693356704598
+          ]
+        ],
+        [
+          [
+            0.08778188614924917,
+            0.4922340301767852
+          ],
+          [
+            0.2709172787996489,
+            1.4752915610113273
+          ],
+          [
+            0.4684940089878784,
+            2.4555539368506754
+          ]
+        ],
+        [
+          [
+            0.09224310775926135,
+            0.4914175506337897
+          ],
+          [
+            0.28137909457758914,
+            1.4733570375636487
+          ],
+          [
+            0.4813679516111675,
+            2.453134754945112
+          ]
+        ],
+        [
+          [
+            0.0973052193652962,
+            0.4904403065453242
+          ],
+          [
+            0.2929444291586455,
+            1.4711156856084107
+          ],
+          [
+            0.49532082874041183,
+            2.450406150794009
+          ]
+        ],
+        [
+          [
+            0.10304760580149552,
+            0.48926597157229273
+          ],
+          [
+            0.3056834098232939,
+            1.468513770129254
+          ],
+          [
+            0.5103471235641276,
+            2.4473300640228084
+          ]
+        ],
+        [
+          [
+            0.10956213585633257,
+            0.48784847892209166
+          ],
+          [
+            0.3196735642285184,
+            1.4654824616869995
+          ],
+          [
+            0.5264363097398611,
+            2.443856445134866
+          ]
+        ],
+        [
+          [
+            0.11695407535064256,
+            0.48612934930826407
+          ],
+          [
+            0.33499933339893045,
+            1.4619326439932363
+          ],
+          [
+            0.543570845598842,
+            2.4399179437024894
+          ]
+        ],
+        [
+          [
+            0.12534205204990162,
+            0.4840344719004213
+          ],
+          [
+            0.35175069235338263,
+            1.4577479659559494
+          ],
+          [
+            0.5617237007473269,
+            2.435422266420396
+          ]
+        ],
+        [
+          [
+            0.13485616759714053,
+            0.4814704706012737
+          ],
+          [
+            0.3700203555443481,
+            1.4527759144878882
+          ],
+          [
+            0.5808554687887777,
+            2.4302416515036573
+          ]
+        ],
+        [
+          [
+            0.145632895766855,
+            0.47832108428393616
+          ],
+          [
+            0.38989893454929886,
+            1.4468171404900079
+          ],
+          [
+            0.6009113529604854,
+            2.4241993562638338
+          ]
+        ],
+        [
+          [
+            0.1578050654309041,
+            0.4744444765453046
+          ],
+          [
+            0.41146751887966804,
+            1.4396142949697437
+          ],
+          [
+            0.6218187392442893,
+            2.4170542990017165
+          ]
+        ],
+        [
+          [
+            0.17148554673126293,
+            0.4696729790633903
+          ],
+          [
+            0.43478777011330405,
+            1.430843361872524
+          ],
+          [
+            0.6434866669119331,
+            2.4084873963926765
+          ]
+        ],
+        [
+          [
+            0.1867451213253872,
+            0.46381705408616275
+          ],
+          [
+            0.4598910391938481,
+            1.4201124349611522
+          ],
+          [
+            0.6658089637301179,
+            2.3980963292940163
+          ]
+        ],
+        [
+          [
+            0.20358888990225302,
+            0.45667446163363273
+          ],
+          [
+            0.486769961723053,
+            1.4069733600382228
+          ],
+          [
+            0.688672414775338,
+            2.3854072414110687
+          ]
+        ]
+      ],
+      "unit": "m",
+      "source": "Synthetic tighter numerical reference: Same reconstructed equations, tighter numerical controls; not independent physical truth or experimental validation",
+      "standard_uncertainty": 0.0
+    },
+    "points": {
+      "kind": "com",
+      "indices": [
+        0,
+        1,
+        2
+      ]
+    },
+    "visibility": [
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true
+      ]
+    ],
+    "calibration": {
+      "kind": "synthetic_exact",
+      "source": "Generated reference; no video/field measurements",
+      "metric_mapping": "Coordinates are already exact-model world x,z metres",
+      "time_origin_description": "t=0 is exactly the supplied initial angle/velocity state",
+      "plane_assumption": "All bodies and COM tracks are in a declared mathematical x,z plane",
+      "uncertainty_note": "No observational noise; discrepancy comes only from numerical reference error"
+    }
+  },
+  "identification": {
+    "bounds_kg_s": [
+      0.0,
+      6.0
+    ],
+    "bounds_reason": "Synthetic truth2.4 lies inside [0,6]; not a species-based beta lookup",
+    "max_step_s": 0.012,
+    "beta_tolerance_kg_s": 0.0001,
+    "trajectory_tolerance_m": 1e-07,
+    "beta_step_convergence_kg_s": 0.001,
+    "residual_tolerance_m": 1e-07,
+    "energy_relative_tolerance": 1e-07,
+    "geometry_tolerance_m": 1e-10,
+    "sensitivity_fraction": 0.05,
+    "initial_speed_perturbation_rad_s": 0.01,
+    "rtol": 1e-08,
+    "atol": 1e-10,
+    "grid_size": 9,
+    "max_rhs_calls": 20000,
+    "method": "Radau",
+    "tolerance_reason": "Explicit numerical/synthetic protocol limits; not experimentally proven measurement accuracy"
+  },
+  "synthetic_truth": {
+    "beta_kg_s": 2.4,
+    "not_dissertation_beta_max": true,
+    "not_species_parameter": true,
+    "experimental_validation": false
+  },
+  "reference_generation": {
+    "script": "research/verify_beta_dynamics.py",
+    "script_sha256": "8a569e07b014e9b60401f51fc5371d935d974846ed96371bfd3a72a630e8743e",
+    "versions": {
+      "python": "3.14.6",
+      "numpy": "2.4.6",
+      "scipy": "1.17.1",
+      "git_revision": "ab25e39836ffa68af5f00abbe724eb2af80ce66a",
+      "code_sha256": {
+        "beta_dynamics.py": "3ef484606e3943ff589d0ad567af077ea0b9c2e9cdb8e92ad947b88e4ce39cde",
+        "beta_inputs.py": "e6f2f68310e6a532e1c57775838f8f087bba334415eb9000874569589497336e",
+        "planar_chain.py": "3df09543871d855b83ba981fd7a935c75cfeb9918edc640e2a3e010a49a93695",
+        "beta_identification.py": "00156d13b312e58282aba3fb2c2ab1cdf6ef56a7c88537f262a5d3d576696b18"
+      }
+    },
+    "integrator": {
+      "method": "DOP853",
+      "max_step_s": 0.0017,
+      "rtol": 2e-12,
+      "atol": 2e-14
+    },
+    "scope": "Same reconstructed equations, tighter numerical controls; not independent physical truth or experimental validation",
+    "forward_diagnostics": {
+      "model_version": "planar-hinge-chain-v1",
+      "integrator_version": "scipy-first-order-chain-energy-v1",
+      "method": "DOP853",
+      "max_step_s": 0.0017,
+      "rtol": 2e-12,
+      "atol": 2e-14,
+      "rhs_calls": 3542,
+      "nfev": 3542,
+      "njev": 0,
+      "nlu": 0,
+      "accepted_steps": 236,
+      "elapsed_s": 0.42823899997165427,
+      "max_angle_step_rad": 0.0026178605021244285,
+      "energy_balance_max_abs_j": 3.6692870963861424e-14,
+      "energy_balance_relative": 1.8735719306807201e-16,
+      "max_length_error_m": 2.220446049250313e-16,
+      "shared_joint_error_m": 2.482534153247273e-16,
+      "max_com_midpoint_error_m": 4.577566798522237e-16,
+      "initial_mass_matrix_condition": 35.90303820091216,
+      "max_sampled_mass_matrix_condition": 35.92618483304737,
+      "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+      "effective_body_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia.",
+      "experimental_validation": false
+    },
+    "wood_density_kg_m3": 650.0,
+    "wood_total_mass_kg": 9.801769079200156,
+    "crown_total_mass_kg": 3.0
+  }
+}

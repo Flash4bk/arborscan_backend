@@ -1,0 +1,66 @@
+{
+  "evidence_version": "as10-final-test-summary-v1",
+  "recorded_at_utc": "2026-10-06T08:17:29.295366+00:00",
+  "scope": "Current coupled-chain physics, legacy beta identification compatibility, versioned input/inverse/CLI/replay; synthetic software checks only",
+  "experimental_validation": false,
+  "command": "$env:PYTHONPATH = (Join-Path (Get-Location) 'output/as10/test-deps'); & 'C:\\Python314\\python.exe' -m pytest tests_v4/test_planar_chain.py tests_v4/test_beta_identification.py tests_v4/test_beta_dynamics.py -q --junitxml=output/as10/final-research-tests.xml",
+  "result": {
+    "exit_code": 0,
+    "tests": 70,
+    "passed": 70,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "duration_seconds": 421.974,
+    "cases_by_module": {
+      "tests_v4.test_beta_dynamics": 44,
+      "tests_v4.test_beta_identification": 6,
+      "tests_v4.test_planar_chain": 20
+    }
+  },
+  "junit_evidence": {
+    "local_path": "output/as10/final-research-tests.xml",
+    "sha256": "5569a39408c0cec4faff845cfa56cd8cf07b04174c235e9c14ff751880ad8d14",
+    "suite_attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "70",
+      "time": "421.974",
+      "timestamp": "2026-10-06T11:05:38.303105+03:00"
+    },
+    "raw_xml_in_git": false
+  },
+  "versions": {
+    "python": "3.14.6",
+    "pytest": "9.1.1",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "matplotlib": "3.11.2",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "implementation_commits": [
+    "9b2d6ff1ffdd24bd568f98f4a670e19aa0dcfd4a",
+    "7ac8f8544747d31c66601d7a42426f97777191a6"
+  ],
+  "code_and_test_sha256": {
+    "research/planar_chain.py": "3df09543871d855b83ba981fd7a935c75cfeb9918edc640e2a3e010a49a93695",
+    "research/beta_identification.py": "00156d13b312e58282aba3fb2c2ab1cdf6ef56a7c88537f262a5d3d576696b18",
+    "research/beta_inputs.py": "e6f2f68310e6a532e1c57775838f8f087bba334415eb9000874569589497336e",
+    "research/beta_dynamics.py": "3ef484606e3943ff589d0ad567af077ea0b9c2e9cdb8e92ad947b88e4ce39cde",
+    "research/verify_beta_dynamics.py": "8a569e07b014e9b60401f51fc5371d935d974846ed96371bfd3a72a630e8743e",
+    "tests_v4/test_planar_chain.py": "ce71f1bce5c45b6275557fc329ae32549aea3f5b5e2aa07f8543fcc739c7a29b",
+    "tests_v4/test_beta_identification.py": "18f7ebf0bc1b53058f029cd8eeb2bf72dd6adf44fd6fc628d154772d85b76e04",
+    "tests_v4/test_beta_dynamics.py": "72c78f061faf55b9a457db83134a85865009d4c7baab764e39f1be2b030a5b48"
+  },
+  "numerical_protocol_evidence": {
+    "path": "research/evidence/as10_numerical_checks.json",
+    "sha256": "f80105e8c99a190cdb4deb52bf4bc14344868155584358680c063b182f470f81"
+  },
+  "notes": [
+    "This fresh unified run supersedes earlier overlapping test batches.",
+    "Unrelated Flutter/Android/backend production components were not modified or retested.",
+    "No user acceptance or real-tree experimental validation is claimed."
+  ]
+}
