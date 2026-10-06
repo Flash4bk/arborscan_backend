@@ -1,0 +1,188 @@
+{
+  "task": "AS-16 / AS-08",
+  "environment": "Flutter Windows tests + Poppler PDF render; not Android UI or field validation",
+  "date": "2026-10-06",
+  "synthetic": true,
+  "test_count_targeted": 28,
+  "test_failures": 0,
+  "new_regression_tests": 5,
+  "pdf_files": [
+    {
+      "file": "geometry-geometry-v1.pdf",
+      "sha256": "5922ffc3dce102ab1e3adb3862e9fd376534a5987ffe581d5683358854362361",
+      "bytes": 30020,
+      "pages": 4,
+      "a4": true,
+      "metrics": [
+        {
+          "label": "Высота дерева (проекция)",
+          "value": 3.9999999999999987,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Ширина кроны (проекция)",
+          "value": 1.4999999999999996,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Прямой отрезок основание–верх (2D)",
+          "value": 3.9999999999999987,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Высота отмеченной живой кроны (проекция)",
+          "value": 1.9999999999999993,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Ширина сечения ствола (фотооценка диаметра)",
+          "value": 0.25,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Уровень сечения над отмеченным основанием (проекция)",
+          "value": 1.0,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Угол оси ствола к эталону (2D)",
+          "value": 0.0,
+          "unit": "°",
+          "text_matched": true
+        },
+        {
+          "label": "DBH",
+          "value": null,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Пористость кроны",
+          "value": null,
+          "unit": "1",
+          "text_matched": true
+        }
+      ],
+      "original_coordinates": "normalized_oriented_image",
+      "oriented_dimensions": [
+        100,
+        200
+      ],
+      "version": "geometry-v1",
+      "visual_pages_reviewed": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "visual_defects_found": false,
+      "previews": [
+        {
+          "file": "geometry-geometry-v1-page-2.png",
+          "sha256": "8460ae384179d6beeccb7e0e85b55dd505e8aa88ff697281bbf7a6aacf1e4fca"
+        },
+        {
+          "file": "geometry-geometry-v1-page-3.png",
+          "sha256": "7154637d88a57ff8b37956e343648268d21f7bc79ba3e25d2f6fb2e8be683b8f"
+        }
+      ]
+    },
+    {
+      "file": "geometry-geometry-v2.pdf",
+      "sha256": "8329b794a606ea5b4eff18ee40d96dbbdff3fbd16083c037681c4d27ca50975c",
+      "bytes": 30000,
+      "pages": 4,
+      "a4": true,
+      "metrics": [
+        {
+          "label": "Высота дерева (проекция)",
+          "value": 7.999999999999997,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Ширина кроны (проекция)",
+          "value": 2.999999999999999,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Прямой отрезок основание–верх (2D)",
+          "value": 7.999999999999997,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Высота отмеченной живой кроны (проекция)",
+          "value": 3.9999999999999987,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Ширина сечения ствола (фотооценка диаметра)",
+          "value": 0.5,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Уровень сечения над отмеченным основанием (проекция)",
+          "value": 2.0,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Угол оси ствола к эталону (2D)",
+          "value": 0.0,
+          "unit": "°",
+          "text_matched": true
+        },
+        {
+          "label": "DBH",
+          "value": null,
+          "unit": "м",
+          "text_matched": true
+        },
+        {
+          "label": "Пористость кроны",
+          "value": null,
+          "unit": "1",
+          "text_matched": true
+        }
+      ],
+      "original_coordinates": "normalized_oriented_image",
+      "oriented_dimensions": [
+        100,
+        200
+      ],
+      "version": "geometry-v2",
+      "visual_pages_reviewed": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "visual_defects_found": false,
+      "previews": [
+        {
+          "file": "geometry-geometry-v2-page-2.png",
+          "sha256": "c680a617ce119793368f91d38939dcb183240a0f2fdf7e093018c6e608723fb4"
+        },
+        {
+          "file": "geometry-geometry-v2-page-3.png",
+          "sha256": "4b0e64a6e2f14cb71eb7450a2fe1197d5676093865029dd2a4b8b0834b2d7b89"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "No S24/AVD claims from this protocol",
+    "Reference diameter is projected section width; DBH and crown porosity remain unavailable",
+    "Original EXIF fixture has 100 x 200 oriented pixels; no physical tree used"
+  ]
+}

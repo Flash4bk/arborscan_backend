@@ -1,0 +1,42 @@
+{
+  "task": "AS-16",
+  "date": "2026-10-06",
+  "canonical_path": "deploy-vps/ARBORSCAN_MASTER_PLAN.md",
+  "previous_repository_plan_version": "1.19",
+  "attached_chat_plan_version": "1.2 (separate version sequence)",
+  "reconciled_repository_plan_version": "1.20",
+  "attached_sha256": "bad28eee693af5a0389750144b32ff3eda27c6701d4466f048e2b0061d296a9f",
+  "previous_repository_git_head": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+  "preserved_original_task_sections": true,
+  "task_ids": [
+    "AS-01",
+    "AS-02",
+    "AS-03",
+    "AS-04",
+    "AS-05",
+    "AS-06",
+    "AS-07",
+    "AS-08",
+    "AS-09",
+    "AS-10",
+    "AS-11",
+    "AS-12",
+    "AS-13",
+    "AS-14",
+    "AS-15",
+    "AS-16"
+  ],
+  "preserved_original_journal_rows": true,
+  "original_journal_rows_checked": 19,
+  "preserved_AS10_70_passed_evidence": true,
+  "preserved_actual_soil_evidence": true,
+  "clarifications": [
+    "agent performs available software/interface tests independently",
+    "Street View coverage absence is accepted limitation",
+    "no real beta experiment inputs/equipment now; no demand for them to finish this package",
+    "attached user plan explicitly accepts programmatic AS05/AS06/AS07; experimental quality/training remains open",
+    "current AS16 -> AS14/release-signing/data-transfer preparation -> production release -> model quality/methodology -> experimental AS10/AS13; visual AS15 acceptance separate"
+  ],
+  "completion_evidence_policy": "Current candidate tests/APK15/AVD/PDF/v4 deployment actually completed and recorded in RELEASE_INTEGRATION.md; main publication remains pending until actual push; user acceptance/scientific validation not claimed",
+  "final_repository_plan_version": "1.21"
+}

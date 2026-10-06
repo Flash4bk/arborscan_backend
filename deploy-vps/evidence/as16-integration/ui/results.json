@@ -1,0 +1,267 @@
+{
+  "at_utc": "2026-10-06T14:29:19.038872+00:00",
+  "environment": "AVD Codex_AS12_20260925/emulator-5582 Android16/API36. Physical S24 unavailable USB/mDNS",
+  "final_apk_source": "1ab174304335f4bd93fe04418d0b3a77f70c63d4",
+  "api_commit": "0437e98e0570e0b74a1705b5d3095d32f038ddda",
+  "separate_demo_only": true,
+  "initial_ui_version_code": 14,
+  "final_ui_version_code": 15,
+  "source_change_after14": "Only reference input list-slot/focus regression and versionCode; no formulas/API/native changes",
+  "checks14": [
+    "Original DEMO256x384 photo picked through Android picker; closed reference outline and six marked segments",
+    "Known-object result4.050847m/2.596610m;1m=100cm",
+    "Local report saved and reopened after force-stop",
+    "Local PDF SAF save, Android viewer, Android Files and share/cancel; fast export clicks one file",
+    "AR photo-bind cancel and camera denial preserve selected photo; installed ARCore unavailable on AVD is explained without crash",
+    "GPS denial/manual invalid-point cancellation; saved real SoilGrids/OpenWeather snapshots",
+    "Offline local draft restore and local PDF save/open; network restored",
+    "Two server versions saved through UI; double Save creates one initial version; v1 remains unchanged"
+  ],
+  "checks15": [
+    "install-r preserves61/61files bySHA; coldlaunch2962ms",
+    "100cm→empty→200cm without refocus; force-stop restores200cm and original markup",
+    "Both selected server versions reopen; v1height4.050847 and v2height8.101695; full snapshots unchanged via actualHTTPS",
+    "Two exact chosen-version PDF saved separately through SAF, pulled,18pages total of4controlPDF rendered/visually checked (localPDF14;serverPDF15)",
+    "Actual Android PDF viewer; Share sheet opened/cancelled without sending; SAF cancellation message",
+    "Offline after force-stop opens cache old version; map retains cached5records; restore originalnetwork0/1/1; refresh list reloaded5versions",
+    "All6DEMOcorrections open; rejected reason/accepted/draft displayed; old PNG mask/overlay open without invented points",
+    "New schema2 saved editor opens original restored3points; real user decisions untouched",
+    "Crash buffer has0AndroidRuntimeFATAL"
+  ],
+  "limitations": [
+    "No current S24 install/data inventory/tracking/accuracy proof",
+    "AR unavailable on AVD is not S24 tracking",
+    "No new dynamic/field measurements",
+    "No real-recipient sharing or user-account switching",
+    "moderation decision writes verified in separate realHTTPS DEMO and backend tests, not new final15 administrator UI writes"
+  ],
+  "harness_corrections": [
+    "Offline list labels local-cache timestamps instead of server-created timestamps; selector corrected without sourcechange",
+    "Readback GET /v4/reports/{version_id} uses existingcontract; initial nestedroute404 was testharness corrected",
+    "Screenshots recaptured after UI settles; stale transition frames are not used as editor/share proof"
+  ],
+  "manifest": [
+    {
+      "file": "screenshots/as16-local-measurement-result.png",
+      "sha256": "47eb09a8f1adf806d11420a904a4bc17a54ff1b692c15cfc1f2e59777206c762",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-100cm-result.png",
+      "sha256": "43fac6bd3792fb87cf0a236bfe54488419de2c7937d614089067e8ad5906bd3f",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-ar-camera-denied.png",
+      "sha256": "5e667b8f5015904b593fa13c3414f5d5e33b50f64ad7cb8db58041c02d07fd2c",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-ar-denial-return-photo.png",
+      "sha256": "5d6c61189f00438c7c2b4c4af40228b9e43b43691668f5e0edcaecc23b4715db",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-ar-unavailable-explanation.png",
+      "sha256": "d9f1648ff2f95d1b3b6cbb2dec7dea5367ebb26dbccd606e4eed69be748e51f0",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-map-location-denied.png",
+      "sha256": "2050aa87a613c66bbc14216fb9f9894109c94e7fe25ed5500b627de22978d4e5",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-empty-point-validation.png",
+      "sha256": "29f631b83198a4247bf0a2f549a405487580738deb8804b87dee20cd101ef4d7",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-saved-weather-values.png",
+      "sha256": "4347bc43afbb4fb72607aa46aecf81b42a72989d04032367cf01bc398f8f5e30",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-saved-soil-values.png",
+      "sha256": "2903e36eac8e0c2f7e6fa4bd1a774109c173dd6209eda68a2a4e3ac1a71d0c9f",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-saved-offline-pdf-opened-from-files.png",
+      "sha256": "bc5fc50ed80de47513ff1714de258e6524d00a96156f17e9d36f97a923ece74a",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-reference-v1-saved-in-account.png",
+      "sha256": "36c6df8da6a9d3dbdebf394f7e7b186b351d51407b38cfebdfd5191190c6f62c",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/as16-reference-v2-saved-in-account.png",
+      "sha256": "ff792763bf177dfba35e652fb9476e25071210957037306dba8256490928db85",
+      "version_code": 14,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-reference-before-clear.png",
+      "sha256": "a4fba4e3348e1c31b7537da1cb5ab14e89ab1348842172bb655f336d16cc8404",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-reference-clear-still-focused.png",
+      "sha256": "f577940b0e658ea0e3534c0d867623aa6edd42a7789e56d2e94827874f1b4a76",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-reference-replaced-without-refocus.png",
+      "sha256": "63a0b2b3d2d8b1e4616a9909965732fb61d1fcfade3e6434cf7b28d8f484e54b",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-reference-after-force-stop.png",
+      "sha256": "0f60754fb17de3971fb4c220d1fea8a5ef85d0ae3ea8fb08755296b8642f712f",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-server-v1-opened.png",
+      "sha256": "fe1cea72a53493d0be9e8e6452e390e753dc06fb501f63b306c25ac54ba18bcc",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-server-v2-opened.png",
+      "sha256": "7c9c7fd46d53d46d532c3296a696f48cc1b8740eca8dc0a4ee87502887648f41",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-server-v1-saf.png",
+      "sha256": "36dd183b1e7cf80941555ea38b13c7c876b78515a285bfb52913d579a0b06881",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-server-v2-saf.png",
+      "sha256": "077c8cff533576b96ac33ca7d751a8056b7f3bd671f0dff6ca2cb49819fd9759",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-server-v2-android-viewer.png",
+      "sha256": "4707d9557f1fc6774d754ce25149e7489ba9496a2fa4ba137f846034fb345f02",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-share-open-without-send.png",
+      "sha256": "ff683d6f6f0db9347e8aa8c221537d8a4a1b503373b004c0e7249f678143adf2",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-saf-cancelled.png",
+      "sha256": "7aa7f4380eaba676d91c3cd4cb21453fc95997202295659c23d02d50336becac",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-offline-server-v1-after-force-stop.png",
+      "sha256": "19e45015d5bd225c81a34cc417676e46ad939105d6f4e1ffb9fd625104b045e0",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-offline-map-cache.png",
+      "sha256": "73a439321244f7644cb6cacfdf31a335aab9a33b211c9fa0e74d5fcba63fcac6",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-map-reconnected-list.png",
+      "sha256": "0f0ca52f7ec8a80f8dfd420ce406dbbc1f58a0a324c01acea7199078dd0714eb",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-correction-list.png",
+      "sha256": "3d61cfbbd2ecd73719662f7f4d7fd6d44fb852b71d796351254dddc2652a6256",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-correction-detail-1.png",
+      "sha256": "52baac85604e591c29b1db2211d586476af1940b3e5ceb8562fd51ba47a8b8dc",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-correction-detail-4.png",
+      "sha256": "68ec8e22b2b24bfeb0331334b7fdf9ac496db5c066020bc9826ad1d3595f0323",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-correction-detail-5.png",
+      "sha256": "8724f9be57146aa9822ef39a7d8861345645c5429aee915d84e3ab16394e1127",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-legacy-png-mask.png",
+      "sha256": "4ecff566cf5f14ff95bf1c182257333a892253f56c434f3eeb63a1a47920d4a6",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-legacy-png-overlay.png",
+      "sha256": "e530d2ff745ee47c6b49d9a1be3915f96166b46d9c85621450a87d69b20c9205",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "screenshots/apk15-restored-editor-points.png",
+      "sha256": "247407807383b31275ad0d595b67fbbb703f5f19e902208695c059c30466676e",
+      "version_code": 15,
+      "environment": "AVD Android16/API36; separate DEMO account; not S24"
+    },
+    {
+      "file": "pdf/AS16_DEMO_local.pdf",
+      "sha256": "54206588174ef495798ee566e1400bd5f6cd23ff86ce13aa3221122692f22573",
+      "version_code": 14,
+      "environment": "Real file saved through Android SAF and pulled from AVD"
+    },
+    {
+      "file": "pdf/AS16_DEMO_local_offline.pdf",
+      "sha256": "565b3d67be10ad3569476e31a044944d62ae462f74be912573b35a705cf763c8",
+      "version_code": 14,
+      "environment": "Real file saved through Android SAF and pulled from AVD"
+    },
+    {
+      "file": "pdf/AS16_DEMO_server_v1_code15.pdf",
+      "sha256": "ac71b59b873072527d68fdf379d50e9cdbcde9fa8b9202763b19d02f79b23a2c",
+      "version_code": 15,
+      "environment": "Real file saved through Android SAF and pulled from AVD"
+    },
+    {
+      "file": "pdf/AS16_DEMO_server_v2_code15.pdf",
+      "sha256": "5ca4f39648af74b214d5d9637d894094ed6cb1f360fa2895861d447cf7910303",
+      "version_code": 15,
+      "environment": "Real file saved through Android SAF and pulled from AVD"
+    }
+  ]
+}

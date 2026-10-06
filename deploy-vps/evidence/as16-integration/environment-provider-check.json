@@ -1,0 +1,160 @@
+{
+  "task": "AS-16/AS-09",
+  "date": "2026-10-06",
+  "environment": "Windows direct read-only SoilGrids WCS requests; not production API or S24 UI",
+  "tls_verification": "requests default enabled; redirects disabled",
+  "sample_point": {
+    "lat": 50.2,
+    "lon": 10.2,
+    "crs": "EPSG:4326"
+  },
+  "dataset_version": "2.0",
+  "resolution_m": 250,
+  "attribution": "ISRIC SoilGrids, CC BY 4.0; Poggio et al. 2021 doi:10.5194/soil-7-217-2021",
+  "values": [
+    {
+      "property": "clay",
+      "coverage": "clay_0-5cm_mean",
+      "unit": "%",
+      "depth_cm": [
+        0,
+        5
+      ],
+      "retrieved_at": "2026-10-06T12:42:43.024657+00:00",
+      "data_at": null,
+      "http_status": 200,
+      "format": "TIFF",
+      "size": [
+        3,
+        3
+      ],
+      "mode": "I",
+      "response_bytes": 642,
+      "response_sha256": "beb7753f24e5022e412db10adc213186770d5637109dc73cc5882f7f2acd35b8",
+      "raw_center_value": 295,
+      "status": "ok",
+      "value": 29.5,
+      "q05": null,
+      "q95": null,
+      "elapsed_s": 1.059
+    },
+    {
+      "property": "sand",
+      "coverage": "sand_0-5cm_mean",
+      "unit": "%",
+      "depth_cm": [
+        0,
+        5
+      ],
+      "retrieved_at": "2026-10-06T12:42:43.025100+00:00",
+      "data_at": null,
+      "http_status": 200,
+      "format": "TIFF",
+      "size": [
+        3,
+        3
+      ],
+      "mode": "I",
+      "response_bytes": 634,
+      "response_sha256": "0ad9d27a2098d01fcd03f91b01f0218beca808a7c1a62ab6f37a3b31f07baf2c",
+      "raw_center_value": 195,
+      "status": "ok",
+      "value": 19.5,
+      "q05": null,
+      "q95": null,
+      "elapsed_s": 1.058
+    },
+    {
+      "property": "silt",
+      "coverage": "silt_0-5cm_mean",
+      "unit": "%",
+      "depth_cm": [
+        0,
+        5
+      ],
+      "retrieved_at": "2026-10-06T12:42:43.025418+00:00",
+      "data_at": null,
+      "http_status": 200,
+      "format": "TIFF",
+      "size": [
+        3,
+        3
+      ],
+      "mode": "I",
+      "response_bytes": 639,
+      "response_sha256": "88df9cab6d1d64af6a9a9e8aaa03be534da3d98ba7d023dae3838eaf26b50063",
+      "raw_center_value": 510,
+      "status": "ok",
+      "value": 51.0,
+      "q05": null,
+      "q95": null,
+      "elapsed_s": 1.058
+    },
+    {
+      "property": "soc",
+      "coverage": "soc_0-5cm_mean",
+      "unit": "g/kg",
+      "depth_cm": [
+        0,
+        5
+      ],
+      "retrieved_at": "2026-10-06T12:42:43.025663+00:00",
+      "data_at": null,
+      "http_status": 200,
+      "format": "TIFF",
+      "size": [
+        3,
+        3
+      ],
+      "mode": "I",
+      "response_bytes": 646,
+      "response_sha256": "1542e14dbc999e38493bed870e7b489697a7f45f485b225dd49396d9260f9206",
+      "raw_center_value": 549,
+      "status": "ok",
+      "value": 54.9,
+      "q05": null,
+      "q95": null,
+      "elapsed_s": 1.058
+    },
+    {
+      "property": "phh2o",
+      "coverage": "phh2o_0-5cm_mean",
+      "unit": "pH",
+      "depth_cm": [
+        0,
+        5
+      ],
+      "retrieved_at": "2026-10-06T12:42:43.025895+00:00",
+      "data_at": null,
+      "http_status": 200,
+      "format": "TIFF",
+      "size": [
+        3,
+        3
+      ],
+      "mode": "I",
+      "response_bytes": 635,
+      "response_sha256": "3f77bc0910c1d823a7f6d7fb34d835e6616dff24cce6911192bb5407b6562cc5",
+      "raw_center_value": 57,
+      "status": "ok",
+      "value": 5.7,
+      "q05": null,
+      "q95": null,
+      "elapsed_s": 1.057
+    }
+  ],
+  "limitations": [
+    "0-5 cm modelled-grid means, not root or in-situ measurements",
+    "q05/q95 not requested; exact raster-cell revision, sample date and update date unknown"
+  ],
+  "reviewed_source_sha256": {
+    "arborscan_v4/environment_api.py": "8d84f3790889c6d4e8218198f16a353eddb15e675ac65db5a171f8cd568bca3e",
+    "arborscan_v4/environment_snapshot.py": "8816d7ce26082ca61fbe3af24474e8151ba452e84977a3482b2da1a6af5d224d",
+    "arborscan_v4/report_history.py": "a51900941fd3b6cb85da414e506944c1638b38a62c96b967fdf759b06a34d67a",
+    "arborscan_app/lib/survey_environment.dart": "3f9abc5b266247d03f8739791975adc1de5952f27a616f91583bd822ca70805a",
+    "arborscan_app/lib/survey_environment_ui.dart": "a808aafdcd97cb92b8b52f0921ffdcde2f1da9d1f9aa4087e880145dbb1e4848",
+    "arborscan_app/lib/survey_map_repository.dart": "6384a86693319e1b27a4a3b647a552657fb86be8150ef9c03c644b7d5e9b83af",
+    "arborscan_app/lib/map_page.dart": "7e4f9d97ff92fd16e94ff775940ac34facbfdd2b2e097e975b544052ea55065e"
+  },
+  "reviewed_git_head": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a"
+}

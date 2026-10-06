@@ -1,0 +1,1451 @@
+{
+  "evidence_version": "as16-clean-research-reproducibility-v1",
+  "recorded_at_utc": "2026-10-06T12:45:08.524248+00:00",
+  "scope": "AS-16 software reproducibility of isolated AS-10; only synthetic numerical checks",
+  "experimental_validation": false,
+  "production_connection": false,
+  "environment": {
+    "python": "3.14.6",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "fresh_venv_relative_path": "output/as16-integration/research-env",
+    "include_system_site_packages": false,
+    "pythonpath_override": null,
+    "scientific_imports_inside_fresh_venv": true,
+    "prior_as10_dependencies_used": false,
+    "requirements_path": "research/requirements-beta.txt",
+    "requirements_sha256": "1346ff44e2af55dbc2cf3895faa714ca26aca8f3a3f828025f0ade8499e39f2c",
+    "installed_packages": [
+      {
+        "name": "colorama",
+        "version": "0.4.6"
+      },
+      {
+        "name": "contourpy",
+        "version": "1.4.0"
+      },
+      {
+        "name": "cycler",
+        "version": "0.12.1"
+      },
+      {
+        "name": "fonttools",
+        "version": "4.66.1"
+      },
+      {
+        "name": "iniconfig",
+        "version": "2.3.0"
+      },
+      {
+        "name": "kiwisolver",
+        "version": "1.5.1"
+      },
+      {
+        "name": "matplotlib",
+        "version": "3.11.2"
+      },
+      {
+        "name": "numpy",
+        "version": "2.4.6"
+      },
+      {
+        "name": "packaging",
+        "version": "26.3"
+      },
+      {
+        "name": "pillow",
+        "version": "12.3.0"
+      },
+      {
+        "name": "pip",
+        "version": "26.1.2"
+      },
+      {
+        "name": "pluggy",
+        "version": "1.6.0"
+      },
+      {
+        "name": "Pygments",
+        "version": "2.21.0"
+      },
+      {
+        "name": "pyparsing",
+        "version": "3.3.3"
+      },
+      {
+        "name": "pytest",
+        "version": "9.1.1"
+      },
+      {
+        "name": "python-dateutil",
+        "version": "2.9.0.post0"
+      },
+      {
+        "name": "scipy",
+        "version": "1.17.1"
+      },
+      {
+        "name": "six",
+        "version": "1.17.0"
+      }
+    ],
+    "versions": {
+      "numpy": "2.4.6",
+      "scipy": "1.17.1",
+      "matplotlib": "3.11.2",
+      "pytest": "9.1.1"
+    },
+    "dependency_check": {
+      "command": "python -m pip check",
+      "exit_code": 0,
+      "result": "No broken requirements found."
+    },
+    "module_files_relative_to_venv": {
+      "numpy": "Lib/site-packages/numpy/__init__.py",
+      "scipy": "Lib/site-packages/scipy/__init__.py",
+      "matplotlib": "Lib/site-packages/matplotlib/__init__.py",
+      "pytest": "Lib/site-packages/pytest/__init__.py"
+    }
+  },
+  "research_tests": {
+    "passed": 70,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "duration_s": 230.405,
+    "exit_code": 0,
+    "cases_by_module": {
+      "tests_v4.test_planar_chain": 20,
+      "tests_v4.test_beta_identification": 6,
+      "tests_v4.test_beta_dynamics": 44
+    },
+    "junit_sha256": "2ff8cb76953a8e14f4410d28a8c1d23ef3211e13a90e8d059903e736d9f83d81",
+    "junit_local_path": "output/as16-integration/research-tests.xml",
+    "command": "python -m pytest tests_v4/test_planar_chain.py tests_v4/test_beta_identification.py tests_v4/test_beta_dynamics.py -q --junitxml=output/as16-integration/research-tests.xml",
+    "reported_pytest_total_duration_s": 230.42
+  },
+  "source_code_and_tests_sha256": {
+    "research/planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+    "research/beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805",
+    "research/beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+    "research/beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+    "research/verify_beta_dynamics.py": "e2d8b7383ea53568cd29888132431aabc5696b8c59b593c3f6873596f488fb32",
+    "tests_v4/test_planar_chain.py": "71bfad47b58527a31c66deaef999d620dbd26badd79eb2b07c423150e04dcb68",
+    "tests_v4/test_beta_identification.py": "18f7ebf0bc1b53058f029cd8eeb2bf72dd6adf44fd6fc628d154772d85b76e04",
+    "tests_v4/test_beta_dynamics.py": "d4bcc611095f56e3a63be734527b641e0b2c783764f1e2554b6a46007416e592"
+  },
+  "source_identity": {
+    "research/planar_chain.py": {
+      "checkout_sha256": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+      "git_blob_content_sha256": "3df09543871d855b83ba981fd7a935c75cfeb9918edc640e2a3e010a49a93695",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    },
+    "research/beta_identification.py": {
+      "checkout_sha256": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805",
+      "git_blob_content_sha256": "e8cfc8cea29e3572b56cb88f57dcac96e2fdbd7a6c2049bf66cb2816b92a6bea",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    },
+    "research/beta_inputs.py": {
+      "checkout_sha256": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+      "git_blob_content_sha256": "e6f2f68310e6a532e1c57775838f8f087bba334415eb9000874569589497336e",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    },
+    "research/beta_dynamics.py": {
+      "checkout_sha256": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+      "git_blob_content_sha256": "3ef484606e3943ff589d0ad567af077ea0b9c2e9cdb8e92ad947b88e4ce39cde",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    },
+    "research/verify_beta_dynamics.py": {
+      "checkout_sha256": "e2d8b7383ea53568cd29888132431aabc5696b8c59b593c3f6873596f488fb32",
+      "git_blob_content_sha256": "8a569e07b014e9b60401f51fc5371d935d974846ed96371bfd3a72a630e8743e",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    },
+    "tests_v4/test_planar_chain.py": {
+      "checkout_sha256": "71bfad47b58527a31c66deaef999d620dbd26badd79eb2b07c423150e04dcb68",
+      "git_blob_content_sha256": "ce71f1bce5c45b6275557fc329ae32549aea3f5b5e2aa07f8543fcc739c7a29b",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    },
+    "tests_v4/test_beta_identification.py": {
+      "checkout_sha256": "18f7ebf0bc1b53058f029cd8eeb2bf72dd6adf44fd6fc628d154772d85b76e04",
+      "git_blob_content_sha256": "7ecbaa90863cc734ba58fea62f69ea8f63bdf4f0fd8c33e93bbad8d67341c73f",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    },
+    "tests_v4/test_beta_dynamics.py": {
+      "checkout_sha256": "d4bcc611095f56e3a63be734527b641e0b2c783764f1e2554b6a46007416e592",
+      "git_blob_content_sha256": "72c78f061faf55b9a457db83134a85865009d4c7baab764e39f1be2b030a5b48",
+      "only_checkout_line_endings_differ": true,
+      "matches_git_after_crlf_normalization": true
+    }
+  },
+  "source_identity_note": "Fresh Windows checkout can use CRLF while earlier AS-10 working-tree evidence used LF; exact checkout hashes and canonical Git-blob content hashes are both recorded. Source text is unchanged after line-ending normalization.",
+  "saved_synthetic_input": {
+    "path": "research/examples/beta_chain_synthetic_v2.json",
+    "sha256": "9b772df5557adde6d6c585cc0c4e95c42dffbd33fc4de3100ef47669cfe395f0"
+  },
+  "saved_example_cli": {
+    "command_result": {
+      "command": [
+        "python",
+        "-m",
+        "research.beta_dynamics",
+        "research\\examples\\beta_chain_synthetic_v2.json",
+        "output\\as16-integration\\saved-example-cli"
+      ],
+      "exit_code": 0,
+      "wall_time_s": 17.70275609998498,
+      "stdout_sha256": "e67b6b0816714a4c4f3a3410f1737a7600b87f60abdb374bf31d9a7b6f981d5a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "file_checks": {
+      "files_sha256": {
+        "comparison.png": "bcb32037ff61be69e8a32c010b55de073f8704ef9cfc8a96e495fcda0d5129b5",
+        "energy.png": "d11e9434161cfdfd81950ca3ea0e63b78e4c79e798eca3bb8dad8d96d0d54c9a",
+        "input.json": "9b772df5557adde6d6c585cc0c4e95c42dffbd33fc4de3100ef47669cfe395f0",
+        "objective.png": "9841f709de501eb75df4e9b1403a44f4aafb7cf7eab422912a39b35896416d04",
+        "residuals.png": "2586e583a2885b3ce2b7bf14e468b86df54b3312b800a2da9e21be4d639aeb6e",
+        "result.json": "580ca440bdb39522fd24bd2a11849ef96d5d0094afefe9a912baabdfca741391",
+        "trajectories.csv": "6ceaa350312ebfcf60ed46a6d8335b21385ddb0c2f74b68ebbf3dd52c04fe4d3"
+      },
+      "manifest_sha256": "9237167e8a6ae3fb9eff07476755b8b7305abf5e82eb3650da296f29600c76fb",
+      "manifest_files_verified": 7,
+      "csv_rows": 51,
+      "csv_json_max_difference_m": 0.0,
+      "plots": {
+        "comparison.png": {
+          "sha256": "bcb32037ff61be69e8a32c010b55de073f8704ef9cfc8a96e495fcda0d5129b5",
+          "dimensions_px": [
+            1600,
+            640
+          ],
+          "format": "PNG"
+        },
+        "residuals.png": {
+          "sha256": "2586e583a2885b3ce2b7bf14e468b86df54b3312b800a2da9e21be4d639aeb6e",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        },
+        "objective.png": {
+          "sha256": "9841f709de501eb75df4e9b1403a44f4aafb7cf7eab422912a39b35896416d04",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        },
+        "energy.png": {
+          "sha256": "d11e9434161cfdfd81950ca3ea0e63b78e4c79e798eca3bb8dad8d96d0d54c9a",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        }
+      },
+      "units": {
+        "length": "m",
+        "time": "s",
+        "mass": "kg",
+        "angle": "rad",
+        "beta": "kg/s",
+        "elastic_modulus": "Pa",
+        "inertia": "kg m^2"
+      },
+      "versions": {
+        "python": "3.14.6",
+        "numpy": "2.4.6",
+        "scipy": "1.17.1",
+        "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+        "code_sha256": {
+          "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+          "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+          "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+          "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+        }
+      },
+      "schema_version": 2,
+      "model_version": "planar-hinge-chain-v1",
+      "workflow_version": "coupled-beta-workflow-v1",
+      "integrator": {
+        "version": "scipy-first-order-chain-energy-v1",
+        "method": "Radau",
+        "rtol": 1e-08,
+        "atol": 1e-10,
+        "max_step_s": 0.003,
+        "scipy": "1.17.1"
+      },
+      "source_input_file_sha256": "9b772df5557adde6d6c585cc0c4e95c42dffbd33fc4de3100ef47669cfe395f0",
+      "source_input_file_hash_verified": true
+    },
+    "status": "conditional_research_candidate",
+    "beta_kg_s": 2.400001788258296,
+    "candidate_error_kg_s": 1.7882582961092908e-06,
+    "sse_m2": 3.304583518165633e-16,
+    "rmse_coordinate_m": 1.7999410442865854e-09
+  },
+  "saved_input_replay": {
+    "command_result": {
+      "command": [
+        "python",
+        "-m",
+        "research.beta_dynamics",
+        "output\\as16-integration\\saved-example-cli\\input.json",
+        "output\\as16-integration\\saved-example-replay"
+      ],
+      "exit_code": 0,
+      "wall_time_s": 16.643896900000982,
+      "stdout_sha256": "7e4e3431013c6ec52a5c2c99369f87ad47f78c25912db82a62e626a628f13406",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "file_checks": {
+      "files_sha256": {
+        "comparison.png": "bcb32037ff61be69e8a32c010b55de073f8704ef9cfc8a96e495fcda0d5129b5",
+        "energy.png": "d11e9434161cfdfd81950ca3ea0e63b78e4c79e798eca3bb8dad8d96d0d54c9a",
+        "input.json": "9b772df5557adde6d6c585cc0c4e95c42dffbd33fc4de3100ef47669cfe395f0",
+        "objective.png": "9841f709de501eb75df4e9b1403a44f4aafb7cf7eab422912a39b35896416d04",
+        "residuals.png": "2586e583a2885b3ce2b7bf14e468b86df54b3312b800a2da9e21be4d639aeb6e",
+        "result.json": "022a13bc6aa33de5c3281c35dd8c210502d859a4db71c122d28925baf40771cb",
+        "trajectories.csv": "6ceaa350312ebfcf60ed46a6d8335b21385ddb0c2f74b68ebbf3dd52c04fe4d3"
+      },
+      "manifest_sha256": "40a1478684e75121411b55b2f12cdc1b17282ac1b35bc3e8fdd25a9a4d306563",
+      "manifest_files_verified": 7,
+      "csv_rows": 51,
+      "csv_json_max_difference_m": 0.0,
+      "plots": {
+        "comparison.png": {
+          "sha256": "bcb32037ff61be69e8a32c010b55de073f8704ef9cfc8a96e495fcda0d5129b5",
+          "dimensions_px": [
+            1600,
+            640
+          ],
+          "format": "PNG"
+        },
+        "residuals.png": {
+          "sha256": "2586e583a2885b3ce2b7bf14e468b86df54b3312b800a2da9e21be4d639aeb6e",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        },
+        "objective.png": {
+          "sha256": "9841f709de501eb75df4e9b1403a44f4aafb7cf7eab422912a39b35896416d04",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        },
+        "energy.png": {
+          "sha256": "d11e9434161cfdfd81950ca3ea0e63b78e4c79e798eca3bb8dad8d96d0d54c9a",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        }
+      },
+      "units": {
+        "length": "m",
+        "time": "s",
+        "mass": "kg",
+        "angle": "rad",
+        "beta": "kg/s",
+        "elastic_modulus": "Pa",
+        "inertia": "kg m^2"
+      },
+      "versions": {
+        "python": "3.14.6",
+        "numpy": "2.4.6",
+        "scipy": "1.17.1",
+        "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+        "code_sha256": {
+          "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+          "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+          "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+          "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+        }
+      },
+      "schema_version": 2,
+      "model_version": "planar-hinge-chain-v1",
+      "workflow_version": "coupled-beta-workflow-v1",
+      "integrator": {
+        "version": "scipy-first-order-chain-energy-v1",
+        "method": "Radau",
+        "rtol": 1e-08,
+        "atol": 1e-10,
+        "max_step_s": 0.003,
+        "scipy": "1.17.1"
+      },
+      "source_input_file_sha256": "9b772df5557adde6d6c585cc0c4e95c42dffbd33fc4de3100ef47669cfe395f0",
+      "source_input_file_hash_verified": true
+    },
+    "same_input_sha256": true,
+    "same_candidate_and_beta": true,
+    "byte_identical_trajectory_csv": true
+  },
+  "numerical_protocol": {
+    "command_result": {
+      "command": [
+        "python",
+        "-m",
+        "research.verify_beta_dynamics",
+        "output/as16-integration/numerical-protocol"
+      ],
+      "exit_code": 0,
+      "wall_time_s": 127.25327719998313,
+      "stdout_sha256": "efd504c09611c532df2ae3b161bbd42020d88c4dca73bf74a0ec0ed21e4cc72b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "local_path": "output/as16-integration/numerical-protocol/as10_numerical_checks.json",
+    "sha256": "2398ff056ff15eadf113c866f8559b77bd13134752a62e6b64247520225e6b31",
+    "protocol_version": "as10-synthetic-numerical-protocol-v1",
+    "duration_s": 126.51238719996763,
+    "checks": {
+      "one_rod_analytic_reference": {
+        "pivot_inertia_kg_m2": 0.3333333333333333,
+        "decay_rate_per_s": 1.5,
+        "step_checks": [
+          {
+            "max_step_s": 0.2,
+            "max_theta_error_rad": 1.407691183633042e-06,
+            "max_omega_error_rad_s": 2.111536775428746e-06
+          },
+          {
+            "max_step_s": 0.1,
+            "max_theta_error_rad": 1.2292288417703467e-07,
+            "max_omega_error_rad_s": 1.8438432625167422e-07
+          },
+          {
+            "max_step_s": 0.05,
+            "max_theta_error_rad": 1.6139604930298646e-10,
+            "max_omega_error_rad_s": 2.42094122526737e-10
+          }
+        ]
+      },
+      "two_rod_hand_derived_acceleration": {
+        "expected_rad_s2": [
+          2.6780972450961724,
+          8.50261101961531
+        ],
+        "max_error_rad_s2": 1.7763568394002505e-15
+      },
+      "gravity_driven_physical_pendulum": {
+        "max_theta_error_rad": 3.5944025533751756e-12,
+        "max_omega_error_rad_s": 2.882083460775675e-12,
+        "reference": "Independent scalar fixed-hinge pendulum ODE, DOP853 rtol2e-12 atol2e-14 max_step0.0007",
+        "mass_kg": 2.3,
+        "length_m": 1.2,
+        "central_inertia_kg_m2": 0.27691999999999994,
+        "beta_kg_s": 2.4,
+        "gravity_m_s2": 9.81,
+        "duration_s": 0.3
+      },
+      "energy_work_checks": [
+        {
+          "beta_kg_s": 0.0,
+          "air_velocity_m_s": [
+            0.0,
+            0.0
+          ],
+          "max_balance_error_j": 2.1387336346379016e-12,
+          "energy_change_j": 0.0,
+          "relative_dissipation_j": 0.0,
+          "air_work_j": 0.0
+        },
+        {
+          "beta_kg_s": 0.8,
+          "air_velocity_m_s": [
+            0.0,
+            0.0
+          ],
+          "max_balance_error_j": 2.3177659878165224e-12,
+          "energy_change_j": -0.005649404026890181,
+          "relative_dissipation_j": 0.005649404026889637,
+          "air_work_j": 0.0
+        },
+        {
+          "beta_kg_s": 0.8,
+          "air_velocity_m_s": [
+            2.0,
+            -0.1
+          ],
+          "max_balance_error_j": 8.362283088203526e-12,
+          "energy_change_j": 0.06354159407371185,
+          "relative_dissipation_j": 0.5029023798066691,
+          "air_work_j": 0.5664439738804274
+        }
+      ],
+      "spatial_refinement": {
+        "meaning": "Same physical tip, not changing COM indices",
+        "meshes": [
+          {
+            "n": 4,
+            "total_mass_kg": 1.5315264186250244,
+            "sum_weights": 1.0,
+            "forward_diagnostics": {
+              "model_version": "planar-hinge-chain-v1",
+              "integrator_version": "scipy-first-order-chain-energy-v1",
+              "method": "Radau",
+              "max_step_s": 0.004,
+              "rtol": 1e-08,
+              "atol": 1e-10,
+              "rhs_calls": 432,
+              "nfev": 410,
+              "njev": 2,
+              "nlu": 14,
+              "accepted_steps": 54,
+              "elapsed_s": 0.05590490001486614,
+              "max_angle_step_rad": 0.0022935373615664825,
+              "energy_balance_max_abs_j": 5.382509271189412e-12,
+              "energy_balance_relative": 7.394975821940321e-13,
+              "max_length_error_m": 5.551115123125783e-17,
+              "shared_joint_error_m": 6.206335383118183e-17,
+              "max_com_midpoint_error_m": 1.1443916996305594e-16,
+              "initial_mass_matrix_condition": 66.90392168828777,
+              "max_sampled_mass_matrix_condition": 66.90392168828777,
+              "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+              "effective_body_assumption": null,
+              "experimental_validation": false
+            }
+          },
+          {
+            "n": 8,
+            "total_mass_kg": 1.5315264186250244,
+            "sum_weights": 1.0,
+            "forward_diagnostics": {
+              "model_version": "planar-hinge-chain-v1",
+              "integrator_version": "scipy-first-order-chain-energy-v1",
+              "method": "Radau",
+              "max_step_s": 0.004,
+              "rtol": 1e-08,
+              "atol": 1e-10,
+              "rhs_calls": 875,
+              "nfev": 817,
+              "njev": 3,
+              "nlu": 18,
+              "accepted_steps": 104,
+              "elapsed_s": 0.11207010003272444,
+              "max_angle_step_rad": 0.002134979589214192,
+              "energy_balance_max_abs_j": 1.130757925580381e-12,
+              "energy_balance_relative": 1.5535370398510278e-13,
+              "max_length_error_m": 6.938893903907228e-17,
+              "shared_joint_error_m": 1.1443916996305594e-16,
+              "max_com_midpoint_error_m": 1.1443916996305594e-16,
+              "initial_mass_matrix_condition": 270.10717586541483,
+              "max_sampled_mass_matrix_condition": 270.10717586541483,
+              "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+              "effective_body_assumption": null,
+              "experimental_validation": false
+            }
+          },
+          {
+            "n": 16,
+            "total_mass_kg": 1.5315264186250244,
+            "sum_weights": 1.0,
+            "forward_diagnostics": {
+              "model_version": "planar-hinge-chain-v1",
+              "integrator_version": "scipy-first-order-chain-energy-v1",
+              "method": "Radau",
+              "max_step_s": 0.004,
+              "rtol": 1e-08,
+              "atol": 1e-10,
+              "rhs_calls": 1900,
+              "nfev": 1830,
+              "njev": 2,
+              "nlu": 18,
+              "accepted_steps": 256,
+              "elapsed_s": 0.3054426000453532,
+              "max_angle_step_rad": 0.0014007754520774932,
+              "energy_balance_max_abs_j": 3.381127842982945e-14,
+              "energy_balance_relative": 4.645297832292063e-15,
+              "max_length_error_m": 5.551115123125783e-17,
+              "shared_joint_error_m": 1.1443916996305594e-16,
+              "max_com_midpoint_error_m": 1.1443916996305594e-16,
+              "initial_mass_matrix_condition": 836.7949358705611,
+              "max_sampled_mass_matrix_condition": 836.7949358705611,
+              "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+              "effective_body_assumption": null,
+              "experimental_validation": false
+            }
+          }
+        ],
+        "adjacent_max_tip_delta_m": [
+          0.0006693140508172297,
+          0.00013598061750255808
+        ]
+      }
+    },
+    "clean_inverse": {
+      "status": "conditional_research_candidate",
+      "beta_kg_s": 2.400001788258296,
+      "candidate_beta_kg_s": 2.400001788258296,
+      "truth_beta_kg_s": 2.4,
+      "absolute_candidate_error_kg_s": 1.7882582961092908e-06,
+      "sse_m2": 3.304583518165633e-16,
+      "rmse_coordinate_m": 1.7999410442865854e-09,
+      "time_refinement": {
+        "fits": [
+          {
+            "max_step_s": 0.012,
+            "candidate_beta_kg_s": 2.400001788258296,
+            "beta_kg_s": 2.400001788258296,
+            "sse_m2": 3.305402913013818e-16,
+            "trajectory_deltas_m": [
+              1.2443098220064915e-11,
+              1.9818684849064317e-11
+            ],
+            "diagnostics": []
+          },
+          {
+            "max_step_s": 0.006,
+            "candidate_beta_kg_s": 2.400001788258296,
+            "beta_kg_s": 2.400001788258296,
+            "sse_m2": 3.30489018844676e-16,
+            "trajectory_deltas_m": [
+              1.9818684849064317e-11,
+              1.1857787334620222e-11
+            ],
+            "diagnostics": []
+          },
+          {
+            "max_step_s": 0.003,
+            "candidate_beta_kg_s": 2.400001788258296,
+            "beta_kg_s": 2.400001788258296,
+            "sse_m2": 3.304583518165633e-16,
+            "trajectory_deltas_m": [
+              1.1857787334620222e-11,
+              6.306909878526927e-13
+            ],
+            "diagnostics": []
+          }
+        ],
+        "beta_deltas_kg_s": [
+          0.0,
+          0.0
+        ],
+        "allowed_beta_delta_kg_s": 0.001
+      },
+      "diagnostics": [
+        "initial_angular_velocities_supplied_not_jointly_estimated"
+      ],
+      "forward_diagnostics": {
+        "model_version": "planar-hinge-chain-v1",
+        "integrator_version": "scipy-first-order-chain-energy-v1",
+        "method": "Radau",
+        "max_step_s": 0.003,
+        "rtol": 1e-08,
+        "atol": 1e-10,
+        "rhs_calls": 963,
+        "nfev": 943,
+        "njev": 2,
+        "nlu": 172,
+        "accepted_steps": 134,
+        "elapsed_s": 0.1250366999884136,
+        "max_angle_step_rad": 0.004573658250554687,
+        "energy_balance_max_abs_j": 3.1638652808752e-10,
+        "energy_balance_relative": 1.615498876754896e-12,
+        "max_length_error_m": 2.220446049250313e-16,
+        "shared_joint_error_m": 2.2887833992611187e-16,
+        "max_com_midpoint_error_m": 4.440892098500626e-16,
+        "initial_mass_matrix_condition": 35.90303820091216,
+        "max_sampled_mass_matrix_condition": 35.92618483294032,
+        "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+        "effective_body_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia.",
+        "experimental_validation": false
+      },
+      "forward_evaluations": 115,
+      "wall_time_s": 14.787783400039189,
+      "sensitivity": {
+        "one_at_a_time": {
+          "elastic_modulus": {
+            "increment": 0.05,
+            "increment_unit": "fraction",
+            "max_point_shift_m": 0.00024958971314627113,
+            "sse_at_same_beta_m2": 4.01996770844558e-07,
+            "absolute_cosine_with_beta_effect": 0.1373354101825652
+          },
+          "full_body_masses_and_inertias": {
+            "increment": 0.05,
+            "increment_unit": "fraction",
+            "max_point_shift_m": 0.0005921734311662542,
+            "sse_at_same_beta_m2": 1.531133850846825e-06,
+            "absolute_cosine_with_beta_effect": 0.8720451039133138
+          },
+          "initial_angular_velocity": {
+            "increment": 0.01,
+            "increment_unit": "rad/s",
+            "max_point_shift_m": 0.010449211825806473,
+            "sse_at_same_beta_m2": 0.0008990182102188363,
+            "absolute_cosine_with_beta_effect": 0.9546936363679213
+          }
+        },
+        "scaled_singular_values_m": [
+          0.06748777543138053,
+          0.008064578868645563,
+          0.0008706120342663082,
+          3.4360672889137956e-06
+        ],
+        "smallest_to_largest_singular_ratio": 5.091392132798157e-05,
+        "trajectory_rms_across_search_bounds_m": 0.005972922471930314,
+        "coordinate_resolution_for_warning_m": 0.0,
+        "joint_fit_performed": false,
+        "cosine_warning_threshold": 0.98,
+        "singular_ratio_warning_threshold": 1e-06,
+        "confidence_interval": null,
+        "noise_model": "not_assumed"
+      },
+      "versions": {
+        "python": "3.14.6",
+        "numpy": "2.4.6",
+        "scipy": "1.17.1",
+        "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+        "code_sha256": {
+          "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+          "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+          "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+          "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+        }
+      },
+      "input_sha256": "45abf67722f9de1862bb5376059abdac4d0551961e63ee906298d5ab3d5689db",
+      "experimental_validation": false
+    },
+    "variants": {
+      "noise": {
+        "status": "conditional_research_candidate",
+        "beta_kg_s": 2.403140461754114,
+        "candidate_beta_kg_s": 2.403140461754114,
+        "truth_beta_kg_s": 2.4,
+        "absolute_candidate_error_kg_s": 0.003140461754114199,
+        "sse_m2": 9.312025638311885e-07,
+        "rmse_coordinate_m": 9.554808684796242e-05,
+        "time_refinement": {
+          "fits": [
+            {
+              "max_step_s": 0.012,
+              "candidate_beta_kg_s": 2.403140461754114,
+              "beta_kg_s": 2.403140461754114,
+              "sse_m2": 9.312025533398547e-07,
+              "trajectory_deltas_m": [
+                1.2615087244795711e-11,
+                1.948491117409763e-11
+              ],
+              "diagnostics": []
+            },
+            {
+              "max_step_s": 0.006,
+              "candidate_beta_kg_s": 2.403140461754114,
+              "beta_kg_s": 2.403140461754114,
+              "sse_m2": 9.31202549635071e-07,
+              "trajectory_deltas_m": [
+                1.948491117409763e-11,
+                1.1857215209803058e-11
+              ],
+              "diagnostics": []
+            },
+            {
+              "max_step_s": 0.003,
+              "candidate_beta_kg_s": 2.403140461754114,
+              "beta_kg_s": 2.403140461754114,
+              "sse_m2": 9.312025638311885e-07,
+              "trajectory_deltas_m": [
+                1.1857215209803058e-11,
+                6.296911917608507e-13
+              ],
+              "diagnostics": []
+            }
+          ],
+          "beta_deltas_kg_s": [
+            0.0,
+            0.0
+          ],
+          "allowed_beta_delta_kg_s": 0.001
+        },
+        "diagnostics": [
+          "initial_angular_velocities_supplied_not_jointly_estimated"
+        ],
+        "forward_diagnostics": {
+          "model_version": "planar-hinge-chain-v1",
+          "integrator_version": "scipy-first-order-chain-energy-v1",
+          "method": "Radau",
+          "max_step_s": 0.003,
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "rhs_calls": 963,
+          "nfev": 943,
+          "njev": 2,
+          "nlu": 172,
+          "accepted_steps": 134,
+          "elapsed_s": 0.4548170999623835,
+          "max_angle_step_rad": 0.004573516977677108,
+          "energy_balance_max_abs_j": 3.1646668618989793e-10,
+          "energy_balance_relative": 1.615908171439904e-12,
+          "max_length_error_m": 2.220446049250313e-16,
+          "shared_joint_error_m": 2.2887833992611187e-16,
+          "max_com_midpoint_error_m": 4.440892098500626e-16,
+          "initial_mass_matrix_condition": 35.90303820091216,
+          "max_sampled_mass_matrix_condition": 35.92618464972962,
+          "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+          "effective_body_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia.",
+          "experimental_validation": false
+        },
+        "forward_evaluations": 115,
+        "wall_time_s": 26.51658039999893,
+        "sensitivity": {
+          "one_at_a_time": {
+            "elastic_modulus": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.00024959465175173614,
+              "sse_at_same_beta_m2": 1.3035366302098065e-06,
+              "absolute_cosine_with_beta_effect": 0.13733154768610803
+            },
+            "full_body_masses_and_inertias": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.0005927918836922332,
+              "sse_at_same_beta_m2": 2.494186459519528e-06,
+              "absolute_cosine_with_beta_effect": 0.8723199267885111
+            },
+            "initial_angular_velocity": {
+              "increment": 0.01,
+              "increment_unit": "rad/s",
+              "max_point_shift_m": 0.010448561618509699,
+              "sse_at_same_beta_m2": 0.0009008495984911035,
+              "absolute_cosine_with_beta_effect": 0.9546926113768426
+            }
+          },
+          "scaled_singular_values_m": [
+            0.06748388160712039,
+            0.008064283979812022,
+            0.0008706356209479905,
+            3.4363391517982695e-06
+          ],
+          "smallest_to_largest_singular_ratio": 5.092088762475235e-05,
+          "trajectory_rms_across_search_bounds_m": 0.005972922471930314,
+          "coordinate_resolution_for_warning_m": 0.0001,
+          "joint_fit_performed": false,
+          "cosine_warning_threshold": 0.98,
+          "singular_ratio_warning_threshold": 1e-06,
+          "confidence_interval": null,
+          "noise_model": "not_assumed"
+        },
+        "versions": {
+          "python": "3.14.6",
+          "numpy": "2.4.6",
+          "scipy": "1.17.1",
+          "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+          "code_sha256": {
+            "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+            "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+            "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+            "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+          }
+        },
+        "input_sha256": "ada1ff87bfd04b24bd6cccfc58bfa707d5e3b25b894fafc7ff4595633869cfca",
+        "experimental_validation": false,
+        "seed": 731005,
+        "sigma_m": 0.0001
+      },
+      "wrong_elastic_modulus": {
+        "status": "not_established",
+        "beta_kg_s": null,
+        "candidate_beta_kg_s": 2.4332174653719507,
+        "truth_beta_kg_s": 2.4,
+        "absolute_candidate_error_kg_s": 0.033217465371950805,
+        "sse_m2": 6.060854219875865e-06,
+        "rmse_coordinate_m": 0.00024376246513880618,
+        "time_refinement": {
+          "fits": [
+            {
+              "max_step_s": 0.012,
+              "candidate_beta_kg_s": 2.4332174653719507,
+              "beta_kg_s": 2.4332174653719507,
+              "sse_m2": 6.0608542029384595e-06,
+              "trajectory_deltas_m": [
+                1.9492478115409148e-11,
+                2.1478036565856873e-11
+              ],
+              "diagnostics": []
+            },
+            {
+              "max_step_s": 0.006,
+              "candidate_beta_kg_s": 2.4332174653719507,
+              "beta_kg_s": 2.4332174653719507,
+              "sse_m2": 6.060854191346563e-06,
+              "trajectory_deltas_m": [
+                2.1478036565856873e-11,
+                7.303754338750034e-12
+              ],
+              "diagnostics": []
+            },
+            {
+              "max_step_s": 0.003,
+              "candidate_beta_kg_s": 2.4332174653719507,
+              "beta_kg_s": 2.4332174653719507,
+              "sse_m2": 6.060854219875865e-06,
+              "trajectory_deltas_m": [
+                7.303754338750034e-12,
+                5.300666207134619e-13
+              ],
+              "diagnostics": []
+            }
+          ],
+          "beta_deltas_kg_s": [
+            0.0,
+            0.0
+          ],
+          "allowed_beta_delta_kg_s": 0.001
+        },
+        "diagnostics": [
+          "residual_exceeds_declared_tolerance",
+          "initial_angular_velocities_supplied_not_jointly_estimated"
+        ],
+        "forward_diagnostics": {
+          "model_version": "planar-hinge-chain-v1",
+          "integrator_version": "scipy-first-order-chain-energy-v1",
+          "method": "Radau",
+          "max_step_s": 0.003,
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "rhs_calls": 997,
+          "nfev": 977,
+          "njev": 2,
+          "nlu": 180,
+          "accepted_steps": 138,
+          "elapsed_s": 0.1572184000397101,
+          "max_angle_step_rad": 0.004498542035428848,
+          "energy_balance_max_abs_j": 2.4831220413190636e-10,
+          "energy_balance_relative": 1.2678966211830683e-12,
+          "max_length_error_m": 2.220446049250313e-16,
+          "shared_joint_error_m": 4.47545209131181e-16,
+          "max_com_midpoint_error_m": 4.440892098500626e-16,
+          "initial_mass_matrix_condition": 35.90303820091216,
+          "max_sampled_mass_matrix_condition": 35.92634165139339,
+          "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+          "effective_body_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia.",
+          "experimental_validation": false
+        },
+        "forward_evaluations": 115,
+        "wall_time_s": 17.825642200012226,
+        "sensitivity": {
+          "one_at_a_time": {
+            "elastic_modulus": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.0002848820429112068,
+              "sse_at_same_beta_m2": 1.008807802942952e-05,
+              "absolute_cosine_with_beta_effect": 0.1367767427937967
+            },
+            "full_body_masses_and_inertias": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.000603564103739964,
+              "sse_at_same_beta_m2": 4.316375598636722e-06,
+              "absolute_cosine_with_beta_effect": 0.843743641474898
+            },
+            "initial_angular_velocity": {
+              "increment": 0.01,
+              "increment_unit": "rad/s",
+              "max_point_shift_m": 0.010449185884984589,
+              "sse_at_same_beta_m2": 0.0009018340587015196,
+              "absolute_cosine_with_beta_effect": 0.9548486346145437
+            }
+          },
+          "scaled_singular_values_m": [
+            0.06746245470539321,
+            0.008047099692864093,
+            0.000990245338970668,
+            4.708773208933119e-06
+          ],
+          "smallest_to_largest_singular_ratio": 6.97984268360262e-05,
+          "trajectory_rms_across_search_bounds_m": 0.005974554968975034,
+          "coordinate_resolution_for_warning_m": 0.0,
+          "joint_fit_performed": false,
+          "cosine_warning_threshold": 0.98,
+          "singular_ratio_warning_threshold": 1e-06,
+          "confidence_interval": null,
+          "noise_model": "not_assumed"
+        },
+        "versions": {
+          "python": "3.14.6",
+          "numpy": "2.4.6",
+          "scipy": "1.17.1",
+          "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+          "code_sha256": {
+            "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+            "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+            "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+            "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+          }
+        },
+        "input_sha256": "aa15b239aca1c00e5aec5c5d0d1f9d97e32c763646692f37ec95a91307051b89",
+        "experimental_validation": false,
+        "factor": 1.2,
+        "additive": 0.0,
+        "observations_sha256": "31c386a1566680ee7a66d38755da0ba9e0d4a6da78ab8de167bfdc54c09099c3"
+      },
+      "wrong_full_masses": {
+        "status": "not_established",
+        "beta_kg_s": null,
+        "candidate_beta_kg_s": 2.6224688472762083,
+        "truth_beta_kg_s": 2.4,
+        "absolute_candidate_error_kg_s": 0.22246884727620841,
+        "sse_m2": 1.35495507415501e-06,
+        "rmse_coordinate_m": 0.00011525568652361371,
+        "time_refinement": {
+          "fits": [
+            {
+              "max_step_s": 0.012,
+              "candidate_beta_kg_s": 2.6224688472762083,
+              "beta_kg_s": 2.6224688472762083,
+              "sse_m2": 1.3549550615094078e-06,
+              "trajectory_deltas_m": [
+                3.18933070800314e-11,
+                2.4198596765121366e-11
+              ],
+              "diagnostics": []
+            },
+            {
+              "max_step_s": 0.006,
+              "candidate_beta_kg_s": 2.6224688472762083,
+              "beta_kg_s": 2.6224688472762083,
+              "sse_m2": 1.3549550914784476e-06,
+              "trajectory_deltas_m": [
+                2.4198596765121366e-11,
+                1.2715348792875557e-11
+              ],
+              "diagnostics": []
+            },
+            {
+              "max_step_s": 0.003,
+              "candidate_beta_kg_s": 2.6224688472762083,
+              "beta_kg_s": 2.6224688472762083,
+              "sse_m2": 1.35495507415501e-06,
+              "trajectory_deltas_m": [
+                1.2715348792875557e-11,
+                6.024165716487118e-13
+              ],
+              "diagnostics": []
+            }
+          ],
+          "beta_deltas_kg_s": [
+            0.0,
+            0.0
+          ],
+          "allowed_beta_delta_kg_s": 0.001
+        },
+        "diagnostics": [
+          "residual_exceeds_declared_tolerance",
+          "initial_angular_velocities_supplied_not_jointly_estimated"
+        ],
+        "forward_diagnostics": {
+          "model_version": "planar-hinge-chain-v1",
+          "integrator_version": "scipy-first-order-chain-energy-v1",
+          "method": "Radau",
+          "max_step_s": 0.003,
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "rhs_calls": 963,
+          "nfev": 943,
+          "njev": 2,
+          "nlu": 172,
+          "accepted_steps": 134,
+          "elapsed_s": 0.12955349998082966,
+          "max_angle_step_rad": 0.004623288927273997,
+          "energy_balance_max_abs_j": 3.737586351526545e-10,
+          "energy_balance_relative": 1.7349563190164788e-12,
+          "max_length_error_m": 2.220446049250313e-16,
+          "shared_joint_error_m": 4.440892098500626e-16,
+          "max_com_midpoint_error_m": 4.577566798522237e-16,
+          "initial_mass_matrix_condition": 35.903038200912114,
+          "max_sampled_mass_matrix_condition": 35.926111957324245,
+          "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+          "effective_body_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia.",
+          "experimental_validation": false
+        },
+        "forward_evaluations": 115,
+        "wall_time_s": 16.15113209997071,
+        "sensitivity": {
+          "one_at_a_time": {
+            "elastic_modulus": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.0002353309282394368,
+              "sse_at_same_beta_m2": 3.412555993043054e-07,
+              "absolute_cosine_with_beta_effect": 0.1376703872929241
+            },
+            "full_body_masses_and_inertias": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.0005856087049000531,
+              "sse_at_same_beta_m2": 4.146159761638549e-06,
+              "absolute_cosine_with_beta_effect": 0.8859112246295058
+            },
+            "initial_angular_velocity": {
+              "increment": 0.01,
+              "increment_unit": "rad/s",
+              "max_point_shift_m": 0.010449335407682279,
+              "sse_at_same_beta_m2": 0.0009022450805357848,
+              "absolute_cosine_with_beta_effect": 0.9546032437484094
+            }
+          },
+          "scaled_singular_values_m": [
+            0.06255369392082165,
+            0.007921003813869726,
+            0.0008109363947050997,
+            2.9078801934883414e-06
+          ],
+          "smallest_to_largest_singular_ratio": 4.648614672011277e-05,
+          "trajectory_rms_across_search_bounds_m": 0.005457371384295858,
+          "coordinate_resolution_for_warning_m": 0.0,
+          "joint_fit_performed": false,
+          "cosine_warning_threshold": 0.98,
+          "singular_ratio_warning_threshold": 1e-06,
+          "confidence_interval": null,
+          "noise_model": "not_assumed"
+        },
+        "versions": {
+          "python": "3.14.6",
+          "numpy": "2.4.6",
+          "scipy": "1.17.1",
+          "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+          "code_sha256": {
+            "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+            "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+            "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+            "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+          }
+        },
+        "input_sha256": "aaa00ce4c36f4559fe3f9b50c6778977a9aff5e3b60490d3c72e7f724f4d1e0f",
+        "experimental_validation": false,
+        "factor": 1.1,
+        "additive": 0.0,
+        "observations_sha256": "31c386a1566680ee7a66d38755da0ba9e0d4a6da78ab8de167bfdc54c09099c3"
+      },
+      "wrong_initial_angular_velocity": {
+        "status": "not_established",
+        "beta_kg_s": null,
+        "candidate_beta_kg_s": 6.0,
+        "truth_beta_kg_s": 2.4,
+        "absolute_candidate_error_kg_s": 3.6,
+        "sse_m2": 0.06326150407419621,
+        "rmse_coordinate_m": 0.024904032289105826,
+        "time_refinement": {
+          "fits": [
+            {
+              "max_step_s": 0.012,
+              "candidate_beta_kg_s": 6.0,
+              "beta_kg_s": 6.0,
+              "sse_m2": 0.06326150406799817,
+              "trajectory_deltas_m": [
+                9.181466748297901e-11,
+                5.315082964520892e-11
+              ],
+              "diagnostics": [
+                "optimum_at_search_boundary"
+              ]
+            },
+            {
+              "max_step_s": 0.006,
+              "candidate_beta_kg_s": 6.0,
+              "beta_kg_s": 6.0,
+              "sse_m2": 0.06326150407561798,
+              "trajectory_deltas_m": [
+                5.315082964520892e-11,
+                1.1111767397692695e-11
+              ],
+              "diagnostics": [
+                "optimum_at_search_boundary"
+              ]
+            },
+            {
+              "max_step_s": 0.003,
+              "candidate_beta_kg_s": 6.0,
+              "beta_kg_s": 6.0,
+              "sse_m2": 0.06326150407419621,
+              "trajectory_deltas_m": [
+                1.1111767397692695e-11,
+                5.641050508027367e-13
+              ],
+              "diagnostics": [
+                "optimum_at_search_boundary"
+              ]
+            }
+          ],
+          "beta_deltas_kg_s": [
+            0.0,
+            0.0
+          ],
+          "allowed_beta_delta_kg_s": 0.001
+        },
+        "diagnostics": [
+          "optimum_at_search_boundary",
+          "residual_exceeds_declared_tolerance",
+          "weak_joint_distinguishability_beta_vs_full_body_masses_and_inertias",
+          "initial_angular_velocities_supplied_not_jointly_estimated"
+        ],
+        "forward_diagnostics": {
+          "model_version": "planar-hinge-chain-v1",
+          "integrator_version": "scipy-first-order-chain-energy-v1",
+          "method": "Radau",
+          "max_step_s": 0.003,
+          "rtol": 1e-08,
+          "atol": 1e-10,
+          "rhs_calls": 1024,
+          "nfev": 1004,
+          "njev": 2,
+          "nlu": 192,
+          "accepted_steps": 141,
+          "elapsed_s": 0.1237775000045076,
+          "max_angle_step_rad": 0.004980891834939512,
+          "energy_balance_max_abs_j": 8.627853986808987e-10,
+          "energy_balance_relative": 4.387876717075783e-12,
+          "max_length_error_m": 2.220446049250313e-16,
+          "shared_joint_error_m": 2.482534153247273e-16,
+          "max_com_midpoint_error_m": 4.440892098500626e-16,
+          "initial_mass_matrix_condition": 35.90303820091216,
+          "max_sampled_mass_matrix_condition": 35.92560754580429,
+          "contact_model": "zero_width_centreline_first_ground_contact_excluding_fixed_base",
+          "effective_body_assumption": "SYNTHETIC effective body: full wood+crown mass is placed at each segment midpoint; transverse inertia uses the combined cylinder. This is explicitly not measured crown COM or crown inertia.",
+          "experimental_validation": false
+        },
+        "forward_evaluations": 108,
+        "wall_time_s": 14.173305900010746,
+        "sensitivity": {
+          "one_at_a_time": {
+            "elastic_modulus": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.0003260677511162769,
+              "sse_at_same_beta_m2": 0.06329094519657236,
+              "absolute_cosine_with_beta_effect": 0.10772455223127728
+            },
+            "full_body_masses_and_inertias": {
+              "increment": 0.05,
+              "increment_unit": "fraction",
+              "max_point_shift_m": 0.0017902244755584474,
+              "sse_at_same_beta_m2": 0.0650961706352697,
+              "absolute_cosine_with_beta_effect": 0.9831180771084777
+            },
+            "initial_angular_velocity": {
+              "increment": 0.01,
+              "increment_unit": "rad/s",
+              "max_point_shift_m": 0.009739142179831187,
+              "sse_at_same_beta_m2": 0.07838785999469595,
+              "absolute_cosine_with_beta_effect": 0.9574347802217806
+            }
+          },
+          "scaled_singular_values_m": [
+            0.08603097815299422,
+            0.007793766144497403,
+            0.001017213028533435,
+            4.9203132656177465e-06
+          ],
+          "smallest_to_largest_singular_ratio": 5.719234363309979e-05,
+          "trajectory_rms_across_search_bounds_m": 0.008563800576946314,
+          "coordinate_resolution_for_warning_m": 0.0,
+          "joint_fit_performed": false,
+          "cosine_warning_threshold": 0.98,
+          "singular_ratio_warning_threshold": 1e-06,
+          "confidence_interval": null,
+          "noise_model": "not_assumed"
+        },
+        "versions": {
+          "python": "3.14.6",
+          "numpy": "2.4.6",
+          "scipy": "1.17.1",
+          "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+          "code_sha256": {
+            "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+            "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+            "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+            "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+          }
+        },
+        "input_sha256": "fe29d25fe37c766d6835f21b1d7cbb22994d9c716d9447813fb602e8c49a6db6",
+        "experimental_validation": false,
+        "factor": 1.0,
+        "additive": 0.1,
+        "observations_sha256": "31c386a1566680ee7a66d38755da0ba9e0d4a6da78ab8de167bfdc54c09099c3"
+      }
+    },
+    "unit_conversion": {
+      "environment": "v2 parser normalization",
+      "original_length_unit": "m",
+      "changed_length_unit": "cm",
+      "max_observation_difference_m": 2.220446049250313e-16,
+      "passed": true
+    }
+  },
+  "weak_signal_n20": {
+    "file_checks": {
+      "files_sha256": {
+        "comparison.png": "f34ea2d942b0e4bbe5662fb45d7d0403c52cf0176199ea9b6f9553704b857153",
+        "energy.png": "bff66242d8e3ea36fba5a99944cb3552bc509720d12809b85c9ff9e9e02af6fb",
+        "input.json": "c044f79a6718641d195dc9cff5ca3def2150f258d37d7193d57978b660bf6dda",
+        "objective.png": "8a0c8fab9864ae1ec8725aaa61bed0b292e17aacf6eef8ea2eddd7d8720a5a0f",
+        "residuals.png": "d88085d4d423519802ae96a9d21bf1758878baacf2e2fa5733967cbfe9d1a9da",
+        "result.json": "c89c4b0a20aeed26d1529a617f10a75156a3d73ea107fa17c01494fc644d70ee",
+        "trajectories.csv": "919f38503b6c795424c70b4e8e7801677a6b5f2050312076d933930ebc7f2f43"
+      },
+      "manifest_sha256": "9aa7af331ff0e3955123cfcc26c633c97ede6a2d3e0cdf1765148baf579a8cbe",
+      "manifest_files_verified": 7,
+      "csv_rows": 120,
+      "csv_json_max_difference_m": 0.0,
+      "plots": {
+        "comparison.png": {
+          "sha256": "f34ea2d942b0e4bbe5662fb45d7d0403c52cf0176199ea9b6f9553704b857153",
+          "dimensions_px": [
+            1600,
+            640
+          ],
+          "format": "PNG"
+        },
+        "residuals.png": {
+          "sha256": "d88085d4d423519802ae96a9d21bf1758878baacf2e2fa5733967cbfe9d1a9da",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        },
+        "objective.png": {
+          "sha256": "8a0c8fab9864ae1ec8725aaa61bed0b292e17aacf6eef8ea2eddd7d8720a5a0f",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        },
+        "energy.png": {
+          "sha256": "bff66242d8e3ea36fba5a99944cb3552bc509720d12809b85c9ff9e9e02af6fb",
+          "dimensions_px": [
+            1120,
+            640
+          ],
+          "format": "PNG"
+        }
+      },
+      "units": {
+        "length": "m",
+        "time": "s",
+        "mass": "kg",
+        "angle": "rad",
+        "beta": "kg/s",
+        "elastic_modulus": "Pa",
+        "inertia": "kg m^2"
+      },
+      "versions": {
+        "python": "3.14.6",
+        "numpy": "2.4.6",
+        "scipy": "1.17.1",
+        "git_revision": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+        "code_sha256": {
+          "beta_dynamics.py": "80621d8201adec1f23e21a4b234eaaa1f45c112890e1c4bfa63bcf792f30effa",
+          "beta_inputs.py": "f11d8465faad7470d12ee9b25ecd2a8e966d4527f14e6a3dccf24e40d9444f5f",
+          "planar_chain.py": "ebd98fa5f746ae0ff0759f0c64dc40151894478be435741073daed0119105a71",
+          "beta_identification.py": "e3e1291ad7abc5fef6580da3b04854cdd673cdda4abfc0dc3d2a999a33b69805"
+        }
+      },
+      "schema_version": 2,
+      "model_version": "planar-hinge-chain-v1",
+      "workflow_version": "coupled-beta-workflow-v1",
+      "integrator": {
+        "version": "scipy-first-order-chain-energy-v1",
+        "method": "Radau",
+        "rtol": 1e-07,
+        "atol": 1e-09,
+        "max_step_s": 0.00025,
+        "scipy": "1.17.1"
+      },
+      "source_input_file_sha256": "c044f79a6718641d195dc9cff5ca3def2150f258d37d7193d57978b660bf6dda",
+      "source_input_file_hash_verified": true
+    },
+    "status": "not_established",
+    "beta_kg_s": null,
+    "candidate_beta_kg_s": 80.0,
+    "diagnostics": [
+      "beta_signal_below_declared_coordinate_resolution",
+      "initial_angular_velocities_supplied_not_jointly_estimated"
+    ],
+    "sensitivity": {
+      "one_at_a_time": {
+        "elastic_modulus": {
+          "increment": 0.05,
+          "increment_unit": "fraction",
+          "max_point_shift_m": 8.560650925502675e-06,
+          "sse_at_same_beta_m2": 4.3717735516164126e-10,
+          "absolute_cosine_with_beta_effect": 0.07023839777776311
+        },
+        "full_body_masses_and_inertias": {
+          "increment": 0.05,
+          "increment_unit": "fraction",
+          "max_point_shift_m": 8.548998684093968e-06,
+          "sse_at_same_beta_m2": 4.3220419342879947e-10,
+          "absolute_cosine_with_beta_effect": 0.028209970200194317
+        },
+        "initial_angular_velocity": {
+          "increment": 0.01,
+          "increment_unit": "rad/s",
+          "max_point_shift_m": 0.009740253948803805,
+          "sse_at_same_beta_m2": 0.0014567747824638798,
+          "absolute_cosine_with_beta_effect": 0.7584791199745576
+        }
+      },
+      "scaled_singular_values_m": [
+        0.03816771964224132,
+        2.9472163874805143e-05,
+        5.441940793157343e-06,
+        7.467606771240302e-07
+      ],
+      "smallest_to_largest_singular_ratio": 1.9565242150269007e-05,
+      "trajectory_rms_across_search_bounds_m": 5.386018450078838e-07,
+      "coordinate_resolution_for_warning_m": 1e-05,
+      "joint_fit_performed": false,
+      "cosine_warning_threshold": 0.98,
+      "singular_ratio_warning_threshold": 1e-06,
+      "confidence_interval": null,
+      "noise_model": "not_assumed"
+    },
+    "numerical_fit_wall_time_s": 30.556407700001728,
+    "forward_evaluations": 104,
+    "scope": "50 ms synthetic window, hypothetical coordinate resolution; not a real tree measurement"
+  },
+  "visual_review": {
+    "status": "reviewed_by_agent",
+    "reviewed_at_utc": "2026-10-06T12:48:09.032588+00:00",
+    "count": 8,
+    "tool": "view_image of actual generated PNG files",
+    "checks": [
+      "Readable labels and explicit SYNTHETIC mark.",
+      "Time in seconds, x/z and residuals in metres, total beta in kg/s, SSE in square metres, energy in joules.",
+      "Comparison, residual, objective and energy data agree with saved JSON/CSV checks.",
+      "No unreadable cut-off axes or legends found."
+    ],
+    "files": {
+      "saved_example_comparison.png": "bcb32037ff61be69e8a32c010b55de073f8704ef9cfc8a96e495fcda0d5129b5",
+      "saved_example_energy.png": "d11e9434161cfdfd81950ca3ea0e63b78e4c79e798eca3bb8dad8d96d0d54c9a",
+      "saved_example_objective.png": "9841f709de501eb75df4e9b1403a44f4aafb7cf7eab422912a39b35896416d04",
+      "saved_example_residuals.png": "2586e583a2885b3ce2b7bf14e468b86df54b3312b800a2da9e21be4d639aeb6e",
+      "weak_n20_comparison.png": "f34ea2d942b0e4bbe5662fb45d7d0403c52cf0176199ea9b6f9553704b857153",
+      "weak_n20_energy.png": "bff66242d8e3ea36fba5a99944cb3552bc509720d12809b85c9ff9e9e02af6fb",
+      "weak_n20_objective.png": "8a0c8fab9864ae1ec8725aaa61bed0b292e17aacf6eef8ea2eddd7d8720a5a0f",
+      "weak_n20_residuals.png": "d88085d4d423519802ae96a9d21bf1758878baacf2e2fa5733967cbfe9d1a9da"
+    }
+  },
+  "limitations": [
+    "No real-tree dynamics or field accuracy established.",
+    "Source model and calibrated experimental data gaps remain documented in research/BETA_DYNAMICS.md.",
+    "Research is not connected to production API, worker, Flutter or normal photo/AR beta calculation."
+  ],
+  "orchestration_wall_time_s": 162.13780869997572
+}

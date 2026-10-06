@@ -1,0 +1,624 @@
+{
+  "task": "AS-16 integration HTTPS compatibility",
+  "checked_at_utc": "2026-10-06T12:54:39.425307+00:00",
+  "environment": "Windows public HTTPS; existing production v3/v4; all write targets are freshly registered DEMO fixtures",
+  "tls_verification": "requests default enabled; redirects disabled",
+  "stage": "completed",
+  "all_checks_passed": true,
+  "checks": [
+    {
+      "check": "health and access denial HTTP GET health",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "v3 health status",
+      "passed": true
+    },
+    {
+      "check": "health and access denial HTTP GET health",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "v4 health status",
+      "passed": true
+    },
+    {
+      "check": "health and access denial HTTP GET v4",
+      "passed": true,
+      "expected_status": 401,
+      "http_status": 401
+    },
+    {
+      "check": "health and access denial HTTP GET v4",
+      "passed": true,
+      "expected_status": 401,
+      "http_status": 401
+    },
+    {
+      "check": "health and access denial HTTP GET v4",
+      "passed": true,
+      "expected_status": 401,
+      "http_status": 401
+    },
+    {
+      "check": "health and access denial HTTP GET v4",
+      "passed": true,
+      "expected_status": 401,
+      "http_status": 401
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new author registered as user",
+      "passed": true
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 401,
+      "http_status": 401
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new author login owner",
+      "passed": true
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new other registered as user",
+      "passed": true
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 401,
+      "http_status": 401
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new other login owner",
+      "passed": true
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new admin registered as user",
+      "passed": true
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 401,
+      "http_status": 401
+    },
+    {
+      "check": "new DEMO registration and login HTTP POST auth",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new admin login owner",
+      "passed": true
+    },
+    {
+      "check": "capabilities and environment HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "reference v2/environment/history capabilities",
+      "passed": true,
+      "capabilities": {
+        "history_version": 1,
+        "reference_versions": [
+          1,
+          2
+        ],
+        "geometry_version": 2,
+        "environment_version": 1
+      }
+    },
+    {
+      "check": "capabilities and environment HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "workflow capabilities",
+      "passed": true
+    },
+    {
+      "check": "capabilities and environment HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "environment point binding",
+      "passed": true,
+      "weather_status": "ok",
+      "soil_status": "ok",
+      "weather_reason": null,
+      "soil_reason": null
+    },
+    {
+      "check": "reference parent/create/retry/reopen HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "parent persist acknowledged",
+      "passed": true
+    },
+    {
+      "check": "reference parent/create/retry/reopen HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "identical report retry",
+      "passed": true
+    },
+    {
+      "check": "reference parent/create/retry/reopen HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "reference recalculation and null scientific fields",
+      "passed": true,
+      "values": {
+        "crown_height": 1.5000000000000002,
+        "crown_porosity": null,
+        "crown_width": 2.0000000000000004,
+        "dbh": null,
+        "tree_height": 4.000000000000001,
+        "tree_segment_length": 4.000000000000001,
+        "trunk_diameter": 0.3333333333333335,
+        "trunk_lean": 0.0,
+        "trunk_measurement_height": 1.0000000000000004
+      }
+    },
+    {
+      "check": "original bytes and markup retained",
+      "passed": true
+    },
+    {
+      "check": "reference parent/create/retry/reopen HTTP GET v4",
+      "passed": true,
+      "expected_status": 404,
+      "http_status": 404
+    },
+    {
+      "check": "reference parent/create/retry/reopen HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "other owner list empty",
+      "passed": true
+    },
+    {
+      "check": "reference parent/create/retry/reopen HTTP POST v4",
+      "passed": true,
+      "expected_status": 409,
+      "http_status": 409
+    },
+    {
+      "check": "reference new revision and immutable parent HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "child links parent",
+      "passed": true
+    },
+    {
+      "check": "reference new revision and immutable parent HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "child retry identical",
+      "passed": true
+    },
+    {
+      "check": "reference new revision and immutable parent HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "reference new revision and immutable parent HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "rescaling creates distinct immutable version",
+      "passed": true
+    },
+    {
+      "check": "concurrent report siblings 200/409",
+      "passed": true,
+      "http_statuses": [
+        200,
+        409
+      ]
+    },
+    {
+      "check": "legacy PNG/client compatibility HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "legacy PNG/client compatibility HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "old PNG open without invented editor points",
+      "passed": true
+    },
+    {
+      "check": "editor revision/retry/restore/isolation HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "editor revision/retry/restore/isolation HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "correction save/retry confirmed",
+      "passed": true
+    },
+    {
+      "check": "editor revision/retry/restore/isolation HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "editor state restore exact",
+      "passed": true
+    },
+    {
+      "check": "editor revision/retry/restore/isolation HTTP GET v4",
+      "passed": true,
+      "expected_status": 404,
+      "http_status": 404
+    },
+    {
+      "check": "editor revision/retry/restore/isolation HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new correction parent links",
+      "passed": true
+    },
+    {
+      "check": "editor revision/retry/restore/isolation HTTP POST v4",
+      "passed": true,
+      "expected_status": 409,
+      "http_status": 409
+    },
+    {
+      "check": "normal-user moderation forbidden HTTP GET v4",
+      "passed": true,
+      "expected_status": 403,
+      "http_status": 403
+    },
+    {
+      "check": "normal-user moderation forbidden HTTP POST v4",
+      "passed": true,
+      "expected_status": 403,
+      "http_status": 403
+    },
+    {
+      "check": "new DEMO admin role admin",
+      "passed": true
+    },
+    {
+      "check": "rejection and visible reason HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "submitted specific revision",
+      "passed": true
+    },
+    {
+      "check": "rejection and visible reason HTTP POST v4",
+      "passed": true,
+      "expected_status": 422,
+      "http_status": 422
+    },
+    {
+      "check": "rejection and visible reason HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "rejection and visible reason HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new DEMO admin role user",
+      "passed": true
+    },
+    {
+      "check": "corrected rejection actor_id and reason check HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "new DEMO rejection fixture uniquely recovered",
+      "passed": true
+    },
+    {
+      "check": "author sees rejection reason and exact actor_id",
+      "passed": true
+    },
+    {
+      "check": "new DEMO admin role admin",
+      "passed": true
+    },
+    {
+      "check": "acceptance/idempotent decision/decision conflict HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "acceptance/idempotent decision/decision conflict HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "acceptance/idempotent decision/decision conflict HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "acceptance/idempotent decision/decision conflict HTTP POST v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "decision retry identical",
+      "passed": true
+    },
+    {
+      "check": "acceptance/idempotent decision/decision conflict HTTP POST v4",
+      "passed": true,
+      "expected_status": 409,
+      "http_status": 409
+    },
+    {
+      "check": "concurrent correction siblings 200/409",
+      "passed": true,
+      "http_statuses": [
+        409,
+        200
+      ]
+    },
+    {
+      "check": "accepted-to-draft not automatic approval",
+      "passed": true
+    },
+    {
+      "check": "accepted correction changes require review and race conflict HTTP GET v4",
+      "passed": true,
+      "expected_status": 200,
+      "http_status": 200
+    },
+    {
+      "check": "accepted mask not scientific/training acceptance",
+      "passed": true
+    },
+    {
+      "check": "new DEMO admin role user",
+      "passed": true
+    },
+    {
+      "check": "temporary DEMO admin publicly loses moderation after role restoration",
+      "passed": true,
+      "expected_status": 403,
+      "http_status": 403
+    },
+    {
+      "check": "read persisted DEMO provider units/depth/source/time not a fresh lookup",
+      "passed": true
+    }
+  ],
+  "elapsed_s": 100.145,
+  "data_scope": "Only fresh author/other/admin DEMO accounts and new report/correction records; no real records inspected or changed",
+  "privileged_role_scope": "Only freshly registered DEMO admin identified by exact new UUID and email; role restored to user on exit",
+  "new_admin_role_restored": true,
+  "production_schema_config_images_worker_models_changed": false,
+  "training_started": false,
+  "credentials_published": false,
+  "fixture_cleanup": "Retained new DEMO records/accounts for independent AVD UI checks; do not delete until root finishes",
+  "manual_or_S24_UI_checks_claimed": false,
+  "verification_harness_correction": {
+    "previous_probe": "actor key",
+    "actual_existing_SQL_contract": "actor_id",
+    "resumed_without_repeating_registration_or_report_checks": true,
+    "production_code_changed": false,
+    "corrected_rejection_reason_actor_time_rechecked": true
+  },
+  "storage_listing_observation": {
+    "new_DEMO_uncommitted_conflict_blobs_listed": 1,
+    "GET_rejects_uncommitted_revision_with_409": true,
+    "real_records_inspected": false
+  },
+  "saved_environment_summary": {
+    "weather": {
+      "source": "OpenWeather",
+      "kind": "current",
+      "status": "ok",
+      "reason": null,
+      "units": "C_m/s_degrees_hPa_percent",
+      "retrieved_at": "2026-10-06T12:51:21.537848+00:00",
+      "data_at": "2026-10-06T12:51:21+00:00",
+      "request_point": {
+        "lat": 50.2,
+        "lon": 10.2
+      },
+      "cached": false,
+      "value": {
+        "pressure_hpa": 1019,
+        "relative_humidity_pct": 54,
+        "temperature_c": 21.73,
+        "wind_direction_deg": 126,
+        "wind_gust_m_s": 2.66,
+        "wind_speed_m_s": 0.22
+      },
+      "limitations": [
+        "Текущие условия по точке запроса; это не погода на момент съёмки старого фото.",
+        "Данные провайдера объединяют модели, наблюдения и спутниковые данные; не измерение у дерева."
+      ],
+      "attribution": "OpenWeather https://openweathermap.org/"
+    },
+    "soil": {
+      "source": "SoilGrids",
+      "kind": "modelled_grid",
+      "status": "ok",
+      "reason": null,
+      "dataset_version": "2.0",
+      "resolution_m": 250,
+      "access_method": "WCS_nearest_cell",
+      "retrieved_at": "2026-10-06T12:51:21.699734+00:00",
+      "data_at": null,
+      "request_point": {
+        "lat": 50.2,
+        "lon": 10.2
+      },
+      "cached": false,
+      "value": {
+        "properties": [
+          {
+            "depth_cm": [
+              0,
+              5
+            ],
+            "name": "clay",
+            "q05": null,
+            "q95": null,
+            "unit": "%",
+            "value": 29.5
+          },
+          {
+            "depth_cm": [
+              0,
+              5
+            ],
+            "name": "sand",
+            "q05": null,
+            "q95": null,
+            "unit": "%",
+            "value": 19.5
+          },
+          {
+            "depth_cm": [
+              0,
+              5
+            ],
+            "name": "silt",
+            "q05": null,
+            "q95": null,
+            "unit": "%",
+            "value": 51.0
+          },
+          {
+            "depth_cm": [
+              0,
+              5
+            ],
+            "name": "soc",
+            "q05": null,
+            "q95": null,
+            "unit": "g/kg",
+            "value": 54.9
+          },
+          {
+            "depth_cm": [
+              0,
+              5
+            ],
+            "name": "phh2o",
+            "q05": null,
+            "q95": null,
+            "unit": "pH",
+            "value": 5.7
+          }
+        ]
+      },
+      "limitations": [
+        "Сетка 250 м, модельная оценка слоя 0–5 см; не проба почвы у корня.",
+        "Интервал неопределённости 90% у источника существует, но в этом запросе не получен.",
+        "Дата отбора пробы и дата обновления конкретной ячейки неизвестны.",
+        "Не определяет состояние корней, несущую способность или устойчивость дерева."
+      ],
+      "attribution": "ISRIC — World Soil Information; SoilGrids 2.0, CC BY 4.0; Poggio et al. (2021), https://doi.org/10.5194/soil-7-217-2021"
+    }
+  },
+  "saved_original_sha256": "7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608",
+  "saved_reference_dimensions": [
+    256,
+    384
+  ],
+  "all_checks_passed_scope": "These listed compatibility/transaction assertions passed; this is not a declaration that the whole audit had no defects. The additional Storage orphan-listing regression is recorded separately and fixed in the candidate source."
+}

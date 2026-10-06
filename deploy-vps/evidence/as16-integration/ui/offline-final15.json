@@ -1,0 +1,29 @@
+{
+  "environment": "AVD Android16/API36; not S24",
+  "version_code": 15,
+  "initial_harness_retry": "Offline history uses local-cache timestamps, not server created_at labels; selector corrected without application changes.",
+  "cached_old_version_after_force_stop": true,
+  "offline_map_labels": [
+    "Карта обследований",
+    "Показать список",
+    "Обновить карту",
+    "5 с координатами · 0 без точки",
+    "Все",
+    "Аккаунт",
+    "На устройстве",
+    "Collapsed",
+    "Доступность данных, Collapsed",
+    "Google Map",
+    "5 обследования / версии",
+    "Переместить обзор к устройству",
+    "Спутниковый слой",
+    "Наклонный обзор 3D",
+    "Подложке Google Maps нужна сеть. Если она не загрузилась, откройте список.",
+    "Анализ\nTab 1 of 4",
+    "История\nTab 2 of 4",
+    "Карта\nTab 3 of 4",
+    "Профиль\nTab 4 of 4"
+  ],
+  "network_restored_to_original": true,
+  "reconnect_refresh_has_five_geolocated_versions": true
+}

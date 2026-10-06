@@ -1,0 +1,11 @@
+{
+  "environment": "AVD Android16/API36; not S24",
+  "source_commit": "1ab174304335f4bd93fe04418d0b3a77f70c63d4",
+  "version_code": 15,
+  "old_value": "100",
+  "unit": "cm",
+  "empty_focus_retained": true,
+  "new_value": "200",
+  "new_input_without_refocusing": true,
+  "passed": true
+}

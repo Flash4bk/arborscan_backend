@@ -1,0 +1,26 @@
+[
+  {
+    "version": 1,
+    "file": "AS16_DEMO_server_v1_code15.pdf",
+    "bytes": 43158,
+    "sha256": "ac71b59b873072527d68fdf379d50e9cdbcde9fa8b9202763b19d02f79b23a2c",
+    "pages": 5,
+    "chosen_version_id_matches": true,
+    "height_m": 4.050847457627122,
+    "crown_width_m": 2.596610169491527,
+    "frozen_photo_sha256": "7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608",
+    "depth_units_providers_present": true
+  },
+  {
+    "version": 2,
+    "file": "AS16_DEMO_server_v2_code15.pdf",
+    "bytes": 43149,
+    "sha256": "5ca4f39648af74b214d5d9637d894094ed6cb1f360fa2895861d447cf7910303",
+    "pages": 5,
+    "chosen_version_id_matches": true,
+    "height_m": 8.101694915254244,
+    "crown_width_m": 5.193220338983054,
+    "frozen_photo_sha256": "7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608",
+    "depth_units_providers_present": true
+  }
+]

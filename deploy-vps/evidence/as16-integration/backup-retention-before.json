@@ -1,0 +1,390 @@
+{
+  "evidence_version": "as16-readonly-backup-retention-audit-v1",
+  "at_utc": "2026-10-06T13:07:17.566126+00:00",
+  "scope": "Read-only checksum/retention audit; no backup service start, deletion, move, guard override, DB write or restore",
+  "services": {
+    "arborscan-backup.service": {
+      "Result": "exit-code",
+      "ExecMainStartTimestamp": "Tue 2026-10-06 03:20:22 UTC",
+      "ExecMainExitTimestamp": "Tue 2026-10-06 03:20:22 UTC",
+      "ExecMainStatus": "1",
+      "ActiveState": "failed",
+      "SubState": "failed"
+    },
+    "arborscan-backup.timer": {
+      "NextElapseUSecRealtime": "Wed 2026-10-07 03:19:03 UTC",
+      "LastTriggerUSec": "Tue 2026-10-06 03:20:22 UTC",
+      "ActiveState": "active",
+      "SubState": "waiting"
+    }
+  },
+  "journal": {
+    "exit_code": 0,
+    "guard_message_observed": true,
+    "safe_guard_message": "Backup refused: 14 copies retained; archive elsewhere before continuing",
+    "limited_journal_permissions_notice": true
+  },
+  "complete_sets_count": 14,
+  "retention_guard_limit": 14,
+  "installed_backup_script_sha256": "4ca94d0322ef1025a5f01009d75d8e3b00a8371a1f0d0586b3a1ae2d2745c17e",
+  "free_bytes": 70636482560,
+  "sets": [
+    {
+      "name": "20261005T032052Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 31,
+        "files_checked": 31,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169952,
+        "manifest_sha256": "f3d84b6863cd5f785bd0b835250a9c677e07c96e6c1144a864ba5f31fa22964b"
+      }
+    },
+    {
+      "name": "20261004T031919Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 31,
+        "files_checked": 31,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169949,
+        "manifest_sha256": "56a1756428609a79678ae2259d00563796829e45cfa868bc1dcdda144af79aa8"
+      }
+    },
+    {
+      "name": "20261003T031731Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 31,
+        "files_checked": 31,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169951,
+        "manifest_sha256": "75d2881855f97589c77a19f74dbf258850a556180be90dcb35a07d2445ded14f"
+      }
+    },
+    {
+      "name": "20261002T031752Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 31,
+        "files_checked": 31,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169953,
+        "manifest_sha256": "97d57666b9273fe291278a697569877df9159e3bac6e0a6f3c5e5eb34135447e"
+      }
+    },
+    {
+      "name": "20261001T201335Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 30,
+        "files_checked": 30,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169802,
+        "manifest_sha256": "9c958b4e07b08dcec8a7a2cf016a8ac8d990689d13f96c1cbf88f9e171c7ad42"
+      }
+    },
+    {
+      "name": "20261001T032150Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 30,
+        "files_checked": 30,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169800,
+        "manifest_sha256": "63c1c2d3c117f7b4630186ad51d1ea134e1ed95283795bcd9d6bc929cac2e71f"
+      }
+    },
+    {
+      "name": "20260930T031949Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 30,
+        "files_checked": 30,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169800,
+        "manifest_sha256": "264c969b5472b06efab6923400a2409141c1c4bf75b8ca39fdcf17522ea2bd4a"
+      }
+    },
+    {
+      "name": "20260929T205205Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 28,
+        "files_checked": 28,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979169154,
+        "manifest_sha256": "439b918b6cc1e23de0174451303ee619864e597965f7411a16b8de78f8d8e0f3"
+      }
+    },
+    {
+      "name": "20260929T031924Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 28,
+        "files_checked": 28,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979158674,
+        "manifest_sha256": "ecaad90a5b08540762de6261f7f52191e4c7ba1866d0c66cec30f3487f22a22a"
+      }
+    },
+    {
+      "name": "20260928T135802Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 28,
+        "files_checked": 28,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979158675,
+        "manifest_sha256": "3a502d9f0e14ce85130affbc0545137b10ac62a5fb6769856e9e4a0de14f7d4f"
+      }
+    },
+    {
+      "name": "20260928T133059Z",
+      "complete": true,
+      "native_postgres_complete": true,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 28,
+        "files_checked": 28,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 979158771,
+        "manifest_sha256": "5834715abee47f2324e3da015c6d112fac8837a8a88b070cf0c9b176eb29b113"
+      }
+    },
+    {
+      "name": "20260928T031731Z",
+      "complete": true,
+      "native_postgres_complete": false,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 22,
+        "files_checked": 22,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 927004700,
+        "manifest_sha256": "47b4fcbe53a67a23a6be74f7bf1b40876ee139cf4477c1c5450a26500084dd08"
+      }
+    },
+    {
+      "name": "20260927T032112Z",
+      "complete": true,
+      "native_postgres_complete": false,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 22,
+        "files_checked": 22,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 927004700,
+        "manifest_sha256": "a551b875dd5b2c8fbc2bef540fedf4850c48cb961a95cdcb12d3c4d2e85e4479"
+      }
+    },
+    {
+      "name": "20260926T202023Z",
+      "complete": true,
+      "native_postgres_complete": false,
+      "outer_manifest": {
+        "present": true,
+        "verified": true,
+        "entries": 19,
+        "files_checked": 19,
+        "mismatches_or_missing": 0,
+        "unsafe_entries": 0,
+        "bytes_hashed": 927004164,
+        "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d"
+      }
+    }
+  ],
+  "all_outer_manifests_verified": true,
+  "latest_usable_verified_native_copy": {
+    "name": "20261005T032052Z",
+    "captured_at_utc": "2026-10-05T03:20:52+00:00",
+    "age_hours_at_check": 33.77375511138889,
+    "outer_manifest": {
+      "present": true,
+      "verified": true,
+      "entries": 31,
+      "files_checked": 31,
+      "mismatches_or_missing": 0,
+      "unsafe_entries": 0,
+      "bytes_hashed": 979169952,
+      "manifest_sha256": "f3d84b6863cd5f785bd0b835250a9c677e07c96e6c1144a864ba5f31fa22964b"
+    },
+    "postgres_manifest": {
+      "present": true,
+      "verified": true,
+      "entries": 4,
+      "files_checked": 4,
+      "mismatches_or_missing": 0,
+      "unsafe_entries": 0,
+      "bytes_hashed": 52154217,
+      "manifest_sha256": "49902fe964ba4b58d778098cbeee5826087cb734177a6b44637cdb78616ba647"
+    },
+    "application_embedded_manifest": {
+      "verified": true,
+      "entries": 2240,
+      "files_checked": 2240,
+      "mismatches_or_missing": 0,
+      "unsafe_entries": 0,
+      "bytes_hashed": 827896031,
+      "data_extracted_to_disk": false,
+      "user_record_content_published": false
+    },
+    "native_dump_header_valid": true,
+    "native_dump_bytes": 52094101,
+    "application_archive_bytes": 829992960,
+    "local_files_archive_bytes": 96983040,
+    "integrity_only_not_fresh_restore_or_current_db_snapshot": true
+  },
+  "verification_wall_time_s": 106.66245412221178,
+  "production_credentials_or_user_data_published": false,
+  "limitations": [
+    "Checksum verification is not a new restore or current database snapshot.",
+    "No copies were archived, removed or moved; the scheduled service remains blocked by its intended retention guard."
+  ],
+  "oldest_complete_source_sizes": {
+    "name": "20260926T202023Z",
+    "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d",
+    "total_directory_file_bytes": 1754893985,
+    "total_directory_files": 2262,
+    "restored_directory_file_bytes": 827887710,
+    "native_postgres_complete": false
+  },
+  "independent_oldest_offsite_check": {
+    "at_utc": "2026-10-06T13:06:41.661882+00:00",
+    "scope": "Read-only verification of independent Windows offsite copy; no markers changed or files moved",
+    "set_name": "20260926T202023Z",
+    "directory": "D:/ArborScanBackups/20260926T202023Z",
+    "complete": true,
+    "manifest_file_sha256": "fdcaf9cfc4356ede481c199c3d533f5296c53c184a896091a4dacbbb49046376",
+    "manifest_lf_normalized_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d",
+    "all_manifest_sha_verified": true,
+    "manifest_files": 19,
+    "manifest_bytes": 927004164,
+    "application_archive_bytes": 829982720,
+    "local_files_archive_bytes": 96983040,
+    "native_postgres_complete": false,
+    "total_directory_file_bytes": 927006086,
+    "time_s": 0.8787451999960467,
+    "user_record_content_published": false
+  },
+  "offsite_manifest_identity_note": "Windows SHA256SUMS uses CRLF; after CRLF-to-LF normalization its content hash equals the original VPS manifest. Every 19 listed file hash matched without changing any backup markers.",
+  "nested_postgres_manifests_of_prior_complete_sets": {
+    "scope": "Read-only nested native PostgreSQL checks for the 11 previously COMPLETE native sets; fresh in-progress set excluded",
+    "sets": [
+      {
+        "name": "20260928T133059Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52153976
+      },
+      {
+        "name": "20260928T135802Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52153976
+      },
+      {
+        "name": "20260929T031924Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52153976
+      },
+      {
+        "name": "20260929T205205Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      },
+      {
+        "name": "20260930T031949Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      },
+      {
+        "name": "20261001T032150Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      },
+      {
+        "name": "20261001T201335Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      },
+      {
+        "name": "20261002T031752Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      },
+      {
+        "name": "20261003T031731Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      },
+      {
+        "name": "20261004T031919Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      },
+      {
+        "name": "20261005T032052Z",
+        "entries": 4,
+        "all_sha_verified": true,
+        "bytes_hashed": 52154217
+      }
+    ],
+    "all_nested_postgres_manifests_verified": true,
+    "user_data_published": false
+  }
+}

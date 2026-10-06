@@ -1,0 +1,545 @@
+{
+  "evidence_version": "as16-isolated-backend-final-tests-v1",
+  "at_utc": "2026-10-06T12:57:45.732301+00:00",
+  "scope": "Unit/integration backend and operational fixture tests in isolated production-compatible image",
+  "candidate_source_identity": "Source hashes checked against the current integration worktree after Windows CRLF normalization.",
+  "checked_git_head": "7d05e5133170a49151d577c227538dc9bfddb9da",
+  "runtime": {
+    "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+    "container_name": "as16-integration-backend-final-4g-20261006",
+    "container_id": "82b12d103b650c5dab6d764fbd202233b4ad3ea7c18c1d92129fd82fd94d6e2a",
+    "python": "3.11.16",
+    "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.36",
+    "packages": {
+      "pytest": "9.1.1",
+      "numpy": "2.4.6",
+      "scipy": null,
+      "Pillow": "12.3.0",
+      "opencv-python": "5.0.0.93",
+      "opencv-python-headless": "4.10.0.84",
+      "ultralytics": "8.4.143",
+      "torch": "2.14.0+cpu",
+      "fastapi": "0.141.1",
+      "starlette": "1.6.0",
+      "pydantic": "2.13.5",
+      "httpx": "0.28.1",
+      "requests": "2.34.2"
+    },
+    "network": "none",
+    "root_filesystem_readonly": true,
+    "tmpfs": "/tmp:rw,exec,size=4096m",
+    "candidate_mount_readonly": true,
+    "model_quality_mount_readonly": true,
+    "models_mount_readonly": true,
+    "api_healthcheck_disabled_only_in_test_child": true,
+    "production_environment_supplied": false,
+    "production_database_used": false
+  },
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "tests_v4",
+    "-q",
+    "--ignore=tests_v4/test_beta_dynamics.py",
+    "--ignore=tests_v4/test_beta_identification.py",
+    "--ignore=tests_v4/test_planar_chain.py",
+    "--junitxml=/tmp/as16-backend.xml"
+  ],
+  "result": {
+    "exit_code": 0,
+    "pytest_passed": 182,
+    "pytest_skipped": 1,
+    "pytest_subtests_passed": 3,
+    "failures": 0,
+    "errors": 0,
+    "warnings": 2,
+    "pytest_reported_duration_s": 10.79,
+    "junit_duration_s": 10.794,
+    "junit_testcase_count": 186,
+    "junit_count_note": "186 XML testcases include 183 tests and 3 subtests; Linux skips one native Windows Job Object case.",
+    "cases_by_module": {
+      "tests_v4.test_contour_export_contract": 3,
+      "tests_v4.test_contour_workflow": 13,
+      "tests_v4.test_corrections_api.CorrectionTests": 10,
+      "tests_v4.test_environment": 62,
+      "tests_v4.test_geometry_validation": 2,
+      "tests_v4.test_legacy_index": 1,
+      "tests_v4.test_measurement_api": 3,
+      "tests_v4.test_measurement_boundaries": 5,
+      "tests_v4.test_measurement_engine.MeasurementEngineTests": 5,
+      "tests_v4.test_model_quality_api": 6,
+      "tests_v4.test_ops_delta.DeltaTest": 2,
+      "tests_v4.test_ops_image_delta.ImageDeltaTest": 3,
+      "tests_v4.test_ops_offsite.OffsiteVerificationTest": 4,
+      "tests_v4.test_ops_pull.PullTest": 4,
+      "tests_v4.test_ops_weather_v4_refresh.WeatherRefreshSafetyTest": 8,
+      "tests_v4.test_ops_windows_job.WindowsJobTest": 1,
+      "tests_v4.test_quality_archive": 2,
+      "tests_v4.test_quality_dataset": 6,
+      "tests_v4.test_quality_runtime": 1,
+      "tests_v4.test_quality_worker": 7,
+      "tests_v4.test_reference_geometry": 10,
+      "tests_v4.test_release_bundle.ReleaseBundleTests": 8,
+      "tests_v4.test_reliability": 4,
+      "tests_v4.test_report_history": 11,
+      "tests_v4.test_species_profiles.SpeciesProfileTests": 2
+    }
+  },
+  "skipped_case": {
+    "name": "tests_v4.test_ops_windows_job.WindowsJobTest.test_parent_termination_stops_background_child",
+    "reason": "Native Windows Job Object integration cannot run on Linux.",
+    "covered_separately": "windows-job-tests.json",
+    "actual_windows_passed": true
+  },
+  "warnings": [
+    {
+      "kind": "StarletteDeprecationWarning",
+      "message": "Using httpx with starlette.testclient is deprecated; install httpx2 instead."
+    },
+    {
+      "kind": "DeprecationWarning",
+      "message": "The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead."
+    }
+  ],
+  "warnings_identity": "Both warnings appeared before any integration source fix and in the final run; runtime dependency deprecations were not suppressed.",
+  "source_and_tests_sha256": {
+    "arborscan_app/test/fixtures/reference_exif6.jpg": {
+      "file_sha256": "50b878a2ee71e80fc1552598296eecca99f4fcb9918f6b4fdbb4e4822b794d42",
+      "lf_normalized_sha256": "50b878a2ee71e80fc1552598296eecca99f4fcb9918f6b4fdbb4e4822b794d42"
+    },
+    "arborscan_v4/__init__.py": {
+      "file_sha256": "245127e2e9997338e5fbef62699231ba865fcf6c58264c5177e1cb2b93e9073b",
+      "lf_normalized_sha256": "43f26879b40327f092d102efd3190ee61f567b21a889716f82658e0b5fafce22"
+    },
+    "arborscan_v4/api.py": {
+      "file_sha256": "6856b93c812ac82f5c93a0ab2d48073e0e120642459f90fa5b57c7b5b8e5111c",
+      "lf_normalized_sha256": "d0f844551882cadb8e8a060e6d415d7853637fdea6049460ffabb76867db13c4"
+    },
+    "arborscan_v4/correction_workflow.py": {
+      "file_sha256": "6c0d6ac51e36718743b3f3e4631c51e89aeb41eaa262f13ae99dcd0a0dfe5f4f",
+      "lf_normalized_sha256": "0c26f2eaaddd90a9d3371d727605a9320a51334f2d98130b868320336bb99f88"
+    },
+    "arborscan_v4/corrections_api.py": {
+      "file_sha256": "1fc20d603a74a55b67ed7a7706aeb7a92617dc790e52c0c9637df4d037defc27",
+      "lf_normalized_sha256": "4bbb5248dee8584993ce9383bfc9bd2b2c209a13bd5a2e62eb15548522b3ed95"
+    },
+    "arborscan_v4/environment_api.py": {
+      "file_sha256": "8d84f3790889c6d4e8218198f16a353eddb15e675ac65db5a171f8cd568bca3e",
+      "lf_normalized_sha256": "c57f5f05f04d2c4486687d930151e0551608551447adfcfc60740687cafb9961"
+    },
+    "arborscan_v4/environment_snapshot.py": {
+      "file_sha256": "8816d7ce26082ca61fbe3af24474e8151ba452e84977a3482b2da1a6af5d224d",
+      "lf_normalized_sha256": "ec6e953ebcad5678a69bed7c9144bd627413455de13ce89b7fdf92b03641ade8"
+    },
+    "arborscan_v4/index_legacy_contours.py": {
+      "file_sha256": "f5b91080a2e3b144977c5f96555109001b14999796cc860b9b92f844545b7e71",
+      "lf_normalized_sha256": "b267170ecc85694c45f7ee08935081729f806c6c53702c36196cb792fdc98d24"
+    },
+    "arborscan_v4/measurement_engine.py": {
+      "file_sha256": "4fdd19f491f1c731bcdc6dd4e2b8a692ba2191cb4d4540472105e813e3858048",
+      "lf_normalized_sha256": "a4e2dcd4a596032a17b166415abb17e9b85c3f294f52f44760f9dc5a3631c052"
+    },
+    "arborscan_v4/measurement_image.py": {
+      "file_sha256": "302e80d45b297be100959f46b0a4d59135ff3c2a7d01ab221dfba82df6a7a2f9",
+      "lf_normalized_sha256": "61a3bfa79a0d90f15ed012ddf37554795bc21cc96246418652bd76dd78e188be"
+    },
+    "arborscan_v4/model_quality_api.py": {
+      "file_sha256": "45c23e96cd2a1fea2afa3eb736e76311cd32ece8bfaa7dbe9e8b57a2dd8e1402",
+      "lf_normalized_sha256": "32a65f895b2e98f049a08bfe5a5ab27bc7abb265997f44d91690466c003aba09"
+    },
+    "arborscan_v4/plantnet_service.py": {
+      "file_sha256": "2fd1ff3da11297d599aebecca5673fa57b0ed6d7e6410986a863a0583ced8a3f",
+      "lf_normalized_sha256": "bca3dd3f0664b99d19bf21b58da2830d711fbe36899cbab3e96d28bd8592d95a"
+    },
+    "arborscan_v4/quality_dataset.py": {
+      "file_sha256": "70ed337f8619289843fd091441a24e6775b35aa510aed6469990d62c11fe001f",
+      "lf_normalized_sha256": "2d5bca4cae1786c1588eea9afcd57b834e93d08c3303b9366ca295b3ea2afe2d"
+    },
+    "arborscan_v4/quality_runtime.py": {
+      "file_sha256": "238b1febf75445ac92ebb3bd60a72c0587e69e871b3a5782a7a3eeee6185d273",
+      "lf_normalized_sha256": "6621cf5b0e8a5e890b8195274f6a148613ee2f9df79ca42d0694d50d106e6189"
+    },
+    "arborscan_v4/quality_train.py": {
+      "file_sha256": "e6ea265fabd021ac7d8125737ab959ae3d85050a9eb2514325ad176c19efa6fe",
+      "lf_normalized_sha256": "738f8ceff2cde87bc9e3dc6ae29fb49b1f2ceace6d90d0a556bd44e17b7131d2"
+    },
+    "arborscan_v4/quality_worker.py": {
+      "file_sha256": "0c6d9ef7a037da73ab655e1eebe2836199de4b3985cccb789c483f5324e76d2a",
+      "lf_normalized_sha256": "8bdf35c3febe525c62e95c5c09b89217062ad22efa9013d3a696fd204d4f55ee"
+    },
+    "arborscan_v4/reference_geometry.py": {
+      "file_sha256": "42b8e00a6761a274832401dfbc524dc2201fc207771eaa605f5be43562fd5f0d",
+      "lf_normalized_sha256": "f5cde307c1f043704c118dde2340822fd82cd3599ec032c1a7279c1ef697c70c"
+    },
+    "arborscan_v4/reliability.py": {
+      "file_sha256": "dba9a7c0d98c80a7ef33fabba202fc5878d3c96041b47fada267ab730bdea95b",
+      "lf_normalized_sha256": "b6c3490a9406c930f7dde44115a85b345f6eef5362b5d0127af0f3a94ddbb92f"
+    },
+    "arborscan_v4/report_history.py": {
+      "file_sha256": "a51900941fd3b6cb85da414e506944c1638b38a62c96b967fdf759b06a34d67a",
+      "lf_normalized_sha256": "762e436c583f628001e645d6c55e66e86eb0f70d5b9d189cd391c8f675b17df4"
+    },
+    "arborscan_v4/schema.py": {
+      "file_sha256": "c29aac8bf1457a467fef8ae4478eeed4101b79e026b94e3b88cae10907f8850b",
+      "lf_normalized_sha256": "ceec1c39b673a1d61c10e31943b7c5faa2ec5dc478bf63686d0b3c23c5d96e4d"
+    },
+    "arborscan_v4/species_profiles.py": {
+      "file_sha256": "a2e20a5596e515302f98b0e410cd3a16d8e120eeab24f9954f93812d156515b6",
+      "lf_normalized_sha256": "b85d0626d082f41bf31c367bce9072cb92d6eba0d8ef2a196b26f18744af1962"
+    },
+    "arborscan_v4/vision_engine.py": {
+      "file_sha256": "fd8ba570aa588bda7db5b5b5c94bef8a5a3c268cf642b5d6a68cf1e8f77bfa73",
+      "lf_normalized_sha256": "2998876f1e4266028d8b92580cf3011a4cb91b781625756b86a763b1f3c30dbb"
+    },
+    "config.py": {
+      "file_sha256": "c5b8e316e15122e8c540453c3dfc802919aebb12251bd762da729be98a469d6e",
+      "lf_normalized_sha256": "aa3b2b1b659adcd98a775d875c419768dd07dd1d19b7da39a5595c73ea6462d7"
+    },
+    "deploy-vps/backup_contours.py": {
+      "file_sha256": "bd3183ccb508ab9537d8b7c37f4ebe1eaf433798c8938ee55c7878cf965bb2f4",
+      "lf_normalized_sha256": "d086a003a2e19fd982e2e31e13b509b2e68103d4711cf2e504284bc6d11f2f9a"
+    },
+    "deploy-vps/ops_backup_chunks.py": {
+      "file_sha256": "e883ca1b6a2d23a385521f59688572af302de9b7b3f478a6af0e3aa5dcee3903",
+      "lf_normalized_sha256": "768bfe51fa91d354e408f9e2b8c5fc0f1118e140e90bb9c21148fe4014bf80e4"
+    },
+    "deploy-vps/ops_delta_copy.py": {
+      "file_sha256": "e3621eb0ec1e454b3b3709cb63ab2dc86648b200b550fb8c167a3744528a5676",
+      "lf_normalized_sha256": "b19caadc0a8aa02c39fce0a9e1aa0ad684264ce3edab03ba723bc6d5278eb059"
+    },
+    "deploy-vps/ops_image_delta.py": {
+      "file_sha256": "ceb79016fdf4f7b7e5e828cf92b4ffeaad7684501ba33fe80d038993c2571b05",
+      "lf_normalized_sha256": "570ccee031d5cea10b53f8631bc67fc7ec977c9eb1642ba90359b7274cf21b70"
+    },
+    "deploy-vps/ops_install_pg_clients.py": {
+      "file_sha256": "e7ac6f6237ec3b73ffad6da9be826402c1d17c9e575f8eff084a76c10deebb0c",
+      "lf_normalized_sha256": "997db7c420c466624a903fabbb9fd3431f7c13bcaacdccd89db2c90c74efaeb6"
+    },
+    "deploy-vps/ops_pg_backup.py": {
+      "file_sha256": "827d01b755c94e3e17822d74721267d7d8d6f430f4494317cdccf849871b98c8",
+      "lf_normalized_sha256": "8d9dd7193652c8518577fa5b031796f184817997a46d8e4c6eff755c57bb583c"
+    },
+    "deploy-vps/ops_pg_client.py": {
+      "file_sha256": "c5bcce97dfac48591c4d982bc80745c067cdb43cfad3007abad32395b93d7749",
+      "lf_normalized_sha256": "a941721a561ca3f411d3ab3e14d344c56ca3b41044497346ec77e9b24399cec0"
+    },
+    "deploy-vps/ops_pg_restore_test.py": {
+      "file_sha256": "915e0b8786493a9a821745873fe18d44a572abd71bec309e7aa6e0b2526ea67b",
+      "lf_normalized_sha256": "d8d40587b977c6c438b1c9c65f393ad3f6403e7a379786e245ab88ef51707b95"
+    },
+    "deploy-vps/ops_pull_backups.py": {
+      "file_sha256": "1b5dc1c8d1908dd49c2b17608cecba8fe4bbee6746755ce4524dd9433638cb2f",
+      "lf_normalized_sha256": "9c8d91550672e58dcfd4d7e8aa88006d24dbd8f246cb3090bd5ce43b4482c16e"
+    },
+    "deploy-vps/ops_recovery_audit.py": {
+      "file_sha256": "3351e0d998b9e7cc4c6ad323a5ab2615afe0af8f23a61e1a761dae572c23c658",
+      "lf_normalized_sha256": "261a3d934721f0f5e7e2ef1ad94c181da885dd6260a701a88bf38353a78e66a8"
+    },
+    "deploy-vps/ops_recovery_files.py": {
+      "file_sha256": "dee6e53a142c2ebf17da78b27f6bbb1b44a8c283fb49a618a3620906cfa80909",
+      "lf_normalized_sha256": "35f3bb8362609f49ac64a2d385d870bcda3d18e3c4ea10d6cccdb0dc4f0463f0"
+    },
+    "deploy-vps/ops_recovery_smoke.py": {
+      "file_sha256": "d2b443f0a292f66f26172ca0b3f2e4d22eedc49d444e53f7564b09037f90f18f",
+      "lf_normalized_sha256": "1fd55923664932c081d7d6db4fc874dab51043e41d53443a80490395b188657b"
+    },
+    "deploy-vps/ops_recovery_stack.py": {
+      "file_sha256": "b4323047551da6800199aa1c6bfa3eae801dacca498b574235114e328bc7a534",
+      "lf_normalized_sha256": "b9f0fe8bfc58289347746aae9172e9cc6774adef4b2712a916ebeeb966df2009"
+    },
+    "deploy-vps/ops_recovery_start.py": {
+      "file_sha256": "9635e824e131a3839e516efa30ff2c94cb7db79e05af4cd55e8482a928200ede",
+      "lf_normalized_sha256": "f09bc4cfc71dd601849b599d4f1c4134892c5c8038613dd7da642fdf7f7b1cce"
+    },
+    "deploy-vps/ops_rollout.py": {
+      "file_sha256": "9c19037a603ea4b10753cbc39e4f2f4d56f09e8460ac8411bf8b9fe301f3f34e",
+      "lf_normalized_sha256": "62d611156ab0274e8e91b23f97233c7c02ac26197866128d9977bb935989d7eb"
+    },
+    "deploy-vps/ops_snapshot.py": {
+      "file_sha256": "0e3ef87e3334456f394fba53896a8278350b42f3a9199992f17fa3f9a63c5bf4",
+      "lf_normalized_sha256": "54ada59cc7aea1b054193a9842d8dab06b2b03cfc4ec8c7e9108411764473a29"
+    },
+    "deploy-vps/ops_status.py": {
+      "file_sha256": "b76ff18ac85cbafa244d8b8ca2c2ca202efb67765d1354d40dc204fd9a131eec",
+      "lf_normalized_sha256": "0c2ef67c2c6421f41f40b4f2b440fc519ac021dd6a3c5ffc13ea33d4dbe66d6f"
+    },
+    "deploy-vps/ops_technical_rollout.py": {
+      "file_sha256": "da199aeeb4ff6fed4396cea09d37cd8aab4fe3f56099afe5aac7c541d3ca9a23",
+      "lf_normalized_sha256": "176e0843ec876fbf2e93c22d0cabf537f79de5d5e8ba653587e3761bd7df4f53"
+    },
+    "deploy-vps/ops_validate_restored.py": {
+      "file_sha256": "6bb941d545037ea6683e2d8894849492383b450663ceab6e09db4af121bd7cc1",
+      "lf_normalized_sha256": "e4e2b8cb8c2b5a0dafe6d8feac125958e33a82e2ba65a1297b1cb1a32c6cd640"
+    },
+    "deploy-vps/ops_verify_offsite.py": {
+      "file_sha256": "ceb268d7d0af41ee42d0bd8ad834241c5286c563c726ff3f174b1a95f341a1a8",
+      "lf_normalized_sha256": "3e9029ffc303e871f1c7a78fda0c650a862c20b35a7c202965852c46dca1e108"
+    },
+    "deploy-vps/ops_verify_release_bundle.py": {
+      "file_sha256": "cc4ee5e8d99d3b9710f0a254b9cb62c07b80b1088b34db16b2d3f468aa7e30d9",
+      "lf_normalized_sha256": "19c645829c1e6ef38870f220c54f7949485ebbd3c00861cc0526c9ae42c302f5"
+    },
+    "deploy-vps/ops_verify_restore.py": {
+      "file_sha256": "2e7760855ad345772bce4d456b17d0e14d1d179d8b3845e8e76e1cde9568dcb1",
+      "lf_normalized_sha256": "52ea215bb460fc3d73863a1e846ed73f61be9288b075448006d12f57f9201312"
+    },
+    "deploy-vps/ops_weather_v4_refresh.py": {
+      "file_sha256": "143f4188ea6a39e56df895a1eb70d680fc899a64a2046176daa43288fe414d78",
+      "lf_normalized_sha256": "8c8c78f45f6f49c11ed90bf16d8d90e935d2513a3693c622cb11661c50c0c488"
+    },
+    "deploy-vps/ops_windows_job.py": {
+      "file_sha256": "21ebf2f52a2971b1849a17de22640632b97f422fdd8ca2b1fff3842677163cd0",
+      "lf_normalized_sha256": "5a042b7e709d0d643d7a84e052f5c3290377acf57165efa70e8f51c8273f1dd7"
+    },
+    "deploy-vps/smoke_contour_workflow.py": {
+      "file_sha256": "03cf9096ccc72a0c96c458e294d4fa5937c924c7067e2b1f348e886fc26b5300",
+      "lf_normalized_sha256": "a14af262193a9316dd1a9117a5d3a470630a863b305931581f335ec33cd9cc8c"
+    },
+    "deploy-vps/smoke_model_quality.py": {
+      "file_sha256": "066645b2958734f4401703f4b83111327b0a05bee25e9557f755c9778c0188d4",
+      "lf_normalized_sha256": "2490d48fe093b4344e9c380f9d313bf0dfb34595d66c374f90bbf2e1838bac04"
+    },
+    "deploy-vps/smoke_server_history.py": {
+      "file_sha256": "41dd71dddef10d25917a319f21a8771057557d1b3347e5ac7643266dd261026d",
+      "lf_normalized_sha256": "4fff7447ef20aa025182c0055e10424ca5db75d14914a17f5cb35cc24db79002"
+    },
+    "tests_v4/test_beta_dynamics.py": {
+      "file_sha256": "d4bcc611095f56e3a63be734527b641e0b2c783764f1e2554b6a46007416e592",
+      "lf_normalized_sha256": "72c78f061faf55b9a457db83134a85865009d4c7baab764e39f1be2b030a5b48"
+    },
+    "tests_v4/test_beta_identification.py": {
+      "file_sha256": "18f7ebf0bc1b53058f029cd8eeb2bf72dd6adf44fd6fc628d154772d85b76e04",
+      "lf_normalized_sha256": "7ecbaa90863cc734ba58fea62f69ea8f63bdf4f0fd8c33e93bbad8d67341c73f"
+    },
+    "tests_v4/test_contour_export_contract.py": {
+      "file_sha256": "ed9101d0e162c806cb9ae170fb0a19712f705aba273db67da297db30666c68b6",
+      "lf_normalized_sha256": "14ea2a3d7cebfba83fa4ff4505f6947ee72268b4ba97b0158fbaf9311158e52c"
+    },
+    "tests_v4/test_contour_workflow.py": {
+      "file_sha256": "cf2da0dfc657f8f4aa9f66b143e2bb0eca2a4d67485b58473f8930509b9e5474",
+      "lf_normalized_sha256": "f7dc2a375b66ed74c0bd9b0015d979e6331e63cb11ebe5fcb13035de120a97d8"
+    },
+    "tests_v4/test_corrections_api.py": {
+      "file_sha256": "87567041672f0a8cfdce1cb0b985723d53a1bef223f35bbfa86016527266111d",
+      "lf_normalized_sha256": "33ebd7aae9e9271498c4c9cc8686b0a6d079727eb79e624ff8eeb837e45ce20b"
+    },
+    "tests_v4/test_environment.py": {
+      "file_sha256": "1072ddabc1a7a94f3fda5fa7dccc521b539c5ac82cb5561fae3108bc5c6ca278",
+      "lf_normalized_sha256": "c52f9b71e2c114e755c2847f5fb149ba3804fe675bf991126cb5e25fdd3cadef"
+    },
+    "tests_v4/test_geometry_validation.py": {
+      "file_sha256": "6d0c2b82c0865452e6c2ef4cf907173a838e9083adbf5877cc59ee9e5715f42e",
+      "lf_normalized_sha256": "80043230378ed7c38dc51e2f293ee3b8c8798255b6d4f26d1384dce449f943ec"
+    },
+    "tests_v4/test_legacy_index.py": {
+      "file_sha256": "3410a18988497c4054e932f104b63bc6df91b4f02add8bd5d2ad5eee26e51b28",
+      "lf_normalized_sha256": "7f7bc5df5539a3b5966decc54d04d560ad8c3aa4a136adf6e1db1a6d7c84027b"
+    },
+    "tests_v4/test_measurement_api.py": {
+      "file_sha256": "c8d2d8fbf5b966f87d0b6e4bd0739aec4e101332c74d58e6ada92df4a37cd74f",
+      "lf_normalized_sha256": "2e30d2edb6d22f2148cafa2b495bd1344afaca7ae6b247bc51ddae165edb1092"
+    },
+    "tests_v4/test_measurement_boundaries.py": {
+      "file_sha256": "b4256f6779cdcbae339ec63e7828fb77bec09ee2b286f337fcc6c3d90d7c1b5b",
+      "lf_normalized_sha256": "1690aabb57d20a71c0da05054c1f93552bd1cd8e83cf99a1a1824899c838c3da"
+    },
+    "tests_v4/test_measurement_engine.py": {
+      "file_sha256": "1a1931041ef22ce9e047faaaf2d9108178ee0d73c207cc8942f5b0029b633578",
+      "lf_normalized_sha256": "1897b2f7e0641515e03951a31a41b4cc25012977699803b4ac89883db4ed22cb"
+    },
+    "tests_v4/test_model_quality_api.py": {
+      "file_sha256": "81a5a80294aa7e204cf8f7d26e28e398339c7417ddc4329ed7f32b97d46656ae",
+      "lf_normalized_sha256": "82b007e1e02bca8feaf48ce3f594ce68b22fe86da4885a7af15ca86f46a810d3"
+    },
+    "tests_v4/test_ops_delta.py": {
+      "file_sha256": "e734ac9a6094c844ae3d6cd3ef47e4e510668aee27ac4bbfef0d9fb8b128f5ca",
+      "lf_normalized_sha256": "c867fdbb4bb4173a361d755aa3f938884cce5fb726de1ba1feca7dcaf7f4132b"
+    },
+    "tests_v4/test_ops_image_delta.py": {
+      "file_sha256": "cee5ae39f77b2d0346fd7bb3583caef31c38fb21931d7a137f30f5eb932cd322",
+      "lf_normalized_sha256": "4884c732724297fdafb825ef46870948c629341df181f3079bab95a3999312aa"
+    },
+    "tests_v4/test_ops_offsite.py": {
+      "file_sha256": "58619e307229ad7f356e5c20851026bd5c2e5879d726b0744dbd1fbbedfc517e",
+      "lf_normalized_sha256": "b3c9a792c9dd864281c054fdb640a12288e064ee8206d6e3f0e92c99a59f755b"
+    },
+    "tests_v4/test_ops_pull.py": {
+      "file_sha256": "02ea103294ee20b256fcd267db0b510781ebd90719496665a4f9a77f4ebf63d1",
+      "lf_normalized_sha256": "bd6967f0cd92ebaf236480552d36bce7bc6948d8323b5f5957dc98c7ee70e56c"
+    },
+    "tests_v4/test_ops_weather_v4_refresh.py": {
+      "file_sha256": "6b77c6107ba45677edebb9a31864a044e074983b5a6cdf33a882f70c6a7bcb6c",
+      "lf_normalized_sha256": "b978b91f23b93a974e98bfc2b10a86521231ce6e57c14d038fac99697b1e07d6"
+    },
+    "tests_v4/test_ops_windows_job.py": {
+      "file_sha256": "4901a6ec0407852fdf60a2339e25889c3643b4504e020d41f2c306d82f2b4d93",
+      "lf_normalized_sha256": "8fa152a552b2b1bc0a2984c3744ef0b35f97574b23108b5ff3b386bc602e74dd"
+    },
+    "tests_v4/test_planar_chain.py": {
+      "file_sha256": "71bfad47b58527a31c66deaef999d620dbd26badd79eb2b07c423150e04dcb68",
+      "lf_normalized_sha256": "ce71f1bce5c45b6275557fc329ae32549aea3f5b5e2aa07f8543fcc739c7a29b"
+    },
+    "tests_v4/test_quality_archive.py": {
+      "file_sha256": "1ffab97adb60fffdee575cd0d96bb9fd83452683dfdab1f1d1888d988f3f506a",
+      "lf_normalized_sha256": "34e12193430f808c9a52bc825c218060c2a3eff6894b000de8673ff4fe115cbc"
+    },
+    "tests_v4/test_quality_dataset.py": {
+      "file_sha256": "1f2fb1d288d5a08be1c29e424e8a4083f5692d3a94cdc6655bfd52bd4ecdd425",
+      "lf_normalized_sha256": "d412f6874cd6eb5a7ab714a314701a116283b3d166244159db67fa2fc04c19bd"
+    },
+    "tests_v4/test_quality_runtime.py": {
+      "file_sha256": "a774e2dc4d6449e831855182404b211652cb48152a1eed17c2a5f2284f60701f",
+      "lf_normalized_sha256": "d586918ae37043edd638d1a83ac1abffa659b2c801b3db0c60425d4ea919a6db"
+    },
+    "tests_v4/test_quality_worker.py": {
+      "file_sha256": "65779c98b7c9c32ba1a5185c378c0d9b3ba5f922255b1f9071a61b87160bca86",
+      "lf_normalized_sha256": "0186fa79e8e699b9089c628b01e43450e0490cee21993cc0fb87e458c9322a6d"
+    },
+    "tests_v4/test_reference_geometry.py": {
+      "file_sha256": "54c8208798daba9a13da7f0ab0ceded4489dadd57386303bc700e56a61f7f15e",
+      "lf_normalized_sha256": "5738a55a188c049fd209f31ec6cc7f59a6b9e67577677776a470fce0011bbc98"
+    },
+    "tests_v4/test_release_bundle.py": {
+      "file_sha256": "d9cca8b3e80d817b70e833acc522ee8624b93af7c3d368d2d1c3f3219b292921",
+      "lf_normalized_sha256": "048a0688b7bc08e51144f359e5c4e700a20ec1203a0d4f0968abc31e8ca4ab40"
+    },
+    "tests_v4/test_reliability.py": {
+      "file_sha256": "fdd5585d7563e63275880519d9c575c9133f753eb94f8153816391f29db7aef2",
+      "lf_normalized_sha256": "7645522186851674d59f76a8d446569c8d35180d0c01c8e9f95cbb52fac0263b"
+    },
+    "tests_v4/test_report_history.py": {
+      "file_sha256": "0632eef693c65dd4f836f499832ad2efff3be90a7b23a2763bf548391eecdc23",
+      "lf_normalized_sha256": "14b85be19852b4c01b4d46e3feb32926666d0744cdb1c6b36437e7841d86bf9a"
+    },
+    "tests_v4/test_species_profiles.py": {
+      "file_sha256": "5b09811addfb6259a153316422b98660c9ed810a75fe29ecedf7a7067a541bd9",
+      "lf_normalized_sha256": "6b71a12c481ebe27ea0003ae21ff8f92f1250f1889a3430128b0d8f9d0d1d305"
+    },
+    "tools/as12_android_fixture.py": {
+      "file_sha256": "393b73699a18c2f860c22999ba3172b10fcb8b35dc1856525ff67d7eeb25445f",
+      "lf_normalized_sha256": "cb696d4b95acf2ea33ba25a1d43d8680d253641ecbec906288e5275efb4ab478"
+    },
+    "tools/as12_android_ui.py": {
+      "file_sha256": "9c2ea90d38050e3297ade6bb21ab668ff235f3ef58cd76b8c997a624d3cce2c8",
+      "lf_normalized_sha256": "d066fb51a3f0031aedaaedb5c9b3a4fec5a753264f6a26dc79b8f6afa986178e"
+    },
+    "tools/as12_pdf_audit.py": {
+      "file_sha256": "a2348b0b8d261875bb1b516d23bb5abae7654b2c0c9e5abbaa4e8d9d810a3a07",
+      "lf_normalized_sha256": "2eb0639c9478000b2d8437b97d1f1d73b0054cba6593023c37caa7a450348be2"
+    },
+    "tools/as14_check_s24_pdfs.py": {
+      "file_sha256": "f48dfdb9b19d90e8a99aef6d818f771e45961b8ead5f699f0cc2a751fa50af4b",
+      "lf_normalized_sha256": "10731ba8b91b2b8845ffc066e968f57ddee1cefbc14eebba60a5dbba39307166"
+    },
+    "tools/as14_find_pg_config.py": {
+      "file_sha256": "034abedcaabf7445e9edce7c7bd2e7e64b2e97311a1f4458e087e33fecea0634",
+      "lf_normalized_sha256": "75c1f84fe03f8fb3150068518163fc2c52c82c60c911aa8783f5507c3539683d"
+    },
+    "tools/as14_legacy_access_smoke.py": {
+      "file_sha256": "e11b10c90364279631cd39d3ed38992bff441c6d25e3b07bbe4504d648e0bf62",
+      "lf_normalized_sha256": "1cdfb1e04cfce5b892845cd8170b6bd18570b94432aa74783513ef1bb236f861"
+    },
+    "tools/as14_pg_diagnostic.py": {
+      "file_sha256": "e8e96e00f5b4b9453777876487ed5ce89dbf0920c1af5697522786297e537a23",
+      "lf_normalized_sha256": "a887c01a50426c4ccea41e7b1bcc172c25ec9c81a279d8b0b754bdc8f8496729"
+    },
+    "tools/as14_phone_server_fixture.py": {
+      "file_sha256": "f9fd832981b017c3fe4ea91a533bb82d13866e825d318967acf199f2265c2ace",
+      "lf_normalized_sha256": "ed55dbe215f410787e1110cb281dc7af5e21e3173a20b5295662b7cf55eb26d6"
+    },
+    "tools/build_yolo_dataset.py": {
+      "file_sha256": "3d60f2592cb721b2dbcb8c98c3fce7859ab61bfd0871ba59d6d3d2f544f096bc",
+      "lf_normalized_sha256": "6d87dd7fd11ca2264557b746fd25249cd70b43ae6270a559378fe8e0072877c3"
+    },
+    "tools/contour_export_contract.py": {
+      "file_sha256": "db95597a07be96816ca8f96482c54f68e1bde82fad0841ac1f1e6c48d037a1e5",
+      "lf_normalized_sha256": "c0e0d802cbe411068c7396d2dcaa7304a9068c5c7d5aa695a00ac103e9b30819"
+    },
+    "tools/export_from_supabase.py": {
+      "file_sha256": "5c6caf1326e59387917e170ea8aa669e4bcb082babe2ae4dfdf9085648840319",
+      "lf_normalized_sha256": "cec25362e964264764c7ed62343426f4abab89143414e2c9b861d80bc41c6868"
+    },
+    "tools/export_yolov8_dataset.py": {
+      "file_sha256": "e92bdbd90055cb191636aecc4717c239d554f36ae3c0e373c1147fa1fdeea01f",
+      "lf_normalized_sha256": "ef4857f30db18551a569f40cc7dbe0f7d5d496991722fd58f85649504451e189"
+    },
+    "tools/geometry_validation.py": {
+      "file_sha256": "0429f66862d861a95f676746074d878782c9bcead44a1ae104e59ca375b49e37",
+      "lf_normalized_sha256": "85fa90b1d4498f151135ba9d989dd44d9973cbc0e89ddfedf4b28903852537e4"
+    },
+    "tools/retrain_worker.py": {
+      "file_sha256": "fbde2a9f259228651700c2dd5d0b2bb8951638fa5fcd30508d74aafb578a0380",
+      "lf_normalized_sha256": "698765782ae80b5009888cbae425cc3d1689de10616b78edd4f743fc6a03978d"
+    }
+  },
+  "current_worktree_hash_checks": {
+    "files_checked": 92,
+    "all_lf_normalized_hashes_match": true
+  },
+  "archive_identity": {
+    "candidate_archive_sha256": "aa905c0d92e813a3440234d414c5c1771c995c695c01e2fe199f27150f03fa5c",
+    "tracked_tools_supplement_sha256": "1f4114e5aaf52be39686d7f42ac54d9f60acf23f59a98305722db73fc0810811",
+    "tracked_tools_py_files": 14,
+    "private_untracked_tools_transferred": false
+  },
+  "raw_evidence": {
+    "junit_local_path": "output/as16-integration/backend-final.xml",
+    "junit_sha256": "662e14549785d460ed178a9916b2c684604c54c54c9a06433bcb3226bb7390d3",
+    "logs_local_path": "output/as16-integration/backend-final.log",
+    "logs_sha256": "d4d2481c4195687b4613d3836e47ce02d4d4adfd84511f9922edb4895dcde87f",
+    "raw_files_in_git": false
+  },
+  "harness_attempts": [
+    {
+      "status": "collection_failed",
+      "errors": 2,
+      "pytest_reported_duration_s": 7.77,
+      "reason": "Initial staging archive lacked tracked tools/contour_export_contract.py and tools/geometry_validation.py.",
+      "fix": "Transferred 14 tracked tools/*.py; no source code or private data changes.",
+      "local_log_sha256": "31ece15f8747570b6e1c13391c929c90004a4f36d6952e79aa89328fa386ad56"
+    },
+    {
+      "status": "failed",
+      "exit_code": 1,
+      "pytest_passed": 181,
+      "skipped": 1,
+      "failures": 1,
+      "subtests_passed": 3,
+      "duration_s": 9.47,
+      "failed_case": "tests_v4.test_ops_pull.PullTest.test_interrupted_resume_and_repeat",
+      "reason": "The 1 GiB tmpfs does not satisfy the operational transfer guard requiring more than 2 GiB free space.",
+      "fix": "Increased only the isolated child tmpfs virtual limit to 4 GiB; no source change or production mount writes.",
+      "local_junit_sha256": "a360bc43b0336b6b286732b3292318ddb9f08e832e1bd5cd0f703d255106d4cd"
+    },
+    {
+      "status": "passed",
+      "exit_code": 0,
+      "tmpfs": "4 GiB",
+      "complete_final_suite": true
+    }
+  ],
+  "production_invariance_check": {
+    "arborscan-api-v4": {
+      "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+      "started_at": "2026-10-05T20:08:35.590878368Z",
+      "health": "healthy"
+    },
+    "arborscan-quality-worker": {
+      "image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "health": "healthy"
+    },
+    "arborscan-api": {
+      "image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "health": "healthy"
+    },
+    "same_images_and_start_times_as_before": true
+  },
+  "limitations": [
+    "Backend tests use temporary fixture records and mocked persistence/provider/network calls; they are not a live SQL migration execution or production user acceptance.",
+    "The three research modules were excluded here and tested separately: 70 passed in a fresh Windows research venv.",
+    "Linux Windows-Job skip is disclosed and covered by a separate real native Windows test."
+  ]
+}

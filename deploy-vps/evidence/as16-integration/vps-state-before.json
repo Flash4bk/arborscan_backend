@@ -1,0 +1,135 @@
+{
+  "at_utc": "2026-10-06T12:44:19.935046+00:00",
+  "checkout_head": "5d8176a22fddd6634c266a1ed09f1845019065c5",
+  "checkout_status": [],
+  "containers": [
+    {
+      "name": "arborscan-api-v4",
+      "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+      "started_at": "2026-10-05T20:08:35.590878368Z",
+      "health": "healthy",
+      "restart": "unless-stopped",
+      "port_bindings": {
+        "8001/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "8001"
+          }
+        ]
+      },
+      "mounts": [
+        {
+          "source": "/home/arborscan/model-quality",
+          "destination": "/app/model-quality",
+          "rw": false
+        },
+        {
+          "source": "/opt/arborscan/models",
+          "destination": "/app/models",
+          "rw": false
+        }
+      ]
+    },
+    {
+      "name": "arborscan-quality-worker",
+      "image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "health": "healthy",
+      "restart": "unless-stopped",
+      "port_bindings": {},
+      "mounts": [
+        {
+          "source": "/home/arborscan/model-quality",
+          "destination": "/app/model-quality",
+          "rw": true
+        },
+        {
+          "source": "/opt/arborscan/models",
+          "destination": "/app/models",
+          "rw": false
+        }
+      ]
+    },
+    {
+      "name": "arborscan-api",
+      "image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "health": "healthy",
+      "restart": "unless-stopped",
+      "port_bindings": {
+        "8000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "8000"
+          }
+        ]
+      },
+      "mounts": [
+        {
+          "source": "/opt/arborscan/models",
+          "destination": "/app/models",
+          "rw": false
+        },
+        {
+          "source": "/var/lib/arborscan/model-cache",
+          "destination": "/tmp/arborscan-models",
+          "rw": true
+        },
+        {
+          "source": "/var/lib/arborscan/u2net",
+          "destination": "/home/arborscan/.u2net",
+          "rw": true
+        }
+      ]
+    }
+  ],
+  "v4": {
+    "source_sha256": {
+      "arborscan_v4/measurement_engine.py": "a4e2dcd4a596032a17b166415abb17e9b85c3f294f52f44760f9dc5a3631c052",
+      "arborscan_v4/vision_engine.py": "2998876f1e4266028d8b92580cf3011a4cb91b781625756b86a763b1f3c30dbb",
+      "arborscan_v4/corrections_api.py": "4bbb5248dee8584993ce9383bfc9bd2b2c209a13bd5a2e62eb15548522b3ed95",
+      "arborscan_v4/__init__.py": "43f26879b40327f092d102efd3190ee61f567b21a889716f82658e0b5fafce22",
+      "arborscan_v4/schema.py": "ceec1c39b673a1d61c10e31943b7c5faa2ec5dc478bf63686d0b3c23c5d96e4d",
+      "arborscan_v4/plantnet_service.py": "bca3dd3f0664b99d19bf21b58da2830d711fbe36899cbab3e96d28bd8592d95a",
+      "arborscan_v4/api.py": "d0f844551882cadb8e8a060e6d415d7853637fdea6049460ffabb76867db13c4",
+      "arborscan_v4/species_profiles.py": "b85d0626d082f41bf31c367bce9072cb92d6eba0d8ef2a196b26f18744af1962",
+      "arborscan_v4/environment_snapshot.py": "ec6e953ebcad5678a69bed7c9144bd627413455de13ce89b7fdf92b03641ade8",
+      "arborscan_v4/report_history.py": "762e436c583f628001e645d6c55e66e86eb0f70d5b9d189cd391c8f675b17df4",
+      "arborscan_v4/environment_api.py": "c57f5f05f04d2c4486687d930151e0551608551447adfcfc60740687cafb9961",
+      "arborscan_v4/quality_dataset.py": "2d5bca4cae1786c1588eea9afcd57b834e93d08c3303b9366ca295b3ea2afe2d",
+      "arborscan_v4/quality_runtime.py": "6621cf5b0e8a5e890b8195274f6a148613ee2f9df79ca42d0694d50d106e6189",
+      "arborscan_v4/quality_worker.py": "8bdf35c3febe525c62e95c5c09b89217062ad22efa9013d3a696fd204d4f55ee",
+      "arborscan_v4/reliability.py": "b6c3490a9406c930f7dde44115a85b345f6eef5362b5d0127af0f3a94ddbb92f",
+      "arborscan_v4/model_quality_api.py": "32a65f895b2e98f049a08bfe5a5ab27bc7abb265997f44d91690466c003aba09",
+      "arborscan_v4/measurement_image.py": "61a3bfa79a0d90f15ed012ddf37554795bc21cc96246418652bd76dd78e188be",
+      "arborscan_v4/reference_geometry.py": "f5cde307c1f043704c118dde2340822fd82cd3599ec032c1a7279c1ef697c70c",
+      "arborscan_v4/index_legacy_contours.py": "b267170ecc85694c45f7ee08935081729f806c6c53702c36196cb792fdc98d24",
+      "arborscan_v4/quality_train.py": "738f8ceff2cde87bc9e3dc6ae29fb49b1f2ceace6d90d0a556bd44e17b7131d2",
+      "arborscan_v4/correction_workflow.py": "0c26f2eaaddd90a9d3371d727605a9320a51334f2d98130b868320336bb99f88",
+      "config.py": "aa3b2b1b659adcd98a775d875c419768dd07dd1d19b7da39a5595c73ea6462d7"
+    },
+    "database_versions": {
+      "contour_workflow_version": 1,
+      "server_history_version": 1,
+      "model_quality_version": 1
+    }
+  },
+  "log_review": {
+    "command_exit": 0,
+    "traceback_count": 0,
+    "error_lines": 0,
+    "raw_log_published": false
+  },
+  "candidate_source_comparison": {
+    "candidate_code_commit": "7d05e5133170a49151d577c227538dc9bfddb9da",
+    "checked_python_files": 22,
+    "all_match": true,
+    "newline_normalization_only": true
+  },
+  "scope": {
+    "inspection_only": true,
+    "api_deployed": false,
+    "database_migration_applied": false,
+    "models_or_worker_changed": false
+  }
+}

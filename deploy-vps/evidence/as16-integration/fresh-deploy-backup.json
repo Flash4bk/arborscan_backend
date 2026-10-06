@@ -1,0 +1,214 @@
+{
+  "evidence_version": "as16-fresh-deploy-backup-v2",
+  "scope": "Ordinary guarded application/files/native PostgreSQL backup before the authorized API v4 listing fix; no production restore or data mutation",
+  "execution": {
+    "at_utc": "2026-10-06T13:20:20.714634+00:00",
+    "command": "/bin/sh /home/arborscan/ops-tools/ops_backup.sh",
+    "installed_script_sha256": "4ca94d0322ef1025a5f01009d75d8e3b00a8371a1f0d0586b3a1ae2d2745c17e",
+    "service_environment_respected": true,
+    "retention_guard_or_backup_base_overridden": false,
+    "sudo_used": false,
+    "exit_code": 0,
+    "new_complete_sets": [
+      "20261006T131325Z"
+    ],
+    "active_complete_count": 14,
+    "wall_time_s": 415.291710450314,
+    "current_configuration_sha256": "d021e2bc5c91eb992d7b40ded3ea917f9a19b40b1db519437ce5f1e707ba5d33",
+    "current_configuration_unchanged_during_backup": true,
+    "openweather_key_present_nonempty": true,
+    "openweather_key_matches_running_v4_configuration": true,
+    "private_log_path": "/home/arborscan/ops-backups/as16-guarded-backup-20261006T131325Z.private.log",
+    "secret_values_published": false,
+    "backup_service_started_or_reset": false,
+    "production_api_or_worker_restarted": false
+  },
+  "verification": {
+    "evidence_version": "as16-fresh-guarded-backup-verification-v1",
+    "at_utc": "2026-10-06T13:21:35.646161+00:00",
+    "backup_directory": "/home/arborscan/ops-backups/20261006T131325Z",
+    "name": "20261006T131325Z",
+    "complete": true,
+    "postgres_complete": true,
+    "active_complete_count": 14,
+    "outer_manifest": {
+      "all_sha_verified": true,
+      "files_checked": 30,
+      "bytes_hashed": 979475430,
+      "manifest_sha256": "65fb5865cdc25971f8852a82e11132b3baac93c5bf8b150b241ae6985f99abdc"
+    },
+    "postgres_manifest": {
+      "all_sha_verified": true,
+      "files_checked": 4,
+      "bytes_hashed": 52162724,
+      "manifest_sha256": "f7e1455730236bdb14c4405547384a39f8aa19f6b090f55534fd9efca7cec744"
+    },
+    "application_embedded_manifest": {
+      "all_sha_verified": true,
+      "files_checked": 2261,
+      "bytes_hashed": 828152403,
+      "objects_count": 2243,
+      "tables_count": 15,
+      "schema_versions": {
+        "contour_workflow_version": 1,
+        "model_quality_version": 1,
+        "server_history_version": 1
+      },
+      "transactional_database_backup": false,
+      "data_extracted_by_this_verifier": false
+    },
+    "native_dump_header_valid": true,
+    "native_dump_bytes": 52102608,
+    "postgres_server_version": "17.6",
+    "current_config_sha256": "d021e2bc5c91eb992d7b40ded3ea917f9a19b40b1db519437ce5f1e707ba5d33",
+    "backup_config_matches_current_file": true,
+    "backup_config_mode": "0600",
+    "openweather_key_present_nonempty": true,
+    "openweather_key_matches_current_v4_environment": true,
+    "secret_values_published": false,
+    "actual_offline_file_restore_result": {
+      "files_restored": 2261,
+      "bytes": 828152403,
+      "reports_linked": 16,
+      "seconds": 9.2,
+      "database_restored": false,
+      "production_credentials_loaded": false
+    },
+    "runtime_rollback_identity": [
+      {
+        "name": "arborscan-api-v4",
+        "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+        "started_at": "2026-10-05T20:08:35.590878368Z",
+        "same_live_and_backup_image_and_start_time": true
+      },
+      {
+        "name": "arborscan-quality-worker",
+        "image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+        "started_at": "2026-09-29T21:03:49.935343028Z",
+        "same_live_and_backup_image_and_start_time": true
+      }
+    ],
+    "services_after": {
+      "arborscan-backup.service": {
+        "Result": "exit-code",
+        "ExecMainStatus": "1",
+        "ActiveState": "failed",
+        "SubState": "failed"
+      },
+      "arborscan-backup.timer": {
+        "NextElapseUSecRealtime": "Wed 2026-10-07 03:19:03 UTC",
+        "Result": "success",
+        "ActiveState": "active",
+        "SubState": "waiting"
+      }
+    },
+    "retention_guard_or_backup_base_changed": false,
+    "production_api_or_worker_restarted": false,
+    "archive_oldest": {
+      "name": "20260926T202023Z",
+      "destination": "/home/arborscan/ops-archive/20260926T202023Z",
+      "complete_still_present": true,
+      "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d"
+    },
+    "verification_wall_time_s": 8.96697576995939,
+    "limitations": [
+      "This backup completes the ordinary application/files/native dump procedure; the native dump was not restored into production or a new database here.",
+      "No systemd service start/reset or retention policy change occurred. Active count is back at 14, so the next scheduled copy is blocked until further verified archival.",
+      "The oldest backup set was subsequently restored because it contained an active compose dependency; a different independently verified set was archived. Fresh backup contains no reliability.yml copy/member. A separate current rollout configuration snapshot is required for complete application rollback."
+    ]
+  },
+  "archive_transition_evidence": "backup-archive-transition.json",
+  "pre_change_retention_evidence": "backup-retention-before.json",
+  "archive_operation_actually_executed": true,
+  "fresh_backup_actually_executed": true,
+  "archive_rollback_actually_executed": true,
+  "production_api_deployment_performed_by_this_subtask": false,
+  "remaining_operations_item": "Historical systemd failure remains. Active count is again 14, so the next scheduled copy requires verified dependency-safe archival. The fresh backup lacks the referenced reliability.yml; release rollout must separately snapshot that restored compose file before deployment.",
+  "raw_files_in_git": false,
+  "private_backup_or_configuration_contents_in_git": false,
+  "local_raw_execution_log_sha256": "414e756071ffa671e2d1e5f109b3a1717b16f9a0623a9d5ea8b325cbd9e9c2ad",
+  "local_raw_verification_log_sha256": "9febfe68a7962bdefbb8dcf11d8b52d0de84afeb7fd7e04e8606e62be6cc9ab9",
+  "retention_correction": {
+    "dependent_oldest_full_set_restored": {
+      "evidence_version": "as16-retention-dependent-set-restored-v1",
+      "at_utc": "2026-10-06T13:31:55.437797+00:00",
+      "set_name": "20260926T202023Z",
+      "source": "/home/arborscan/ops-archive/20260926T202023Z",
+      "destination": "/home/arborscan/ops-backups/20260926T202023Z",
+      "verified": {
+        "files": 19,
+        "bytes": 927004164,
+        "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d"
+      },
+      "reliability_file_exists": true,
+      "reliability_sha256": "8219012d566fef3328aef3cde1a75842cd8927060dca1f89680af3284596f701",
+      "active_complete_before": 14,
+      "active_complete_after": 15,
+      "same_filesystem_atomic_rename_under_backup_lock": true,
+      "files_deleted": 0,
+      "service_or_timer_changed": false,
+      "production_containers_restarted": false
+    },
+    "replacement_archive": {
+      "evidence_version": "as16-dependency-safe-one-set-archive-v2",
+      "at_utc": "2026-10-06T13:33:50.141437+00:00",
+      "set_name": "20260927T032112Z",
+      "source": "/home/arborscan/ops-backups/20260927T032112Z",
+      "destination": "/home/arborscan/ops-archive/20260927T032112Z",
+      "archive_operation": "same-filesystem atomic rename under existing backup.lock",
+      "same_filesystem": true,
+      "complete_before": 15,
+      "complete_after": 14,
+      "before_and_after_manifest_identical": true,
+      "verified_files": 22,
+      "verified_manifest_bytes": 927004700,
+      "manifest_sha256": "a551b875dd5b2c8fbc2bef540fedf4850c48cb961a95cdcb12d3c4d2e85e4479",
+      "independent_offsite_directory": "D:/ArborScanBackups/20260927T032112Z",
+      "independent_offsite_22_sha_checked_before_operation": true,
+      "all_running_container_labels_and_mounts_scanned": true,
+      "running_container_count": 3,
+      "absolute_paths_scanned": 29,
+      "live_dependencies_found": [],
+      "running_container_identity_unchanged": true,
+      "running_containers": [
+        {
+          "name": "arborscan-api",
+          "id": "a007a01d0c3f5f6522398f59537d0b59cc21efa028d6dbd7113a387d17a6e316",
+          "image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+          "started_at": "2026-09-07T17:35:02.146108577Z"
+        },
+        {
+          "name": "arborscan-api-v4",
+          "id": "c5c5ba66534cde75561306755aae9e34557e3bdc031ce0919963edae6f832ac4",
+          "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+          "started_at": "2026-10-05T20:08:35.590878368Z"
+        },
+        {
+          "name": "arborscan-quality-worker",
+          "id": "9485b44faf742128519d94f66500434d3cbd8f89ce4ff9c376cd95bb7d6b863b",
+          "image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+          "started_at": "2026-09-29T21:03:49.935343028Z"
+        }
+      ],
+      "dependent_oldest_complete_and_runtime_config_restored": true,
+      "fresh_native_backup_retained": true,
+      "retention_guard_modified": false,
+      "backup_base_modified": false,
+      "timer_or_service_modified": false,
+      "files_deleted": 0,
+      "production_database_writes": false,
+      "installed_backup_script_sha256": "4ca94d0322ef1025a5f01009d75d8e3b00a8371a1f0d0586b3a1ae2d2745c17e",
+      "rollback": "Acquire existing backup.lock; verify COMPLETE/SHA and no destination collision; same filesystem atomic rename back preserving all newer sets."
+    },
+    "current_active_complete_count": 14,
+    "fresh_backup_repeated_after_correction": false
+  },
+  "runtime_configuration_snapshot_gap": {
+    "at_utc": "2026-10-06T13:34:15.231659+00:00",
+    "fresh_backup": "20261006T131325Z",
+    "fresh_direct_reliability_copy_exists": false,
+    "local_files_tar_reliability_members": [],
+    "original_reliability_restored_exists": true,
+    "raw_private_contents_output": false
+  }
+}

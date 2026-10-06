@@ -1,0 +1,230 @@
+{
+  "at_utc": "2026-10-06T13:41:55.054156+00:00",
+  "candidate_api_commit": "0437e98e0570e0b74a1705b5d3095d32f038ddda",
+  "environment": "real public HTTPS with default TLS verification",
+  "data_scope": "Only pre-created separate DEMO author/other test accounts and records; no real data or decisions changed",
+  "checks": [
+    {
+      "check": "v3 public health unchanged",
+      "passed": true
+    },
+    {
+      "check": "GET health HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "v4 public health",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 401,
+      "expected_status": 401
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 401,
+      "expected_status": 401
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 401,
+      "expected_status": 401
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 403,
+      "expected_status": 403
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "old/new frozen reference versions",
+      "passed": true
+    },
+    {
+      "check": "scientific values stay null",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 404,
+      "expected_status": 404
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "old PNG opens without invented points",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "moderation decisions preserved",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "POST v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "POST v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "save confirmed, retry unique, new draft parent",
+      "passed": true
+    },
+    {
+      "check": "POST v4 HTTP",
+      "passed": true,
+      "http_status": 409,
+      "expected_status": 409
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "listing keeps legacy and committed revision",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "every listed contour genuinely committed/readable",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "every listed contour genuinely committed/readable",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "every listed contour genuinely committed/readable",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "every listed contour genuinely committed/readable",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "every listed contour genuinely committed/readable",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "every listed contour genuinely committed/readable",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "mask save did not mutate original measurements",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 200,
+      "expected_status": 200
+    },
+    {
+      "check": "editor restore exact and original preserved",
+      "passed": true
+    },
+    {
+      "check": "GET v4 HTTP",
+      "passed": true,
+      "http_status": 404,
+      "expected_status": 404
+    }
+  ],
+  "passed": true,
+  "production_schema_or_models_changed": false,
+  "moderation_write_after_deploy": false,
+  "training_started": false,
+  "harness_corrections": {
+    "initial_attempts": "No writes before two metadata-key probes failed; corrected existing record wrapper and actor_id/at fields, then41 assertions passed.",
+    "production_code_changed_for_harness": false
+  }
+}

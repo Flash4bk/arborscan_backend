@@ -1,0 +1,177 @@
+{
+  "at_utc": "2026-10-06T13:32:40.416640+00:00",
+  "running_containers": [
+    {
+      "name": "arborscan-api-v4",
+      "id": "c5c5ba66534cde75561306755aae9e34557e3bdc031ce0919963edae6f832ac4",
+      "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+      "started_at": "2026-10-05T20:08:35.590878368Z",
+      "paths_scanned": 13
+    },
+    {
+      "name": "arborscan-quality-worker",
+      "id": "9485b44faf742128519d94f66500434d3cbd8f89ce4ff9c376cd95bb7d6b863b",
+      "image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "paths_scanned": 11
+    },
+    {
+      "name": "arborscan-api",
+      "id": "a007a01d0c3f5f6522398f59537d0b59cc21efa028d6dbd7113a387d17a6e316",
+      "image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "paths_scanned": 5
+    }
+  ],
+  "all_running_container_labels_and_mounts_scanned": true,
+  "complete_sets": [
+    {
+      "name": "20260926T202023Z",
+      "path": "/home/arborscan/ops-backups/20260926T202023Z",
+      "files": 19,
+      "bytes": 927004164,
+      "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d",
+      "postgres_complete": false,
+      "live_dependencies": [
+        {
+          "container": "arborscan-api-v4",
+          "kind": "label",
+          "key": "com.docker.compose.project.config_files",
+          "path": "/home/arborscan/ops-backups/20260926T202023Z/reliability.yml"
+        },
+        {
+          "container": "arborscan-quality-worker",
+          "kind": "label",
+          "key": "com.docker.compose.project.config_files",
+          "path": "/home/arborscan/ops-backups/20260926T202023Z/reliability.yml"
+        }
+      ]
+    },
+    {
+      "name": "20260927T032112Z",
+      "path": "/home/arborscan/ops-backups/20260927T032112Z",
+      "files": 22,
+      "bytes": 927004700,
+      "manifest_sha256": "a551b875dd5b2c8fbc2bef540fedf4850c48cb961a95cdcb12d3c4d2e85e4479",
+      "postgres_complete": false,
+      "live_dependencies": []
+    },
+    {
+      "name": "20260928T031731Z",
+      "path": "/home/arborscan/ops-backups/20260928T031731Z",
+      "files": 22,
+      "bytes": 927004700,
+      "manifest_sha256": "47b4fcbe53a67a23a6be74f7bf1b40876ee139cf4477c1c5450a26500084dd08",
+      "postgres_complete": false,
+      "live_dependencies": []
+    },
+    {
+      "name": "20260928T133059Z",
+      "path": "/home/arborscan/ops-backups/20260928T133059Z",
+      "files": 28,
+      "bytes": 979158771,
+      "manifest_sha256": "5834715abee47f2324e3da015c6d112fac8837a8a88b070cf0c9b176eb29b113",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20260928T135802Z",
+      "path": "/home/arborscan/ops-backups/20260928T135802Z",
+      "files": 28,
+      "bytes": 979158675,
+      "manifest_sha256": "3a502d9f0e14ce85130affbc0545137b10ac62a5fb6769856e9e4a0de14f7d4f",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20260929T031924Z",
+      "path": "/home/arborscan/ops-backups/20260929T031924Z",
+      "files": 28,
+      "bytes": 979158674,
+      "manifest_sha256": "ecaad90a5b08540762de6261f7f52191e4c7ba1866d0c66cec30f3487f22a22a",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20260929T205205Z",
+      "path": "/home/arborscan/ops-backups/20260929T205205Z",
+      "files": 28,
+      "bytes": 979169154,
+      "manifest_sha256": "439b918b6cc1e23de0174451303ee619864e597965f7411a16b8de78f8d8e0f3",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20260930T031949Z",
+      "path": "/home/arborscan/ops-backups/20260930T031949Z",
+      "files": 30,
+      "bytes": 979169800,
+      "manifest_sha256": "264c969b5472b06efab6923400a2409141c1c4bf75b8ca39fdcf17522ea2bd4a",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20261001T032150Z",
+      "path": "/home/arborscan/ops-backups/20261001T032150Z",
+      "files": 30,
+      "bytes": 979169800,
+      "manifest_sha256": "63c1c2d3c117f7b4630186ad51d1ea134e1ed95283795bcd9d6bc929cac2e71f",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20261001T201335Z",
+      "path": "/home/arborscan/ops-backups/20261001T201335Z",
+      "files": 30,
+      "bytes": 979169802,
+      "manifest_sha256": "9c958b4e07b08dcec8a7a2cf016a8ac8d990689d13f96c1cbf88f9e171c7ad42",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20261002T031752Z",
+      "path": "/home/arborscan/ops-backups/20261002T031752Z",
+      "files": 31,
+      "bytes": 979169953,
+      "manifest_sha256": "97d57666b9273fe291278a697569877df9159e3bac6e0a6f3c5e5eb34135447e",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20261003T031731Z",
+      "path": "/home/arborscan/ops-backups/20261003T031731Z",
+      "files": 31,
+      "bytes": 979169951,
+      "manifest_sha256": "75d2881855f97589c77a19f74dbf258850a556180be90dcb35a07d2445ded14f",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20261004T031919Z",
+      "path": "/home/arborscan/ops-backups/20261004T031919Z",
+      "files": 31,
+      "bytes": 979169949,
+      "manifest_sha256": "56a1756428609a79678ae2259d00563796829e45cfa868bc1dcdda144af79aa8",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20261005T032052Z",
+      "path": "/home/arborscan/ops-backups/20261005T032052Z",
+      "files": 31,
+      "bytes": 979169952,
+      "manifest_sha256": "f3d84b6863cd5f785bd0b835250a9c677e07c96e6c1144a864ba5f31fa22964b",
+      "postgres_complete": true,
+      "live_dependencies": []
+    },
+    {
+      "name": "20261006T131325Z",
+      "path": "/home/arborscan/ops-backups/20261006T131325Z",
+      "files": 30,
+      "bytes": 979475430,
+      "manifest_sha256": "65fb5865cdc25971f8852a82e11132b3baac93c5bf8b150b241ae6985f99abdc",
+      "postgres_complete": true,
+      "live_dependencies": []
+    }
+  ]
+}

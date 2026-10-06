@@ -1,0 +1,10 @@
+{
+  "curated_files": 107,
+  "valid_json": 31,
+  "relative_links_checked": 52,
+  "broken_links": [],
+  "credential_patterns_found": [],
+  "demo_ui_manifest_hashes_checked": 37,
+  "private_files_published": false,
+  "audit_scope": "No raw private sessions/credentials/database backups/APKs; visual PDF/screenshots DEMO only"
+}

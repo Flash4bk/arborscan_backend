@@ -1,0 +1,24 @@
+{
+  "evidence_version": "as16-native-windows-job-test-v1",
+  "at_utc": "2026-10-06T12:57:45.699404+00:00",
+  "environment": "Windows, fresh isolated research venv",
+  "python": "3.14.6",
+  "pytest": "9.1.1",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "command": "python -m pytest tests_v4/test_ops_windows_job.py -q --junitxml=output/as16-integration/windows-job-tests.xml",
+  "passed": 1,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "exit_code": 0,
+  "duration_s": 0.096,
+  "pytest_reported_duration_s": 0.13,
+  "behavior": "Parent termination closes the Windows Job Object and stops the separately spawned background child process.",
+  "code_and_test_sha256": {
+    "deploy-vps/ops_windows_job.py": "21ebf2f52a2971b1849a17de22640632b97f422fdd8ca2b1fff3842677163cd0",
+    "tests_v4/test_ops_windows_job.py": "4901a6ec0407852fdf60a2339e25889c3643b4504e020d41f2c306d82f2b4d93"
+  },
+  "raw_junit_local_path": "output/as16-integration/windows-job-tests.xml",
+  "raw_junit_sha256": "1064f8fb63c7ef35e4dd5dde6ac1b9165f7c2f4f0ed61625effb6e49c220dbea",
+  "raw_junit_in_git": false
+}

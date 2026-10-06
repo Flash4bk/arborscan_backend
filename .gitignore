@@ -32,3 +32,13 @@ ios/build/
 
 # AS-16: isolated runtimes, private test sessions and raw integration outputs
 /output/as16-integration/
+
+# Python/runtime artifacts are preserved locally and never part of a release.
+__pycache__/
+*.py[cod]
+
+# Existing integration tests regenerate these raw artifacts; curated evidence
+# for this candidate is under deploy-vps/evidence/as16-integration/.
+/output/as15/
+/output/as16/
+/output/pdf/as15-as09/

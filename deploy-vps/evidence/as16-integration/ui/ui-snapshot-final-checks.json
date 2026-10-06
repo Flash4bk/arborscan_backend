@@ -1,0 +1,7 @@
+{
+  "environment": "Windows real HTTPS, default TLS",
+  "version1_full_snapshot_unchanged": true,
+  "version2_full_snapshot_unchanged": true,
+  "only_separate_demo_records": true,
+  "initial_harness_route_correction": "GET /v4/reports/{version_id}; no nested analysis/versions endpoint, corrected without changing server"
+}

@@ -1,0 +1,296 @@
+{
+  "evidence_version": "as16-backup-archive-transition-v2",
+  "initial_archive": {
+    "evidence_version": "as16-authorized-one-set-archive-v1",
+    "at_utc": "2026-10-06T13:12:40.064141+00:00",
+    "set_name": "20260926T202023Z",
+    "source": "/home/arborscan/ops-backups/20260926T202023Z",
+    "destination": "/home/arborscan/ops-archive/20260926T202023Z",
+    "archive_operation": "same-filesystem atomic rename under existing backup.lock",
+    "same_filesystem": true,
+    "complete_before": 14,
+    "complete_after": 13,
+    "before_and_after_manifest_identical": true,
+    "verified_files": 19,
+    "verified_manifest_bytes": 927004164,
+    "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d",
+    "independent_offsite_directory": "D:/ArborScanBackups/20260926T202023Z",
+    "independent_offsite_19_sha_checked_before_operation": true,
+    "retention_guard_modified": false,
+    "backup_base_modified": false,
+    "timer_or_service_modified": false,
+    "files_deleted": 0,
+    "production_database_writes": false,
+    "installed_backup_script_sha256": "4ca94d0322ef1025a5f01009d75d8e3b00a8371a1f0d0586b3a1ae2d2745c17e",
+    "rollback": "Acquire the same backup.lock; verify destination COMPLETE/SHA and same filesystem; if original source does not exist, atomic rename destination back to source. Keep every newer set; active count can then exceed 14, and the existing guard correctly continues refusing more copies."
+  },
+  "correction_reason": "Running v4 and worker compose labels reference reliability.yml inside the oldest set. The full oldest set was restored; a different set with no running-container path dependencies was archived.",
+  "dependent_set_restore_actually_executed": {
+    "evidence_version": "as16-retention-dependent-set-restored-v1",
+    "at_utc": "2026-10-06T13:31:55.437797+00:00",
+    "set_name": "20260926T202023Z",
+    "source": "/home/arborscan/ops-archive/20260926T202023Z",
+    "destination": "/home/arborscan/ops-backups/20260926T202023Z",
+    "verified": {
+      "files": 19,
+      "bytes": 927004164,
+      "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d"
+    },
+    "reliability_file_exists": true,
+    "reliability_sha256": "8219012d566fef3328aef3cde1a75842cd8927060dca1f89680af3284596f701",
+    "active_complete_before": 14,
+    "active_complete_after": 15,
+    "same_filesystem_atomic_rename_under_backup_lock": true,
+    "files_deleted": 0,
+    "service_or_timer_changed": false,
+    "production_containers_restarted": false
+  },
+  "all_running_container_dependency_scan": {
+    "at_utc": "2026-10-06T13:32:40.416640+00:00",
+    "running_containers": [
+      {
+        "name": "arborscan-api-v4",
+        "id": "c5c5ba66534cde75561306755aae9e34557e3bdc031ce0919963edae6f832ac4",
+        "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+        "started_at": "2026-10-05T20:08:35.590878368Z",
+        "paths_scanned": 13
+      },
+      {
+        "name": "arborscan-quality-worker",
+        "id": "9485b44faf742128519d94f66500434d3cbd8f89ce4ff9c376cd95bb7d6b863b",
+        "image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+        "started_at": "2026-09-29T21:03:49.935343028Z",
+        "paths_scanned": 11
+      },
+      {
+        "name": "arborscan-api",
+        "id": "a007a01d0c3f5f6522398f59537d0b59cc21efa028d6dbd7113a387d17a6e316",
+        "image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+        "started_at": "2026-09-07T17:35:02.146108577Z",
+        "paths_scanned": 5
+      }
+    ],
+    "all_running_container_labels_and_mounts_scanned": true,
+    "complete_sets": [
+      {
+        "name": "20260926T202023Z",
+        "path": "/home/arborscan/ops-backups/20260926T202023Z",
+        "files": 19,
+        "bytes": 927004164,
+        "manifest_sha256": "f4c2c58bce97bf4752f093c0be3ba72cdc80d4fe1baf523f6b248d6107c5779d",
+        "postgres_complete": false,
+        "live_dependencies": [
+          {
+            "container": "arborscan-api-v4",
+            "kind": "label",
+            "key": "com.docker.compose.project.config_files",
+            "path": "/home/arborscan/ops-backups/20260926T202023Z/reliability.yml"
+          },
+          {
+            "container": "arborscan-quality-worker",
+            "kind": "label",
+            "key": "com.docker.compose.project.config_files",
+            "path": "/home/arborscan/ops-backups/20260926T202023Z/reliability.yml"
+          }
+        ]
+      },
+      {
+        "name": "20260927T032112Z",
+        "path": "/home/arborscan/ops-backups/20260927T032112Z",
+        "files": 22,
+        "bytes": 927004700,
+        "manifest_sha256": "a551b875dd5b2c8fbc2bef540fedf4850c48cb961a95cdcb12d3c4d2e85e4479",
+        "postgres_complete": false,
+        "live_dependencies": []
+      },
+      {
+        "name": "20260928T031731Z",
+        "path": "/home/arborscan/ops-backups/20260928T031731Z",
+        "files": 22,
+        "bytes": 927004700,
+        "manifest_sha256": "47b4fcbe53a67a23a6be74f7bf1b40876ee139cf4477c1c5450a26500084dd08",
+        "postgres_complete": false,
+        "live_dependencies": []
+      },
+      {
+        "name": "20260928T133059Z",
+        "path": "/home/arborscan/ops-backups/20260928T133059Z",
+        "files": 28,
+        "bytes": 979158771,
+        "manifest_sha256": "5834715abee47f2324e3da015c6d112fac8837a8a88b070cf0c9b176eb29b113",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20260928T135802Z",
+        "path": "/home/arborscan/ops-backups/20260928T135802Z",
+        "files": 28,
+        "bytes": 979158675,
+        "manifest_sha256": "3a502d9f0e14ce85130affbc0545137b10ac62a5fb6769856e9e4a0de14f7d4f",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20260929T031924Z",
+        "path": "/home/arborscan/ops-backups/20260929T031924Z",
+        "files": 28,
+        "bytes": 979158674,
+        "manifest_sha256": "ecaad90a5b08540762de6261f7f52191e4c7ba1866d0c66cec30f3487f22a22a",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20260929T205205Z",
+        "path": "/home/arborscan/ops-backups/20260929T205205Z",
+        "files": 28,
+        "bytes": 979169154,
+        "manifest_sha256": "439b918b6cc1e23de0174451303ee619864e597965f7411a16b8de78f8d8e0f3",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20260930T031949Z",
+        "path": "/home/arborscan/ops-backups/20260930T031949Z",
+        "files": 30,
+        "bytes": 979169800,
+        "manifest_sha256": "264c969b5472b06efab6923400a2409141c1c4bf75b8ca39fdcf17522ea2bd4a",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20261001T032150Z",
+        "path": "/home/arborscan/ops-backups/20261001T032150Z",
+        "files": 30,
+        "bytes": 979169800,
+        "manifest_sha256": "63c1c2d3c117f7b4630186ad51d1ea134e1ed95283795bcd9d6bc929cac2e71f",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20261001T201335Z",
+        "path": "/home/arborscan/ops-backups/20261001T201335Z",
+        "files": 30,
+        "bytes": 979169802,
+        "manifest_sha256": "9c958b4e07b08dcec8a7a2cf016a8ac8d990689d13f96c1cbf88f9e171c7ad42",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20261002T031752Z",
+        "path": "/home/arborscan/ops-backups/20261002T031752Z",
+        "files": 31,
+        "bytes": 979169953,
+        "manifest_sha256": "97d57666b9273fe291278a697569877df9159e3bac6e0a6f3c5e5eb34135447e",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20261003T031731Z",
+        "path": "/home/arborscan/ops-backups/20261003T031731Z",
+        "files": 31,
+        "bytes": 979169951,
+        "manifest_sha256": "75d2881855f97589c77a19f74dbf258850a556180be90dcb35a07d2445ded14f",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20261004T031919Z",
+        "path": "/home/arborscan/ops-backups/20261004T031919Z",
+        "files": 31,
+        "bytes": 979169949,
+        "manifest_sha256": "56a1756428609a79678ae2259d00563796829e45cfa868bc1dcdda144af79aa8",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20261005T032052Z",
+        "path": "/home/arborscan/ops-backups/20261005T032052Z",
+        "files": 31,
+        "bytes": 979169952,
+        "manifest_sha256": "f3d84b6863cd5f785bd0b835250a9c677e07c96e6c1144a864ba5f31fa22964b",
+        "postgres_complete": true,
+        "live_dependencies": []
+      },
+      {
+        "name": "20261006T131325Z",
+        "path": "/home/arborscan/ops-backups/20261006T131325Z",
+        "files": 30,
+        "bytes": 979475430,
+        "manifest_sha256": "65fb5865cdc25971f8852a82e11132b3baac93c5bf8b150b241ae6985f99abdc",
+        "postgres_complete": true,
+        "live_dependencies": []
+      }
+    ]
+  },
+  "replacement_archive_actually_executed": {
+    "evidence_version": "as16-dependency-safe-one-set-archive-v2",
+    "at_utc": "2026-10-06T13:33:50.141437+00:00",
+    "set_name": "20260927T032112Z",
+    "source": "/home/arborscan/ops-backups/20260927T032112Z",
+    "destination": "/home/arborscan/ops-archive/20260927T032112Z",
+    "archive_operation": "same-filesystem atomic rename under existing backup.lock",
+    "same_filesystem": true,
+    "complete_before": 15,
+    "complete_after": 14,
+    "before_and_after_manifest_identical": true,
+    "verified_files": 22,
+    "verified_manifest_bytes": 927004700,
+    "manifest_sha256": "a551b875dd5b2c8fbc2bef540fedf4850c48cb961a95cdcb12d3c4d2e85e4479",
+    "independent_offsite_directory": "D:/ArborScanBackups/20260927T032112Z",
+    "independent_offsite_22_sha_checked_before_operation": true,
+    "all_running_container_labels_and_mounts_scanned": true,
+    "running_container_count": 3,
+    "absolute_paths_scanned": 29,
+    "live_dependencies_found": [],
+    "running_container_identity_unchanged": true,
+    "running_containers": [
+      {
+        "name": "arborscan-api",
+        "id": "a007a01d0c3f5f6522398f59537d0b59cc21efa028d6dbd7113a387d17a6e316",
+        "image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+        "started_at": "2026-09-07T17:35:02.146108577Z"
+      },
+      {
+        "name": "arborscan-api-v4",
+        "id": "c5c5ba66534cde75561306755aae9e34557e3bdc031ce0919963edae6f832ac4",
+        "image_id": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+        "started_at": "2026-10-05T20:08:35.590878368Z"
+      },
+      {
+        "name": "arborscan-quality-worker",
+        "id": "9485b44faf742128519d94f66500434d3cbd8f89ce4ff9c376cd95bb7d6b863b",
+        "image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+        "started_at": "2026-09-29T21:03:49.935343028Z"
+      }
+    ],
+    "dependent_oldest_complete_and_runtime_config_restored": true,
+    "fresh_native_backup_retained": true,
+    "retention_guard_modified": false,
+    "backup_base_modified": false,
+    "timer_or_service_modified": false,
+    "files_deleted": 0,
+    "production_database_writes": false,
+    "installed_backup_script_sha256": "4ca94d0322ef1025a5f01009d75d8e3b00a8371a1f0d0586b3a1ae2d2745c17e",
+    "rollback": "Acquire existing backup.lock; verify COMPLETE/SHA and no destination collision; same filesystem atomic rename back preserving all newer sets."
+  },
+  "replacement_independent_offsite_verification": {
+    "at_utc": "2026-10-06T13:32:52.784399+00:00",
+    "directory": "D:\\ArborScanBackups\\20260927T032112Z",
+    "complete": true,
+    "all_sha_verified": true,
+    "files": 22,
+    "bytes": 927004700,
+    "manifest_sha256_raw": "92e2f5eb03dc86394cffcc121511d7623ec4cffdc4bda62f11324ff558ce6435",
+    "manifest_sha256_lf": "a551b875dd5b2c8fbc2bef540fedf4850c48cb961a95cdcb12d3c4d2e85e4479",
+    "read_only": true
+  },
+  "current_active_complete_count": 14,
+  "current_archived_set": "20260927T032112Z",
+  "oldest_set_original_path_restored": true,
+  "fresh_backup_retained": true,
+  "guard_base_timer_and_service_unchanged": true,
+  "production_container_restart": false,
+  "files_deleted": 0,
+  "future_retention_requirement": "Before archival, enumerate labels and mount sources of ALL running containers, protect referenced files and mount ancestors, and recheck identities under the backup lock. Exclude backup sets that contain current runtime configuration dependencies.",
+  "replacement_rollback_prepared_not_executed": true
+}

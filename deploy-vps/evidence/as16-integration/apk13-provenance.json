@@ -1,0 +1,49 @@
+{
+  "at_utc": "2026-10-06T12:58:42.228814+00:00",
+  "source_commit": "7d05e5133170a49151d577c227538dc9bfddb9da",
+  "application_id": "com.example.arborscan_app",
+  "version_name": "1.3.0-integration.7d05e51",
+  "version_code": 13,
+  "min_sdk": 24,
+  "target_sdk": 36,
+  "compile_sdk": 36,
+  "dart_defines": [],
+  "signing": "existing debug; not permanent release",
+  "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+  "apk_sha256": "307bbe318726529dacf7a36e4770bf2e55baf7147e40a628927df4cee52b7a60",
+  "apk_bytes": 188964652,
+  "flutter": "3.41.1",
+  "dart": "3.11.0",
+  "jdk": "21.0.8",
+  "gradle": "8.11.1",
+  "android_test_suites": [
+    {
+      "name": "com.example.arborscan_app.ArAvailabilityFailureTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.012",
+      "timestamp": "2026-10-06T12:53:18"
+    },
+    {
+      "name": "com.example.arborscan_app.ArGeometryTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.005",
+      "timestamp": "2026-10-06T12:53:18"
+    }
+  ],
+  "build_exit": 0,
+  "flutter_tests": 128,
+  "flutter_test_exit": 0,
+  "notes": [
+    "Initial packaging failed because C: became full. Only generated build output moved to D:, then build succeeded.",
+    "Initial direct Gradle invocation had no wrapper in fresh checkout. Flutter build initialized SDK-provided wrapper; final app Android tests genuinely ran."
+  ],
+  "accepted_candidate": false,
+  "runtime_result": "rejected: no Dart kernel, native splash did not finish; superseded by APK14",
+  "superseded_by": "apk14-provenance.json"
+}

@@ -1,0 +1,96 @@
+{
+  "task": "AS-16",
+  "date": "2026-10-06",
+  "environment": "Windows Python 3.14, temporary synthetic files and mocked Docker",
+  "command": "python -m unittest tests_v4.test_ops_integration_v4 tests_v4.test_ops_weather_v4_refresh -q",
+  "tests": 37,
+  "new_rollout_tests": 29,
+  "existing_weather_tests": 8,
+  "failures": 0,
+  "errors": 0,
+  "duration_seconds": 4.343,
+  "exit_code": 0,
+  "source_sha256": {
+    "deploy-vps/ops_integration_v4.py": "1c1e831192537c13d9fad2d95410f9de6d78ab15c08965006aede43ce1571cd9",
+    "tests_v4/test_ops_integration_v4.py": "dba69fd030bca90ca5aebd0ff464ada950e26032795ec8bdd7f928d1908e1384"
+  },
+  "vps_prepare_executed_by_this_protocol": false,
+  "production_restart_executed_by_this_protocol": false,
+  "database_restore_or_migration_executed_by_this_protocol": false,
+  "limits": [
+    "POSIX nonblocking-lock refusal is exercised through a mocked fcntl module on Windows",
+    "Docker runtime/save/load/compose calls are mocked; VPS outcomes require separate actual execution",
+    "Backup checksum/custom-archive-marker checks are not a PostgreSQL restore"
+  ],
+  "previous_result": {
+    "tests": 30,
+    "rollout_tests": 22,
+    "weather_tests": 8,
+    "duration_seconds": 1.513
+  },
+  "actual_prepare_contract_fix": "ops_backup.sh excludes every SHA256SUMS; PG manifest verified separately, inner hashes cross-checked against outer payload coverage and pinned before deploy",
+  "preparation_failures": [
+    {
+      "cause": "mistyped weather test module name in initial targeted command",
+      "result": "29 rollout tests passed; weather module collection failed; corrected full targeted command passed all 37"
+    }
+  ],
+  "local_log_sha256": "acfe8b0133352854b3c1691d7a890766edb25d7f4d20fb2d50159e19f365c8f8",
+  "linux_actual_candidate_image_targeted": {
+    "at_utc": "2026-10-06T13:52:37.605261+00:00",
+    "source_commit": "8ef27b82a89876e63690302836020db2674d6583",
+    "candidate_api_commit": "0437e98e0570e0b74a1705b5d3095d32f038ddda",
+    "runtime_image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+    "environment": "Linux Python 3.11.16, temporary synthetic files and mocked Docker",
+    "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.36",
+    "command": "python -m unittest tests_v4.test_ops_integration_v4 tests_v4.test_ops_weather_v4_refresh -q",
+    "tests": 37,
+    "rollout_tests": 29,
+    "weather_tests": 8,
+    "duration_seconds": 1.032,
+    "exit_code": 0,
+    "source_sha256": {
+      "deploy-vps/ops_integration_v4.py": "1c1e831192537c13d9fad2d95410f9de6d78ab15c08965006aede43ce1571cd9",
+      "tests_v4/test_ops_integration_v4.py": "dba69fd030bca90ca5aebd0ff464ada950e26032795ec8bdd7f928d1908e1384",
+      "deploy-vps/ops_weather_v4_refresh.py": "8c8c78f45f6f49c11ed90bf16d8d90e935d2513a3693c622cb11661c50c0c488",
+      "tests_v4/test_ops_weather_v4_refresh.py": "b978b91f23b93a974e98bfc2b10a86521231ce6e57c14d038fac99697b1e07d6"
+    },
+    "source_hashes_verified_inside_actual_image": true,
+    "log_sha256": "5f6a317cad0ebb00888dd328bd17bde0cb6b0a995218961835243a168fb0e9f2",
+    "archive_sha256": "c1fa8f6cea4e90661b9df614f842319c3b0ed771182c4c3a9b734bca5f455112",
+    "container_name": "as16-rollout-linux8ef-20261006T135229Z",
+    "runtime": {
+      "id": "9b98db8074f4a0d60ae97a1f964e67aeb84ee473b3dd68ad9a9ae7b954f9b22c",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "exit_code": 0,
+      "network": "none",
+      "rootfs_readonly": true,
+      "tmpfs": {
+        "/tmp": "rw,exec,size=4096m"
+      },
+      "healthcheck": {
+        "Test": [
+          "NONE"
+        ],
+        "Interval": 30000000000,
+        "Timeout": 10000000000,
+        "StartPeriod": 120000000000,
+        "Retries": 3
+      },
+      "mounts": [
+        {
+          "destination": "/candidate",
+          "readonly": true
+        }
+      ]
+    },
+    "production_env_supplied": false,
+    "models_mounted": false,
+    "production_restart_executed_by_tests": false,
+    "database_used_by_tests": false,
+    "limits": [
+      "Docker operations in unit tests are mocked; this is not a production rollout or restore",
+      "The nonblocking lock refusal remains a mocked fcntl case, even on Linux"
+    ]
+  }
+}

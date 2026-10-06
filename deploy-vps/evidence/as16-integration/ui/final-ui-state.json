@@ -1,0 +1,8 @@
+{
+  "version_code": 15,
+  "saf_cancel_message": true,
+  "system_share_opened_cancelled_no_send": true,
+  "final_network_restored": true,
+  "avd_crash_buffer_fatal_count": 0,
+  "S24_not_connected": true
+}

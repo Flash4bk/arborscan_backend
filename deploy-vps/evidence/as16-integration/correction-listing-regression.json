@@ -1,0 +1,35 @@
+{
+  "task": "AS-16 / AS-02 correction listing regression",
+  "checked_at_utc": "2026-10-06T13:06:07.050761+00:00",
+  "defect": "An upload whose revision transaction returned 409 remained in the legacy Storage listing although opening it returned 409; it was not a committed saved contour.",
+  "fix": "One owner-scoped batch read of contour_revisions identifies committed records without downloading their photos. Only unindexed keys read their blob: legacy PNGs remain visible; schema-2 uncommitted blobs are filtered. Pagination follows raw Storage page offsets. Metadata/Storage outages cannot silently turn schema-2 history into an empty success. Flutter allows advancing an empty filtered page.",
+  "production_status": "Fix tested locally/isolated; deployment and post-deploy retained-fixture verification belong to the final root integration evidence.",
+  "backend": {
+    "command": "python -m pytest tests_v4/test_correction_listing.py tests_v4/test_corrections_api.py tests_v4/test_contour_workflow.py -q",
+    "runtime_image": "sha256:9dc0ad620110a347b7bbd5a050ad84a6d2453e16165abc15aee47550ff8e017b",
+    "source": "Worktree candidate source unpacked into /tmp in a disposable container, not the deployed image source.",
+    "isolation": "docker run --rm --network none, no production env or bind mounts",
+    "result": "35 passed, 3 subtests passed in 2.05s",
+    "exit_code": 0,
+    "warnings": [
+      "Existing FastAPI/Starlette httpx TestClient deprecation",
+      "Existing AnyIO BlockingPortal alias deprecation"
+    ],
+    "log_sha256": "7b66d59efb701e8d3d68e933fc67627fa4407a967c39f4b2d173f0fc87b4ba65"
+  },
+  "flutter": {
+    "command": "flutter test test/correction_listing_pagination_test.dart test/corrections_test.dart test/correction_status_presentation_test.dart",
+    "environment": "Windows Flutter widget tests; no claim of a system UI or S24 test",
+    "result": "18 passed",
+    "exit_code": 0,
+    "new_test": "Empty first filtered page with next_offset=50 remains navigable; next committed record loads and opens original and PNG controls."
+  },
+  "diff_check": "git diff --check exited 0; only pre-existing LF/CRLF conversion warnings",
+  "source_sha256": {
+    "arborscan_v4/corrections_api.py": "fd61db12b5a94e6e63d219dda4a63ade7ce5758745a3130bf7cb3bc1a007ecff",
+    "tests_v4/test_correction_listing.py": "5d411d2bd1908c88b1a3c8cfd6cca94832d9238b4be121e5abfe3ab0d75e148e",
+    "arborscan_app/lib/saved_corrections_page.dart": "936f466baaafd9e0c85ca6b1150402c81a169157b0bc57e05206253f9b83244e",
+    "arborscan_app/test/correction_listing_pagination_test.dart": "bc298a08178a83b04a50a2067216553e6d8303f28808b96b3abbd10551b1480c"
+  },
+  "scope": "No SQL, Storage deletion, original/decision overwrite, production deployment, model or training changes by these tests."
+}

@@ -1,0 +1,19 @@
+{
+  "baseline": "deploy-vps\\evidence\\as15-as09\\flutter-analyze-code12.txt",
+  "current_code_commit": "1ab174304335f4bd93fe04418d0b3a77f70c63d4",
+  "current_analyze_exit_code": 1,
+  "baseline_counts": {
+    "info": 48,
+    "warning": 5,
+    "error": 0
+  },
+  "current_counts": {
+    "info": 48,
+    "warning": 5,
+    "error": 0
+  },
+  "new_diagnostics": [],
+  "resolved_diagnostics": [],
+  "method": "severity/message/file/rule; ignore line shifts only",
+  "current_log_sha256": "dfa43df69a930d874ac9bc9dc0951efb1a8fb7a2447627b0be1f138024f38a50"
+}
