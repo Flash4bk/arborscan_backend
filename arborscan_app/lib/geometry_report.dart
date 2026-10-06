@@ -33,10 +33,18 @@ class GeometryReport extends StatelessWidget {
           for (final e in labels.entries)
             Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                    '${e.value}: ${data?[e.key]?['value'] is num ? '${(data![e.key]['value'] as num).toStringAsFixed(2)} ${data![e.key]['unit'] == 'deg' ? '°' : data![e.key]['unit']}' : 'нет данных — ${reasons[e.key]}'}')),
+                child: Text('${e.value}: ${_display(e.key)}')),
           const Text(
               'Фотооценки требуют общей глубины и малой перспективы. Наклон относится только к выбранному прямому участку; кривизна и глубина не восстановлены. Полевая точность не подтверждена.'),
         ],
       );
+
+  String _display(String key) {
+    final metric = data?[key];
+    final value = metric is Map ? metric['value'] : null;
+    if (value is! num || !value.isFinite) {
+      return 'нет данных — ${reasons[key]}';
+    }
+    return '${value.toStringAsFixed(2)} ${metric['unit'] == 'deg' ? '°' : metric['unit']}';
+  }
 }

@@ -233,7 +233,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
               const SizedBox(height: 10),
               _MetricCard(
                 title: result.trunkDiameter.standard == 'dbh_1_3m'
-                    ? 'DBH ствола'
+                    ? 'DBH (историческая метка)'
                     : 'Диаметр ствола',
                 icon: Icons.circle_outlined,
                 metric: result.trunkDiameter,
@@ -241,7 +241,10 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 dbh: true,
               ),
               if (result.raw['measurement_method_version'] == 2)
-                const GeometryReport(data: null),
+                GeometryReport(
+                    data: result.raw['geometry'] is Map
+                        ? result.raw['geometry'] as Map
+                        : null),
               const SizedBox(height: 18),
               const _SectionTitle(
                 title: 'Диагностика исходных данных',
@@ -537,10 +540,18 @@ class _MetricCard extends StatelessWidget {
                   ],
                   if (dbh) ...[
                     const SizedBox(height: 8),
+                    if (metric.measurementHeightM != null)
+                      Text(
+                        'Сохранённый уровень сечения: ${metric.measurementHeightM!.toStringAsFixed(2)} м.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.muted,
+                              height: 1.35,
+                            ),
+                      ),
                     Text(
                       metric.standard == 'dbh_1_3m'
-                          ? 'DBH подтверждён на высоте ${metric.measurementHeightM?.toStringAsFixed(2) ?? '1.30'} м.'
-                          : 'DBH считается валидным только при измерении диаметра на высоте 1,30 м.',
+                          ? 'Историческая метка DBH из сохранённого отчёта; соблюдение полевого протокола не подтверждено.'
+                          : 'DBH не подтверждён: уровень 1,30 м сам по себе недостаточен; нужно проверить основание, уклон, наклон и развилки по полевой методике.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppTheme.muted,
                             height: 1.35,

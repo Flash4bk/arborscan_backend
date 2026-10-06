@@ -29,3 +29,6 @@ ios/build/
 # AS-10: local source renders, numerical runs and isolated research dependencies
 /output/as10/
 /.venv-beta/
+
+# AS-16: isolated runtimes, private test sessions and raw integration outputs
+/output/as16-integration/

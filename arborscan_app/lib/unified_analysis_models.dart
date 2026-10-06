@@ -26,7 +26,8 @@ class UnifiedMetric {
       valueM: _asDouble(data['value_m']),
       valuePx: _asDouble(data['value_px']),
       source: data['source']?.toString() ?? 'unavailable',
-      confidence: (_asDouble(data['confidence']) ?? 0.0).clamp(0.0, 1.0).toDouble(),
+      confidence:
+          (_asDouble(data['confidence']) ?? 0.0).clamp(0.0, 1.0).toDouble(),
       measurementHeightM: _asDouble(data['measurement_height_m']),
       standard: data['standard']?.toString(),
       notes: _stringList(data['notes']),
@@ -126,7 +127,9 @@ class UnifiedAnalysisResult {
       status: json['analysis_status']?.toString() ?? 'unknown',
       treeDetected: tree['detected'] == true,
       segmentationConfidence:
-          (_asDouble(tree['segmentation_confidence']) ?? 0.0).clamp(0.0, 1.0).toDouble(),
+          (_asDouble(tree['segmentation_confidence']) ?? 0.0)
+              .clamp(0.0, 1.0)
+              .toDouble(),
       touchesImageEdge: tree['touches_image_edge'] == true,
       speciesName: species['display_name']?.toString() ?? 'Неизвестно',
       scientificName: species['scientific_name']?.toString(),
@@ -139,8 +142,9 @@ class UnifiedAnalysisResult {
       calibrationAvailable: calibration['available'] == true,
       pxToM: _asDouble(calibration['px_to_m']),
       calibrationSource: calibration['source']?.toString(),
-      calibrationConfidence:
-          (_asDouble(calibration['confidence']) ?? 0.0).clamp(0.0, 1.0).toDouble(),
+      calibrationConfidence: (_asDouble(calibration['confidence']) ?? 0.0)
+          .clamp(0.0, 1.0)
+          .toDouble(),
       calibrationConflict: calibration['conflict'] == true,
       overallQuality:
           (_asDouble(quality['overall']) ?? 0.0).clamp(0.0, 1.0).toDouble(),
@@ -180,10 +184,12 @@ Map<String, dynamic>? _mapOrNull(dynamic value) {
 }
 
 double? _asDouble(dynamic value) {
-  if (value == null) return null;
-  if (value is num) return value.toDouble();
-  if (value is String) return double.tryParse(value.replaceAll(',', '.'));
-  return null;
+  final parsed = value is num
+      ? value.toDouble()
+      : value is String
+          ? double.tryParse(value.replaceAll(',', '.'))
+          : null;
+  return parsed != null && parsed.isFinite ? parsed : null;
 }
 
 List<String> _stringList(dynamic value) {
