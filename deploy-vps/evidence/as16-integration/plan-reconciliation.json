@@ -37,6 +37,8 @@
     "attached user plan explicitly accepts programmatic AS05/AS06/AS07; experimental quality/training remains open",
     "current AS16 -> AS14/release-signing/data-transfer preparation -> production release -> model quality/methodology -> experimental AS10/AS13; visual AS15 acceptance separate"
   ],
-  "completion_evidence_policy": "Current candidate tests/APK15/AVD/PDF/v4 deployment actually completed and recorded in RELEASE_INTEGRATION.md; main publication remains pending until actual push; user acceptance/scientific validation not claimed",
-  "final_repository_plan_version": "1.21"
+  "completion_evidence_policy": "Available current technical package actually completed/tests/APK15/AVD/PDF/v4 deployed, fast-forward main/push verified. Full AS16 release/signing and user/scientific acceptance remain distinct.",
+  "final_repository_plan_version": "1.22",
+  "main_publication_executed": true,
+  "published_integration_commit": "5e11e4ab9a4840149ac25a37bee279c2a236c6af"
 }

@@ -41,6 +41,20 @@ managed worktree и `codex/release-integration`. `codex/app-redesign`
 3. `9010886489d8201a0a7c8310c1010e5f2d229515` и `8ef27b82a89876e63690302836020db2674d6583`: guarded prepare/deploy/rollback только v4, lock, exact-image/code/env/model/config invariants, свежий backup и отдельная проверка native PostgreSQL manifest. 29 новых ops safety tests плюс8 прежних weather; реальный rollout выполнен.
 4. `1ab174304335f4bd93fe04418d0b3a77f70c63d4`: найденный на AVD14 дефект очистки длины эталона — исчезновение Export сдвигало lazy list и уничтожало focused input. Стабильный slot/key сохраняет существующее подключение ввода. Red→green widget проверяет100→пусто→200 без refocus и пересоздание store/screen; фактический AVD15 подтвердил исправление. Формулы/состояние разметки не изменены.
 
+## Фактическая публикация main
+
+После проверок выполнены обычные push рабочей ветки и **fast-forward main**
+от823ebc46 на `5e11e4ab9a4840149ac25a37bee279c2a236c6af`. `git ls-remote` подтвердил этот commit
+для `origin/main` и `origin/codex/release-integration`. Force/reset/clean
+не применялись. Перед переключением через authenticated GitHub read проверено:
+main protected=false, rulesets=[], protection404; обязательные проверки/PR не
+обходились. Полный `git diff origin/main..candidate --check` и stageddiffcheck
+успешны. [Свидетельство публикации](evidence/as16-integration/main-publication.json).
+Последующая фиксация результатов меняет только документацию/evidence,
+API43/APK15/native/research остаются прежними; точный последний HEAD доступен в Git.
+Исходный D:checkout/5 пользовательских PDF и кеши сохранены; managed рабочая ветка
+остаётся `codex/release-integration`. APK/секреты/дампы/cache в Git не включены.
+
 ## Геометрия, среда и хранение
 
 Подробные матрицы «код → доказательство → остаток»:
@@ -235,6 +249,8 @@ moderation403, чужому владельцу404; **41 real assertions** на D
 измерения. Initial verification harness исправлен под существующий `record`
 wrapper и `actor_id`/`at`, production contract для этого не менялся.
 Startup logs: 0 traceback/ERROR/FATAL. DB RPC повторно **1/1/1**.
+После UI/публикации повторно фактически прочитаны оба publicTLS healthok и
+три контейнераhealthy с прежними v3/worker StartedAt: [final-health.json](evidence/as16-integration/final-health.json).
 [live-api-after-deploy.json](evidence/as16-integration/live-api-after-deploy.json),
 [vps-state-after.json](evidence/as16-integration/vps-state-after.json),
 [v4-deployment-result.json](evidence/as16-integration/v4-deployment-result.json)

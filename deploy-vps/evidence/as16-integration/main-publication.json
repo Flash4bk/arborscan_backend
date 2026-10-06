@@ -1,0 +1,15 @@
+{
+  "at_utc": "2026-10-06T14:37:49.566138+00:00",
+  "previous_origin_main": "823ebc46f5133c2fb0e3bc00cf12827f84091206",
+  "published_integration_commit": "5e11e4ab9a4840149ac25a37bee279c2a236c6af",
+  "main_fast_forward": true,
+  "origin_main_verified": true,
+  "origin_working_branch_verified": true,
+  "working_branch": "codex/release-integration",
+  "branch_protected": false,
+  "repository_rulesets": [],
+  "force_push": false,
+  "required_checks_bypassed": false,
+  "original_user_checkout_unchanged": "D:/arborscan_backend stays codex/beta-dynamics with same5modifiedPDFs/privatecacheoutputs",
+  "final_followup_scope": "Only factual documentation/evidence; Flutter/API/native/research code and APK unchanged"
+}
