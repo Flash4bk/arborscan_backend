@@ -1,0 +1,6 @@
+# Isolated research environment only; do not install in the production API image.
+# Actual AS-10 validation: Windows x64, CPython 3.14.
+numpy==2.4.6
+scipy==1.17.1
+matplotlib==3.11.2
+pytest==9.1.1

@@ -1,7 +1,8 @@
-"""Independent SI identification tools; NOT the unpublished tree forward solver.
+"""Independent SI identification tools with a callable forward-model interface.
 
-The only bundled forward model is an explicitly synthetic free-element benchmark.
-See BETA_SPEC.md for equations, source gaps, and the experimental contract.
+The v1 CLI retains its explicitly synthetic free-element benchmark. The separate
+beta_dynamics v2 CLI attaches the planar coupled-chain reconstruction to identify.
+See BETA_SPEC.md and BETA_DYNAMICS.md for sources and experimental limitations.
 """
 from __future__ import annotations
 import argparse
@@ -113,11 +114,16 @@ def identify(times_s, observed_m, forward: Callable, *, bounds_kg_s,
     scores=[evaluate(float(b)) for b in grid];best=int(np.argmin(scores))
     a=float(grid[max(best-1,0)]);b=float(grid[min(best+1,grid_size-1)])
     ratio=(math.sqrt(5)-1)/2
+    # Reuse the surviving interior point exactly. Recomputing both points from
+    # floating endpoints produces near-duplicate keys and costly extra ODE solves.
+    c=b-ratio*(b-a);d=a+ratio*(b-a)
+    fc=evaluate(c);fd=evaluate(d)
     for _ in range(150):
         if b-a<=tol:break
-        c=b-ratio*(b-a);d=a+ratio*(b-a)
-        if evaluate(c)<evaluate(d):b=d
-        else:a=c
+        if fc<fd:
+            b=d;d=c;fd=fc;c=b-ratio*(b-a);fc=evaluate(c)
+        else:
+            a=c;c=d;fc=fd;d=a+ratio*(b-a);fd=evaluate(d)
     evaluate((a+b)/2)
     beta=min(cache,key=cache.get)
     predicted=array(forward(beta,t,dt),'predicted')
@@ -151,7 +157,7 @@ def identify(times_s, observed_m, forward: Callable, *, bounds_kg_s,
 
 def run_document(document):
     if document.get('schema_version')!=1 or document.get('model')!=BENCHMARK or document.get('synthetic') is not True:
-        raise ValueError('Only the explicitly synthetic benchmark is bundled; tree solver sources/data missing')
+        raise ValueError('Schema v1 only supports the explicitly synthetic free-element benchmark; use beta_dynamics for schema v2')
     if document.get('units')!={'length':'m','time':'s','mass':'kg','beta':'kg/s'}:
         raise ValueError('Explicit SI units required')
     p=document['parameters']

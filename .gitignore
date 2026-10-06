@@ -25,3 +25,7 @@ ios/build/
 *.aab
 *.so
 .tmp.driveupload/
+
+# AS-10: local source renders, numerical runs and isolated research dependencies
+/output/as10/
+/.venv-beta/
