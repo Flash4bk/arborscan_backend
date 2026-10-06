@@ -4,6 +4,7 @@ import pathlib
 import shutil
 import subprocess
 import time
+from ops_backup_policy import backup_status
 
 def status():
     result={'disk_free_bytes':shutil.disk_usage('/home/arborscan').free,'containers':[]}
@@ -17,10 +18,13 @@ def status():
             'started':c['State']['StartedAt'],'restarts':c['RestartCount'],
             'logging':c['HostConfig']['LogConfig']})
     root=pathlib.Path('/home/arborscan/ops-backups')
-    completed=sorted(root.glob('*/COMPLETE'))
-    result['latest_completed_backup']=str(completed[-1].parent) if completed else None
-    result['backup_age_seconds']=round(time.time()-completed[-1].stat().st_mtime) if completed else None
-    result['incomplete_backups']=[str(p) for p in root.glob('20*') if p.is_dir() and not (p/'COMPLETE').exists()]
+    # COMPLETE alone is insufficient, including after manual corruption. Keep
+    # former fields for consumers, but derive them from verified native sets.
+    result['backup_policy']=backup_status(root)
+    latest=result['backup_policy']['latest_verified_native_backup']
+    result['latest_completed_backup']=str(root/latest) if latest else None
+    result['backup_age_seconds']=result['backup_policy']['native_backup_age_seconds']
+    result['incomplete_backups']=result['backup_policy']['incomplete_or_corrupt_sets']
     p=subprocess.run(['docker','exec','arborscan-api-v4','python','-c',
         'import json; from arborscan_v4.reliability import dependency_status; print(json.dumps(dependency_status()))'],
         capture_output=True,timeout=150)
