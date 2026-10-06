@@ -122,11 +122,17 @@ def checked_backup(path=None, require_latest=True, require_recent=True):
     required = {'application.tar', 'local-files.tar', 'arborscan.env.private',
                 'containers.private.json', 'restore-result.json',
                 'postgres/database.dump', 'postgres/roles.sql', 'postgres/source.json',
-                'postgres/archive-list.private.txt', 'postgres/SHA256SUMS', 'postgres/COMPLETE'}
+                'postgres/archive-list.private.txt', 'postgres/COMPLETE'}
     require(required <= checks.keys(), 'Backup manifest omits required application/PostgreSQL files')
+    # ops_backup.sh deliberately excludes every SHA256SUMS from the outer
+    # manifest; verify the PostgreSQL manifest independently and cross-check
+    # that all of its payloads also belong to the verified outer snapshot.
+    require((root / 'postgres/SHA256SUMS').is_file(), 'PostgreSQL manifest is missing')
     pg = verify_manifest(root / 'postgres', root / 'postgres/SHA256SUMS')
     require({'database.dump', 'roles.sql', 'source.json', 'archive-list.private.txt'} <= pg.keys(),
             'PostgreSQL manifest is incomplete')
+    require(all(checks.get('postgres/' + name) == expected for name, expected in pg.items()),
+            'PostgreSQL manifest disagrees with outer backup coverage/checksums')
     with (root / 'postgres/database.dump').open('rb') as stream:
         require(stream.read(5) == b'PGDMP', 'PostgreSQL custom archive header is invalid')
     restored = json.loads((root / 'restore-result.json').read_text())
@@ -208,6 +214,7 @@ def prepare(root, backup, commit, image):
     require(isinstance(work, str) and Path(work).is_dir(), 'Compose working directory is unavailable')
     plan = {'version': 1, 'created_at': datetime.now(timezone.utc).isoformat(),
             'backup': str(backup), 'backup_manifest_sha256': sha(backup / 'SHA256SUMS'),
+            'backup_postgres_manifest_sha256': sha(backup / 'postgres/SHA256SUMS'),
             'candidate': candidate['Id'], 'revision': commit,
             'original_image': before['Image'], 'original_revision': CURRENT_REVISION,
             'operator_config_sha256': sha(CONFIG), 'project': labels['com.docker.compose.project'],
@@ -269,6 +276,8 @@ def apply_mode(root, mode):
     if mode == 'deploy':
         backup = checked_backup(plan['backup'], require_latest=False)
         require(sha(backup / 'SHA256SUMS') == plan['backup_manifest_sha256'], 'Full backup changed')
+        require(sha(backup / 'postgres/SHA256SUMS') == plan['backup_postgres_manifest_sha256'],
+                'PostgreSQL backup manifest changed')
     state = json.loads((root / 'state.private.json').read_text())
     before = current_api()
     same_container = before is not None and all(runtime_identity(before).get(key) == state.get(key)

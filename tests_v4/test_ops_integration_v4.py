@@ -73,7 +73,7 @@ class IntegrationSafetyTest(unittest.TestCase):
         (root / 'postgres/SHA256SUMS').write_text(''.join(
             ops.sha(root / 'postgres' / name) + '  ' + name + '\n'
             for name in ('database.dump', 'roles.sql', 'source.json', 'archive-list.private.txt')))
-        files['postgres/SHA256SUMS'] = b''
+        # Match ops_backup.sh: find excludes every file named SHA256SUMS.
         (root / 'SHA256SUMS').write_text(''.join(
             ops.sha(root / name) + '  ./' + name + '\n' for name in sorted(files)))
         (root / 'COMPLETE').touch()
@@ -291,6 +291,61 @@ class IntegrationSafetyTest(unittest.TestCase):
                                      if not line.endswith('postgres/database.dump')) + '\n')
         with self.assertRaisesRegex(RuntimeError, 'omits required'):
             ops.checked_backup(self.backup)
+
+    def test_real_outer_manifest_excludes_postgres_manifest_and_prepare_succeeds(self):
+        outer = (self.backup / 'SHA256SUMS').read_text()
+        self.assertNotIn('postgres/SHA256SUMS', outer)
+        self.assertTrue((self.backup / 'postgres/SHA256SUMS').is_file())
+        self.prepare()
+        self.assertTrue((self.root / 'PREPARED').is_file())
+
+    def test_missing_inner_postgres_manifest_is_rejected(self):
+        (self.backup / 'postgres/SHA256SUMS').unlink()
+        with self.assertRaisesRegex(RuntimeError, 'PostgreSQL manifest is missing'):
+            ops.checked_backup(self.backup)
+
+    def test_incomplete_inner_postgres_manifest_is_rejected(self):
+        manifest = self.backup / 'postgres/SHA256SUMS'
+        manifest.write_text('\n'.join(line for line in manifest.read_text().splitlines()
+                                     if not line.endswith('roles.sql')) + '\n')
+        with self.assertRaisesRegex(RuntimeError, 'PostgreSQL manifest is incomplete'):
+            ops.checked_backup(self.backup)
+
+    def test_inner_payload_not_covered_by_outer_manifest_is_rejected(self):
+        pg = self.backup / 'postgres'
+        (pg / 'extra-metadata.json').write_text('{}')
+        manifest = pg / 'SHA256SUMS'
+        manifest.write_text(manifest.read_text() + ops.sha(pg / 'extra-metadata.json') +
+                            '  ./extra-metadata.json\n')
+        with self.assertRaisesRegex(RuntimeError, 'outer backup coverage/checksums'):
+            ops.checked_backup(self.backup)
+
+    def test_inner_hash_mismatch_is_rejected_even_with_valid_outer_manifest(self):
+        manifest = self.backup / 'postgres/SHA256SUMS'
+        raw = manifest.read_text()
+        manifest.write_text('0' * 64 + raw[64:])
+        with self.assertRaisesRegex(RuntimeError, 'checksum mismatch'):
+            ops.checked_backup(self.backup)
+
+    def test_disagreement_between_verified_inner_and_outer_hashes_is_rejected(self):
+        actual = ops.verify_manifest
+        def changed(root, manifest):
+            hashes = actual(root, manifest)
+            if root == self.backup / 'postgres':
+                hashes['database.dump'] = '0' * 64
+            return hashes
+        with patch.object(ops, 'verify_manifest', side_effect=changed):
+            with self.assertRaisesRegex(RuntimeError, 'outer backup coverage/checksums'):
+                ops.checked_backup(self.backup)
+
+    def test_inner_manifest_change_after_prepare_stops_before_compose(self):
+        self.prepare()
+        manifest = self.backup / 'postgres/SHA256SUMS'
+        manifest.write_text('\n'.join(reversed(manifest.read_text().splitlines())) + '\n')
+        with patch.object(ops.subprocess, 'run') as process:
+            with self.assertRaisesRegex(RuntimeError, 'PostgreSQL backup manifest changed'):
+                ops.apply_mode(self.root, 'deploy')
+        process.assert_not_called()
 
     def test_manifest_cannot_escape_backup_or_duplicate_same_entry(self):
         target = self.folder / 'outside'
