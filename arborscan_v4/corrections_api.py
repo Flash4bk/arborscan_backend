@@ -305,8 +305,47 @@ def list_corrections(offset: int = 0, owner: str = Depends(current_user)):
             raise HTTPException(503, "Invalid correction listing")
     except (requests.RequestException, ValueError):
         raise HTTPException(503, "Correction storage is unavailable") from None
-    return {"items": [{"correction_id": row["name"], "created_at": row.get("created_at")}
-             for row in rows if isinstance(row, dict) and KEY_RE.fullmatch(str(row.get("name", "")))],
+    candidates = [row for row in rows if isinstance(row, dict)
+                  and KEY_RE.fullmatch(str(row.get("name", "")))]
+    committed, workflow_error = set(), None
+    if candidates:
+        try:
+            keys = [row['name'] for row in candidates]
+            metadata = WorkflowStore(_config).request('GET', 'contour_revisions', params={
+                'owner_id': 'eq.' + owner, 'select': 'correction_id',
+                'correction_id': 'in.(' + ','.join(keys) + ')'})
+            if (not isinstance(metadata, list) or any(not isinstance(row, dict)
+                    or row.get('correction_id') not in keys for row in metadata)):
+                raise HTTPException(503, 'Invalid contour workflow listing')
+            committed = {row['correction_id'] for row in metadata}
+        except HTTPException as exc:
+            if exc.status_code != 503:
+                raise
+            workflow_error = exc
+    items = []
+    for row in candidates:
+        key = row['name']
+        if key not in committed:
+            # A blob is uploaded before its revision transaction. Failed or
+            # concurrent saves may leave an immutable, uncommitted schema-2
+            # blob; it is not a saved contour and must not appear in history.
+            # Legacy PNGs have no workflow row and remain readable even while
+            # the workflow database/migration is unavailable. Only these
+            # unindexed candidates need a blob read; committed photos do not.
+            record = _get(owner, key)
+            schema = record.get('schema_version', 1)
+            if schema == 2:
+                if workflow_error is not None:
+                    # An outage cannot be mistaken for an empty history or an
+                    # uncommitted revision: metadata could not be checked.
+                    raise workflow_error
+                continue
+            if schema != 1:
+                raise HTTPException(503, 'Unsupported stored correction format')
+        items.append({'correction_id': key, 'created_at': row.get('created_at')})
+    return {"items": items,
+            # Filtering must not stop discovery at a page full of orphan blobs.
+            # Offsets belong to the raw Storage page, including skipped names.
             "next_offset": offset + len(rows) if len(rows) == 50 else None}
 
 

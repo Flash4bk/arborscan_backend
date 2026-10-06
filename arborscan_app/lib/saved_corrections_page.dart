@@ -236,7 +236,9 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                           service: _service, localDrafts: true))),
                   child: const Text('Черновики на устройстве')),
             if (!_busy && _error == null && _items.isEmpty)
-              const Text('Сохранённых контуров пока нет.'),
+              Text(_next == null
+                  ? 'Сохранённых контуров пока нет.'
+                  : 'На этой странице нет записей. Загрузите следующую.'),
             if (_items.isNotEmpty)
               Text('Загружено записей: ${_items.length}',
                   style: Theme.of(context).textTheme.labelLarge),
@@ -288,7 +290,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                   if (mounted && !_invalidSession) await _load(refresh: true);
                 },
               )),
-            if (_next != null && _items.isNotEmpty && _error == null)
+            if (_next != null && _error == null)
               OutlinedButton(
                   onPressed: _busy ? null : _load,
                   child: const Text('Загрузить ещё')),
