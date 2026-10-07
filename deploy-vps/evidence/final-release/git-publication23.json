@@ -1,0 +1,20 @@
+{
+  "checked_at_utc": "2026-10-07T22:38:39.565040+00:00",
+  "published_package_commit": "3ce8a8896dfd66b98ac26cd38873e122acb00f94",
+  "APK_source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6",
+  "remote_heads": {
+    "refs/heads/codex/final-release": "3ce8a8896dfd66b98ac26cd38873e122acb00f94",
+    "refs/heads/main": "3ce8a8896dfd66b98ac26cd38873e122acb00f94"
+  },
+  "main_update": "Checked fast-forward from 10b54e77ae77fa7a51621bc1902889ce4d2a8ef6",
+  "normal_push": true,
+  "force_push_reset_or_protection_bypass": false,
+  "main_protected": false,
+  "repository_rulesets": 0,
+  "branch_rules": 0,
+  "curated_artifact_canonical_hashes_verified": 165,
+  "stable_tag_created": false,
+  "production_runtime_or_schema_deployed": false,
+  "original_D_checkout_branch_and_HEAD_preserved": true,
+  "following_commit_scope": "Publication receipt and master-plan documentation only; APK/source unchanged"
+}

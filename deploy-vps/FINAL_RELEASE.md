@@ -302,3 +302,20 @@ backup/переноса телефона здесь не проверялось,
 проверен отдельно, не подключён в production; экспериментальные AS-10/AS-13,
 устойчивость AS-11, независимое качество моделей и визуальная приёмкаAS-15 остаются
 в [общем плане](ARBORSCAN_MASTER_PLAN.md).
+
+## Публикация Git — фактически выполнена
+
+07.10 UTC /08.10 Minsk рабочая ветка отправлена обычным push. После свежего
+origin/protection audit main включён только fast-forward с10b54e7 на
+**3ce8a8896dfd66b98ac26cd38873e122acb00f94**, затем отправлен без force/reset.
+`git ls-remote` подтвердил origin/main и origin/codex/final-release на этом SHA.
+На момент операции protection=false, rulesets/branch rules0; обходов не было.
+Все165 файлов pre-publication evidence manifest проверены по canonical Git bytes;
+PDF/PNG сохраняют исходные бинарные SHA. Исходный D-checkout остаётся beta-dynamics.
+[Фактический receipt](evidence/final-release/git-publication23.json).
+
+Следующий отдельный коммит только фиксирует этот результат документацией и
+не меняет APK/source bbcd5b5. Его push и окончательные remote heads проверяются
+после отправки и приводятся в итоговом сообщении. Не создан stable tag или
+store release; production API/worker/SQL/config/model deployment не выполнялся.
+Разрешённые тестовые записи и Google client registration отдельно описаны выше.
