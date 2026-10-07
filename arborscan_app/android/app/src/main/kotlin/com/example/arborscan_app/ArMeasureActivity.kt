@@ -1,6 +1,7 @@
 package com.example.arborscan_app
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -24,6 +25,7 @@ import com.google.ar.sceneform.FrameTime
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.Color as SceneColor
 import com.google.ar.sceneform.rendering.MaterialFactory
+import com.google.ar.sceneform.rendering.EngineInstance
 import com.google.ar.sceneform.rendering.ShapeFactory
 import com.google.ar.sceneform.ux.ArFragment
 import com.gorisse.thomas.sceneform.light.LightEstimationConfig
@@ -153,10 +155,17 @@ class ArMeasureActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        ArAvailabilityFailure.graphicsMessage(activityManager.deviceConfigurationInfo.reqGlEsVersion)?.let {
+            finishUnavailable(it)
+            return
+        }
         // Sceneform creates Filament during layout inflation, before its ARCore
-        // unavailable callback exists. Unsupported renderers must return to
-        // Flutter rather than terminate the application with the selected photo.
+        // unavailable callback exists. Initialize the shared engine before any
+        // Fragment is attached: a failed engine inside XML inflation can leave
+        // Fragment destruction stuck and freeze the returning Flutter activity.
         try {
+            EngineInstance.getEngine()
             initializeMeasurementView()
         } catch (exception: Exception) {
             Log.w("ArMeasureActivity", "AR initialization failed: ${exception.javaClass.simpleName}")

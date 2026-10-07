@@ -14,6 +14,21 @@ import org.junit.Test
 
 class ArAvailabilityFailureTest {
     @Test
+    fun unsupportedOrUnknownGraphicsExplainAlternativeBeforeSceneformStarts() {
+        for (version in listOf(0, 0x10000, 0x20000)) {
+            val message = ArAvailabilityFailure.graphicsMessage(version)!!
+            assertTrue(message.contains("не поддерживает AR"))
+            assertTrue(message.contains("по эталону"))
+        }
+    }
+
+    @Test
+    fun supportedGraphicsStillReachNormalArServiceHandling() {
+        assertNull(ArAvailabilityFailure.graphicsMessage(0x30000))
+        assertNull(ArAvailabilityFailure.graphicsMessage(0x30001))
+    }
+
+    @Test
     fun wrappedRendererFailureExplainsAlternativeWithoutDriverDetails() {
         val exception = RuntimeException("private layout", IllegalStateException("Couldn't create Engine: private driver"))
         val message = ArAvailabilityFailure.initializationMessage(exception)!!

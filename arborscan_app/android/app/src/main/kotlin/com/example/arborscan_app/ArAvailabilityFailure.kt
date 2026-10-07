@@ -9,6 +9,12 @@ import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationExceptio
 
 /** A declined installer is cancellation; other session failures need a visible explanation. */
 internal object ArAvailabilityFailure {
+    // Sceneform requires OpenGL ES 3.0. Reject unsupported or unknown graphics
+    // before layout inflation, while ordinary photo/reference analysis remains usable.
+    fun graphicsMessage(requiredGlEsVersion: Int): String? =
+        if (requiredGlEsVersion >= 0x30000) null
+        else "Графика этого устройства не поддерживает AR. Можно продолжить анализ фото или измерение по эталону."
+
     // Layout inflation wraps renderer or session failures. Preserve meaningful
     // ARCore recovery/cancellation without exposing private driver diagnostics.
     fun initializationMessage(exception: Exception): String? {
