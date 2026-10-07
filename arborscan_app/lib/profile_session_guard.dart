@@ -54,7 +54,9 @@ class ProfileSessionGuard {
     final result = () async {
       if (previous != null) await previous;
       if (!await current(ticket,
-          active: active, authenticatedOwner: authenticatedOwner)) return false;
+          active: active, authenticatedOwner: authenticatedOwner)) {
+        return false;
+      }
       await commit(await SharedPreferences.getInstance());
       return true;
     }();
