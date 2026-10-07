@@ -86,4 +86,70 @@ void main() {
     expect(prefs.getString('arborscan_auth_token'), 'opaque-b');
     expect(prefs.getString('arborscan_user_id'), _ownerB);
   });
+
+  test('authenticated legacy owner hydration keeps the same session', () async {
+    SharedPreferences.setMockInitialValues({
+      'arborscan_auth_token': 'opaque-a',
+    });
+    final ticket = await ProfileSessionGuard.capture();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('arborscan_user_id', _ownerA);
+    expect(
+        await ProfileSessionGuard.current(ticket, active: () => true), isFalse);
+    expect(
+      await ProfileSessionGuard.write(ticket, (preferences) async {
+        await preferences.setString('arborscan_profile_name', 'Authenticated');
+      }, active: () => true, authenticatedOwner: _ownerA),
+      isTrue,
+    );
+    expect(prefs.getString('arborscan_auth_token'), 'opaque-a');
+    expect(prefs.getString('arborscan_user_id'), _ownerA);
+    expect(prefs.getString('arborscan_profile_name'), 'Authenticated');
+  });
+
+  for (final change in [
+    'wrong-authenticated-owner',
+    'different-token',
+    'new-revision',
+    'missing-token',
+    'known-owner-changed',
+    'no-authenticated-response',
+  ]) {
+    test('legacy owner hydration rejects $change', () async {
+      SharedPreferences.setMockInitialValues({
+        if (change != 'missing-token') 'arborscan_auth_token': 'opaque-a',
+        if (change == 'known-owner-changed') 'arborscan_user_id': _ownerA,
+      });
+      final ticket = await ProfileSessionGuard.capture();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('arborscan_user_id',
+          change == 'known-owner-changed' ? _ownerB : _ownerA);
+      if (change == 'different-token') {
+        await prefs.setString('arborscan_auth_token', 'opaque-b');
+      } else if (change == 'new-revision') {
+        await ProfileSessionGuard.capture(supersede: true);
+      }
+      final authenticatedOwner = change == 'no-authenticated-response'
+          ? null
+          : (change == 'wrong-authenticated-owner' ||
+                  change == 'known-owner-changed'
+              ? _ownerB
+              : _ownerA);
+      var committed = false;
+      expect(
+        await ProfileSessionGuard.write(ticket, (_) async {
+          committed = true;
+        }, active: () => true, authenticatedOwner: authenticatedOwner),
+        isFalse,
+      );
+      expect(committed, isFalse);
+      expect(prefs.getString('arborscan_user_id'),
+          change == 'known-owner-changed' ? _ownerB : _ownerA);
+      expect(
+          prefs.getString('arborscan_auth_token'),
+          change == 'missing-token'
+              ? null
+              : (change == 'different-token' ? 'opaque-b' : 'opaque-a'));
+    });
+  }
 }

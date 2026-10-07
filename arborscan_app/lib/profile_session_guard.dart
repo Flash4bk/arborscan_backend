@@ -28,22 +28,33 @@ class ProfileSessionGuard {
   }
 
   static Future<bool> current(ProfileSessionTicket ticket,
-      {required bool Function() active}) async {
+      {required bool Function() active, String? authenticatedOwner}) async {
     if (!active() || ticket.revision != _revision) return false;
     final prefs = await SharedPreferences.getInstance();
+    final owner = prefs.getString('arborscan_user_id') ?? '';
+    // An authenticated /auth/me reply may agree with a concurrent bootstrap
+    // of a legacy empty owner. It never permits a different known owner,
+    // missing session, changed token or superseded operation.
+    final ownerMatches = owner == ticket.owner ||
+        (ticket.owner.isEmpty &&
+            ticket.token.isNotEmpty &&
+            authenticatedOwner != null &&
+            authenticatedOwner.isNotEmpty &&
+            owner == authenticatedOwner);
     return active() &&
         ticket.revision == _revision &&
         (prefs.getString('arborscan_auth_token') ?? '') == ticket.token &&
-        (prefs.getString('arborscan_user_id') ?? '') == ticket.owner;
+        ownerMatches;
   }
 
   static Future<bool> write(ProfileSessionTicket ticket,
       Future<void> Function(SharedPreferences) commit,
-      {required bool Function() active}) {
+      {required bool Function() active, String? authenticatedOwner}) {
     final previous = _writes;
     final result = () async {
       if (previous != null) await previous;
-      if (!await current(ticket, active: active)) return false;
+      if (!await current(ticket,
+          active: active, authenticatedOwner: authenticatedOwner)) return false;
       await commit(await SharedPreferences.getInstance());
       return true;
     }();

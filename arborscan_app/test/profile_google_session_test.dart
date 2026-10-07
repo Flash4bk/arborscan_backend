@@ -7,7 +7,9 @@ import 'dart:io';
 import 'package:arborscan_app/api_config.dart';
 import 'package:arborscan_app/app_theme.dart';
 import 'package:arborscan_app/contour_drafts.dart';
+import 'package:arborscan_app/corrections_service.dart';
 import 'package:arborscan_app/profile_page.dart';
+import 'package:arborscan_app/profile_session_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -259,6 +261,85 @@ void main() {
         );
       },
     );
+  }
+
+  for (final change in [
+    'matching-owner',
+    'different-owner',
+    'different-token',
+    'new-revision',
+  ]) {
+    testWidgets('legacy owner hydration $change during profile lookup', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        ..._saved(owner: ''),
+        'arborscan_profile_logged_in': true,
+      });
+      final profileReply = Completer<http.Response>();
+      var meRequests = 0;
+      Future<http.Response> respond(http.Request request) async {
+        if (request.url.path.endsWith('/auth/me')) {
+          expect(request.headers['Authorization'], 'Bearer opaque-a');
+          meRequests++;
+          if (meRequests == 1) return profileReply.future;
+          return http.Response(jsonEncode({'user': _user(_ownerA)}), 200);
+        }
+        return http.Response('{}', 200);
+      }
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(
+            MaterialApp(theme: AppTheme.light(), home: const ProfilePage()),
+          );
+          await tester.pump();
+          expect(meRequests, 1);
+          // The real history/contour service bootstraps a legacy owner's ID
+          // while the profile's authenticated request is still pending.
+          final service = CorrectionsService(
+            clientFactory: () => MockClient(respond),
+          );
+          expect(await service.owner('opaque-a'), _ownerA);
+          final prefs = await SharedPreferences.getInstance();
+          expect(prefs.getString('arborscan_user_id'), _ownerA);
+          if (change == 'different-owner') {
+            await prefs.setString('arborscan_user_id', _ownerB);
+          } else if (change == 'different-token') {
+            await prefs.setString('arborscan_auth_token', 'opaque-b');
+          } else if (change == 'new-revision') {
+            await ProfileSessionGuard.capture(supersede: true);
+          }
+          profileReply.complete(http.Response(
+            jsonEncode({
+              'user': _user(_ownerA, name: 'Authenticated legacy owner'),
+            }),
+            200,
+          ));
+          await tester.pumpAndSettle();
+          expect(prefs.getString('arborscan_user_id'),
+              change == 'different-owner' ? _ownerB : _ownerA);
+          expect(prefs.getString('arborscan_auth_token'),
+              change == 'different-token' ? 'opaque-b' : 'opaque-a');
+          expect(prefs.getString(_draftKey), 'synthetic unsaved contour state');
+          if (change == 'matching-owner') {
+            expect(find.text('Сессия подтверждена сервером.'), findsOneWidget);
+            expect(find.text('Authenticated legacy owner'), findsOneWidget);
+            expect(prefs.getString('arborscan_profile_name'),
+                'Authenticated legacy owner');
+            expect(prefs.getBool('arborscan_profile_logged_in'), isTrue);
+            expect(prefs.getString('arborscan_auth_expires_at'), _expires);
+          } else {
+            expect(find.text('Authenticated legacy owner'), findsNothing);
+            expect(find.text('Профиль изменился. Откройте вкладку снова.'),
+                findsOneWidget);
+            expect(prefs.getString('arborscan_profile_name'), 'Before');
+          }
+          expect(tester.takeException(), isNull);
+        },
+        () => MockClient(respond),
+      );
+    });
   }
 
   testWidgets('disposed email login never persists a late session', (

@@ -348,7 +348,12 @@ class _ProfilePageState extends State<ProfilePage> {
       await prefs.setString(_tokenKey, token);
       await prefs.setBool(_loggedInKey, true);
       await prefs.setBool(_adminFlagKey, isAdmin);
-    }, active: () => mounted);
+    },
+        active: () => mounted,
+        authenticatedOwner:
+            tokenFromResponse == ticket.token && token == ticket.token
+                ? user['id'] as String
+                : null);
 
     if (!saved || !mounted) return false;
     setState(() {
