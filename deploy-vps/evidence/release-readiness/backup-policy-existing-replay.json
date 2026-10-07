@@ -1,0 +1,51 @@
+{
+  "task_id": "AS-14",
+  "observed_at_utc": "2026-10-07T07:01:14.854806+00:00",
+  "policy_sha256": "2aa70c5c6541ae2d76ac83f7a01c755186e24dd1408633a8c49ebac7c4a3b933",
+  "result": {
+    "event": "verified_existing",
+    "name": "20261006T195518Z",
+    "deleted": []
+  },
+  "seconds": 485.47,
+  "new_snapshot_calls": 0,
+  "new_complete_sets": 0,
+  "removed_complete_sets": 0,
+  "complete_sets_before_after": [
+    14,
+    14
+  ],
+  "complete_set_manifests_mtimes_sizes_unchanged": true,
+  "staging_files_unchanged": true,
+  "production_metadata_was_not_removed_or_fault_injected": true,
+  "completed_at_utc_from_actual_marker": "2026-10-07T03:29:58.851705+00:00",
+  "original_verified_at_utc_preserved": "2026-10-07T03:34:25.568252+00:00",
+  "last_integrity_check_at_utc": "2026-10-07T07:01:09.769468+00:00",
+  "last_success_retained_verified_sets": 14,
+  "previous_rotation_history_preserved": [
+    "20260929T031924Z"
+  ],
+  "manifest_sha256": "d850deae43556e2dcb69980cd3619b7013b428a66a7d5860a7310657fae17eb2",
+  "protected_reliability_sha256": "8219012d566fef3328aef3cde1a75842cd8927060dca1f89680af3284596f701",
+  "application_images_and_started_at_unchanged": [
+    {
+      "name": "/arborscan-api",
+      "image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "running": true
+    },
+    {
+      "name": "/arborscan-api-v4",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "started_at": "2026-10-06T13:35:21.059827568Z",
+      "running": true
+    },
+    {
+      "name": "/arborscan-quality-worker",
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "running": true
+    }
+  ],
+  "new_systemd_backup_run_or_sql_restore": false
+}

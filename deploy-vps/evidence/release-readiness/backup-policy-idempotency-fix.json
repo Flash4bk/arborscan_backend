@@ -1,0 +1,123 @@
+{
+  "task_id": "AS-14",
+  "recorded_at_utc": "2026-10-07T06:48:28.918816+00:00",
+  "concrete_defect": "Interrupted completion-metadata write after valid publication/rotation left missing/stale last-success.json after successful verified_existing retry",
+  "isolated_before_fix_reproduction": {
+    "full_copy_valid": true,
+    "complete_count": 14,
+    "create_calls": 1,
+    "retry_event": "verified_existing",
+    "last_success_exists": false
+  },
+  "new_source_sha256": "2aa70c5c6541ae2d76ac83f7a01c755186e24dd1408633a8c49ebac7c4a3b933",
+  "new_files": [
+    "deploy-vps/ops_backup_policy.py",
+    "tests_v4/test_ops_backup_policy.py"
+  ],
+  "tests": {
+    "windows_full_policy": {
+      "count": 27,
+      "seconds": 25.642,
+      "result": "passed"
+    },
+    "vps_linux_full_policy": {
+      "count": 27,
+      "seconds": 34.149,
+      "result": "passed"
+    }
+  },
+  "new_regressions": [
+    "publication metadata failure then repeat repairs record with no extra snapshot/deletion",
+    "stale record replaced for valid same-operation durable copy",
+    "same copy completion/verification time and rotation history preserved",
+    "future claimed verification time rejected"
+  ],
+  "copy_completed_at_source": "Existing COMPLETE file timestamp, never retry wall-clock",
+  "integrity_check_at_is_separate": true,
+  "active_operation_removed_only_after_durable_success_metadata": true,
+  "production_backup_tool_fix_installed": true,
+  "actual_existing_copy_replay_verified": true,
+  "new_full_backup_or_sql_restore_required": false,
+  "actual_successful_nightly_source_is_previous_policy": true,
+  "installation": {
+    "installed_at_utc": "2026-10-07T06:52:03.158933+00:00",
+    "source_sha256": "2aa70c5c6541ae2d76ac83f7a01c755186e24dd1408633a8c49ebac7c4a3b933",
+    "preimage": "/home/arborscan/ops-policy-before-20261007T065203Z/ops_backup_policy.py",
+    "previous_sha256": "fceb94e93aed32fdeea2e11dbe2c9a02842a798ed56266226e7436f16a105664",
+    "service_before": {
+      "MainPID": "0",
+      "ActiveState": "inactive"
+    },
+    "mode": "0600",
+    "backup_lock_held": true,
+    "scope": "ops_backup_policy.py only",
+    "production_api_db_restarted_or_changed": false
+  },
+  "actual_existing_copy_replay_evidence": "backup-policy-existing-replay.json",
+  "actual_existing_copy_replay": {
+    "task_id": "AS-14",
+    "observed_at_utc": "2026-10-07T07:01:14.854806+00:00",
+    "policy_sha256": "2aa70c5c6541ae2d76ac83f7a01c755186e24dd1408633a8c49ebac7c4a3b933",
+    "result": {
+      "event": "verified_existing",
+      "name": "20261006T195518Z",
+      "deleted": []
+    },
+    "seconds": 485.47,
+    "new_snapshot_calls": 0,
+    "new_complete_sets": 0,
+    "removed_complete_sets": 0,
+    "complete_sets_before_after": [
+      14,
+      14
+    ],
+    "complete_set_manifests_mtimes_sizes_unchanged": true,
+    "staging_files_unchanged": true,
+    "production_metadata_was_not_removed_or_fault_injected": true,
+    "completed_at_utc_from_actual_marker": "2026-10-07T03:29:58.851705+00:00",
+    "original_verified_at_utc_preserved": "2026-10-07T03:34:25.568252+00:00",
+    "last_integrity_check_at_utc": "2026-10-07T07:01:09.769468+00:00",
+    "last_success_retained_verified_sets": 14,
+    "previous_rotation_history_preserved": [
+      "20260929T031924Z"
+    ],
+    "manifest_sha256": "d850deae43556e2dcb69980cd3619b7013b428a66a7d5860a7310657fae17eb2",
+    "protected_reliability_sha256": "8219012d566fef3328aef3cde1a75842cd8927060dca1f89680af3284596f701",
+    "application_images_and_started_at_unchanged": [
+      {
+        "name": "/arborscan-api",
+        "image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+        "started_at": "2026-09-07T17:35:02.146108577Z",
+        "running": true
+      },
+      {
+        "name": "/arborscan-api-v4",
+        "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+        "started_at": "2026-10-06T13:35:21.059827568Z",
+        "running": true
+      },
+      {
+        "name": "/arborscan-quality-worker",
+        "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+        "started_at": "2026-09-29T21:03:49.935343028Z",
+        "running": true
+      }
+    ],
+    "new_systemd_backup_run_or_sql_restore": false
+  },
+  "post_replay_checks": {
+    "checked_at_utc": "2026-10-07T07:07:29.023862+00:00",
+    "installed_source_and_preimage_sha256_rechecked": true,
+    "installed_source_and_preimage_modes": "0600",
+    "service_inactive_mainpid0": true,
+    "service_result": "success",
+    "service_exit_status": 0,
+    "service_start_exit_unchanged": [
+      "2026-10-07T03:21:52Z",
+      "2026-10-07T03:34:25Z"
+    ],
+    "all_three_application_containers_running_and_docker_health_healthy": true,
+    "application_images_and_started_at_unchanged": true
+  },
+  "rollback_prepared_not_executed": "output/release-readiness/rollback_policy_prepared.sh"
+}

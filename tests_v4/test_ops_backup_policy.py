@@ -1,6 +1,8 @@
 """Destructive/interrupt/retention cases use only tiny isolated fixtures."""
 import hashlib
+import datetime as dt
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -70,6 +72,81 @@ class BackupPolicyTest(unittest.TestCase):
         kwargs.setdefault('operation_id', 'test-operation')
         return policy.run_backup(self.root, self.create, self.index,
                                  minimum_free=1, **kwargs)
+
+    def interrupted_completion(self, stale=False):
+        self.existing()
+        if stale:
+            old = self.root / '20260101T000003Z'
+            policy.atomic_json(self.root / 'last-success.json', {
+                'format':1, 'name':old.name, 'operation_id':'older-operation',
+                'manifest_sha256':policy.digest(old/'SHA256SUMS'),
+                'verified_at_utc':'2020-01-01T00:00:00+00:00',
+                'deleted':['19990101T000001Z']})
+        original=policy.atomic_json
+        def fail_record(path,value):
+            if Path(path).name=='last-success.json':
+                raise OSError('synthetic publication metadata interruption')
+            return original(path,value)
+        with patch.object(policy,'atomic_json',side_effect=fail_record),self.assertRaises(OSError):
+            self.run_backup(operation_id='completion-recovery')
+        active=json.loads((self.root/'active-backup.json').read_text())
+        folder=self.root/active['name']
+        # Only isolated fixture timestamps are changed. The replay must use the
+        # durable copy's completion time, not the current retry's wall clock.
+        os.utime(folder/'COMPLETE',(1_000_000_000,1_000_000_000))
+        manifests={p.name:policy.digest(p/'SHA256SUMS') for p in self.root.iterdir()
+                   if p.is_dir() and (p/'COMPLETE').exists()}
+        result=self.run_backup(operation_id='completion-recovery')
+        success=json.loads((self.root/'last-success.json').read_text())
+        self.assertEqual(result['event'],'verified_existing')
+        self.assertEqual(result['deleted'],[])
+        self.assertEqual(len(self.created),1)
+        self.assertEqual(manifests,{p.name:policy.digest(p/'SHA256SUMS') for p in self.root.iterdir()
+                                   if p.is_dir() and (p/'COMPLETE').exists()})
+        self.assertEqual(len(manifests),14)
+        self.assertFalse((self.root/'active-backup.json').exists())
+        self.assertEqual(success['name'],folder.name)
+        self.assertEqual(success['operation_id'],'completion-recovery')
+        self.assertEqual(success['manifest_sha256'],policy.digest(folder/'SHA256SUMS'))
+        completed=dt.datetime.fromtimestamp(1_000_000_000,dt.timezone.utc).isoformat()
+        self.assertEqual(success['completed_at_utc'],completed)
+        self.assertEqual(success['verified_at_utc'],completed)
+        self.assertEqual(success['retained_verified_sets'],14)
+        self.assertEqual(success['deleted'],[])  # Never inherit another operation's history.
+        self.assertGreater(dt.datetime.fromisoformat(success['last_integrity_check_at_utc']),
+                           dt.datetime.fromisoformat(completed))
+
+    def test_publication_record_failure_repaired_without_duplicate_or_more_rotation(self):
+        self.interrupted_completion()
+
+    def test_stale_completion_record_repaired_without_resnapshot(self):
+        self.interrupted_completion(stale=True)
+
+    def test_successful_retry_preserves_copy_time_and_original_rotation_history(self):
+        self.existing()
+        result=self.run_backup()
+        before=json.loads((self.root/'last-success.json').read_text())
+        replay=self.run_backup()
+        after=json.loads((self.root/'last-success.json').read_text())
+        self.assertEqual(replay['event'],'verified_existing')
+        self.assertEqual(replay['deleted'],[])
+        self.assertEqual(len(self.created),1)
+        for field in ('name','operation_id','completed_at_utc','verified_at_utc','manifest_sha256','deleted'):
+            self.assertEqual(after[field],before[field])
+        self.assertEqual(after['deleted'],result['deleted'])
+        self.assertEqual(after['retained_verified_sets'],14)
+
+    def test_future_verification_time_is_not_reused_as_fresh_backup_time(self):
+        self.existing()
+        result=self.run_backup()
+        before=json.loads((self.root/'last-success.json').read_text())
+        before['verified_at_utc']='9999-01-01T00:00:00+00:00'
+        policy.atomic_json(self.root/'last-success.json',before)
+        self.run_backup()
+        after=json.loads((self.root/'last-success.json').read_text())
+        self.assertEqual(after['verified_at_utc'],after['completed_at_utc'])
+        self.assertEqual(after['deleted'],result['deleted'])
+        self.assertEqual(len(self.created),1)
 
     def test_fourteen_then_full_new_backup_then_rotation_and_idempotent_repeat(self):
         before = self.existing()

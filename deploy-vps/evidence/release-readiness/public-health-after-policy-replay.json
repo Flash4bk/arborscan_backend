@@ -1,0 +1,30 @@
+{
+  "checked_at_utc": "2026-10-07T07:07:36.265447+00:00",
+  "tls_verification_enabled": true,
+  "authorization_headers_sent": false,
+  "scope": "After backup-policy metadata replay; no application restart",
+  "results": [
+    {
+      "path": "/api/v3/health",
+      "http_status": 200,
+      "seconds": 7.659,
+      "status": "ok"
+    },
+    {
+      "path": "/api/v4/health",
+      "http_status": 200,
+      "seconds": 0.688,
+      "status": "ok"
+    },
+    {
+      "path": "/api/v4/v4/corrections",
+      "http_status": 401,
+      "seconds": 1.256
+    },
+    {
+      "path": "/api/v4/v4/reports",
+      "http_status": 401,
+      "seconds": 0.686
+    }
+  ]
+}

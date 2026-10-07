@@ -323,6 +323,40 @@ def write_manifest(folder):
     (Path(folder) / 'SHA256SUMS').write_text(''.join(rows), encoding='utf-8')
 
 
+def record_success(root, name, operation_id, checked, deleted, proposal, replayed=False):
+    """Repair durable completion metadata without making old data look fresh."""
+    root = Path(root)
+    completed = dt.datetime.fromtimestamp((root / name / 'COMPLETE').stat().st_mtime,
+                                         dt.timezone.utc)
+    now = dt.datetime.now(dt.timezone.utc)
+    previous = read_json(root / 'last-success.json', {})
+    same = (previous.get('format') == 1 and previous.get('name') == name and
+            previous.get('operation_id') == operation_id and
+            previous.get('manifest_sha256') == checked['manifest_sha256'])
+    verified_at = now.isoformat()
+    if replayed:
+        # After an interrupted publish the only durable completion time may be
+        # the existing marker. Never substitute the later retry time for it.
+        verified_at = completed.isoformat()
+        if same:
+            try:
+                prior = dt.datetime.fromisoformat(previous['verified_at_utc'])
+                if prior.tzinfo is not None and completed <= prior <= now:
+                    verified_at = previous['verified_at_utc']
+            except (KeyError, TypeError, ValueError):
+                pass
+    history = previous.get('deleted', []) if same else []
+    if not isinstance(history, list) or any(not isinstance(n, str) or not NAME.fullmatch(n) for n in history):
+        history = []
+    atomic_json(root / 'last-success.json', {
+        'format': 1, 'name': name, 'operation_id': operation_id,
+        'completed_at_utc': completed.isoformat(), 'verified_at_utc': verified_at,
+        'last_integrity_check_at_utc': now.isoformat(),
+        'manifest_sha256': checked['manifest_sha256'],
+        'retained_verified_sets': proposal['verified_sets'] - len(deleted),
+        'deleted': list(dict.fromkeys([*history, *deleted]))})
+
+
 def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shutil.disk_usage,
                retain=RETENTION, minimum_free=MIN_FREE):
     root = Path(root)
@@ -346,10 +380,11 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
                 continue
             marker = read_json(root / row['name'] / 'AUTO_BACKUP.json', {})
             if marker.get('operation_id') == operation_id:
-                verify_set(root / row['name'], require_native=True, require_runtime=True)
+                checked = verify_set(root / row['name'], require_native=True, require_runtime=True)
                 proposal = plan(root, live, retain, row['name'])
                 atomic_json(root / 'rotation-dry-run.json', proposal)
                 deleted = rotate(root, proposal, row['name'], live)
+                record_success(root, row['name'], operation_id, checked, deleted, proposal, replayed=True)
                 if active.get('name') == row['name']:
                     active_path.unlink(missing_ok=True)
                 return {'event': 'verified_existing', 'name': row['name'], 'deleted': deleted}
@@ -392,10 +427,8 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
         proposal = plan(root, live, retain, name)
         atomic_json(root / 'rotation-dry-run.json', proposal)
         deleted = rotate(root, proposal, name, live)
+        record_success(root, name, operation_id, checked, deleted, proposal)
         active_path.unlink(missing_ok=True)
-        atomic_json(root / 'last-success.json', {'format': 1, 'name': name,
-                    'operation_id': operation_id, 'verified_at_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
-                    'manifest_sha256': checked['manifest_sha256'], 'deleted': deleted})
         return {'event': 'completed_verified', 'name': name, 'deleted': deleted}
 
 

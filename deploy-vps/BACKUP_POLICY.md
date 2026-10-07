@@ -21,6 +21,19 @@ rotation from the covered operation marker, without a second completed set.
 Failed attempts are retained privately for diagnosis; they do not count as
 successful copies and the free-space guard bounds further creation.
 
+`last-success.json` is written atomically **after verified publication/rotation
+and before removing the active-operation marker**. Repeating an already completed
+operation verifies its durable set and repairs missing or stale success metadata;
+it never needs another snapshot. `completed_at_utc` comes from the existing
+COMPLETE file timestamp, not from the time of that retry. For the same manifest
+and operation, an earlier valid `verified_at_utc` and rotation history are retained.
+If no trustworthy prior record exists, the verification-time fallback is the
+actual completion time. The separate `last_integrity_check_at_utc` records the
+current recheck, and `retained_verified_sets` records the verified count after
+rotation. Rechecking old data therefore does not make its backup age look fresh.
+Success metadata is outside the snapshot manifest; this change does not modify
+the native PostgreSQL dump or stored application data.
+
 The create stage reads application tables/Storage using the existing bounded
 read retries, checks an offline file restore and report links, records v3/v4/worker
 and every real Compose source, copies local model/runtime files and configuration,
@@ -94,3 +107,26 @@ concurrent locking, pinned/manual/live sources, runtime base dependencies, missi
 runtime archives, adoption, path traversal/symlinks and freshness diagnostics in
 isolated temporary fixtures. Linux fcntl/shell execution and real service/timer
 observations must be recorded separately from Windows tests.
+
+The final policy suite contains **27 tests**, including interrupted success-record
+publication followed by a repair without another snapshot/deletion, stale-record
+repair, preserved completion/verification timestamps and rotation history, and
+rejection of a future claimed verification time. On 07.10.2026 these passed on
+Windows (25.642s) and VPS Linux (34.149s). The real automatic systemd run on that
+date used the preceding policy source; the later metadata fix is checked by a
+separate `verified_existing` operation, not reported as another systemd run.
+Exact installed hashes, preimages and actual VPS outcomes are in
+`evidence/release-readiness/backup-policy-idempotency-fix.json` and
+`evidence/release-readiness/service-result.json`.
+
+On 07.10.2026 the metadata policy was installed under `backup.lock` with the
+service inactive; its previous source is preserved privately. The actual
+`daily-2026-10-06` replay returned `verified_existing` with zero snapshot calls,
+zero deletions and **14→14** completed sets. Every set's manifest, COMPLETE
+timestamp, file count and size, plus staging files, remained unchanged. The
+03:29:58 UTC completion marker and original 03:34:25 UTC verification time were
+preserved; only the separate 07:01:09 UTC integrity recheck was recorded. Actual
+source/preimage hashes were rechecked and v3/v4/worker remained running and
+healthy with their preceding image IDs and start times. See
+`evidence/release-readiness/backup-policy-existing-replay.json`. This was not a
+new full backup, PostgreSQL restore or systemd-service execution.

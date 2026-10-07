@@ -110,5 +110,10 @@
   "actual_systemd_elapsed_seconds": 753,
   "manual_retry_command_was_needed": false,
   "completion_trigger": "automatic existing systemd timer",
-  "current_compose_source_digests_match_all_running_container_labels": true
+  "current_compose_source_digests_match_all_running_container_labels": true,
+  "actual_nightly_backup_tool_sources": {
+    "ops_backup_policy.py": "fceb94e93aed32fdeea2e11dbe2c9a02842a798ed56266226e7436f16a105664",
+    "ops_snapshot.py": "5b5c90e989cce11c1ac1eed4a1d015fe811735be42770ac471b385b18b33efde"
+  },
+  "later_idempotency_metadata_fix_was_not_in_this_run": true
 }
