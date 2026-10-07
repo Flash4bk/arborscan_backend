@@ -227,7 +227,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
       await _guard();
       await _save();
     } catch (e) {
-      if (mounted) _error = '$e';
+      if (mounted && !_invalid) _error = '$e';
     } finally {
       if (mounted) setState(() => _busy = false);
     }

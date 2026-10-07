@@ -5,6 +5,7 @@ import 'package:arborscan_app/analyze_page.dart';
 import 'package:arborscan_app/app_theme.dart';
 import 'package:arborscan_app/contour_drafts.dart';
 import 'package:arborscan_app/contour_editor_state.dart';
+import 'package:arborscan_app/corrections_service.dart';
 import 'package:arborscan_app/reference_measurement.dart';
 import 'package:arborscan_app/reference_measurement_page.dart';
 import 'package:crypto/crypto.dart';
@@ -50,6 +51,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.runAsync(() => tester.tap(find.text(text).first));
     await settle(tester);
+  }
+
+  Future<void> switchAccount(WidgetTester tester) async {
+    await tester.runAsync(() async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('arborscan_auth_token', 'synthetic-gallery-other');
+      await prefs.setString(
+          'arborscan_user_id', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+      CorrectionsService.authChanges.value++;
+    });
+    await tester.pump();
   }
 
   testWidgets('missing gallery never starts plugin and retry is available',
@@ -145,6 +157,90 @@ void main() {
     expect(find.text('Связано с этим фото'), findsOneWidget);
     final image = tester.widget<Image>(find.byType(Image).first);
     expect((image.image as FileImage).file.path, photo.path);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('late gallery error cannot overwrite the next account UI',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final pending = Completer<bool>();
+    var availabilityCalls = 0;
+    var pickerCalls = 0;
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(availability, (_) {
+      availabilityCalls++;
+      return availabilityCalls == 1 ? pending.future : Future.value(false);
+    });
+    messenger.setMockMethodCallHandler(picker, (_) async {
+      pickerCalls++;
+      return null;
+    });
+    await tester.pumpWidget(
+        MaterialApp(theme: AppTheme.light(), home: const ArborScanPage()));
+    await tester.tap(find.text('Галерея'));
+    await tester.pump();
+    expect(availabilityCalls, 1);
+    await switchAccount(tester);
+    pending.complete(false);
+    await settle(tester);
+    expect(find.textContaining(_unavailable), findsNothing);
+    expect(pickerCalls, 0);
+    // The new account can retry; ignoring A's failure must not keep busy set.
+    await tap(tester, 'Галерея');
+    expect(availabilityCalls, 2);
+    expect(find.textContaining(_unavailable), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('arborscan_auth_token'), 'synthetic-gallery-other');
+    expect(prefs.getString('arborscan_user_id'),
+        'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('late reference gallery error preserves session invalidation',
+      (tester) async {
+    final folder = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('gallery-owner-switch-')))!;
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(() => folder.delete(recursive: true));
+    });
+    final pending = Completer<bool>();
+    var availabilityCalls = 0;
+    var pickerCalls = 0;
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(availability, (_) {
+      availabilityCalls++;
+      return pending.future;
+    });
+    messenger.setMockMethodCallHandler(picker, (_) async {
+      pickerCalls++;
+      return null;
+    });
+    await tester.runAsync(() => tester.pumpWidget(MaterialApp(
+        theme: AppTheme.light(),
+        home: ReferenceMeasurementPage(
+            drafts: ContourDrafts(directory: () async => folder)))));
+    await settle(tester);
+    await tester.runAsync(() => tester.tap(find.text('Выбрать фото')));
+    await settle(tester);
+    expect(availabilityCalls, 1);
+    await switchAccount(tester);
+    const invalidation = 'Аккаунт изменился. Откройте экран заново.';
+    expect(find.text(invalidation), findsOneWidget);
+    pending.complete(false);
+    await settle(tester);
+    expect(find.text(invalidation), findsOneWidget);
+    expect(find.textContaining(_unavailable), findsNothing);
+    expect(find.text('Выбрать фото'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(pickerCalls, 0);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('arborscan_auth_token'), 'synthetic-gallery-other');
+    expect(prefs.getString('arborscan_user_id'),
+        'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
     expect(tester.takeException(), isNull);
   });
 

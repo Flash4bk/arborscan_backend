@@ -118,7 +118,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
       });
       _environment.setPoint(surveyPointFromExif(original));
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || authGeneration != CorrectionsService.authChanges.value) {
+        return;
+      }
       setState(() => _error = 'Не удалось выбрать изображение: $e');
     } finally {
       if (mounted) setState(() => _pickingImage = false);
