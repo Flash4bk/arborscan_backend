@@ -1,0 +1,29 @@
+{
+  "checked_at_utc": "2026-10-07T10:29:43Z",
+  "published_implementation_commit": "23e904f23cdfa8e4f0efc9b7250903bd0abeab84",
+  "previous_origin_main": "946a632ce6c57232cea16119ae28e3a8adea08b7",
+  "remote_heads_verified_by_git_ls_remote": {
+    "main": "23e904f23cdfa8e4f0efc9b7250903bd0abeab84",
+    "codex/release-readiness": "23e904f23cdfa8e4f0efc9b7250903bd0abeab84"
+  },
+  "main_update": "fast-forward",
+  "force_push_or_reset": false,
+  "protection_read_before_push": {
+    "branch_http_status": 200,
+    "main_protected": false,
+    "rulesets_http_status": 200,
+    "rulesets_count": 0,
+    "branch_rules_http_status": 200,
+    "branch_rules_count": 0
+  },
+  "clean_worktree_after_push": true,
+  "app_source_commit": "1cf6ce3eaf8ae4bb7552b28c0cba0952294fb441",
+  "app_source_diff_to_published_commit_empty": true,
+  "apk_version_code": 18,
+  "apk_sha256_rechecked": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+  "only_agent_instrumentation_package_removed_after_checks": true,
+  "application_data_cleared": false,
+  "public_release_tag_or_store_created": false,
+  "production_application_updated": false,
+  "qualification": "This evidence verifies the implementation commit before the following documentation-only commit; its descendant publication is checked separately at turn completion."
+}

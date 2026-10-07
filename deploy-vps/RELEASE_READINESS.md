@@ -337,4 +337,16 @@ dedicated key и проверенным known_hosts; новый host/HTTPS recov
 APK, key material, конфигурация с секретами, private raw evidence и дампы не
 включены в Git. Проверенная подготовка independent receiver сохраняет статус
 «подготовлено», даже после разрешённой интеграции в main. Отдельный публичный
-release/tag/store не создаётся. Факт публикации Git фиксируется после push.
+release/tag/store не создаётся.
+
+**Публикация выполнена07.10 около10:29UTC**: `codex/release-readiness` и `main`
+обычным push доведены до `23e904f23cdfa8e4f0efc9b7250903bd0abeab84`, обе ссылки
+проверены через `git ls-remote`. Main обновлён только fast-forward от946a632.
+До операции GitHub API подтвердил main protected=false,0rulesets/0branch rules;
+обход защиты, reset, force и удаление пользовательских изменений не применялись.
+Следующий документирующий коммит закрепляет этот результат и APK не меняет:
+`git diff1cf6ce3..HEAD -- arborscan_app` пуст, точный APK SHA перепроверен.
+Исходный D-checkout остаётся в beta-dynamics с прежними пользовательскими PDF.
+После проверок удалён только созданный агентом instrumentation package
+`com.example.arborscan_app.test` с S24/AVD; основное приложение и данные сохранены.
+[Проверка публикации](evidence/release-readiness/publication-verified.json).
