@@ -16,6 +16,7 @@ import 'reference_measurement_page.dart';
 import 'survey_environment.dart';
 import 'survey_environment_ui.dart';
 import 'corrections_service.dart';
+import 'image_selection_service.dart';
 import 'package:crypto/crypto.dart';
 
 class ArborScanPage extends StatefulWidget {
@@ -30,7 +31,7 @@ class ArborScanPage extends StatefulWidget {
 class _ArborScanPageState extends State<ArborScanPage> {
   static const String _historyKey = 'arborscan_history';
 
-  final ImagePicker _picker = ImagePicker();
+  final _imageSelection = ImageSelectionService();
   final _environment = SurveyEnvironmentController();
   Uint8List? _original;
   @override
@@ -76,9 +77,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
     final authGeneration = CorrectionsService.authChanges.value;
     setState(() => _pickingImage = true);
     try {
-      final picked = await _picker.pickImage(
-        source: source,
-      );
+      final picked = await _imageSelection.pick(source);
       if (picked == null ||
           !mounted ||
           authGeneration != CorrectionsService.authChanges.value) {

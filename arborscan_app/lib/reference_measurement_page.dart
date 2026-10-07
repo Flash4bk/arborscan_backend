@@ -19,6 +19,7 @@ import 'report_export_button.dart';
 import 'report_export_data.dart';
 import 'survey_environment.dart';
 import 'survey_environment_ui.dart';
+import 'image_selection_service.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -235,7 +236,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   Future<void> _pick() async {
     final bytes = widget.pickPhoto != null
         ? await widget.pickPhoto!()
-        : await (await ImagePicker().pickImage(source: ImageSource.gallery))
+        : await (await ImageSelectionService().pick(ImageSource.gallery))
             ?.readAsBytes();
     if (bytes == null) return;
     final size = await referenceImageSize(bytes);

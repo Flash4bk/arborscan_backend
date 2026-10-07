@@ -7,6 +7,13 @@
 
     <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
     <application
         android:label="ArborScan"
         android:name="${applicationName}"

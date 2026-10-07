@@ -14,11 +14,13 @@ void main() {
         (tester) async {
       SharedPreferences.setMockInitialValues({});
       const picker = MethodChannel('plugins.flutter.io/image_picker');
+      const availability = MethodChannel('arborscan/image_selection');
       const ar = MethodChannel('arborscan/ar_measure');
       final photo = File('test/fixtures/reference_exif6.jpg').absolute.path;
       final messenger = tester.binding.defaultBinaryMessenger;
       var arCalls = 0;
       messenger.setMockMethodCallHandler(picker, (_) async => photo);
+      messenger.setMockMethodCallHandler(availability, (_) async => true);
       messenger.setMockMethodCallHandler(ar, (_) async {
         arCalls++;
         if (unavailable) {
@@ -31,6 +33,7 @@ void main() {
       });
       addTearDown(() {
         messenger.setMockMethodCallHandler(picker, null);
+        messenger.setMockMethodCallHandler(availability, null);
         messenger.setMockMethodCallHandler(ar, null);
       });
       await tester.pumpWidget(

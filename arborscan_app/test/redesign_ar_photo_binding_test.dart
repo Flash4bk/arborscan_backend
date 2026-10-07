@@ -24,6 +24,7 @@ const arFixture = <String, dynamic>{
 
 void main() {
   const picker = MethodChannel('plugins.flutter.io/image_picker');
+  const availability = MethodChannel('arborscan/image_selection');
   const ar = MethodChannel('arborscan/ar_measure');
   final photo = File('test/fixtures/reference_exif6.jpg').absolute;
 
@@ -51,9 +52,11 @@ void main() {
     });
     final messenger = tester.binding.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(picker, (_) async => photo.path);
+    messenger.setMockMethodCallHandler(availability, (_) async => true);
     messenger.setMockMethodCallHandler(ar, arHandler ?? (_) async => arFixture);
     addTearDown(() {
       messenger.setMockMethodCallHandler(picker, null);
+      messenger.setMockMethodCallHandler(availability, null);
       messenger.setMockMethodCallHandler(ar, null);
     });
     await tester.pumpWidget(MaterialApp(

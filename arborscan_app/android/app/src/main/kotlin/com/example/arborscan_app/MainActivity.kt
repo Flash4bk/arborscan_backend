@@ -18,6 +18,21 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "arborscan/report_export")
             .setMethodCallHandler { call, result -> reportExport.handle(call, result) }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "arborscan/image_selection")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "canPickGalleryImage" -> {
+                        // Matches locked image_picker_android's default gallery
+                        // intent. No SDK-version proxy for PhotoPicker support.
+                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "image/*"
+                        }
+                        result.success(intent.resolveActivity(packageManager) != null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
