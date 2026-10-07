@@ -2,7 +2,7 @@ name: arborscan_app
 description: ArborScan mobile application
 publish_to: 'none'
 
-version: 1.3.0+17
+version: 1.3.0+18
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -41,6 +41,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/certificates/isrg-root-x1.pem
     - assets/fonts/
     - assets/lottie/
     - assets/icons/

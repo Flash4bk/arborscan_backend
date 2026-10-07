@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'app_root.dart';
 import 'app_theme.dart';
 import 'splash_screen_new.dart';
+import 'platform_tls_trust.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializePlatformTlsTrust();
   runApp(const ArborScanApp());
 }
 
