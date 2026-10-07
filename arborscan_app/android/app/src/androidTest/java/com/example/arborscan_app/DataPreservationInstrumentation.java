@@ -3,6 +3,10 @@ package com.example.arborscan_app;
 import android.app.Instrumentation;
 import android.app.Activity;
 import android.os.Bundle;
+import android.os.Build;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
@@ -37,9 +41,19 @@ public final class DataPreservationInstrumentation extends Instrumentation {
         try {
             File root=getTargetContext().getDataDir();
             JSONObject inventory=new JSONObject();
-            for (String name:new String[]{"files","shared_prefs","app_flutter","no_backup"})
+            for (String name:new String[]{"files","shared_prefs","app_flutter","no_backup","databases"})
                 collect(root,new File(root,name),inventory);
             result.putString("inventory",inventory.toString());
+            PackageManager manager=getTargetContext().getPackageManager();
+            PackageInfo info=manager.getPackageInfo(getTargetContext().getPackageName(),
+                Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES);
+            Signature[] effective=Build.VERSION.SDK_INT >= 28 ? info.signingInfo.getApkContentsSigners() : info.signatures;
+            if (effective.length != 1) throw new IllegalStateException("Unexpected installed signer count");
+            byte[] certificate=MessageDigest.getInstance("SHA-256").digest(effective[0].toByteArray());
+            StringBuilder signer=new StringBuilder();
+            for (byte b:certificate) signer.append(String.format("%02x",b & 255));
+            result.putString("certificate_sha256",signer.toString());
+            result.putInt("installed_sdk",Build.VERSION.SDK_INT);
             result.putString("scope","Private SHA inventory only; no file contents or credentials");
             finish(Activity.RESULT_OK,result);
         } catch (Exception error) {

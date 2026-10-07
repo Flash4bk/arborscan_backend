@@ -1,0 +1,70 @@
+{
+  "status": "recovered_private_signing_material",
+  "files_recovered": 4,
+  "escrow_sha256": "213dfcf38ce63605adf1c95cd7909c2cf024beeaef7c5996e40fb6513b0250b4",
+  "existing_keys_replaced": false,
+  "certificate_verified": true,
+  "apk_signed": true,
+  "downloaded_from_independent_host": "existing VPS via verified SSH; separate from build PC",
+  "key_material_matches": true,
+  "sdk_matrix": [
+    {
+      "min_sdk": 24,
+      "max_sdk": 27,
+      "signer_role": "old",
+      "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+      "schemes": {
+        "v1": false,
+        "v2": true,
+        "v3": false,
+        "v3.1": false,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 28,
+      "max_sdk": 32,
+      "signer_role": "old",
+      "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": false,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 33,
+      "max_sdk": 33,
+      "signer_role": "new",
+      "sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": true,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 36,
+      "max_sdk": 36,
+      "signer_role": "new",
+      "sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": true,
+        "v4": false
+      }
+    }
+  ],
+  "validation_apk_sha256": "08eba2754ea14febab83235fc66752abd88e13c14d47f131fb4638df2276ae5b",
+  "private_key_values_recorded": false
+}

@@ -111,3 +111,95 @@ python -m unittest tests_v4.test_ops_android_signing -v
 Тесты используют синтетический SDK output для отказов, изоляции приватных
 материалов, публикации и совместимости. Реальные APK, Android/Keystore,
 обновление данных, offline/reconnect и системные диалоги — отдельные доказательства.
+
+## Восстановление ключей после потери Windows-ПК
+
+Публичный `ops_signing_key_recovery.py` не зависит от прежнего private helper на D.
+Для восстановления нужны приватные **оба** файла с независимой копии:
+`key-backup.aesgcm` и `recovery-secret.private`. Их значения не печатать и не
+передавать в аргументах. Доступ к VPS через существующий SSH/консоль хостинга
+необходимо сохранить отдельно; наличие копии не восстанавливает утраченные
+реквизиты доступа к самому хостингу.
+
+На другом Windows-ПК создать новый закрытый каталог, не Git checkout:
+
+```powershell
+$signingRecoveryRoot = 'D:\ArborScanSigningRecovery'
+if (Test-Path -LiteralPath $signingRecoveryRoot) { throw 'Выберите новый каталог восстановления' }
+New-Item -ItemType Directory -Path $signingRecoveryRoot | Out-Null
+$signingRecoverySid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+icacls $signingRecoveryRoot /inheritance:r /grant:r "*$($signingRecoverySid):(OI)(CI)F" '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F'
+if ($LASTEXITCODE -ne 0) { throw 'Приватный ACL не установлен' }
+scp -o StrictHostKeyChecking=yes arborscan@31.57.170.88:/home/arborscan/signing-private/key-backup.aesgcm "$signingRecoveryRoot\key-backup.aesgcm"
+scp -o StrictHostKeyChecking=yes arborscan@31.57.170.88:/home/arborscan/signing-private/recovery-secret.private "$signingRecoveryRoot\recovery-secret.private"
+py -3 -m venv "$signingRecoveryRoot\venv"
+& "$signingRecoveryRoot\venv\Scripts\python.exe" -m pip install 'cryptography==50.0.1'
+& "$signingRecoveryRoot\venv\Scripts\python.exe" deploy-vps/ops_signing_key_recovery.py --escrow "$signingRecoveryRoot\key-backup.aesgcm" --recovery-secret-file "$signingRecoveryRoot\recovery-secret.private" --destination "$signingRecoveryRoot\restored"
+```
+
+Последнюю команду выполнять из проверенного checkout с этим публичным инструментом;
+само содержимое ключей хранится вне checkout. SSH host key проверить обычным доверенным
+способом, не отключать `StrictHostKeyChecking`. Каждый неуспешный этап останавливать;
+не продолжать после ошибки SCP/установки зависимости. Для Windows требуется рабочий
+PowerShell ACL reader: используется установленный `pwsh`, иначе Windows PowerShell.
+Отсутствующий native ACL module даёт отказ, а не отключает проверку.
+
+На Linux аналогичная команда использует абсолютные приватные пути, файлы mode600
+и существующий закрытый parent mode700. Поддерживается атомарный `renameat2`
+NOREPLACE. Нужен Python3.11+ и isolated `cryptography`; новая системная установка
+или сервер PostgreSQL для этой процедуры не требуются.
+
+Контракт escrow: prefix `ARBORSCAN-KEYS-1\n`, nonce12, AES-256-GCM с AAD
+`ArborScan signing material v1`. Восстановление требует ровно четыре regular файла:
+`release.p12`, `legacy-debug.keystore`, `signing.lineage`, `credentials.private.json`.
+JSON содержит только непустой строковый `release_password`. Лимиты: uncompressed
+tar4MiB, отдельный member1MiB, credentials64KiB, secret file1KiB. Аутентификация,
+полнота/структура/JSON и фактические SHA staged-файлов проверяются до публикации.
+Links/junctions/traversal, duplicate/unexpected/missing members, скрытые trailing
+данные, публичные ACL и расположение в Git отклоняются. На Windows ACL допускает
+только текущего владельца, SYSTEM/Administrators и OWNER RIGHTS при проверенном
+владельце; [значение OWNER RIGHTS определено Microsoft](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-special-identities-groups).
+
+Публикация атомарная и не заменяет даже пустой существующий destination. При обычной
+ошибке удаляется только staging текущей операции; после жёсткого выключения оставшийся
+staging приватен, не считается завершённым и автоматически не удаляется чужой операцией.
+Повтор после успешного восстановления требует нового destination. Исходные encrypted
+копии и прежние ключи не изменяются. Пароль из recovered JSON перенести приватно в
+password-file/env для signing config с новыми путями; не печатать его через `type`,
+`cat`, `echo` или в аргументах `keytool/apksigner`.
+
+Успешная расшифровка не является проверкой сертификата. Затем сверить публичные
+отпечатки с release evidence и выполнить проверку подписи validation APK через
+`ops_android_signing.py` с восстановленным ключом/lineage. Фактическое восстановление
+реальных материалов и подпись фиксируются отдельно основным отчётом, а не выводятся
+из тестовых fixtures.
+
+Программная проверка использует новые AES keys, PKCS12 test-certificate и архивы;
+реальные ArborScan ключи/пароли не читаются:
+
+```powershell
+python -m unittest tests_v4.test_ops_signing_key_recovery -v
+```
+
+Финальный module SHA `45a0a996b9a4a14e2682bd0a57876a1b6c65853dc763b4eb58a90ddf9343bf8f`:
+generated recovery **23/23 на Windows за222,369с** (bundled Python/cryptography50.0.1,
+настоящие private ACL, symlinks, конкуренция и no-replace) и **23/23 на Linux за1,808с**
+(VPS host/cryptography41.0.7, отдельные private fixture каталоги, POSIX и renameat2).
+Последнее изменение обрабатывает слишком глубокий JSON безопасным отказом;
+содержимое действующего escrow не меняется. [Windows вывод](evidence/release-readiness/key-recovery-windows.txt),
+[Linux вывод](evidence/release-readiness/key-recovery-linux.txt).
+
+Последний outer-LF regression отдельно прошёл **1/1 за0,019с** в изолированном
+image034a9d, `--network none`, read-only source/rootfs, tmpfs4GiB;
+[вывод](evidence/release-readiness/outer-lf-linux-final.txt). Первый маленький tmpfs32MiB
+корректно отказал по настоящему2GiB free-space guard; guard не ослаблялся.
+Generated fixtures не являются восстановлением реальных ключей. Агент отдельно
+получил real escrow с VPS через проверенный SSH, восстановил четыре материала в новый
+private каталог, сравнил содержимое и выполнил подпись/проверку validation APK.
+Публичный новый certificate SHA256 —
+`7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8`;
+результат этого отдельного действия находится в `key-recovery-tool-actual.json`
+основного release evidence. Сам recovery CLI сохраняет `certificate_verified=false`:
+положительный результат относится к последующей реальной проверке apksigner.
+Эта копия ключей независима от build-PC, но не является внешним backup production
+сервера, отдельной новой VM или проверкой TLS на новом хосте.
