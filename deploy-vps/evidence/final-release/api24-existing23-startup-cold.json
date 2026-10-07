@@ -1,0 +1,8 @@
+{
+  "environment": "Existing representative DEMO API24 after22to23 plus repeat",
+  "actual_sdk": 24,
+  "version_code": 23,
+  "first_actual_home_visible": true,
+  "force_stop_cold_restart_actual_home_visible": true,
+  "S24_or_oldinvalid_AVDs_touched": false
+}

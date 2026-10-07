@@ -1,0 +1,23 @@
+--------- beginning of crash
+
+E/AndroidRuntime( 1852): FATAL EXCEPTION: pool-2-thread-1
+
+E/AndroidRuntime( 1852): Process: com.example.arborscan_app, PID: 1852
+
+E/AndroidRuntime( 1852): java.lang.IllegalStateException: Reply already submitted
+
+E/AndroidRuntime( 1852): 	at p2.f.a(SourceFile:32)
+
+E/AndroidRuntime( 1852): 	at i0.c.o(SourceFile:26)
+
+E/AndroidRuntime( 1852): 	at E2.A.f(SourceFile:38)
+
+E/AndroidRuntime( 1852): 	at G2.h.f(SourceFile:42)
+
+E/AndroidRuntime( 1852): 	at G2.b.run(SourceFile:208)
+
+E/AndroidRuntime( 1852): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)
+
+E/AndroidRuntime( 1852): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)
+
+E/AndroidRuntime( 1852): 	at java.lang.Thread.run(Thread.java:1012)

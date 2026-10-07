@@ -1,0 +1,19 @@
+{
+  "environment": "Actual clean API36 Google Play AVD, declaredGLES3.0",
+  "version_code": 22,
+  "apk_sha256": "65835130dfd35e36460ebcdde8f1c5d85761c3b256845e21611f3c07007ea87f",
+  "normal_system_photo_picker_and_synthetic_photo_selected": true,
+  "ARCore_absent_before_attempt": true,
+  "camera_permission_granted_only_this_time_in_lab": true,
+  "real_ARCore_installer_UI_reached": true,
+  "system_BACK_cancel_performed": true,
+  "returned_to_MainActivity_with_same_process": true,
+  "photo_region_pixels_identical_after_cancel": true,
+  "ARCore_present_after_cancel": false,
+  "new_app_fatal_or_ANR": false,
+  "AR_tracking_or_field_accuracy_verified": false,
+  "S24_or_existing_AVD_touched": false,
+  "installer_text_confirmation_source": "Actual UI XML asserted Installing Google Play Services for AR; raw XML private",
+  "installer_screenshot22_phase": "White transition frame; installer text not visually visible",
+  "installer_text_visually_visible_in_screenshot22": false
+}

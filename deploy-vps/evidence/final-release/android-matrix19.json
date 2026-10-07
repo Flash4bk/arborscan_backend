@@ -1,0 +1,286 @@
+{
+  "format": 1,
+  "scope": "AS-16 actual APK19 Android matrix; intermediate candidate before renderer guard",
+  "source_commit": "91f17b5b936fba48ad297a2848eea1761757b785",
+  "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+  "performed_by": "agent",
+  "user_acceptance_claimed": false,
+  "updates": [
+    {
+      "format": 1,
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 24,
+      "serial": "emulator-5586",
+      "operation": "18 to candidate overlay",
+      "before_package": {
+        "version_code": 18,
+        "version_name": "1.3.0-readiness.1cf6ce3",
+        "debuggable": false
+      },
+      "after_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "before_certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "after_certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+      "scope": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "comparison": {
+        "before_files": 73,
+        "after_files": 73,
+        "identical_files": 73,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      },
+      "before_any_UI_launch": true,
+      "S24_touched": false,
+      "data_cleared_or_app_uninstalled": false
+    },
+    {
+      "format": 1,
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 24,
+      "serial": "emulator-5586",
+      "operation": "same APK -r",
+      "before_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "after_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "before_certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "after_certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+      "scope": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "comparison": {
+        "before_files": 73,
+        "after_files": 73,
+        "identical_files": 73,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      },
+      "before_any_UI_launch": true,
+      "S24_touched": false,
+      "data_cleared_or_app_uninstalled": false
+    },
+    {
+      "format": 1,
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 33,
+      "serial": "emulator-5584",
+      "operation": "18 to candidate overlay",
+      "before_package": {
+        "version_code": 18,
+        "version_name": "1.3.0-readiness.1cf6ce3",
+        "debuggable": false
+      },
+      "after_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "before_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "after_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+      "scope": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "comparison": {
+        "before_files": 73,
+        "after_files": 73,
+        "identical_files": 73,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      },
+      "before_any_UI_launch": true,
+      "S24_touched": false,
+      "data_cleared_or_app_uninstalled": false
+    },
+    {
+      "format": 1,
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 33,
+      "serial": "emulator-5584",
+      "operation": "same APK -r",
+      "before_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "after_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "before_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "after_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+      "scope": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "comparison": {
+        "before_files": 73,
+        "after_files": 73,
+        "identical_files": 73,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      },
+      "before_any_UI_launch": true,
+      "S24_touched": false,
+      "data_cleared_or_app_uninstalled": false
+    },
+    {
+      "format": 1,
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 36,
+      "serial": "emulator-5582",
+      "operation": "18 to candidate overlay",
+      "before_package": {
+        "version_code": 18,
+        "version_name": "1.3.0-readiness.1cf6ce3",
+        "debuggable": false
+      },
+      "after_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "before_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "after_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+      "scope": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "comparison": {
+        "before_files": 71,
+        "after_files": 71,
+        "identical_files": 71,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      },
+      "before_any_UI_launch": true,
+      "S24_touched": false,
+      "data_cleared_or_app_uninstalled": false
+    },
+    {
+      "format": 1,
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 36,
+      "serial": "emulator-5582",
+      "operation": "same APK -r",
+      "before_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "after_package": {
+        "version_code": 19,
+        "version_name": "1.3.0",
+        "debuggable": false
+      },
+      "before_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "after_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+      "scope": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "comparison": {
+        "before_files": 71,
+        "after_files": 71,
+        "identical_files": 71,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      },
+      "before_any_UI_launch": true,
+      "S24_touched": false,
+      "data_cleared_or_app_uninstalled": false
+    }
+  ],
+  "clean_api24_install": {
+    "format": 1,
+    "environment": "New isolated clean AVD",
+    "actual_sdk": 24,
+    "serial": "emulator-5590",
+    "genuine_absence_before_install": true,
+    "package": {
+      "version_code": 19,
+      "version_name": "1.3.0",
+      "debuggable": false
+    },
+    "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+    "apk_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+    "scope": [
+      "files",
+      "shared_prefs",
+      "app_flutter",
+      "no_backup",
+      "databases"
+    ],
+    "files_before_first_launch": 0,
+    "S24_touched": false,
+    "userdata_or_account_copied": false,
+    "startup_or_UI_verified": false
+  },
+  "clean_api24_UI": {
+    "environment": "clean isolated API24 Google APIs AVD",
+    "actual_sdk": 24,
+    "version_code": 19,
+    "startup_home_visible": true,
+    "cold_restart_home_visible": true,
+    "process_alive_after_cold_restart": true,
+    "AR_selected_DEMO_photo_confirmed_before_attempt": true,
+    "AR_unavailable_graceful_return": false,
+    "AR_failure": "ArSceneView inflation: Filament Engine.create IllegalStateException before ARCore availability",
+    "tracking_or_accuracy_verified": false,
+    "S24_touched": false
+  },
+  "clean_api33_36": "Not executed for APK19; postponed to corrected higher-code candidate after concrete API24 AR crash",
+  "boundaries": [
+    "Five-folder comparisons were taken before application UI launch.",
+    "Same-APK repeat -r is not a downgrade or higher-code rollback test.",
+    "API24 old signer and API33/36 new signer were read through actual PackageManager.",
+    "No physical S24 actions were performed by this matrix runner.",
+    "API24 AR startup crashed before ARCore availability handling; not passed.",
+    "Emulators do not establish AR tracking or field measurement accuracy.",
+    "Private inventories and raw ADB logs remain outside Git."
+  ]
+}

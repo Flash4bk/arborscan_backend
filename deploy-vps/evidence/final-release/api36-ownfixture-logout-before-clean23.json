@@ -1,0 +1,10 @@
+{
+  "environment": "Own task-created API36 lab DEMO fixture only",
+  "version_code": 23,
+  "normal_UI_logout_performed_after_direct18_semantics_completed": true,
+  "actual_unauthenticated_Profile_visible_after_logout": true,
+  "initial_harness_phrase_mismatch_diagnosed_from_actual_logged_out_UI": true,
+  "prefilled_registration_email_input_not_authenticated_owner": true,
+  "S24_or_oldinvalid_AVDs_touched": false,
+  "data_clear_or_uninstall_performed_by_this_step": false
+}

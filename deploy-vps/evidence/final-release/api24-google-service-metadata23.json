@@ -1,0 +1,33 @@
+{
+  "environment": "Read-only existing official GoogleAPIs API24 image metadata",
+  "actual_sdk": 24,
+  "packages": {
+    "com.google.android.gms": {
+      "installed": true,
+      "version_name": "20.24.14 (040800-319035315)",
+      "version_code": 202414023,
+      "addaccount_activity_manifest_present": true
+    },
+    "com.google.android.gsf": {
+      "installed": true,
+      "version_name": "7.0",
+      "version_code": 24,
+      "addaccount_activity_manifest_present": false
+    },
+    "com.google.android.gsf.login": {
+      "installed": true,
+      "version_name": "7.0",
+      "version_code": 24,
+      "addaccount_activity_manifest_present": true
+    },
+    "com.android.vending": {
+      "installed": true,
+      "version_name": "1.8",
+      "version_code": 1801,
+      "addaccount_activity_manifest_present": false
+    }
+  },
+  "actual_Google_login_or_account_settings_UI_tested": false,
+  "Google_account_list_or_credentials_read": false,
+  "download_or_enable_update_or_image_changes": false
+}

@@ -1,0 +1,58 @@
+{
+  "checked_at_utc": "2026-10-07T18:38:35.081038+00:00",
+  "production_mutations": false,
+  "tls_verification_enabled": true,
+  "authorization_headers_sent": false,
+  "v3_identity_configuration": {
+    "supabase_project_matches": true,
+    "google_web_client_matches": true,
+    "auth_google_function_sha256": "e96d3a12d9bf834f16c3f0dc046fa1dd77d3ec8cafd54a87e1404404ddce6a31",
+    "prepared_policy_import_present": false,
+    "identity_claims_flag_environment_enabled": false,
+    "matches_main_10b54e7_auth_google": true
+  },
+  "public_checks": [
+    {
+      "path": "/api/v3/health",
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "path": "/api/v4/health",
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "path": "/api/v3/auth/me",
+      "http_status": 401
+    },
+    {
+      "path": "/api/v4/v4/reports",
+      "http_status": 401
+    },
+    {
+      "path": "/api/v4/v4/corrections",
+      "http_status": 401
+    }
+  ],
+  "application_containers": [
+    {
+      "name": "/arborscan-api",
+      "image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "state": "running"
+    },
+    {
+      "name": "/arborscan-api-v4",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "started_at": "2026-10-06T13:35:21.059827568Z",
+      "state": "running"
+    },
+    {
+      "name": "/arborscan-quality-worker",
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "state": "running"
+    }
+  ]
+}

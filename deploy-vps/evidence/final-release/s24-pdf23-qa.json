@@ -1,0 +1,37 @@
+{
+  "environment": "Actual PDF23 exported from permitted existing S24 DEMO report through SAF",
+  "sha256": "e9f0beea94d83b32e054129c7d63ff56f0d1abccc58a9f41fa12f8cd0414e78c",
+  "bytes": 55774,
+  "pages": 5,
+  "checks": {
+    "exact_pulled_sha": true,
+    "pages_5": true,
+    "permitted_demo_label": true,
+    "height4_8_m": true,
+    "crown_width2_1_m": true,
+    "reference1_m": true,
+    "image400x600": true,
+    "beta_unavailable": true,
+    "saved_demo_gps_only": true,
+    "page_numbering": true,
+    "no_email_token_secret_patterns": true,
+    "no_forms_embedded_or_open_action": true
+  },
+  "checks_passed": 12,
+  "checks_total": 12,
+  "comparison_scope": "PDF metadata/content/privacy and displayed known DEMO dimensions, not a separate fresh server snapshot or original PNG byte comparison",
+  "original_photo_server_byte_comparison": false,
+  "visual_review": true,
+  "field_accuracy": false,
+  "visual_review_details": {
+    "pages": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "reviewer": "root agent separately viewed Poppler pages",
+    "defects": []
+  }
+}

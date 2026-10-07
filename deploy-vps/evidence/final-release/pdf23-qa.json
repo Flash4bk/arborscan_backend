@@ -1,0 +1,268 @@
+{
+  "format_version": 1,
+  "scope": "AS16 actual APK23 own DEMO read-only PDF QA",
+  "checked_at_utc": "2026-10-07T21:17:33.036702+00:00",
+  "source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6",
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "version_code": 23,
+  "pdf_versions": {
+    "2": {
+      "file": "AS16_AVD36_release23_v2.pdf",
+      "sha256": "7eddee6d284f2958d7e1ef47a0d42a6019a02db2deb837ca079adf945059c887",
+      "bytes": 43151,
+      "pages": 5,
+      "original_sha256": "7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608",
+      "original_jpeg_psnr_db": 45.675,
+      "original_jpeg_mean_absolute_error": 0.569,
+      "annotation_color_pixel_counts": {
+        "reference": 58,
+        "tree": 450,
+        "crown": 934,
+        "crown_height": 834,
+        "trunk": 174,
+        "trunk_axis": 458,
+        "outline": 1076
+      },
+      "measurement_values": {
+        "crown_height": 4.393220338983055,
+        "crown_porosity": null,
+        "crown_width": 5.193220338983054,
+        "dbh": null,
+        "tree_height": 8.101694915254244,
+        "tree_segment_length": 8.101694915254244,
+        "trunk_diameter": 0.718644067796611,
+        "trunk_lean": 0.0,
+        "trunk_measurement_height": 1.3898305084664189
+      },
+      "reference_length_m": 2.0,
+      "environment": {
+        "weather": {
+          "source": "OpenWeather",
+          "status": "ok",
+          "retrieved_at": "2026-10-06T13:48:25.412489+00:00",
+          "data_at": "2026-10-06T13:47:27+00:00",
+          "access_method": null
+        },
+        "soil": {
+          "source": "SoilGrids",
+          "status": "ok",
+          "retrieved_at": "2026-10-06T13:48:25.624721+00:00",
+          "data_at": null,
+          "access_method": "WCS_nearest_cell"
+        }
+      },
+      "checks": {
+        "pages_5": true,
+        "same_selected_record_in_pdf": true,
+        "selected_version_in_pdf": true,
+        "expected_record_persisted": true,
+        "snapshot_and_record_dates_match": true,
+        "original_sha_matches_snapshot_and_record": true,
+        "image_256x384": true,
+        "two_expected_embedded_images": true,
+        "original_jpeg_psnr_above_35db": true,
+        "annotation_pixels_unchanged_outside_paths": true,
+        "all_seven_annotation_colors_in_expected_bounds": true,
+        "normalized_coordinates_and_size_label": true,
+        "reference_coordinate_legends": true,
+        "numeric_geometry_and_units": true,
+        "reference_real_length_matches": true,
+        "dbh_unavailable": true,
+        "porosity_unavailable": true,
+        "beta_unavailable": true,
+        "weather_matches_saved_snapshot": true,
+        "soil_matches_saved_snapshot": true,
+        "provider_dates_sources_limitations": true,
+        "no_accuracy_or_new_weather_claim": true,
+        "only_explicit_demo_gps": true,
+        "email_pattern_absent": true,
+        "token_secret_pattern_absent": true,
+        "no_owner_id_in_pdf": true,
+        "page_numbering_complete": true,
+        "metadata_author_arborscan": true,
+        "metadata_title_matches": true,
+        "no_embedded_attachment_form_open_action": true,
+        "only_public_provider_attribution_actions": true,
+        "current_pdf_generation_date": true
+      },
+      "checks_passed": 32,
+      "checks_total": 32,
+      "visual_review": {
+        "completed": true,
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "defects": [],
+        "reviewer": "root agent viewed each Poppler page separately"
+      },
+      "source": "Actual APK23 own DEMO UI export; independent read-only PDF QA. Provider snapshot comparison is not a new provider query; geometry/image/GPS are synthetic DEMO.",
+      "renders": [
+        {
+          "file": "v2-page-1.png",
+          "sha256": "fe4a07802440c1b73787f0249ca868dc9a36bdc15e724f5da3804eac136cb150"
+        },
+        {
+          "file": "v2-page-2.png",
+          "sha256": "630caf7b009d0eac5f29d8452469257a1a312e589df1b7eccd98094f73fcd396"
+        },
+        {
+          "file": "v2-page-3.png",
+          "sha256": "7e396cf2ff546d4e50744356f378293d6bb5fbb016d44c6b048522ce08987601"
+        },
+        {
+          "file": "v2-page-4.png",
+          "sha256": "03789e6760ab27ed62c43eaab44032d5578ae4b19b91216f3b9b08743e0811cc"
+        },
+        {
+          "file": "v2-page-5.png",
+          "sha256": "1c73577a0043efe601b3c37332e2ed63c4371a44bc812c1328b7fc00ef3c0207"
+        }
+      ],
+      "contact_pairs": [
+        "v2-pages-1-2.png",
+        "v2-pages-3-4.png",
+        "v2-pages-5-5.png"
+      ]
+    },
+    "3": {
+      "file": "AS16_AVD36_release23_v3.pdf",
+      "sha256": "f91c5e5756d67e9d0bca4ed808ad95aa45fa4465f2446670905dd90c857611b2",
+      "bytes": 43187,
+      "pages": 5,
+      "original_sha256": "7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608",
+      "original_jpeg_psnr_db": 45.675,
+      "original_jpeg_mean_absolute_error": 0.569,
+      "annotation_color_pixel_counts": {
+        "reference": 58,
+        "tree": 450,
+        "crown": 934,
+        "crown_height": 834,
+        "trunk": 174,
+        "trunk_axis": 458,
+        "outline": 1076
+      },
+      "measurement_values": {
+        "crown_height": 6.5898305084745825,
+        "crown_porosity": null,
+        "crown_width": 7.789830508474582,
+        "dbh": null,
+        "tree_height": 12.152542372881365,
+        "tree_segment_length": 12.152542372881365,
+        "trunk_diameter": 1.0779661016949165,
+        "trunk_lean": 0.0,
+        "trunk_measurement_height": 2.084745762699628
+      },
+      "reference_length_m": 3.0,
+      "environment": {
+        "weather": {
+          "source": "OpenWeather",
+          "status": "ok",
+          "retrieved_at": "2026-10-06T13:48:25.412489+00:00",
+          "data_at": "2026-10-06T13:47:27+00:00",
+          "access_method": null
+        },
+        "soil": {
+          "source": "SoilGrids",
+          "status": "ok",
+          "retrieved_at": "2026-10-06T13:48:25.624721+00:00",
+          "data_at": null,
+          "access_method": "WCS_nearest_cell"
+        }
+      },
+      "checks": {
+        "pages_5": true,
+        "same_selected_record_in_pdf": true,
+        "selected_version_in_pdf": true,
+        "expected_record_persisted": true,
+        "snapshot_and_record_dates_match": true,
+        "original_sha_matches_snapshot_and_record": true,
+        "image_256x384": true,
+        "two_expected_embedded_images": true,
+        "original_jpeg_psnr_above_35db": true,
+        "annotation_pixels_unchanged_outside_paths": true,
+        "all_seven_annotation_colors_in_expected_bounds": true,
+        "normalized_coordinates_and_size_label": true,
+        "reference_coordinate_legends": true,
+        "numeric_geometry_and_units": true,
+        "reference_real_length_matches": true,
+        "dbh_unavailable": true,
+        "porosity_unavailable": true,
+        "beta_unavailable": true,
+        "weather_matches_saved_snapshot": true,
+        "soil_matches_saved_snapshot": true,
+        "provider_dates_sources_limitations": true,
+        "no_accuracy_or_new_weather_claim": true,
+        "only_explicit_demo_gps": true,
+        "email_pattern_absent": true,
+        "token_secret_pattern_absent": true,
+        "no_owner_id_in_pdf": true,
+        "page_numbering_complete": true,
+        "metadata_author_arborscan": true,
+        "metadata_title_matches": true,
+        "no_embedded_attachment_form_open_action": true,
+        "only_public_provider_attribution_actions": true,
+        "current_pdf_generation_date": true
+      },
+      "checks_passed": 32,
+      "checks_total": 32,
+      "visual_review": {
+        "completed": true,
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "defects": [],
+        "reviewer": "root agent viewed each Poppler page separately"
+      },
+      "source": "Actual APK23 own DEMO UI export; independent read-only PDF QA. Provider snapshot comparison is not a new provider query; geometry/image/GPS are synthetic DEMO.",
+      "renders": [
+        {
+          "file": "v3-page-1.png",
+          "sha256": "4e6752692034f295c80860f963efe4062ef659c0a4171fa212d7fb048aa4d41a"
+        },
+        {
+          "file": "v3-page-2.png",
+          "sha256": "7dc181b98e2eac876f25995d9bd4ec826962294a3918b30b77213806736d4245"
+        },
+        {
+          "file": "v3-page-3.png",
+          "sha256": "ba2573f857a19bb0e42285d181d47aec99455de85eea7a7bd20ac8ea62468080"
+        },
+        {
+          "file": "v3-page-4.png",
+          "sha256": "03789e6760ab27ed62c43eaab44032d5578ae4b19b91216f3b9b08743e0811cc"
+        },
+        {
+          "file": "v3-page-5.png",
+          "sha256": "1c73577a0043efe601b3c37332e2ed63c4371a44bc812c1328b7fc00ef3c0207"
+        }
+      ],
+      "contact_pairs": [
+        "v3-pages-1-2.png",
+        "v3-pages-3-4.png",
+        "v3-pages-5-5.png"
+      ]
+    }
+  },
+  "cross_version_checks": {
+    "same_entry": true,
+    "different_versions": true,
+    "second_parent_matches_first": true,
+    "different_pdf_sha": true,
+    "same_original_image": true,
+    "same_reference_coordinates": true,
+    "reference_2m_to_3m": true,
+    "all_defined_linear_dimensions_scale_by_1_5": true
+  },
+  "cross_version_checks_passed": 8,
+  "ADB_or_network_or_server_write_performed_by_QA": false,
+  "all_arbitrary_secret_formats_proven_absent": false,
+  "field_measurement_accuracy_validated": false
+}

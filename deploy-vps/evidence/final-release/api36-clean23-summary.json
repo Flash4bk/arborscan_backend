@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "environment": "New isolated clean AVD",
+  "actual_sdk": 36,
+  "serial": "emulator-5594",
+  "genuine_absence_before_install": true,
+  "package": {
+    "version_code": 23,
+    "version_name": "1.3.0",
+    "debuggable": false
+  },
+  "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "scope": [
+    "files",
+    "shared_prefs",
+    "app_flutter",
+    "no_backup",
+    "databases"
+  ],
+  "files_before_first_launch": 0,
+  "S24_touched": false,
+  "userdata_or_account_copied": false,
+  "startup_or_UI_verified": false,
+  "clean_install_scope": "Genuine application absence in same task-created lab AndroidOS after strict own unauthenticated fixture guard; no newOS/VM claim"
+}

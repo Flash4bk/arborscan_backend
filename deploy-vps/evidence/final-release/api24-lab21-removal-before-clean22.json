@@ -1,0 +1,10 @@
+{
+  "environment": "Same new isolated API24 lab OS/AVD",
+  "AVD_identity_and_actual_sdk24_guard": true,
+  "prior_version_code": 21,
+  "prior_release_and_old_certificate_guard": true,
+  "profile_unauthenticated_UI_guard": true,
+  "only_lab_APP21_and_own_test_uninstalled": true,
+  "existing_AVDs_or_S24_touched": false,
+  "Android_OS_or_AVD_wiped": false
+}

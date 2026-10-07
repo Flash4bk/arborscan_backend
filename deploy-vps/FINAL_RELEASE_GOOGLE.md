@@ -1,7 +1,7 @@
 # AS-16 — Google-вход: фактический контракт и блокер выпуска
 
-Срез 07.10.2026. Это дополнение к [FINAL_RELEASE.md](FINAL_RELEASE.md),
-а не подтверждение нового входа Google или развёртывания исправления.
+Срез 07–08.10.2026. Это дополнение к [FINAL_RELEASE.md](FINAL_RELEASE.md),
+с отдельными actual native проверками ниже. Подготовленное исправление не развёрнуто.
 
 ## Используемый путь
 
@@ -12,7 +12,9 @@
 Это **не Supabase Auth / GoTrue**: нет браузерного callback, Supabase JWT,
 refresh token или требуемого изменения Google provider/redirect в Supabase.
 Сессия сохраняется на устройстве и повторно проверяется `/auth/me`;
-её срок на сервере — 30 дней. Автоматический refresh-token обмен отсутствует.
+её срок по умолчанию — 30 дней, сервер может переопределить его через
+`ARBORSCAN_AUTH_TOKEN_TTL_DAYS`. Фактический TTL production в этом срезе не
+проверялся. Автоматический refresh-token обмен отсутствует.
 
 Реальный read-only срез подтвердил соответствие Supabase-проекту
 `mfjxhtxwaablygwdjxhx` и Web client ID ниже. Google handler запущенного v3
@@ -22,10 +24,13 @@ refresh token или требуемого изменения Google provider/red
 
 ## Поля существующего Google Cloud-проекта
 
-Номер проекта, следующий из действующего Web client ID: **946297507051**.
-Владелец должен сверить его в уже существующем проекте, не создавать замену.
+Номер проекта: **946297507051**, фактически подтверждён в доступной консоли;
+project ID `project-ec8aaaae-b7b4-4e51-b8c`. Новый проект не создавался.
 [Страница Credentials этого проекта](https://console.cloud.google.com/apis/credentials?project=946297507051).
-Доступный браузер перенаправился на вход Google; список credentials не прочитан.
+Первоначально консоль требовала owner login. При повторном открытии консоли
+агент прочитал существующие ArborScan credentials и выполнил разрешённую регистрацию
+нового сертификата **07.10,19:00:57UTC**. Это фактическая внешняя настройка Google,
+не изменение VPS/Supabase и не доказательство успешного нового входа.
 
 Web client / `serverClientId`:
 `946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com`.
@@ -45,7 +50,32 @@ client IDs, package/SHA-1 и OAuth consent/testing audience. Секреты не
 Дополнительные scopes не нужны: остаются email/profile.
 Откат регистрации: удалить только вновь добавленный Android credential по
 зафиксированному ID; не менять Web client, старую пару или пользовательские identity.
-Этот откат **подготовлен, не выполнен**. Регистрации сейчас не подтверждены.
+Этот откат **подготовлен, не выполнен**.
+
+Старая регистрация `ArborScan Android Debug`, client
+`946297507051-u505jg1q01gfl27d6prji4ojhdv1lq6q.apps.googleusercontent.com`,
+имеет точно указанные package/старый SHA-1; её поля сохранены.
+Добавлена только отсутствующая `ArborScan Android Permanent API33`, client
+`946297507051-hr95ptf0d1aonhfj0ptpcf8576dsqhp6.apps.googleusercontent.com`,
+с тем же package и новым SHA-1. После создания повторно открыты сохранённые
+поля Name/package/SHA-1. Web client, API-ключи/ограничения, scopes и другие
+приложения проекта не изменялись; client secrets/API keys не читались.
+Безопасные [срез до](evidence/final-release/google-registration-before.json),
+[результат](evidence/final-release/google-registration-after.json) и
+[реальный снимок создания](evidence/final-release/google-android-client-created.jpg)
+не содержат аккаунт владельца или секреты.
+
+При создании client audience фактически **Testing/External**, один test user;
+агент не менял список. Позднее пользователь сообщил о добавлении отдельного
+разрешённого существующего test account. Агент read-only проверил текущие
+агрегаты: **2 users /2 test /0 other**, режим всё ещё Testing/External;
+emails не опубликованы. [Доказательство готовности аудитории](evidence/final-release/google-test-audience-ready.json).
+Владелец затем выполнил приватный вход/MFA на тестовом Android36; агент
+самостоятельно завершил native/server/UI сценарии ниже. Для API24 тот же
+разрешённый существующий аккаунт затем реально проверен отдельно ниже.
+Консоль сообщает возможную задержку
+применения от5минут до нескольких часов; регистрация не равна successful native
+login/серверной сессии. Не нажимались Publish app, Upgrade или создание аккаунтов.
 
 ## Подготовленное серверное исправление
 
@@ -68,6 +98,14 @@ Conditional PATCH защищает строку, уникальный индек
 и новые связи (503 с понятным сообщением); уже однозначно связанные Google
 профили могут входить без изменения identity. Флаг нельзя включать до проверки
 реального уникального индекса. COPY Dockerfile включает новый модуль.
+
+Импорт auth-модуля и **17/17 synthetic identity/route policy tests** проверены
+в фактическом **Python 3.11.16** уже существующего серверного image, в отдельном
+network-none/read-only Docker. Дополнительно там прошли **8/8 safety tests**
+тестовой обвязки. Точные source SHA и границы —
+[Python deployment runtime evidence](evidence/final-release/google-auth-python311-runtime.md).
+Это импорт модуля и AST-проверка маршрута, **не полная новая Docker-сборка,
+не production API rollout и не реальный Google login**.
 
 Подготовленная недеструктивная SQL-предпосылка:
 [google-identity-unique-index.sql](google-identity-unique-index.sql).
@@ -101,11 +139,46 @@ restore старого дампа поверх действующей БД не 
 Widget-тесты проверяют настоящий ProfilePage, native plugin transport заменён:
 отмена, ошибки, повтор, double tap, late replies, owner isolation, expiry,
 восстановление экрана/локального черновика. Они не доказывают Google OAuth.
-На изолированном AVD36 нет настроенного Google-аккаунта. С S24 пользователя
-выход не выполняется. Нужны вход владельца в консоль и отдельный разрешённый
-тестовый Google-аккаунт (интерактивная авторизация/MFA — владельцем, без пароля
-в чат). После доступа агент выполняет UI-цикл самостоятельно.
-До этого и до серверного security rollout стабильный тег выпуска не создаётся.
+Реальный API36 Google flow проверен в exact APK23 со signer7fb94e… и GMS
+26.37.37 (260800-994713346). Владелец ввёл credentials/MFA приватно; агент
+выбрал единственный разрешённый test account в native chooser. ArborScan
+показал Google-login и server session. Собственная пустая история загрузилась;
+предыдущие DEMO аккаунты/их локальный журнал не открылись этому owner. После
+force-stop/cold restart тот же test account получил server-confirmed session.
+NormalUI logout/relogin прошёл. Native chooser/Back оставил signed-out UI;
+форма сохранила собственный ранее введённый email, это не авторизованная сессия.
+Offline login через реальный provider показал понятную недоступность и не
+создал session. Исходная сеть восстановлена, retry/revalidation прошли.
+Read-only exact test identity проверен: один email match, owner/subject/role/
+created_at после повторов не изменены, duplicate owner не создан. Никакие роли
+или identity проверочным скриптом не менялись; используется штатный Google handler.
+[Native36 proof](evidence/final-release/google23-native36.json),
+[network](evidence/final-release/google23-offline.json),
+[canonical identity](evidence/final-release/google23-identity-continuity.json).
+
+Это successful legitimate login старого production handler, не безопасность
+ещё не развёрнутой новой policy и не GoTrue refresh-token проверка. Старый
+signer API24 проверен отдельно с GMS 20.24.14 (040800-319035315): установленный APK23
+считан обычным shell read и SHA совпал, effective certificate68ff98… подтверждён
+signed instrumentation. Данные не очищены/переустановки нет. Тот же test account
+реально вошёл через native Google и получил ArborScan server session; история,
+force-stop/revalidation, logout/relogin и chooser cancellation прошли. Offline
+показал «Нет связи с Google» без session; после возврата сети retry/revalidation
+прошли. Read-only identity совпадает с API36 по owner/subject/role/created_at,
+единственная строка, duplicate owner не создан.
+[Actual native24](evidence/final-release/google23-native24.json),
+[network24](evidence/final-release/google24-offline.json),
+[identity24](evidence/final-release/google24-identity-continuity.json).
+
+На Android7 protected ADB network commands получили Permission Denial; root/
+permission override не применялся. Использован обычный Settings UI airplane
+switch. Первое restore оставило persisted wifi_on3; Wi-Fi Settings Activity в
+image отсутствует. Через разрешённый Settings provider восстановлен исходный
+wifi_on1, итог0/1/1 и настоящий online Google retry проверены. Первичный failed
+restore сохранён в google24-offline-initial-restore.json. S24 сеть/аккаунт не
+менялись. Эти два legitimate production flows не доказывают безопасность
+prepared handler или реальный новый unique index. До отдельно разрешённого
+v3/security/index rollout stable release tag не создаётся.
 
 Источники проверены для используемых версий:
 [Google backend verification](https://developers.google.com/identity/sign-in/android/backend-auth),

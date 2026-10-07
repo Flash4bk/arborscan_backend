@@ -1,0 +1,45 @@
+{
+  "source_commit": "e78c29d09ef265c7114694288d432d5d835293f6",
+  "apk_sha256": "65835130dfd35e36460ebcdde8f1c5d85761c3b256845e21611f3c07007ea87f",
+  "checked_at_utc": "2026-10-07T15:41:05.051955+00:00",
+  "release_build_seconds": 123.3,
+  "flutter_tests": {
+    "passed": 163,
+    "failed": 0,
+    "suite_source_commit": "e78c29d09ef265c7114694288d432d5d835293f6"
+  },
+  "analyze_current22": {
+    "exit_code": 1,
+    "errors": 0,
+    "warnings": 5,
+    "info": 48,
+    "existing": 53,
+    "new": 0
+  },
+  "android_current22": {
+    "tests": 9,
+    "failures": 0,
+    "errors": 0,
+    "task_executed_after_build": true,
+    "native_subtree_unchanged_from_495ea37": true
+  },
+  "profile_owner_hydration": {
+    "synthetic_only": true,
+    "red_passed": 15,
+    "red_failed": 1,
+    "green_passed": 26,
+    "green_failed": 0,
+    "green_before_lint_only_block_change": true,
+    "final_full_suite_includes_all_hydration_tests": true,
+    "mismatched_owner_token_revision_and_missing_auth_response_rejected": true
+  },
+  "APK_scan": {
+    "forbidden_private_filenames": 0,
+    "private_pem_material": 0,
+    "service_role_jwt": 0,
+    "postgresql_url": 0,
+    "private_credential_values_read": false,
+    "all_arbitrary_secret_types_proven_absent": false
+  },
+  "production_runtime_or_schema_modified": false
+}

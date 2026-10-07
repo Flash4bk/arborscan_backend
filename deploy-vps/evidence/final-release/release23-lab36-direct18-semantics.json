@@ -1,0 +1,30 @@
+{
+  "task": "AS-16",
+  "exact_source": "bbcd5b539427e62da58739fc2dbeff8550ee72c6",
+  "APK_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "versionName": "1.3.0",
+  "versionCode": 23,
+  "environment": "isolated normal UI API36 Codex_AS16_FINAL_CLEAN_API36 emulator-5594",
+  "baseline": "release18-lab36-baseline.json",
+  "after_direct18_to23_repeat_and_actual_guest_OS_reboot": true,
+  "same_saved_local_report_opened_actual_UI": true,
+  "same_local_report_height_m": 5.0,
+  "same_local_report_crown_width_m": 2.93,
+  "same_separate_3m_draft_restored_actual_UI": true,
+  "draft_geometry_incomplete": true,
+  "synthetic_source_size": [
+    256,
+    384
+  ],
+  "synthetic_jpeg_sha256": "1717ce24ebd3e5ff8eb4c97ba061e1d177f68af73d72af012abb633f914e6b76",
+  "force_stop_sync_handoff": true,
+  "no_logout_or_data_clear": true,
+  "server_writes": 0,
+  "field_accuracy_verified": false,
+  "screenshots": [
+    "api36-direct18-to23-local-report-values.png",
+    "api36-direct18-to23-unsaved-3m-draft.png"
+  ],
+  "saved_outline_presence_UI_control_preserved": true,
+  "photo_file_preservation_evidence": "SDK direct18->23 all-eight-file SHA comparison; no separate pixel-level UI comparison in this semantic pass"
+}

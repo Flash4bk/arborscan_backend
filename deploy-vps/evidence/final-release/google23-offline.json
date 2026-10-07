@@ -1,0 +1,22 @@
+{
+  "environment": "Owned API36 AVD / real release23 native Google flow",
+  "S24_touched": false,
+  "network_before": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1",
+    "mobile_data": "1"
+  },
+  "actual_offline_attempt": true,
+  "native_account_selected": true,
+  "friendly_error_actual_UI": true,
+  "signed_out_after_failure": true,
+  "reviewed_error_categories": [
+    "network_or_service_unavailable"
+  ],
+  "network_after": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1",
+    "mobile_data": "1"
+  },
+  "original_network_restored": true
+}

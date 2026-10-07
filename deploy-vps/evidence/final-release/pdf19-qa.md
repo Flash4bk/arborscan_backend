@@ -1,0 +1,11 @@
+# AS16 actual APK19 own DEMO PDF QA
+
+This is read-only QA of the two real files exported through the APK19 UI on AVD36 and pulled by the UI agent. It is not a service-only PDF generator check. The source image and reference geometry are synthetic DEMO; retained weather/soil are real saved API responses from 6 October, not a new provider query by this QA. No ADB, VPS, account changes or server writes were performed by this QA.
+
+Both PDFs have five pages. Every page was rendered at 110 DPI with Poppler and viewed individually by the QA agent: all ten pages passed, with no clipping, overlapping text, black squares or unreadable glyphs found. The files contain the expected selected version IDs; the v2 parent relation was checked in the expected record, because the PDF does not display its parent ID. Geometry and units passed 22 checks per file, plus eight version-link/scaling checks. The 1 m versus 2 m reference changes all defined linear dimensions by exactly two before rounding. DBH, crown porosity and beta remain unavailable; this is not field measurement accuracy validation.
+
+The original image is 256 by 384 and matches SHA-256 7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608. JPEG export is intentionally re-encoded, so binary image equality is not expected; decoded PSNR is 45.675 dB and mean absolute channel error is 0.569. The PNG annotation retains unchanged image pixels outside path/endpoint drawing bounds, and all seven line colors occur within their expected normalized-coordinate bounds.
+
+Metadata, embedded-file/action structure and email/token patterns were checked before any public copy. No account owner ID, email or token patterns were found. The only saved GPS coordinate is explicit DEMO 50.2,10.2. This bounded pattern/structure scan is not a general proof that all possible secret formats are absent. Record/version UUIDs are own test records.
+
+Hashes and safe check results: `pdf19-qa.safe.json`. Contact pairs: `v1-pages-1-2.png`, `v1-pages-3-4.png`, `v1-pages-5-5.png`, and the corresponding `v2` files. Full page renders are `v1-page-1.png` through `v1-page-5.png`, and the five corresponding `v2` files. Original control PDFs are in the adjacent private UI evidence directory; no PDF content or expected owner/account fields are included in this document.

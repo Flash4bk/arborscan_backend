@@ -1,0 +1,15 @@
+{
+  "environment": "Own valid API36 lab, not old invalidexisting36",
+  "actual_sdk": 36,
+  "version_code": 23,
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "installed_base_APK_readable_normal_ADB": true,
+  "installed_base_APK_SHA_before_and_after_guest_reboot_matches_candidate": true,
+  "sync_before_guest_reboot_performed": true,
+  "actual_Android_OS_reboot_unique_boot_changed": true,
+  "PackageManager_parsed23_after_reboot": true,
+  "actual_home_after_guest_reboot": true,
+  "host_AVD_coldboot_not_yet_tested_here": true,
+  "S24_or_oldinvalid_AVDs_touched": false,
+  "root_or_access_bypass_used": false
+}

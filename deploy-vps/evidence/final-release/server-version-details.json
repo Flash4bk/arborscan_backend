@@ -1,0 +1,16 @@
+{
+  "checked_at_utc": "2026-10-07T14:47:56.754952+00:00",
+  "tls_verification_enabled": true,
+  "production_mutations": false,
+  "v3": {
+    "status": "ok",
+    "api_version": "3.0.3",
+    "schema_version": "1.0.0"
+  },
+  "v3_build": {
+    "git_commit": "a34400f",
+    "build_time": null
+  },
+  "postgres_server_version": "17.6",
+  "postgres_version_source": "actual read-only Supabase current_setting(server_version) query in this task"
+}

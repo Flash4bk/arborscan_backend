@@ -1,0 +1,15 @@
+{
+  "task": "AS-16",
+  "environment": "Fresh author HTTPS read after root-agent actual S24 admin UI decision",
+  "source_kind": "actual allowed fresh synthetic root only",
+  "status": "rejected",
+  "reason": "AS16_DEMO23_retest",
+  "rejection_decision_events": 1,
+  "actor_recorded": true,
+  "actor_is_different_owner_from_author": true,
+  "decision_time_recorded": true,
+  "default_TLS_verification": true,
+  "old_rows_roles_identities_changed": false,
+  "Flutter_author_reason_UI_check": false,
+  "private_expected_sha256": "598b1efd506707f665a5af1f17ead0b35d17defac254fd1c6890af5ea746a072"
+}

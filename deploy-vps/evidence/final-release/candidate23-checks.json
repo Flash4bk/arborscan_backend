@@ -1,0 +1,34 @@
+{
+  "source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6",
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "checked_at_utc": "2026-10-07T18:26:05.727307+00:00",
+  "release_build_seconds": 163.0,
+  "flutter_tests": {
+    "passed": 181,
+    "failed": 0,
+    "suite_source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6"
+  },
+  "analyze_current23": {
+    "exit_code": 1,
+    "errors": 0,
+    "warnings": 5,
+    "info": 48,
+    "existing": 53,
+    "new": 0
+  },
+  "android_current23": {
+    "tests": 9,
+    "failures": 0,
+    "errors": 0,
+    "task_executed_after_build": true
+  },
+  "APK_scan": {
+    "forbidden_private_filenames": 0,
+    "private_pem_material": 0,
+    "service_role_jwt": 0,
+    "postgresql_url": 0,
+    "private_credential_values_read": false,
+    "all_arbitrary_secret_types_proven_absent": false
+  },
+  "production_runtime_or_schema_modified": false
+}

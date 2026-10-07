@@ -1,0 +1,7 @@
+{
+  "actual_sdk": 36,
+  "own_lab_only": true,
+  "installed_base_APK_SHA_before_host_stop_matches_candidate": true,
+  "force_stop_sync_then_normal_emulator_shutdown": true,
+  "S24_or_oldinvalid_AVDs_touched": false
+}

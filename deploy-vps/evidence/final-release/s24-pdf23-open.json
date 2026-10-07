@@ -1,0 +1,9 @@
+{
+  "environment": "Physical S24 / release23",
+  "action": "Native open from ArborScan export dialog, read-only own DEMO PDF",
+  "actual_activity": "com.google.android.apps.docs/com.google.android.apps.viewer.PdfViewerActivity",
+  "system_chooser_seen": true,
+  "viewer_seen": true,
+  "real_report_changed": false,
+  "google_login_or_account_change_claimed": false
+}

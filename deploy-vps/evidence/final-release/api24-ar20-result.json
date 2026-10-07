@@ -1,0 +1,16 @@
+{
+  "actual_sdk": 24,
+  "version_code": 20,
+  "apk_sha256": "fed4c9f1cfc4c467ba8e0c83a651afc4aefc20a7ef7fca689252136edc6b1833",
+  "clean_install_and_startup_and_cold_restart": true,
+  "same_new_lab_OS_reused_after_uninstall_only_fixture19": true,
+  "prior_profile_unauthenticated_UI_guard": true,
+  "AR_guard_caught_inflate_exception": true,
+  "AR_return_responsive": false,
+  "Android_ANR_dialog_confirmed": true,
+  "target_process_restarted": false,
+  "OpenGLES_required_feature_hex": "0x20000",
+  "ARCore_installer_reached": false,
+  "tracking_or_field_accuracy_claimed": false,
+  "S24_or_existing_AVDs_touched": false
+}

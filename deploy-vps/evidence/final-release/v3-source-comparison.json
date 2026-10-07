@@ -1,0 +1,9 @@
+{
+  "production_mutations": false,
+  "secrets_or_source_contents_printed": false,
+  "comparison": "canonical JSON AST independent of Python311/314 dump formatting; empty type_params excluded",
+  "baseline_main": "10b54e77ae77fa7a51621bc1902889ce4d2a8ef6",
+  "whole_v3_ast_matches_main": true,
+  "changed_function_names": [],
+  "extra_function_names": []
+}

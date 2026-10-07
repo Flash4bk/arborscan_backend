@@ -1,0 +1,17 @@
+{
+  "actual_sdk": 36,
+  "environment": "Existing DEMO AVD cold boot before23",
+  "previous_installed_version_code_in_settings": 22,
+  "PackageManager_scanned_package_and_versionName_absent": true,
+  "OS_log_failed_base_APK_parse_and_deleted_invalid_package": true,
+  "normal_ADB_known_base_APK_stat_attempted": true,
+  "known_base_APK_missing_after_OS_cleanup": true,
+  "original_base_hash_comparison_available": false,
+  "parse_error_subtype_available_in_current_logs": false,
+  "overlay23_attempted": false,
+  "guard_aborted_before_any_install_or_data_action": true,
+  "previous22_preservation_proof_files": 74,
+  "original_cause_proven": false,
+  "guest_or_host_disk_space_failure_proven": false,
+  "repair_or_uninstall_or_data_clear_performed": false
+}

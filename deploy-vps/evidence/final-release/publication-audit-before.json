@@ -1,0 +1,11 @@
+{
+  "branch_http_status": 200,
+  "main_protected": false,
+  "origin_api_main_sha": "10b54e77ae77fa7a51621bc1902889ce4d2a8ef6",
+  "rulesets_http_status": 200,
+  "rulesets_count": 0,
+  "rulesets_types": [],
+  "rules_http_status": 200,
+  "rules_count": 0,
+  "rules_types": []
+}

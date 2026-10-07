@@ -1,0 +1,10 @@
+{
+  "checked_at_utc": "2026-10-07T21:55:21.347820+00:00",
+  "environment": "Existing owned clean API24 AVD / release1.3.0+23",
+  "actual_boot_complete": true,
+  "actual_installed_apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "actual_effective_certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+  "application_data_cleared_or_reinstalled": false,
+  "Google_login_completed": false,
+  "S24_touched": false
+}

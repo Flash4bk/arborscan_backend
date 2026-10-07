@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-07",
+  "project_number": "946297507051",
+  "provider_status": "Testing / External",
+  "user_report": "Owner reports that an existing authorized separate test Google account was added to Test users",
+  "agent_check": "Read-only actual Google console main UI, only status and aggregate counts retained",
+  "actual_users_count": 2,
+  "actual_test_users_count": 2,
+  "actual_other_users_count": 0,
+  "test_emails_or_credentials_in_evidence": false,
+  "audience_publication_changed": false,
+  "new_accounts_created_by_agent": false,
+  "test_Google_account_signed_into_Android": false,
+  "real_native_login_complete": false
+}

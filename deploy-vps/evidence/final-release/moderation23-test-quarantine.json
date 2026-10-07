@@ -1,0 +1,23 @@
+{
+  "scoped_fresh_DEMO_records": 3,
+  "metadata_field_changed_only": "purpose",
+  "original_mask_editor_revision_parent_unchanged": true,
+  "SQL_status_decisions_unchanged": true,
+  "exporter_segmentation_and_classification_reject_all": true,
+  "accepted_precheck": [
+    "included_without_test_marker"
+  ],
+  "old_or_real_records_changed": false,
+  "snapshot_job_training_model_actions": false,
+  "checked_at_utc": "2026-10-07T22:29:10.872385+00:00",
+  "environment": "Existing authorized production Storage API; only allowlisted synthetic AS16 DEMO family",
+  "private_backup_SHA256": "77b7b94bc3fb98de4ed540d0de3dc6de6f23f28964273874f0f496be4b7088c3",
+  "production_code_config_schema_containers_changed": false,
+  "GUI_test": false,
+  "public_authenticated_HTTPS_readback_all_three": true,
+  "public_record_only_purpose_changed": true,
+  "initial_immediate_Storage_readback_delayed": true,
+  "bounded_readback_retry_verified": true,
+  "GUI_retest_not_required_for_ancillary_marker_only": true,
+  "new_future_test_revision_marker_inheritance_not_implemented": true
+}

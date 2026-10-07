@@ -1,0 +1,12 @@
+{
+  "actual_sdk": 33,
+  "version_code": 22,
+  "environment": "New clean AOSP ATD with no DocumentsUI/Google providers",
+  "genuine_clean_install_startup_and_cold_passed": true,
+  "system_GET_CONTENT_image_handler_present": false,
+  "normal_gallery_tap_native_process_failure": true,
+  "exception": "java.lang.IllegalStateException: Reply already submitted",
+  "exact_release_mapping_resolves_stack_to_image_picker": true,
+  "AR_or_photo_state_test_reached": false,
+  "S24_or_existing_user_data_touched": false
+}

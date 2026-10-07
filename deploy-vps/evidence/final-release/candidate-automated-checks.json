@@ -1,0 +1,33 @@
+{
+  "source_commit": "91f17b5b936fba48ad297a2848eea1761757b785",
+  "artifact_sha256": "c0fd15a4c2e9280984df3b4b21d58440ce26530388710858fb2efee0f66df30b",
+  "checked_at_utc": "2026-10-07T14:09:27.243829+00:00",
+  "flutter_full_tests": 152,
+  "flutter_failed_tests": 0,
+  "targeted_new_tests": 15,
+  "analyze": {
+    "exit_code": 1,
+    "errors": 0,
+    "warnings": 5,
+    "info": 48,
+    "existing_issues": 53,
+    "new_issues": 0,
+    "initial_three_test_only_lints_fixed": true
+  },
+  "android_tests": {
+    "tests": 5,
+    "failures": 0,
+    "errors": 0
+  },
+  "release_build_seconds": 121.0,
+  "release_registry_regeneration": "default pub; --no-pub skipped release tooling on freshworktree and failed; corrected build succeeded",
+  "apk_scan": {
+    "forbidden_private_file_names": 0,
+    "private_pem_material_markers": 0,
+    "service_role_jwt_constants": 0,
+    "postgresql_connection_url_constants": 0,
+    "private_credential_values_read": false,
+    "all_arbitrary_secret_types_proven_absent": false
+  },
+  "production_changed": false
+}

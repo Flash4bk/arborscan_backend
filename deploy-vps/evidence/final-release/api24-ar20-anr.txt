@@ -1,0 +1,26 @@
+APK20 clean API24, no account, synthetic DEMO image.
+Actual platform feature:reqGlEsVersion=0x20000 (OpenGL ES2.0).
+EGL_BAD_CONFIG creating Sceneform renderer context.
+Guard caught InflateException; process remained alive but Android showed ANR.
+Target main thread: Runnable in fragment teardown.
+at e0.m.g(SourceFile:1)
+at e0.T.d(SourceFile:129)
+at e0.T.k(SourceFile:41)
+at e0.N.P(SourceFile:62)
+at e0.N.u(SourceFile:36)
+at e0.N.l(SourceFile:84)
+at e0.z.onDestroy(SourceFile:12)
+at i.i.onDestroy(SourceFile:1)
+at com.example.arborscan_app.ArMeasureActivity.onDestroy(SourceFile:20)
+at android.app.Activity.performDestroy(Activity.java:6864)
+at android.app.Instrumentation.callActivityOnDestroy(Instrumentation.java:1153)
+at android.app.ActivityThread.performDestroyActivity(ActivityThread.java:4154)
+at android.app.ActivityThread.handleDestroyActivity(ActivityThread.java:4185)
+at android.app.ActivityThread.-wrap6(ActivityThread.java:-1)
+at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1521)
+at android.os.Handler.dispatchMessage(Handler.java:102)
+at android.os.Looper.loop(Looper.java:154)
+at android.app.ActivityThread.main(ActivityThread.java:6077)
+at java.lang.reflect.Method.invoke!(Native method)
+at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:866)
+at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:756)

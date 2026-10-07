@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-07",
+  "environment": "Authenticated existing Google Cloud console, observed UI",
+  "project_number": "946297507051",
+  "project_id": "project-ec8aaaae-b7b4-4e51-b8c",
+  "web_client_id_present": "946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com",
+  "old_android_client_id": "946297507051-u505jg1q01gfl27d6prji4ojhdv1lq6q.apps.googleusercontent.com",
+  "old_android_client_name": "ArborScan Android Debug",
+  "old_package": "com.example.arborscan_app",
+  "old_certificate_sha1": "2C:08:B4:D6:37:57:4C:16:BE:5C:BA:1A:59:5A:4B:AA:C8:54:1A:4C",
+  "new_android_registration_present_before_change": false,
+  "planned_new_package": "com.example.arborscan_app",
+  "planned_new_certificate_sha1": "E4:DF:D7:6D:C3:EC:5F:96:BE:6B:74:09:49:C6:78:AE:BF:1F:11:0E",
+  "rollback": "If required, remove only the newly created Android rotation client after checking its ID. Preserve old Android and existing Web clients; no rollback executed.",
+  "server_config_or_data_changed": false,
+  "api_keys_or_client_secrets_read": false,
+  "unrelated_clients_modified": false
+}

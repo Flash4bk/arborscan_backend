@@ -1,0 +1,14 @@
+{
+  "environment": "Physical S24 Ultra Android16 / exact 1.3.0+23",
+  "GPS_query_from_permitted_DEMO_edit_draft": true,
+  "location_dialog_visible": true,
+  "last_known_fallback_visible": false,
+  "stale_warning_visible": false,
+  "coordinates_not_disclosed": true,
+  "coordinate_accepted": false,
+  "server_version_saved": false,
+  "physical_accuracy_claimed": false,
+  "fresh_location_result_dialog_actual": true,
+  "age_display_minutes": 0,
+  "reported_accuracy_m": 17
+}

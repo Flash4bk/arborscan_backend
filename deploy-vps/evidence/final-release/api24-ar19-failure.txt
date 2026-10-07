@@ -1,0 +1,13 @@
+APK19 clean API24, synthetic DEMO photo selected through Android DocumentsUI.
+Android UI: "ArborScan has stopped"; foreground returned to Launcher.
+RuntimeException: Unable to start activity ArMeasureActivity
+  InflateException: Error inflating class com.google.ar.sceneform.ArSceneView
+  Caused by: IllegalStateException: Couldn't create Engine
+  at com.google.android.filament.Engine.create
+  at com.google.ar.sceneform.rendering.EngineInstance
+  at com.google.ar.sceneform.ArSceneView.<init>
+  at com.example.arborscan_app.ArMeasureActivity.onCreate
+This occurs during layout inflation before ARCore unavailable/install handling.
+No account, token, production record or tracking measurement was involved.
+Cold restart into visible MainActivity/home succeeded afterward.
+The AR unavailable return criterion failed for this intermediate APK19.

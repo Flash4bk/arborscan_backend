@@ -1,0 +1,10 @@
+{
+  "environment": "Genuine clean23 app in same own API24 lab AndroidOS",
+  "actual_sdk": 24,
+  "version_code": 23,
+  "normal_Gallery_tap_opened_real_system_DocumentsUI": true,
+  "normal_system_BACK_cancel_returned_to_actual_home": true,
+  "application_alive_after_cancel": true,
+  "Google_login_or_AR_tracking_verified": false,
+  "S24_or_oldinvalid_AVDs_touched": false
+}

@@ -1,0 +1,57 @@
+{
+  "format": 1,
+  "task": "AS-16",
+  "environment": "Existing isolated DEMO AVD36",
+  "serial": "emulator-5582",
+  "package": "com.example.arborscan_app",
+  "version_name": "1.3.0",
+  "version_code": 19,
+  "source_commit": "91f17b5",
+  "S24_touched": false,
+  "app_data_cleared": false,
+  "app_uninstalled": false,
+  "own_demo_accounts_only": true,
+  "technical_checks": {
+    "existing_server_session_restore": true,
+    "guarded_demo_logout": true,
+    "actual_native_google_provider_open": true,
+    "google_back_cancel_return": true,
+    "google_retry_then_back_return": true,
+    "real_successful_google_login": false,
+    "actual_email_UI_login": true,
+    "force_stop_email_session_restore": true,
+    "actual_selected_server_v1_v2": true,
+    "actual_SAF_save_two_versions": true,
+    "PDF_open_system_viewer": true,
+    "actual_share_sheet_open_cancel_no_send": true,
+    "actual_SAF_save_cancel": true,
+    "reference_draft_modified_2m_to_3m": true,
+    "unsaved_reference_draft_force_stop_restore": true,
+    "restored_height_m": 12.15,
+    "restored_crown_width_m": 7.79,
+    "new_server_version_saved": false,
+    "remaining_full_UI_deferred_to_exact20": true
+  },
+  "PDFs": [
+    {
+      "name": "AS16_AVD36_release19_v1.pdf",
+      "bytes": 43177,
+      "sha256": "4f599efc753c123276677f585057fdd4716708fe70f56372fcfdef37174910fb",
+      "device_hash_matches": true
+    },
+    {
+      "name": "AS16_AVD36_release19_v2.pdf",
+      "bytes": 43151,
+      "sha256": "84e8f68fd1a47458fc1b10f45d230dd483bd4f93e37bc1be55486fc2bf69ef36",
+      "device_hash_matches": true
+    }
+  ],
+  "limitations": [
+    "Google provider cancel/retry is not a successful new Google login or verified OAuth registration.",
+    "Synthetic photo/geometry are functional UI controls, not field accuracy.",
+    "PDF environment corresponds to saved real provider snapshots from 06.10, not new provider requests on07.10.",
+    "First v1 pull raced SAF async copy and observed its initial empty placeholder; preserved .early-zero artifact and waited for stable nonempty device file.",
+    "UI19 proof applies only19; final20 confirmation and remaining workflows pending."
+  ],
+  "own_AVD_stopped_normally": true
+}

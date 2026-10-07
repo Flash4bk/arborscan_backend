@@ -1,0 +1,13 @@
+{
+  "environment": "Actual genuine clean23 app in same task-created lab AndroidOS",
+  "actual_sdk": 24,
+  "version_code": 23,
+  "startup_home_visible": true,
+  "process_alive_after_startup": true,
+  "force_stop_and_cold_restart_performed": true,
+  "cold_restart_home_visible": true,
+  "process_alive_after_cold_restart": true,
+  "AR_tracking_or_accuracy_verified": false,
+  "Google_login_verified": false,
+  "S24_touched": false
+}

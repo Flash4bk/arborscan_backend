@@ -1,0 +1,193 @@
+{
+  "task": "AS-16",
+  "kind": "Actual final23 signed APK Android SDK matrix, bounded emulator scope",
+  "source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6",
+  "version_name": "1.3.0",
+  "version_code": 23,
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "static_proof": "artifact23-independent-static.json",
+  "fresh_before_UI_comparisons": [
+    {
+      "proof": "api24-overlay23-summary.json",
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 24,
+      "operation": "22 to candidate overlay",
+      "from_code": 22,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 73,
+        "after_files": 73,
+        "identical_files": 73,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    },
+    {
+      "proof": "api24-repeat23-summary.json",
+      "environment": "Existing isolated DEMO AVD",
+      "actual_sdk": 24,
+      "operation": "same APK -r",
+      "from_code": 23,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 73,
+        "after_files": 73,
+        "identical_files": 73,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    },
+    {
+      "proof": "api33-overlay23-summary.json",
+      "environment": "Task-created valid API33 lab baseline22, not old invalid19 AVD",
+      "actual_sdk": 33,
+      "operation": "22 to candidate overlay",
+      "from_code": 22,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 2,
+        "after_files": 2,
+        "identical_files": 2,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    },
+    {
+      "proof": "api33-repeat23-summary.json",
+      "environment": "Task-created valid API33 lab baseline22, not old invalid19 AVD",
+      "actual_sdk": 33,
+      "operation": "same APK -r",
+      "from_code": 23,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 2,
+        "after_files": 2,
+        "identical_files": 2,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    },
+    {
+      "proof": "api36-overlay23-summary.json",
+      "environment": "Task-created valid API36 lab baseline22, not invalid existing36",
+      "actual_sdk": 36,
+      "operation": "22 to candidate overlay",
+      "from_code": 22,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 3,
+        "after_files": 3,
+        "identical_files": 3,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    },
+    {
+      "proof": "api36-repeat23-summary.json",
+      "environment": "Task-created valid API36 lab baseline22, not invalid existing36",
+      "actual_sdk": 36,
+      "operation": "same APK -r",
+      "from_code": 23,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 3,
+        "after_files": 3,
+        "identical_files": 3,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    },
+    {
+      "proof": "api36-direct18-overlay23-summary.json",
+      "environment": "Task-owned API36 lab genuine18 with representative normal UI DEMO fixture, no old invalid AVD recovery",
+      "actual_sdk": 36,
+      "operation": "Direct18 to23 overlay after representative normal UI fixture",
+      "from_code": 18,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 8,
+        "after_files": 8,
+        "identical_files": 8,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    },
+    {
+      "proof": "api36-direct18-repeat23-summary.json",
+      "environment": "Task-owned API36 lab genuine18 with representative normal UI DEMO fixture, no old invalid AVD recovery",
+      "actual_sdk": 36,
+      "operation": "same APK -r",
+      "from_code": 23,
+      "to_code": 23,
+      "comparison": {
+        "before_files": 8,
+        "after_files": 8,
+        "identical_files": 8,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0
+      }
+    }
+  ],
+  "genuine_clean_application_installs": [
+    {
+      "actual_sdk": 24,
+      "clean_application_install_same_task_lab_OS": true,
+      "no_newOS_VM_claim": true,
+      "installation_proof": "api24-clean23-summary.json",
+      "startup_force_stop_cold_proof": "api24-clean23-ui.json",
+      "genuine_absence_and_release_certificate_verified": true,
+      "files_before_first_UI": 0,
+      "actual_home_startup_and_force_stop_cold_passed": true
+    },
+    {
+      "actual_sdk": 33,
+      "clean_application_install_same_task_lab_OS": true,
+      "no_newOS_VM_claim": true,
+      "installation_proof": "api33-clean23-summary.json",
+      "startup_force_stop_cold_proof": "api33-clean23-ui.json",
+      "genuine_absence_and_release_certificate_verified": true,
+      "files_before_first_UI": 0,
+      "actual_home_startup_and_force_stop_cold_passed": true
+    },
+    {
+      "actual_sdk": 36,
+      "clean_application_install_same_task_lab_OS": true,
+      "no_newOS_VM_claim": true,
+      "installation_proof": "api36-clean23-summary.json",
+      "startup_force_stop_cold_proof": "api36-clean23-ui.json",
+      "genuine_absence_and_release_certificate_verified": true,
+      "files_before_first_UI": 0,
+      "actual_home_startup_and_force_stop_cold_passed": true
+    }
+  ],
+  "direct18_baseline": "release18-lab36-baseline.json",
+  "direct18_semantic_restore": "release23-lab36-direct18-semantics.json",
+  "direct18_fixture_scope": "Normal UI synthetic photo/local1m report5.00m and2.93m crown/separate3m incomplete draft;8files, not old74-file dataset",
+  "direct18_guest_OS_reboot": "api36-lab36-direct18-23-guest-reboot.json",
+  "API36_final23_actual_host_AVD_coldboot": "api36-final23-visible-host-cold.json",
+  "new_native_gallery_API24_available_cancel_proof": "api24-gallery23-cancel.json",
+  "new_native_gallery_API33_no_provider_red_to_green_proof": "api33-gallery23-result.json",
+  "ARCore_absent_API36_PlayStore_signin_and_cancel_photo_proof": "api36-ar23-installer-cancel.json",
+  "ARCore_install_completed_or_tracking_or_field_accuracy_verified": false,
+  "historical21_22_API24_GLES2_fallback_not_relabeled23": true,
+  "old_invalid_existing_API33_API36_preserved_without_repair_clear_or23install": true,
+  "invalid_old_APK_parse_root_cause_proven": false,
+  "API33_google_or_real_photo_provider_available": false,
+  "API24_google_service_metadata_only": "api24-google-service-metadata23.json",
+  "actual_Google_login_verified_by_this_matrix": false,
+  "full_author_workflow_UI_or_PDF23_verified_by_this_matrix": false,
+  "S24_touched_by_matrix_agent": false,
+  "final_lab36_explicitly_released_to_OAuth_agent": true,
+  "visible_final_emulator_GUI_for_separate_authorized_Google_test_account": true,
+  "user_visual_or_final_acceptance_claimed": false,
+  "static_or_emulator_test_claimed_as_everyAndroid_version_orOTA": false,
+  "private_inventories_rawlogs_keys_tokens_credentials_user_coordinates_in_public_evidence": false
+}

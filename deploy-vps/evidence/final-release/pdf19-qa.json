@@ -1,0 +1,236 @@
+{
+  "format_version": 1,
+  "scope": "AS16 PDF19 own DEMO read-only QA",
+  "pdf_versions": {
+    "1": {
+      "file": "AS16_AVD36_release19_v1.pdf",
+      "sha256": "4f599efc753c123276677f585057fdd4716708fe70f56372fcfdef37174910fb",
+      "bytes": 43177,
+      "pages": 5,
+      "original_sha256": "7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608",
+      "original_jpeg_psnr_db": 45.675,
+      "original_jpeg_mean_absolute_error": 0.569,
+      "annotation_color_pixel_counts": {
+        "reference": 58,
+        "tree": 450,
+        "crown": 934,
+        "crown_height": 834,
+        "trunk": 174,
+        "trunk_axis": 458,
+        "outline": 1076
+      },
+      "measurement_values": {
+        "crown_height": 2.1966101694915277,
+        "crown_porosity": null,
+        "crown_width": 2.596610169491527,
+        "dbh": null,
+        "tree_height": 4.050847457627122,
+        "tree_segment_length": 4.050847457627122,
+        "trunk_diameter": 0.3593220338983055,
+        "trunk_lean": 0.0,
+        "trunk_measurement_height": 0.6949152542332094
+      },
+      "checks": {
+        "pages_5": true,
+        "same_selected_record_in_pdf": true,
+        "selected_version_in_pdf": true,
+        "original_sha_matches_snapshot_and_record": true,
+        "image_256x384": true,
+        "original_jpeg_psnr_above_35db": true,
+        "annotation_pixels_unchanged_outside_paths": true,
+        "all_seven_annotation_colors_in_expected_bounds": true,
+        "normalized_coordinates_and_size_label": true,
+        "numeric_geometry_and_units": true,
+        "dbh_unavailable": true,
+        "porosity_unavailable": true,
+        "beta_unavailable": true,
+        "reference_real_length_matches": true,
+        "weather_matches_saved_snapshot": true,
+        "soil_matches_saved_snapshot": true,
+        "provider_dates_sources_limitations": true,
+        "only_explicit_demo_gps": true,
+        "email_pattern_absent": true,
+        "token_secret_pattern_absent": true,
+        "no_owner_id_in_pdf": true,
+        "page_numbering_complete": true
+      },
+      "checks_passed": 22,
+      "checks_total": 22,
+      "visual_review": {
+        "completed": true,
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "defects": [],
+        "note": "Every page viewed individually; no clipping, overlaps, black squares or unreadable glyphs found. Blank space/page boundaries are consistent with flowing report."
+      },
+      "source": "Actual APK19 AVD36 UI export; synthetic DEMO image/reference geometry; retained real API environment responses from 2026-10-06. This QA compared saved snapshot and did not request providers or write server data.",
+      "document_structure_checks": {
+        "metadata_author_arborscan": true,
+        "metadata_email_absent": true,
+        "no_embedded_file_attachment": true,
+        "no_acroform": true,
+        "no_open_action": true,
+        "all_action_uris_are_public_provider_attributions": true
+      },
+      "renders": [
+        {
+          "file": "v1-page-1.png",
+          "sha256": "ed7eea1dc66c5c6650e61de1951a09d3b5047feb789453cc80fbda374c3c17e0"
+        },
+        {
+          "file": "v1-page-2.png",
+          "sha256": "40f2863c8f4b02398a64833725f08b37009fec06528d6b66319f75baab8dd8e7"
+        },
+        {
+          "file": "v1-page-3.png",
+          "sha256": "cf1779e0e6b9b025b8ee22ceba1cec71b31e2794d1fb6da230953c3c497c420a"
+        },
+        {
+          "file": "v1-page-4.png",
+          "sha256": "03789e6760ab27ed62c43eaab44032d5578ae4b19b91216f3b9b08743e0811cc"
+        },
+        {
+          "file": "v1-page-5.png",
+          "sha256": "1c73577a0043efe601b3c37332e2ed63c4371a44bc812c1328b7fc00ef3c0207"
+        }
+      ],
+      "contact_pairs": [
+        "v1-pages-1-2.png",
+        "v1-pages-3-4.png",
+        "v1-pages-5-5.png"
+      ]
+    },
+    "2": {
+      "file": "AS16_AVD36_release19_v2.pdf",
+      "sha256": "84e8f68fd1a47458fc1b10f45d230dd483bd4f93e37bc1be55486fc2bf69ef36",
+      "bytes": 43151,
+      "pages": 5,
+      "original_sha256": "7cee5f116879b0b0cf424c0d17dcf22551199188f9648bc97d153bcdf99cf608",
+      "original_jpeg_psnr_db": 45.675,
+      "original_jpeg_mean_absolute_error": 0.569,
+      "annotation_color_pixel_counts": {
+        "reference": 58,
+        "tree": 450,
+        "crown": 934,
+        "crown_height": 834,
+        "trunk": 174,
+        "trunk_axis": 458,
+        "outline": 1076
+      },
+      "measurement_values": {
+        "crown_height": 4.393220338983055,
+        "crown_porosity": null,
+        "crown_width": 5.193220338983054,
+        "dbh": null,
+        "tree_height": 8.101694915254244,
+        "tree_segment_length": 8.101694915254244,
+        "trunk_diameter": 0.718644067796611,
+        "trunk_lean": 0.0,
+        "trunk_measurement_height": 1.3898305084664189
+      },
+      "checks": {
+        "pages_5": true,
+        "same_selected_record_in_pdf": true,
+        "selected_version_in_pdf": true,
+        "original_sha_matches_snapshot_and_record": true,
+        "image_256x384": true,
+        "original_jpeg_psnr_above_35db": true,
+        "annotation_pixels_unchanged_outside_paths": true,
+        "all_seven_annotation_colors_in_expected_bounds": true,
+        "normalized_coordinates_and_size_label": true,
+        "numeric_geometry_and_units": true,
+        "dbh_unavailable": true,
+        "porosity_unavailable": true,
+        "beta_unavailable": true,
+        "reference_real_length_matches": true,
+        "weather_matches_saved_snapshot": true,
+        "soil_matches_saved_snapshot": true,
+        "provider_dates_sources_limitations": true,
+        "only_explicit_demo_gps": true,
+        "email_pattern_absent": true,
+        "token_secret_pattern_absent": true,
+        "no_owner_id_in_pdf": true,
+        "page_numbering_complete": true
+      },
+      "checks_passed": 22,
+      "checks_total": 22,
+      "visual_review": {
+        "completed": true,
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "defects": [],
+        "note": "Every page viewed individually; no clipping, overlaps, black squares or unreadable glyphs found. Blank space/page boundaries are consistent with flowing report."
+      },
+      "source": "Actual APK19 AVD36 UI export; synthetic DEMO image/reference geometry; retained real API environment responses from 2026-10-06. This QA compared saved snapshot and did not request providers or write server data.",
+      "document_structure_checks": {
+        "metadata_author_arborscan": true,
+        "metadata_email_absent": true,
+        "no_embedded_file_attachment": true,
+        "no_acroform": true,
+        "no_open_action": true,
+        "all_action_uris_are_public_provider_attributions": true
+      },
+      "renders": [
+        {
+          "file": "v2-page-1.png",
+          "sha256": "4e01ec14025a536693fda0b6ebecc7c9922e01930897281b39be86479d0912ea"
+        },
+        {
+          "file": "v2-page-2.png",
+          "sha256": "630caf7b009d0eac5f29d8452469257a1a312e589df1b7eccd98094f73fcd396"
+        },
+        {
+          "file": "v2-page-3.png",
+          "sha256": "7e396cf2ff546d4e50744356f378293d6bb5fbb016d44c6b048522ce08987601"
+        },
+        {
+          "file": "v2-page-4.png",
+          "sha256": "03789e6760ab27ed62c43eaab44032d5578ae4b19b91216f3b9b08743e0811cc"
+        },
+        {
+          "file": "v2-page-5.png",
+          "sha256": "1c73577a0043efe601b3c37332e2ed63c4371a44bc812c1328b7fc00ef3c0207"
+        }
+      ],
+      "contact_pairs": [
+        "v2-pages-1-2.png",
+        "v2-pages-3-4.png",
+        "v2-pages-5-5.png"
+      ]
+    }
+  },
+  "cross_version_checks": {
+    "same_record": true,
+    "versions_distinct": true,
+    "v1_parent_absent": true,
+    "v2_parent_is_v1": true,
+    "same_photo": true,
+    "real_reference_length_changes_1m_to_2m": true,
+    "all_defined_geometric_lengths_double": true,
+    "pdf_bytes_different": true
+  },
+  "cross_version_checks_passed": 8,
+  "cross_version_checks_total": 8,
+  "production_writes_by_qa": false,
+  "adb_used_by_qa": false,
+  "not_field_accuracy_validation": true,
+  "parent_relation_checked_in_expected_record_not_displayed_in_pdf": true,
+  "sensitive_pattern_scan_is_not_proof_of_all_secret_absence": true,
+  "checked_at_utc": "2026-10-07T14:52:15.150716+00:00",
+  "render_dpi": 110,
+  "render_tool": "Poppler pdftoppm bundled runtime",
+  "value_check_environment": "Bundled Python 3.12; pypdf, Pillow and NumPy; actual pulled PDF files",
+  "visual_review_environment": "Agent viewing every rendered PNG page, 10 pages total",
+  "all_content_checks_passed": true,
+  "visual_review_all_10_pages_passed": true
+}

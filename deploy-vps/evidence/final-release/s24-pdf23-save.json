@@ -1,0 +1,12 @@
+{
+  "environment": "Physical S24 / exact release23",
+  "source": "Existing permitted synthetic DEMO AS09 report; read-only export",
+  "system_save_dialog_actual": true,
+  "download_file_actual": true,
+  "device_and_pulled_sha256_equal": true,
+  "pdf_sha256": "e9f0beea94d83b32e054129c7d63ff56f0d1abccc58a9f41fa12f8cd0414e78c",
+  "bytes": 55774,
+  "real_report_changed": false,
+  "account_logged_out_or_cleared": false,
+  "visual_review_complete": false
+}

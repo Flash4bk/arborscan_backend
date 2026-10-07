@@ -1,0 +1,15 @@
+{
+  "environment": "Task-created actual API33 stripped AOSP ATD lab with no image provider",
+  "actual_sdk": 33,
+  "version_code": 23,
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "system_GET_CONTENT_image_provider_absent": true,
+  "normal_Gallery_tap_friendly_unavailable_visible": true,
+  "second_normal_Gallery_tap_retry_friendly_unavailable_visible": true,
+  "inline_error_card_reached_by_normal_scroll": true,
+  "same_process_alive_across_both_attempts": true,
+  "subsequent_Profile_and_Analysis_navigation_responsive": true,
+  "new_target_fatal_reply_already_submitted_or_ANR": false,
+  "actual_photo_selection_with_provider_verified_here": false,
+  "S24_or_oldinvalid_AVDs_touched": false
+}

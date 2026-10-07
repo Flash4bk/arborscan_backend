@@ -1,0 +1,36 @@
+{
+  "checked_at_utc": "2026-10-07T14:21:15.483131+00:00",
+  "production_mutations": false,
+  "tls_verification_enabled": true,
+  "v4_health": {
+    "status": "ok",
+    "api_version": "4.0.0-alpha.1",
+    "schema_version": "4.0.0-alpha.1"
+  },
+  "active_segmentation": {
+    "loaded": true,
+    "version": 4,
+    "task": "segment",
+    "confidence_threshold": 0.25,
+    "imgsz": 1024
+  },
+  "active_segmentation_weights": {
+    "sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+    "bytes": 26626466
+  },
+  "database_workflow_versions": {
+    "contour_workflow": 1,
+    "server_history": 1,
+    "model_quality": 1,
+    "source": "read-only SQL checks performed 2026-10-07 in this task"
+  },
+  "measurement_contract": {
+    "report_method_version": 2,
+    "reference": "known_object_segment_v2",
+    "AR_schema": "ar_measurement_v4",
+    "AR_height": "fixed_vertical_tree_plane_ray_intersection_v1",
+    "AR_DBH": "cylindrical_tangent_rays_median_v2",
+    "source": "client/server source at candidate91f17b5; field accuracy not validated"
+  },
+  "beta_solver_in_production": false
+}

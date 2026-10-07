@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "task": "AS-16",
+  "version_code": 23,
+  "environment": "Actual isolated DEMO AVD36 UI",
+  "S24_touched": false,
+  "network_before": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1",
+    "mobile_data": "1"
+  },
+  "actual_local_journal_report_after_stop": true,
+  "actual_offline_PDF_viewer": true,
+  "server_history_reconnected": true,
+  "network_after": {
+    "airplane_mode_on": "0",
+    "wifi_on": "1",
+    "mobile_data": "1"
+  },
+  "original_network_restored": true
+}

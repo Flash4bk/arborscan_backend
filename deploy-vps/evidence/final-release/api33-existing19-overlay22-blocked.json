@@ -1,0 +1,17 @@
+{
+  "actual_sdk": 33,
+  "environment": "Preserved existing API33 AOSP ATD with baseline19 settings",
+  "overlay22_attempted": false,
+  "guard_failed_before_any_install_or_data_operation": true,
+  "observations": [
+    "Android boot completed with SDK33",
+    "PackageManager retained code19 settings but no scanned application or versionName",
+    "Startup log reported failed base.apk parse then Android deletion of invalid package",
+    "pm path omitted application; own signed probe package remained",
+    "Guest data filesystem had more than5GB free"
+  ],
+  "repair_or_uninstall_or_data_clear_performed_by_agent": false,
+  "original19to22_data_comparison_available": false,
+  "cause_of_invalid_old19_APK_proven": false,
+  "clean22_android_OS_reboot_parse_and_home_passed": true
+}

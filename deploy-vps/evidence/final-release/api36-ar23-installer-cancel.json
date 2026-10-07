@@ -1,0 +1,20 @@
+{
+  "environment": "Actual clean task-created API36 GooglePlay lab, ARCore absent",
+  "actual_sdk": 36,
+  "version_code": 23,
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "normal_system_PhotoPicker_selected_synthetic_photo": true,
+  "same_tree_confirmation_and_temporary_camera_permission_normal_UI": true,
+  "actual_ARCore_install_request_reached_PlayStore_signin_required_UI": true,
+  "stable_PlayStore_signin_UI_screenshot_visible": true,
+  "Installing_progress_text_visible_in_final23_screenshot": false,
+  "first_and_second_system_BACK_returned_to_MainActivity": true,
+  "second_AR_attempt_and_cancel_responsive_same_process": true,
+  "photo_region_pixels_identical_after_both_cancel_returns": true,
+  "ARCore_still_absent_after_cancels": true,
+  "cold_restart_home_after_attempts": true,
+  "new_target_fatal_or_ANR": false,
+  "ARCore_install_completed_or_tracking_or_accuracy_verified": false,
+  "Google_account_entered_for_this_check": false,
+  "S24_or_oldinvalid_AVDs_touched": false
+}

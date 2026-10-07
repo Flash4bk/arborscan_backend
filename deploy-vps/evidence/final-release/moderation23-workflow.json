@@ -1,0 +1,23 @@
+{
+  "environment": "Own exact23 author AVD UI, legitimate admin S24 UI, independent default-TLS HTTPS read",
+  "root_rejected_with_reason_actual_S24_UI": true,
+  "author_saw_rejection_and_reason_actual_UI": true,
+  "unsaved_draft_force_stop_restore_actual_UI": true,
+  "one_new_child_after_two_fast_save_presses": true,
+  "exact_child_submitted_actual_UI": true,
+  "exact_child_accepted_actual_S24_UI": true,
+  "author_saw_accepted_child_actual_UI": true,
+  "accepted_edit_new_grandchild_actual_UI": true,
+  "grandchild_status": "draft",
+  "submit_review_action_visible": true,
+  "parent_still_accepted": true,
+  "root_still_rejected": true,
+  "original_unchanged_all_revisions": true,
+  "stale_parent_conflict_actual_UI": true,
+  "conflict_retry_actual_UI": true,
+  "conflict_kept_draft_and_server_chain_unchanged": true,
+  "legacy_png_actual_UI_opened": true,
+  "legacy_source_points_not_claimed": true,
+  "legacy_explicit_new_contour_action_visible": true,
+  "training_or_dataset_or_real_decision_changes": false
+}

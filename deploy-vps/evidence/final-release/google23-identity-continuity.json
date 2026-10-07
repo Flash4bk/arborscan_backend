@@ -1,0 +1,13 @@
+{
+  "checked_at_utc": "2026-10-07T21:51:07.608836+00:00",
+  "scope": "Read-only exact owner-authorized Google test identity, not other users",
+  "unique_email_match_count": 1,
+  "google_subject_nonempty": true,
+  "raw_identity_or_credentials_published": false,
+  "production_identity_or_role_modified_by_this_check": false,
+  "canonical_owner_unchanged": true,
+  "google_subject_unchanged": true,
+  "role_unchanged": true,
+  "created_at_unchanged": true,
+  "no_duplicate_email_history_owner_created": true
+}

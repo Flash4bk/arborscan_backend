@@ -1,0 +1,14 @@
+{
+  "checked_at_utc": "2026-10-07T22:33:01.538784+00:00",
+  "scope": "All branch files differing from10b54e7, unstaged docs and explicitly listed public final-release evidence",
+  "candidate_source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6",
+  "files_considered": 197,
+  "text_files_scanned": 150,
+  "PDF_text_metadata_scanned": 5,
+  "image_files_from_visually_reviewed_allowlist": 42,
+  "known_private_values_checked": 15,
+  "forbidden_matches": 0,
+  "explicit_fake_connection_cli_rejection_fixtures_reviewed": 1,
+  "raw_values_printed": false,
+  "arbitrary_secret_types_or_image_steganography_absence_proven": false
+}

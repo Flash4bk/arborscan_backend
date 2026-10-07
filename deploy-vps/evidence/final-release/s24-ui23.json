@@ -1,0 +1,33 @@
+{
+  "environment": "Physical Samsung S24 Ultra, Android16/API36",
+  "version_code": 23,
+  "version_name": "1.3.0",
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "profile_before_and_after_force_stop": true,
+  "history_loaded_after_cold_restart": true,
+  "existing_authorized_demo_report_open_read_only": true,
+  "AR_native_activity_opened": true,
+  "AR_back_returned_MainActivity": true,
+  "AR_tracking_verified": false,
+  "field_accuracy_verified": false,
+  "AR_observation": "Native AR activity opened and Back returned to responsive analysis UI; no tracking or physical measurement result asserted",
+  "gallery_cancel_actual_native": true,
+  "phone_gallery_media_inspected_or_selected": false,
+  "new_Google_login_verified": false,
+  "account_logged_out": false,
+  "real_user_records_modified": false,
+  "recent_app_AndroidRuntime_fatal_blocks": 0,
+  "log_scope": "last2500 lines; not a proof that all past device crashes are absent",
+  "screenshot_sha256": {
+    "home23": "54d5c61ec66bb75e97f8e16c0c923abf9750aded23ed5e13683ba2d1924a2510",
+    "profile23": "9bf82780543e05a26322caefcf4db3b714dce17afaf5f9f9b65b649235cf15e7",
+    "profile-cold23": "dfba2d4c37d850d11ebb9375f7d1ca86d098e1b523960784690ed4ed7a4f8317",
+    "ar23": "458d948988e5387050de6c91fe01dfa740e65ad90ebc98c911008b14f3a5d3fd",
+    "ar-return23": "9fa5f11730908eb866bbaee8025e653106223dcf532f5a674c0c05251d22e0a4",
+    "history-after-wait23": "31231d212706152d180f380b0b00bc3a8ffd6ae05f992feb7ada95357c5ea090",
+    "demo-report23": "777e3d158e70b3e70a0cb7232c7f69ddf33d2b01a4c5600217acf583821954a3"
+  },
+  "private_profile_and_history_screenshots_published": false,
+  "same_account_labels_before_and_after_force_stop": true,
+  "source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6"
+}

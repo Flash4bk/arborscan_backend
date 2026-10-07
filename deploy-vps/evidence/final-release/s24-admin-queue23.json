@@ -1,0 +1,11 @@
+{
+  "environment": "Physical S24 Ultra / exact1.3.0+23",
+  "profile_admin_navigation_visible": true,
+  "queue_header_visible": true,
+  "refresh_visible": true,
+  "authorization_or_load_error_visible": false,
+  "read_only": true,
+  "account_logout": false,
+  "real_decisions_modified": false,
+  "HTTP_status_not_directly_observed": true
+}

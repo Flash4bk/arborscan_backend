@@ -1,0 +1,17 @@
+{
+  "environment": "Actual isolated API24 clean lab, declared GLES2.0",
+  "version_code": 22,
+  "apk_sha256": "65835130dfd35e36460ebcdde8f1c5d85761c3b256845e21611f3c07007ea87f",
+  "selected_synthetic_DEMO_photo_before_attempt": true,
+  "first_AR_fallback_responsive": true,
+  "second_AR_button_and_confirmation_responded": true,
+  "second_AR_fallback_responsive": true,
+  "same_process_and_photo_retained_across_both_returns": true,
+  "photo_region_pixels_identical": true,
+  "friendly_graphics_unavailable_message_visible": true,
+  "cold_restart_home_after_AR": true,
+  "new_AndroidRuntime_fatal_or_ActivityManager_ANR": false,
+  "ARCore_installer_or_tracking_reached": false,
+  "physical_measurement_accuracy_claimed": false,
+  "S24_touched": false
+}

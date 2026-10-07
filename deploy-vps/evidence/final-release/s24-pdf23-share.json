@@ -1,0 +1,8 @@
+{
+  "environment": "Physical S24 / release23",
+  "actual_activity": "com.android.intentresolver/com.android.intentresolver.ChooserActivityLauncher",
+  "share_sheet_requested_by_pdf_ui": true,
+  "recipient_or_target_selected": false,
+  "message_sent": false,
+  "contacts_or_recipient_screen_read": false
+}

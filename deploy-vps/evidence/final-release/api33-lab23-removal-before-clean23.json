@@ -1,0 +1,11 @@
+{
+  "environment": "Same task-created clean lab AndroidOS/AVD",
+  "actual_sdk": 33,
+  "prior_version_code": 23,
+  "AVD_actual_SDK_release_and_effective_certificate_guards": true,
+  "profile_unauthenticated_UI_guard": true,
+  "only_own_lab_app_and_test_removed": true,
+  "genuine_application_absence_after_removal": true,
+  "existing_AVDs_or_S24_touched": false,
+  "Android_OS_or_AVD_wiped": false
+}

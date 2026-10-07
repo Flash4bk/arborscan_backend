@@ -1,0 +1,14 @@
+{
+  "environment": "Physical S24 Ultra / actualAndroid16/API36",
+  "version_code": 23,
+  "native_AR_activity_started": true,
+  "AR_back_returned_responsive_MainActivity": true,
+  "physical_measurement_attempted": false,
+  "tracking_or_accuracy_verified": false,
+  "AR_observation": "Native AR activity opened and Back returned to responsive analysis UI; no tracking or physical measurement result asserted",
+  "native_gallery_GET_CONTENT_handler": "com.google.android.photopicker/com.android.photopicker.PhotopickerGetContentActivity",
+  "gallery_cancel_returned_to_responsive_analysis": true,
+  "phone_gallery_media_inspected_or_selected": false,
+  "gallery_grid_screenshot_captured": false,
+  "owner_session_logged_out": false
+}

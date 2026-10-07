@@ -1,0 +1,27 @@
+{
+  "environment": "Owned API36 AVD / exact 1.3.0+23",
+  "actual_UI_request_current_conditions": true,
+  "controlled_DEMO_coordinates": [
+    50.2,
+    10.2
+  ],
+  "OpenWeather_received_UTC": "2026-10-07T21:24:38.056595+00:00",
+  "temperature_C": 14.54,
+  "wind_m_s": 0.36,
+  "gust_m_s": 1.17,
+  "SoilGrids_received_UTC": "2026-10-07T21:24:42.102378+00:00",
+  "soil_source": "SoilGrids 2.0 / 250m / CC BY 4.0",
+  "soil_layer_cm": [
+    0,
+    5
+  ],
+  "sand_percent": 19.5,
+  "organic_carbon_g_kg": 54.9,
+  "partial_soil_fields_explicit": true,
+  "source_soil_observation_date_unavailable_explicit": true,
+  "conditions_new_version_draft_saved_on_device": true,
+  "draft_saved_as_server_version": false,
+  "previous_versions_or_measurements_overwritten": false,
+  "emulator_GPS_attempts": "Location permission and retry; service proposed an old last-known point, both cancelled. No new GPS fix accepted.",
+  "physical_accuracy_claimed": false
+}
