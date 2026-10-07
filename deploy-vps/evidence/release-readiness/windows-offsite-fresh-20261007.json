@@ -1,0 +1,164 @@
+{
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "verified_at_utc": "2026-10-07T09:59:12.255970+00:00",
+  "source_set": "20261006T195518Z",
+  "manifest_sha256": "d850deae43556e2dcb69980cd3619b7013b428a66a7d5860a7310657fae17eb2",
+  "outer": {
+    "verified_files": 29,
+    "verified_bytes": 979545362,
+    "scope": "one application/configuration/native PostgreSQL backup set"
+  },
+  "postgres": {
+    "verified_files": 4,
+    "verified_bytes": 52163691,
+    "scope": "native PostgreSQL archive and password-free roles"
+  },
+  "runtime_contract_hash_covered": true,
+  "runtime_contract_bytes_preserved": true,
+  "runtime_image_ids": [
+    "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+    "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a"
+  ],
+  "runtime_unique_archives": 3,
+  "runtime_original_references_verified": 4,
+  "runtime_bytes": 3781384242,
+  "package_files": 34,
+  "package_bytes": 4760932219,
+  "relocated_package_actual_file_shas_verified": true,
+  "file_restore": {
+    "files_restored": 2265,
+    "bytes": 828196863,
+    "reports_linked": 18,
+    "seconds": 6.354,
+    "database_restored": false,
+    "production_credentials_loaded": false
+  },
+  "seconds": 38.789,
+  "source_preserved": true,
+  "historical_archives_preserved": true,
+  "runtime_original_manifest_rewritten": false,
+  "database_restore_performed": false,
+  "production_credentials_loaded": false,
+  "new_public_vm_launched": false,
+  "windows_pc_required_for_new_transfer": true,
+  "independent_always_on_receiver": false,
+  "actual_windows_runs_20261007": [
+    {
+      "started_at_utc": "2026-10-07T05:00:01.965079+00:00",
+      "inventory_attempt_failed": [],
+      "sftp_failed": [],
+      "transfer_retries": [],
+      "verified_existing_count": 0,
+      "finished_at_utc": "2026-10-07T05:00:07.091356+00:00",
+      "status": "failed",
+      "seconds": 5.126,
+      "reason": "ssh_inventory_failed",
+      "error_type": "RuntimeError"
+    },
+    {
+      "started_at_utc": "2026-10-07T06:33:06.122221+00:00",
+      "inventory_attempt_failed": [],
+      "sftp_failed": [
+        {
+          "at": "2026-10-07T07:00:51.210533+00:00",
+          "exit_code": 255,
+          "categories": [
+            "connection closed"
+          ]
+        },
+        {
+          "at": "2026-10-07T07:05:26.860751+00:00",
+          "exit_code": 255,
+          "categories": [
+            "connection closed"
+          ]
+        },
+        {
+          "at": "2026-10-07T07:06:16.603573+00:00",
+          "exit_code": 255,
+          "categories": [
+            "connection closed"
+          ]
+        }
+      ],
+      "transfer_retries": [
+        {
+          "at": "2026-10-07T07:00:51.212696+00:00",
+          "attempt": 2
+        },
+        {
+          "at": "2026-10-07T07:05:26.861567+00:00",
+          "attempt": 3
+        }
+      ],
+      "verified_existing_count": 13,
+      "finished_at_utc": "2026-10-07T07:06:16.604041+00:00",
+      "status": "failed",
+      "seconds": 1990.482,
+      "reason": "transfer_interrupted",
+      "error_type": "RuntimeError"
+    },
+    {
+      "started_at_utc": "2026-10-07T07:11:26.337629+00:00",
+      "inventory_attempt_failed": [],
+      "sftp_failed": [
+        {
+          "at": "2026-10-07T07:16:38.188557+00:00",
+          "exit_code": 255,
+          "categories": [
+            "connection closed"
+          ]
+        },
+        {
+          "at": "2026-10-07T07:30:13.333948+00:00",
+          "exit_code": 255,
+          "categories": [
+            "connection closed",
+            "connection reset"
+          ]
+        }
+      ],
+      "transfer_retries": [
+        {
+          "at": "2026-10-07T07:16:38.188982+00:00",
+          "attempt": 2
+        },
+        {
+          "at": "2026-10-07T07:30:13.334483+00:00",
+          "attempt": 3
+        }
+      ],
+      "verified_existing_count": 13,
+      "finished_at_utc": "2026-10-07T07:32:37.159631+00:00",
+      "status": "failed",
+      "seconds": 1270.822,
+      "reason": "transfer_interrupted",
+      "error_type": "RuntimeError"
+    },
+    {
+      "started_at_utc": "2026-10-07T09:53:32.365340+00:00",
+      "inventory_attempt_failed": [],
+      "sftp_failed": [],
+      "transfer_retries": [],
+      "verified_existing_count": 13,
+      "finished_at_utc": "2026-10-07T09:57:14.850487+00:00",
+      "status": "success",
+      "seconds": 222.485,
+      "complete_sets": 14
+    }
+  ],
+  "scheduler_final_state": "Ready",
+  "scheduler_last_task_result": 0,
+  "installed_pull_module_sha256": "0beba3e66cee6d13552e813d279beb24b1160557150e28812647b19537080122",
+  "prior_installed_module_preserved": true,
+  "calendar_run_0500_status": "failed_ssh_inventory_failed",
+  "historical_ssh_root_cause": "not established; raw diagnostics not recorded; available journal access limited",
+  "calendar_auto_retry_observed": false,
+  "successful_latest_run_trigger": "agent started existing Scheduler task; not calendar trigger",
+  "application_transfer_method": "byte-exact tar member reuse plus existing Scheduler block reconstruction; not whole network retransmit",
+  "historical_completed_windows_sets_preserved": 16,
+  "scheduler_configuration_modified": false
+}

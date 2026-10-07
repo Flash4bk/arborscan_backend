@@ -1,0 +1,20 @@
+{
+  "task_ids": [
+    "AS-14"
+  ],
+  "checked_at_utc": "2026-10-07T09:55:04.828824+00:00",
+  "source_set": "20261006T195518Z",
+  "manifest_sha256": "d850deae43556e2dcb69980cd3619b7013b428a66a7d5860a7310657fae17eb2",
+  "archive_sha256": "fca5be26a348003e185df446ace2184ce8394a7b5c8c7d79f012bb4391aa07ad",
+  "archive_bytes": 830341120,
+  "members": 2266,
+  "reused_verified_payload_bytes": 502248890,
+  "readonly_ssh_missing_payload_bytes": 329686,
+  "readonly_ssh_plan_bytes": 5127023,
+  "seconds": 91.96,
+  "method": "byte-exact raw tar headers/footer plus current SHA verified reused local payloads",
+  "original_archive_preserved": true,
+  "scheduler_staging_changed": false,
+  "database_accessed": false,
+  "private_output_recorded": false
+}

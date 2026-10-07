@@ -54,6 +54,57 @@ def matches(path, digest):
         return hashlib.file_digest(f, 'sha256').hexdigest() == digest
 
 
+def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None):
+    """At most three read-only attempts; never log private subprocess output.
+
+    Each SSH invocation is bounded to 180 seconds. Authentication and host-key
+    arguments remain identical; retries cannot authorize an untrusted peer.
+    Invalid successful responses are validation failures, not transport retries.
+    """
+    run = subprocess.run if run is None else run
+    sleep = time.sleep if sleep is None else sleep
+    for attempt in range(1, 4):
+        try:
+            result = run(command, input=INVENTORY.encode(), capture_output=True,
+                         timeout=180, **(hidden or {}))
+        except subprocess.TimeoutExpired:
+            fields = {'categories': ['timeout']}
+        except OSError:
+            if log:
+                log('inventory_attempt_failed', attempt=attempt,
+                    categories=['local_client_error'])
+            raise RuntimeError('ssh_inventory_failed') from None
+        else:
+            if result.returncode == 0:
+                try:
+                    records = json.loads(result.stdout)
+                    if not isinstance(records, list) or not records:
+                        raise ValueError('invalid inventory')
+                except (ValueError, TypeError, UnicodeError):
+                    raise RuntimeError('ssh_inventory_invalid_response') from None
+                return records
+            diagnostics = result.stderr or b''
+            if isinstance(diagnostics, bytes):
+                diagnostics = diagnostics.decode('utf-8', errors='replace')
+            diagnostics = diagnostics.lower()
+            categories = [category for text, category in (
+                ('connection closed', 'connection_closed'),
+                ('connection reset', 'connection_reset'),
+                ('connection refused', 'connection_refused'),
+                ('timed out', 'timeout'),
+                ('permission denied', 'authentication_denied'),
+                ('host key verification failed', 'host_key_rejected'),
+                ('could not resolve hostname', 'name_resolution_failed'),
+                ('network is unreachable', 'network_unreachable')) if text in diagnostics]
+            fields = {'exit_code': result.returncode,
+                      'categories': categories or ['ssh_nonzero_exit']}
+        if log:
+            log('inventory_attempt_failed', attempt=attempt, **fields)
+        if attempt == 3:
+            raise RuntimeError('ssh_inventory_failed') from None
+        sleep(5 * attempt)
+
+
 def transfer(root, record, download, free=shutil.disk_usage, download_many=None, delta=None):
     name = record['name']
     if not NAME.fullmatch(name):
@@ -150,9 +201,8 @@ def main():
             from ops_windows_job import contain_children
             contain_children()
             hidden={'creationflags':subprocess.CREATE_NO_WINDOW}
-            inventory=subprocess.run([str(system/'ssh.exe'),*options,'-p',str(args.port),args.host,'python3 -'],input=INVENTORY.encode(),capture_output=True,timeout=180,**hidden)
-            if inventory.returncode:raise RuntimeError('ssh_inventory_failed')
-            records=json.loads(inventory.stdout)
+            records=read_inventory([str(system/'ssh.exe'),*options,'-p',str(args.port),
+                                    args.host,'python3 -'],hidden=hidden,log=log)
             def delta(record,filename,target):
                 import gzip
                 from ops_delta_copy import reconstruct
@@ -203,7 +253,7 @@ def main():
             return 0
         except Exception as error:
             # Never print subprocess output, connection details, or private paths.
-            safe=str(error) if str(error) in ('ssh_inventory_failed','transfer_interrupted',
+            safe=str(error) if str(error) in ('ssh_inventory_failed','ssh_inventory_invalid_response','transfer_interrupted',
                 'transfer_stalled','checksum_mismatch','insufficient_disk','existing_set_manifest_changed') else 'validation_or_local_error'
             log('failed',error_type=type(error).__name__,reason=safe)
             return 1

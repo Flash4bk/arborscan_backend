@@ -1,0 +1,15 @@
+{
+  "checked_at_utc": "2026-10-07T06:58:58.833575+00:00",
+  "source_tool_sha256": "0beba3e66cee6d13552e813d279beb24b1160557150e28812647b19537080122",
+  "status": "read_only_inventory_verified",
+  "source_complete_sets": 14,
+  "latest_set": "20261006T195518Z",
+  "latest_bytes": 979547977,
+  "latest_manifest_sha256": "d850deae43556e2dcb69980cd3619b7013b428a66a7d5860a7310657fae17eb2",
+  "seconds": 122.813,
+  "attempt_events": [],
+  "strict_host_key_checking": true,
+  "authentication_unchanged": true,
+  "backup_download_performed": false,
+  "private_output_recorded": false
+}

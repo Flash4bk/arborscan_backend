@@ -3,13 +3,14 @@ import importlib.util
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'deploy-vps'))
-from ops_pull_backups import entries, transfer
+from ops_pull_backups import entries, transfer, read_inventory, INVENTORY
 
 
 class PullTest(unittest.TestCase):
@@ -74,6 +75,93 @@ class PullTest(unittest.TestCase):
         self.assertEqual(manifest.read_bytes(),expected)
         self.assertEqual(transfer(self.root,self.record,lambda *a:self.fail('duplicate download')),'verified_existing')
         self.assertEqual(manifest.read_bytes(),expected)
+
+
+class InventoryRetryTest(unittest.TestCase):
+    def setUp(self):
+        self.command=['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','private-host','python3 -']
+        self.record=[{'name':'20261006T195518Z','manifest':'fixture','bytes':42}]
+        self.calls=[]; self.logs=[]; self.waits=[]
+
+    def runner(self, replies):
+        iterator=iter(replies)
+        def run(command, **kwargs):
+            self.calls.append((command,kwargs))
+            reply=next(iterator)
+            if isinstance(reply,BaseException):raise reply
+            return reply
+        return run
+
+    def log(self,event,**fields):self.logs.append({'event':event,**fields})
+    def success(self):return subprocess.CompletedProcess(self.command,0,json.dumps(self.record).encode(),b'')
+    def failed(self):return subprocess.CompletedProcess(self.command,255,b'private stdout',b'Connection closed; secret=PRIVATE_SENTINEL /private/location')
+
+    def read(self,replies):
+        return read_inventory(self.command,hidden={'creationflags':123},run=self.runner(replies),
+                              sleep=self.waits.append,log=self.log)
+
+    def test_transient_connection_error_recovers_without_changing_authentication(self):
+        self.assertEqual(self.read([self.failed(),self.success()]),self.record)
+        self.assertEqual(len(self.calls),2)
+        for command,kwargs in self.calls:
+            self.assertEqual(command,self.command)
+            self.assertEqual(kwargs,{'input':INVENTORY.encode(),'capture_output':True,'timeout':180,'creationflags':123})
+        self.assertEqual(self.waits,[5])
+        self.assertEqual(self.logs,[{'event':'inventory_attempt_failed','attempt':1,
+                                   'exit_code':255,'categories':['connection_closed']}])
+
+    def test_exhaustion_is_three_attempts_and_no_untrusted_diagnostics(self):
+        with self.assertRaisesRegex(RuntimeError,'^ssh_inventory_failed$'):
+            self.read([self.failed()]*4)
+        self.assertEqual(len(self.calls),3)
+        self.assertEqual(self.waits,[5,10])
+        self.assertEqual([r['attempt'] for r in self.logs],[1,2,3])
+        self.assertNotIn('PRIVATE_SENTINEL',json.dumps(self.logs))
+        self.assertNotIn('/private/location',json.dumps(self.logs))
+        self.assertNotIn('private stdout',json.dumps(self.logs))
+
+    def test_timeout_is_retried_and_timeout_output_is_redacted(self):
+        timeout=subprocess.TimeoutExpired(self.command,180,output=b'PRIVATE_SENTINEL',stderr=b'/private/location')
+        self.assertEqual(self.read([timeout,self.success()]),self.record)
+        self.assertEqual(len(self.calls),2)
+        self.assertEqual(self.logs,[{'event':'inventory_attempt_failed','attempt':1,'categories':['timeout']}])
+        self.assertNotIn('PRIVATE_SENTINEL',json.dumps(self.logs))
+
+    def test_success_is_not_repeated(self):
+        self.assertEqual(self.read([self.success()]),self.record)
+        self.assertEqual(len(self.calls),1)
+        self.assertFalse(self.waits)
+        self.assertFalse(self.logs)
+
+    def test_invalid_or_empty_response_fails_without_transport_retry(self):
+        for raw in (b'PRIVATE_SENTINEL',b'{}',b'[]'):
+            with self.subTest(response=raw):
+                self.calls.clear();self.logs.clear();self.waits.clear()
+                reply=subprocess.CompletedProcess(self.command,0,raw,b'')
+                with self.assertRaisesRegex(RuntimeError,'^ssh_inventory_invalid_response$'):
+                    self.read([reply,self.success()])
+                self.assertEqual(len(self.calls),1)
+                self.assertFalse(self.waits)
+
+    def test_missing_local_client_fails_safely_without_retry(self):
+        with self.assertRaisesRegex(RuntimeError,'^ssh_inventory_failed$'):
+            self.read([FileNotFoundError('PRIVATE_SENTINEL /private/location'),self.success()])
+        self.assertEqual(len(self.calls),1)
+        self.assertEqual(self.logs,[{'event':'inventory_attempt_failed','attempt':1,'categories':['local_client_error']}])
+
+    def test_authentication_and_host_key_failures_never_change_secure_arguments(self):
+        for stderr,category in ((b'Permission denied (publickey); PRIVATE_SENTINEL','authentication_denied'),
+                                (b'Host key verification failed /private/location','host_key_rejected')):
+            with self.subTest(category=category):
+                self.calls.clear();self.logs.clear();self.waits.clear()
+                reply=subprocess.CompletedProcess(self.command,255,b'',stderr)
+                with self.assertRaisesRegex(RuntimeError,'^ssh_inventory_failed$'):
+                    self.read([reply]*3)
+                self.assertEqual(len(self.calls),3)
+                self.assertTrue(all(command==self.command for command,_ in self.calls))
+                self.assertTrue(all(row['categories']==[category] for row in self.logs))
+                self.assertNotIn('PRIVATE_SENTINEL',json.dumps(self.logs))
+                self.assertNotIn('/private/location',json.dumps(self.logs))
 
 
 if __name__=='__main__':unittest.main()

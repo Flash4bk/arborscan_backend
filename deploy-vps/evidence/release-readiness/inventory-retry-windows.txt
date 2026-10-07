@@ -1,0 +1,21 @@
+Environment: Windows/Python3.14.6; generated private D fixtures; full pull module, 7 new inventory retry tests and 7 existing transfer tests.
+Source tool SHA256: 0beba3e66cee6d13552e813d279beb24b1160557150e28812647b19537080122
+test_authentication_and_host_key_failures_never_change_secure_arguments (tests_v4.test_ops_pull.InventoryRetryTest.test_authentication_and_host_key_failures_never_change_secure_arguments) ... ok
+test_exhaustion_is_three_attempts_and_no_untrusted_diagnostics (tests_v4.test_ops_pull.InventoryRetryTest.test_exhaustion_is_three_attempts_and_no_untrusted_diagnostics) ... ok
+test_invalid_or_empty_response_fails_without_transport_retry (tests_v4.test_ops_pull.InventoryRetryTest.test_invalid_or_empty_response_fails_without_transport_retry) ... ok
+test_missing_local_client_fails_safely_without_retry (tests_v4.test_ops_pull.InventoryRetryTest.test_missing_local_client_fails_safely_without_retry) ... ok
+test_success_is_not_repeated (tests_v4.test_ops_pull.InventoryRetryTest.test_success_is_not_repeated) ... ok
+test_timeout_is_retried_and_timeout_output_is_redacted (tests_v4.test_ops_pull.InventoryRetryTest.test_timeout_is_retried_and_timeout_output_is_redacted) ... ok
+test_transient_connection_error_recovers_without_changing_authentication (tests_v4.test_ops_pull.InventoryRetryTest.test_transient_connection_error_recovers_without_changing_authentication) ... ok
+test_bad_hash_never_published (tests_v4.test_ops_pull.PullTest.test_bad_hash_never_published) ... ok
+test_covered_native_checksum_preserved_exactly_on_windows (tests_v4.test_ops_pull.PullTest.test_covered_native_checksum_preserved_exactly_on_windows) ... ok
+test_interrupted_resume_and_repeat (tests_v4.test_ops_pull.PullTest.test_interrupted_resume_and_repeat) ... ok
+test_low_disk (tests_v4.test_ops_pull.PullTest.test_low_disk) ... ok
+test_old_native_checksum_reconstructed_with_lf_bytes (tests_v4.test_ops_pull.PullTest.test_old_native_checksum_reconstructed_with_lf_bytes) ... ok
+test_outer_manifest_preserves_trusted_source_bytes_on_windows (tests_v4.test_ops_pull.PullTest.test_outer_manifest_preserves_trusted_source_bytes_on_windows) ... ok
+test_unsafe_manifest (tests_v4.test_ops_pull.PullTest.test_unsafe_manifest) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.226s
+
+OK
