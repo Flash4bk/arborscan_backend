@@ -1,7 +1,9 @@
 import 'app_navigation.dart';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +15,7 @@ import 'model_quality_page.dart';
 import 'api_config.dart';
 import 'admin_panel_page.dart';
 import 'saved_corrections_page.dart';
+import 'profile_session_guard.dart';
 
 class ProfilePage extends StatefulWidget {
   final VoidCallback? onAuthChanged;
@@ -36,7 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
   static const String _expiresAtKey = 'arborscan_auth_expires_at';
 
   static const String _appName = 'ArborScan';
-  static const String _appVersion = '1.2.0 · новый интерфейс';
+  static const String _appVersion = '1.3.0';
   static const String _developerEmail = 'danik.alshkevich@gmail.com';
 
   final _nameController = TextEditingController();
@@ -91,6 +94,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<Map<String, String>> _requestHeaders({
     bool jsonBody = false,
     bool useAuth = false,
+    String? authToken,
   }) async {
     final headers = <String, String>{
       'Accept': 'application/json',
@@ -99,7 +103,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (useAuth) {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey)?.trim() ?? _token.trim();
+      final token = authToken?.trim() ??
+          prefs.getString(_tokenKey)?.trim() ??
+          _token.trim();
       if (token.isEmpty) {
         throw Exception('Сессия отсутствует. Войдите снова.');
       }
@@ -112,6 +118,7 @@ class _ProfilePageState extends State<ProfilePage> {
     String path,
     Map<String, dynamic>? body, {
     bool useAuth = false,
+    String? authToken,
   }) async {
     final res = await http
         .post(
@@ -119,6 +126,7 @@ class _ProfilePageState extends State<ProfilePage> {
           headers: await _requestHeaders(
             jsonBody: body != null,
             useAuth: useAuth,
+            authToken: authToken,
           ),
           body: body == null ? null : jsonEncode(body),
         )
@@ -146,11 +154,13 @@ class _ProfilePageState extends State<ProfilePage> {
     String path, {
     Map<String, String>? query,
     bool useAuth = false,
+    String? authToken,
   }) async {
     final res = await http
         .get(
           _uri(path, query),
-          headers: await _requestHeaders(useAuth: useAuth),
+          headers:
+              await _requestHeaders(useAuth: useAuth, authToken: authToken),
         )
         .timeout(const Duration(seconds: 15));
 
@@ -172,16 +182,18 @@ class _ProfilePageState extends State<ProfilePage> {
     return data;
   }
 
-  Future<void> _clearInvalidSession(String message) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove('arborscan_user_id');
-    await prefs.remove(_expiresAtKey);
-    await prefs.setBool(_loggedInKey, false);
-    await prefs.setBool(_adminFlagKey, false);
-    await prefs.setString(_roleKey, 'user');
+  Future<bool> _clearInvalidSession(
+      String message, ProfileSessionTicket ticket) async {
+    final cleared = await ProfileSessionGuard.write(ticket, (prefs) async {
+      await prefs.remove(_tokenKey);
+      await prefs.remove('arborscan_user_id');
+      await prefs.remove(_expiresAtKey);
+      await prefs.setBool(_loggedInKey, false);
+      await prefs.setBool(_adminFlagKey, false);
+      await prefs.setString(_roleKey, 'user');
+    }, active: () => mounted);
 
-    if (!mounted) return;
+    if (!cleared || !mounted) return false;
     setState(() {
       _loggedIn = false;
       _isAdmin = false;
@@ -197,10 +209,13 @@ class _ProfilePageState extends State<ProfilePage> {
       _statusText = message;
     });
     widget.onAuthChanged?.call();
+    return true;
   }
 
   Future<void> _loadProfile() async {
+    final ticket = await ProfileSessionGuard.capture();
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final token = prefs.getString(_tokenKey) ?? '';
     final storedName = prefs.getString(_nameKey) ?? '';
     final storedEmail = prefs.getString(_emailKey) ?? '';
@@ -219,9 +234,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (token.isNotEmpty) {
       try {
-        final data = await _getJson('/auth/me', useAuth: true);
-        await _applyAuthData(data, tokenFromResponse: token);
-        await _loadStats();
+        final data =
+            await _getJson('/auth/me', useAuth: true, authToken: token);
+        if (!await _applyAuthData(data,
+            ticket: ticket, tokenFromResponse: token)) {
+          _discardStaleProfile();
+          return;
+        }
         if (!mounted) return;
         setState(() {
           _serverOnline = true;
@@ -232,11 +251,17 @@ class _ProfilePageState extends State<ProfilePage> {
         if (msg.contains('401') ||
             msg.contains('Сессия') ||
             msg.contains('Unauthorized')) {
-          await _clearInvalidSession(
+          final cleared = await _clearInvalidSession(
             'Сессия истекла или была сброшена после обновления сервера. Войдите снова.',
+            ticket,
           );
+          if (!cleared) _discardStaleProfile();
         } else {
-          if (!mounted) return;
+          if (!await ProfileSessionGuard.current(ticket,
+              active: () => mounted)) {
+            _discardStaleProfile();
+            return;
+          }
           setState(() {
             _serverOnline = false;
             _statusText = _loggedIn
@@ -255,13 +280,52 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _loading = false);
   }
 
-  Future<void> _applyAuthData(
+  void _discardStaleProfile() {
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _loggedIn = false;
+      _isAdmin = false;
+      _serverOnline = false;
+      _name = '';
+      _email = '';
+      _role = 'user';
+      _token = '';
+      _avatarUrl = '';
+      _nameController.clear();
+      _emailController.clear();
+      _passwordController.clear();
+      _totalAnalyses = 0;
+      _geoAnalyses = 0;
+      _highRiskAnalyses = 0;
+      _avgRisk = null;
+      _lastAnalysis = null;
+      _statusText = 'Профиль изменился. Откройте вкладку снова.';
+    });
+  }
+
+  Future<bool> _applyAuthData(
     Map<String, dynamic> data, {
+    required ProfileSessionTicket ticket,
     String? tokenFromResponse,
   }) async {
-    final user = (data['user'] as Map?)?.cast<String, dynamic>() ?? {};
-    final token = (data['token'] ?? tokenFromResponse ?? _token).toString();
-    final expiresAt = data['expires_at']?.toString() ?? '';
+    if (data['user'] is! Map) {
+      throw const FormatException('Некорректный ответ авторизации.');
+    }
+    final user = (data['user'] as Map).cast<String, dynamic>();
+    final rawToken = data['token'] ?? tokenFromResponse;
+    if (rawToken is! String ||
+        rawToken.trim().isEmpty ||
+        user['id'] is! String ||
+        (user['id'] as String).trim().isEmpty) {
+      throw const FormatException('Некорректный ответ авторизации.');
+    }
+    final token = rawToken;
+    if (tokenFromResponse != null &&
+        ticket.owner.isNotEmpty &&
+        user['id'] != ticket.owner) {
+      throw const FormatException('Ответ относится к другому профилю.');
+    }
 
     final name = user['name']?.toString() ?? '';
     final email = user['email']?.toString() ?? '';
@@ -269,20 +333,24 @@ class _ProfilePageState extends State<ProfilePage> {
     final avatarUrl = user['avatar_url']?.toString() ?? '';
     final isAdmin = role == 'admin';
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_nameKey, name);
-    await prefs.setString(_emailKey, email);
-    await prefs.setString(_roleKey, role);
-    await prefs.remove('arborscan_user_id');
-    await prefs.setString(_tokenKey, token);
-    if (user['id'] is String) {
+    final saved = await ProfileSessionGuard.write(ticket, (prefs) async {
+      final expiresAt = data['expires_at']?.toString() ??
+          (tokenFromResponse != null
+              ? prefs.getString(_expiresAtKey) ?? ''
+              : '');
+      await prefs.remove(_tokenKey);
+      await prefs.remove('arborscan_user_id');
+      await prefs.setString(_nameKey, name);
+      await prefs.setString(_emailKey, email);
+      await prefs.setString(_roleKey, role);
       await prefs.setString('arborscan_user_id', user['id'] as String);
-    }
-    await prefs.setString(_expiresAtKey, expiresAt);
-    await prefs.setBool(_loggedInKey, true);
-    await prefs.setBool(_adminFlagKey, isAdmin);
+      await prefs.setString(_expiresAtKey, expiresAt);
+      await prefs.setString(_tokenKey, token);
+      await prefs.setBool(_loggedInKey, true);
+      await prefs.setBool(_adminFlagKey, isAdmin);
+    }, active: () => mounted);
 
-    if (!mounted) return;
+    if (!saved || !mounted) return false;
     setState(() {
       _name = name;
       _email = email;
@@ -297,7 +365,8 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     widget.onAuthChanged?.call();
-    await _loadStats();
+    unawaited(_loadStats());
+    return true;
   }
 
   String? _validateEmail(String value) {
@@ -308,6 +377,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _register() async {
+    if (_busy) return;
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -328,13 +398,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
     setState(() => _busy = true);
     try {
+      final ticket = await ProfileSessionGuard.capture(supersede: true);
       final data = await _postJson('/auth/register', {
         'name': name,
         'email': email,
         'password': password,
       });
-      await _applyAuthData(data);
-      if (!mounted) return;
+      if (!await _applyAuthData(data, ticket: ticket)) return;
       setState(() {
         _serverOnline = true;
         _statusText = 'Профиль создан на сервере.';
@@ -354,6 +424,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _login() async {
+    if (_busy) return;
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -369,12 +440,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
     setState(() => _busy = true);
     try {
+      final ticket = await ProfileSessionGuard.capture(supersede: true);
       final data = await _postJson('/auth/login', {
         'email': email,
         'password': password,
       });
-      await _applyAuthData(data);
-      if (!mounted) return;
+      if (!await _applyAuthData(data, ticket: ticket)) return;
       setState(() {
         _serverOnline = true;
         _statusText = 'Вход выполнен через сервер.';
@@ -390,72 +461,46 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _logout() async {
+    if (_busy) return;
+    setState(() => _busy = true);
     try {
-      if (_token.isNotEmpty) {
-        await _postJson('/auth/logout', null, useAuth: true);
+      final ticket = await ProfileSessionGuard.capture(supersede: true);
+      try {
+        if (ticket.token.isNotEmpty) {
+          await _postJson('/auth/logout', null,
+              useAuth: true, authToken: ticket.token);
+        }
+      } catch (_) {
+        // A failed remote revoke must still allow a local logout.
       }
-    } catch (_) {
-      // Локальный выход должен работать даже при недоступном сервере.
+      if (await _clearInvalidSession('Вы вышли из профиля.', ticket)) {
+        _passwordController.clear();
+        _snack('Вы вышли из профиля.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_loggedInKey, false);
-    await prefs.setBool(_adminFlagKey, false);
-    await prefs.setString(_roleKey, 'user');
-    await prefs.remove(_tokenKey);
-    await prefs.remove('arborscan_user_id');
-    await prefs.remove(_expiresAtKey);
-
-    if (!mounted) return;
-    setState(() {
-      _loggedIn = false;
-      _isAdmin = false;
-      _role = 'user';
-      _token = '';
-      _passwordController.clear();
-      _statusText = 'Вы вышли из профиля.';
-      _avatarUrl = '';
-      _totalAnalyses = 0;
-      _geoAnalyses = 0;
-      _highRiskAnalyses = 0;
-      _avgRisk = null;
-      _lastAnalysis = null;
-    });
-    widget.onAuthChanged?.call();
-    _snack('Вы вышли из профиля.');
   }
 
   Future<void> _deleteLocalSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove('arborscan_user_id');
-    await prefs.remove(_expiresAtKey);
-    await prefs.setBool(_loggedInKey, false);
-    await prefs.setBool(_adminFlagKey, false);
-    await prefs.setString(_roleKey, 'user');
-
-    if (!mounted) return;
-    setState(() {
-      _loggedIn = false;
-      _isAdmin = false;
-      _role = 'user';
-      _token = '';
-      _statusText = 'Локальная сессия очищена.';
-      _avatarUrl = '';
-      _totalAnalyses = 0;
-      _geoAnalyses = 0;
-      _highRiskAnalyses = 0;
-      _avgRisk = null;
-      _lastAnalysis = null;
-    });
-    widget.onAuthChanged?.call();
-    _snack('Локальная сессия очищена. Аккаунт на сервере не удалён.');
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final ticket = await ProfileSessionGuard.capture(supersede: true);
+      if (await _clearInvalidSession('Локальная сессия очищена.', ticket)) {
+        _passwordController.clear();
+        _snack('Локальная сессия очищена. Аккаунт на сервере не удалён.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _loginWithGoogle() async {
+    if (_busy) return;
     setState(() => _busy = true);
     try {
-      await _clearInvalidSession('Выполняется вход через Google...');
+      final ticket = await ProfileSessionGuard.capture(supersede: true);
       await _googleSignIn.signOut();
       final account = await _googleSignIn.signIn();
       if (account == null) {
@@ -466,39 +511,64 @@ class _ProfilePageState extends State<ProfilePage> {
       final auth = await account.authentication;
       final idToken = auth.idToken;
       if (idToken == null || idToken.isEmpty) {
-        _snack('Google не вернул idToken. Проверьте OAuth Client ID.');
+        _snack(
+            'Не удалось получить подтверждение Google. Повторите вход или используйте почту.');
         return;
       }
 
       final data = await _postJson('/auth/google', {
         'id_token': idToken,
-        'email': account.email,
-        'name': account.displayName ?? account.email,
-        'photo_url': account.photoUrl,
       });
 
-      await _applyAuthData(data);
-      if (!mounted) return;
+      if (!await _applyAuthData(data, ticket: ticket)) return;
       setState(() {
         _serverOnline = true;
         _statusText = 'Вход выполнен через Google.';
       });
       _snack('Вы вошли через Google.');
     } catch (e) {
-      _snack(e.toString().replaceFirst('Exception: ', ''));
+      _snack(_googleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  String _googleErrorMessage(Object error) {
+    if (error is PlatformException) {
+      if (error.code == 'sign_in_canceled' || error.code == 'canceled') {
+        return 'Вход через Google отменён.';
+      }
+      if (error.code == 'network_error') {
+        return 'Нет связи с Google. Проверьте интернет и повторите вход.';
+      }
+      return 'Вход Google сейчас недоступен. Повторите попытку или используйте почту.';
+    }
+    if (error is TimeoutException || error is http.ClientException) {
+      return 'Не удалось связаться с сервером. Проверьте интернет и повторите вход.';
+    }
+    if (error is FormatException) {
+      return 'Сервер вернул некорректный ответ. Вход не изменён; повторите попытку.';
+    }
+    final message = error.toString();
+    if (message.contains('HTTP 409:')) {
+      return 'Google не удалось связать с этим профилем. Войдите прежним способом и обратитесь к разработчику.';
+    }
+    if (message.contains('HTTP 401:')) {
+      return 'Сервер не подтвердил вход Google. Повторите попытку или используйте почту.';
+    }
+    return 'Вход Google сейчас недоступен. Повторите попытку или используйте почту.';
   }
 
   Future<void> _loadStats() async {
     if (_token.isEmpty) return;
     try {
       final session = _token;
-      final data = await _getJson('/profile/stats', useAuth: true);
+      final ticket = await ProfileSessionGuard.capture();
+      if (ticket.token != session) return;
+      final data =
+          await _getJson('/profile/stats', useAuth: true, authToken: session);
       if (session != _token ||
-          (await SharedPreferences.getInstance()).getString(_tokenKey) !=
-              session) {
+          !await ProfileSessionGuard.current(ticket, active: () => mounted)) {
         return;
       }
       final stats = (data['stats'] as Map?)?.cast<String, dynamic>() ?? {};
