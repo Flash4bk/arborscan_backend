@@ -1,0 +1,79 @@
+{
+  "started_utc": "2026-10-07T13:24:49.540862+00:00",
+  "environment": "isolated Docker PostgreSQL on existing VPS, runner local to Docker via one SSH session",
+  "synthetic_data_only": true,
+  "production_migration_executed": false,
+  "backup_restore_repeated": false,
+  "network": "none",
+  "root_filesystem": "read-only",
+  "database_storage": "tmpfs",
+  "image_digest": "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+  "migration_sha256": "87c62988628db8ccdaa5621437a3ad092e03a72733cbcf75a4ea100cb8656ca8",
+  "server_version": "17.6",
+  "server_version_num": "170006",
+  "checks": [
+    {
+      "check": "test_case_distinct_subjects_are_not_coalesced",
+      "passed": true
+    },
+    {
+      "check": "test_concurrent_claim_of_two_legacy_rows_has_one_winner",
+      "passed": true
+    },
+    {
+      "check": "test_concurrent_insert_same_subject_has_one_winner",
+      "passed": true
+    },
+    {
+      "check": "test_duplicate_subjects_abort_before_index_creation",
+      "passed": true
+    },
+    {
+      "check": "test_first_run_and_repeat_keep_same_ready_index",
+      "passed": true
+    },
+    {
+      "check": "test_invalid_and_overlong_subjects_are_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_invalid_concurrent_index_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_nonunique_existing_index_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_null_and_empty_legacy_values_remain_allowed",
+      "passed": true
+    },
+    {
+      "check": "test_same_named_nonindex_relation_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_transaction_wrapping_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_varchar_schema_first_run_and_repeat",
+      "passed": false,
+      "category": "assertion_failed"
+    },
+    {
+      "check": "test_wrong_column_existing_index_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_wrong_predicate_existing_index_is_rejected",
+      "passed": true
+    }
+  ],
+  "tests_run": 14,
+  "passed": false,
+  "own_test_container_removed": true,
+  "duration_seconds": 16.181,
+  "finished_utc": "2026-10-07T13:25:05.722297+00:00",
+  "migration_status": "13 passed, varchar guard failed before fix; not a successful migration proof"
+}

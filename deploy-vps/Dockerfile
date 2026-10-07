@@ -39,7 +39,7 @@ RUN groupadd --gid 1000 arborscan \
         --shell /usr/sbin/nologin \
         arborscan
 
-COPY --chown=arborscan:arborscan server.py config.py tree_dynamics.py /app/
+COPY --chown=arborscan:arborscan server.py auth_google_identity.py config.py tree_dynamics.py /app/
 COPY --chown=arborscan:arborscan services /app/services
 
 RUN chown arborscan:arborscan /app/yolov8n.pt \

@@ -1,0 +1,86 @@
+{
+  "started_utc": "2026-10-07T13:28:09.715684+00:00",
+  "environment": "isolated Docker PostgreSQL on existing VPS, runner local to Docker via one SSH session",
+  "synthetic_data_only": true,
+  "production_migration_executed": false,
+  "backup_restore_repeated": false,
+  "network": "none",
+  "root_filesystem": "read-only",
+  "database_storage": "tmpfs",
+  "image_digest": "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+  "migration_sha256": "123097353e4c29e592b0c73baf25a555f311fac8a7e770e8366fa27329a83f83",
+  "server_version": "17.6",
+  "server_version_num": "170006",
+  "checks": [
+    {
+      "check": "test_case_distinct_subjects_are_not_coalesced",
+      "passed": true
+    },
+    {
+      "check": "test_concurrent_claim_of_two_legacy_rows_has_one_winner",
+      "passed": true
+    },
+    {
+      "check": "test_concurrent_insert_same_subject_has_one_winner",
+      "passed": true
+    },
+    {
+      "check": "test_duplicate_after_preflight_does_not_publish_ready_index",
+      "passed": true
+    },
+    {
+      "check": "test_duplicate_subjects_abort_before_index_creation",
+      "passed": true
+    },
+    {
+      "check": "test_first_run_and_repeat_keep_same_ready_index",
+      "passed": true
+    },
+    {
+      "check": "test_invalid_and_overlong_subjects_are_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_invalid_concurrent_index_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_nonunique_existing_index_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_null_and_empty_legacy_values_remain_allowed",
+      "passed": true
+    },
+    {
+      "check": "test_same_named_nonindex_relation_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_transaction_wrapping_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_unsupported_subject_type_is_rejected_before_creation",
+      "passed": true
+    },
+    {
+      "check": "test_varchar_schema_first_run_and_repeat",
+      "passed": true
+    },
+    {
+      "check": "test_wrong_column_existing_index_is_rejected",
+      "passed": true
+    },
+    {
+      "check": "test_wrong_predicate_existing_index_is_rejected",
+      "passed": true
+    }
+  ],
+  "tests_run": 16,
+  "passed": true,
+  "own_test_container_removed": true,
+  "duration_seconds": 17.391,
+  "finished_utc": "2026-10-07T13:28:27.107062+00:00",
+  "runner_sha256": "5ecfc811b2ae328c755d59c63c0e1c8a256f54cec519361107249dca37d37135"
+}

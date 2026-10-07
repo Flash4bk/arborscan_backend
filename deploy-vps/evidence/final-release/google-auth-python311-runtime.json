@@ -1,0 +1,142 @@
+{
+  "started_utc": "2026-10-07T13:36:09.164043+00:00",
+  "environment": "isolated Docker lab on existing VPS",
+  "image_digest": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+  "network": "none",
+  "root_filesystem": "read-only",
+  "synthetic_identities_only": true,
+  "production_mutation": false,
+  "production_env_or_mounts": false,
+  "model_startup": false,
+  "live_google_sign_in_tested": false,
+  "full_docker_image_build": false,
+  "source_sha256": {
+    "auth_google_identity.py": "451b1273a68ecba63253eb12c48bc1a35c159d41329336234e60b4b6267b3bec",
+    "server.py": "ecd835a5975f58ff0105924f5c819e8a598e7bf3157bb79f6f21c2daabcddc64",
+    "tests_v4/test_google_identity.py": "5d17aec529adaf17f6beb96f350cb98d8dbd347accf17be529a85a828cecb94d",
+    "tests_v4/google_identity_unique_index_postgres.py": "7b7cccdbdc80a99dd8297461fc39be394b9068de9035a67ce92d580ca6f79132",
+    "tests_v4/test_google_identity_unique_index_runner.py": "3d6126decec84fd11cd3d089918ce4407dd4e81fe328c7d397a0db407712fe3d"
+  },
+  "dockerfile_copy_text_review": true,
+  "dockerfile_sha256": "c7461077e4377b6233fc334074c04b4655946a8170b9a81f07e3393c9f306996",
+  "python_version": "3.11.16",
+  "module_imported": true,
+  "groups": {
+    "test_google_identity": {
+      "tests_run": 17,
+      "passed": true,
+      "checks": [
+        {
+          "check": "test_claims_are_disabled_for_new_or_unlinked_profiles",
+          "passed": true
+        },
+        {
+          "check": "test_concurrent_other_subject_is_never_overwritten",
+          "passed": true
+        },
+        {
+          "check": "test_concurrent_same_subject_claim_returns_same_owner_without_second_write",
+          "passed": true
+        },
+        {
+          "check": "test_empty_legacy_subject_uses_exact_empty_compare_and_set",
+          "passed": true
+        },
+        {
+          "check": "test_existing_stable_subject_keeps_owner_history_password_and_role",
+          "passed": true
+        },
+        {
+          "check": "test_google_email_change_preserves_original_owner_without_email_reassignment",
+          "passed": true
+        },
+        {
+          "check": "test_malformed_verified_payload_is_rejected",
+          "passed": true
+        },
+        {
+          "check": "test_missing_unverified_and_malformed_claims_are_rejected_before_db",
+          "passed": true
+        },
+        {
+          "check": "test_new_profile_role_is_server_assigned_and_identity_comes_from_claims",
+          "passed": true
+        },
+        {
+          "check": "test_other_identity_email_insert_race_never_returns_its_session",
+          "passed": true
+        },
+        {
+          "check": "test_other_linked_subject_and_ambiguous_owner_are_rejected",
+          "passed": true
+        },
+        {
+          "check": "test_route_ignores_spoofed_client_identity_and_role",
+          "passed": true
+        },
+        {
+          "check": "test_route_missing_claim_email_cannot_fall_back_to_client_email",
+          "passed": true
+        },
+        {
+          "check": "test_route_verifier_failure_is_safe_and_performs_no_db_work",
+          "passed": true
+        },
+        {
+          "check": "test_same_identity_insert_race_reuses_unique_winner",
+          "passed": true
+        },
+        {
+          "check": "test_verified_gmail_links_password_profile_without_changing_owner",
+          "passed": true
+        },
+        {
+          "check": "test_workspace_authoritative_link_and_non_google_email_rejection",
+          "passed": true
+        }
+      ]
+    },
+    "test_google_identity_unique_index_runner": {
+      "tests_run": 8,
+      "passed": true,
+      "checks": [
+        {
+          "check": "test_cli_option_host_denied_before_docker_or_file_read",
+          "passed": true
+        },
+        {
+          "check": "test_known_id_cleanup_never_removes_another_id",
+          "passed": true
+        },
+        {
+          "check": "test_lost_run_stdout_recovers_exact_owned_name_before_removal",
+          "passed": true
+        },
+        {
+          "check": "test_missing_exact_owned_name_is_a_safe_noop",
+          "passed": true
+        },
+        {
+          "check": "test_ssh_host_options_separators_credentials_and_overlong_values_denied",
+          "passed": true
+        },
+        {
+          "check": "test_transport_failure_is_not_mistaken_for_absent_owned_container",
+          "passed": true
+        },
+        {
+          "check": "test_unexpected_lookup_output_does_not_trigger_removal",
+          "passed": true
+        },
+        {
+          "check": "test_unknown_id_cleanup_refuses_any_ownership_guard_mismatch",
+          "passed": true
+        }
+      ]
+    }
+  },
+  "passed": true,
+  "own_test_container_removed": true,
+  "duration_seconds": 2.573,
+  "finished_utc": "2026-10-07T13:36:11.736896+00:00"
+}

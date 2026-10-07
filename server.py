@@ -28,6 +28,11 @@ from typing import Optional, Dict, Any, List, Tuple
 from rembg import remove, new_session
 
 from config import settings
+from auth_google_identity import (
+    GoogleIdentityError,
+    resolve_google_user,
+    verified_google_identity,
+)
 
 try:
     from google.oauth2 import id_token as google_id_token
@@ -1264,6 +1269,12 @@ GOOGLE_CLIENT_ID = os.getenv(
     "GOOGLE_CLIENT_ID",
     "946297507051-33c4msb91harv7rqppf2f31qn10n1m2m.apps.googleusercontent.com",
 )
+# This prepared security fix must not create/link Google identities until an
+# operator has verified a unique users.google_sub constraint in the database.
+# Existing linked Google users keep the same opaque-session login contract.
+GOOGLE_IDENTITY_CLAIMS_ENABLED = (
+    os.getenv("ARBORSCAN_GOOGLE_IDENTITY_CLAIMS_ENABLED", "false").lower() == "true"
+)
 
 
 def _now_iso() -> str:
@@ -1542,34 +1553,15 @@ async def auth_google(payload: AuthGoogleRequest):
             google_requests.Request(),
             GOOGLE_CLIENT_ID,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail=f"Google error: {exc}")
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="Не удалось подтвердить вход Google. Повторите вход.",
+        )
 
-    sub = str(info.get("sub") or "")
-    email = _email_norm(str(info.get("email") or payload.email or ""))
-    if not sub or not email:
-        raise HTTPException(status_code=401, detail="Google не вернул данные аккаунта.")
-
-    name = str(
-        info.get("name")
-        or payload.name
-        or email.split("@")[0]
-        or "Google user"
-    ).strip()
-    avatar_url = str(info.get("picture") or payload.photo_url or "")
     now = _now_iso()
 
-    rows = _db_json(
-        "GET",
-        "users",
-        params={
-            "or": f"(google_sub.eq.{sub},email.eq.{email})",
-            "select": "*",
-            "limit": "1",
-        },
-    )
-
-    if not rows:
+    def create_google_user(identity):
         user_id = str(uuid4())
         password_hash, salt = _hash_password(secrets.token_urlsafe(24))
         created = _db_json(
@@ -1577,36 +1569,30 @@ async def auth_google(payload: AuthGoogleRequest):
             "users",
             json_body={
                 "id": user_id,
-                "name": name,
-                "email": email,
+                "name": identity.name,
+                "email": identity.email,
                 "password_hash": password_hash,
                 "salt": salt,
                 "role": "user",
                 "created_at": now,
                 "updated_at": now,
                 "provider": "google",
-                "google_sub": sub,
-                "avatar_url": avatar_url,
+                "google_sub": identity.subject,
+                "avatar_url": identity.avatar_url,
             },
             prefer="return=representation",
         )
-        user = created[0]
-    else:
-        user = rows[0]
-        updated = _db_json(
-            "PATCH",
-            "users",
-            params={"id": f"eq.{user['id']}"},
-            json_body={
-                "name": name or user.get("name"),
-                "provider": "google",
-                "google_sub": sub or user.get("google_sub"),
-                "avatar_url": avatar_url or user.get("avatar_url"),
-                "updated_at": now,
-            },
-            prefer="return=representation",
+        return created[0] if created else None
+
+    try:
+        identity = verified_google_identity(info)
+        user = resolve_google_user(
+            _db_json, create_google_user, identity,
+            allow_identity_claims=GOOGLE_IDENTITY_CLAIMS_ENABLED,
+            updated_at=now,
         )
-        user = updated[0] if updated else user
+    except GoogleIdentityError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
     session = _create_session(user["id"])
     return {
