@@ -9,6 +9,18 @@ import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationExceptio
 
 /** A declined installer is cancellation; other session failures need a visible explanation. */
 internal object ArAvailabilityFailure {
+    // Layout inflation wraps renderer or session failures. Preserve meaningful
+    // ARCore recovery/cancellation without exposing private driver diagnostics.
+    fun initializationMessage(exception: Exception): String? {
+        var cause: Throwable? = exception
+        repeat(8) {
+            val current = cause
+            if (current is UnavailableException) return message(current)
+            cause = current?.cause
+        }
+        return "Не удалось запустить графику AR на этом устройстве. Можно продолжить анализ фото или измерение по эталону."
+    }
+
     fun message(exception: UnavailableException): String? = when (exception) {
         is UnavailableUserDeclinedInstallationException -> null
         is UnavailableArcoreNotInstalledException ->

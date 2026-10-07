@@ -14,6 +14,25 @@ import org.junit.Test
 
 class ArAvailabilityFailureTest {
     @Test
+    fun wrappedRendererFailureExplainsAlternativeWithoutDriverDetails() {
+        val exception = RuntimeException("private layout", IllegalStateException("Couldn't create Engine: private driver"))
+        val message = ArAvailabilityFailure.initializationMessage(exception)!!
+        assertTrue(message.contains("графику AR"))
+        assertTrue(message.contains("по эталону"))
+        assertFalse(message.contains("private"))
+        assertFalse(message.contains("Engine"))
+    }
+
+    @Test
+    fun wrappedSessionFailurePreservesRecoveryAndDeclinedCancellation() {
+        val outdated = RuntimeException("layout", RuntimeException("session", UnavailableApkTooOldException()))
+        assertEquals(ArAvailabilityFailure.message(UnavailableApkTooOldException()),
+            ArAvailabilityFailure.initializationMessage(outdated))
+        val declined = RuntimeException("layout", UnavailableUserDeclinedInstallationException())
+        assertNull(ArAvailabilityFailure.initializationMessage(declined))
+    }
+
+    @Test
     fun declinedInstallationIsCancellationRatherThanAnError() {
         assertNull(ArAvailabilityFailure.message(UnavailableUserDeclinedInstallationException()))
     }

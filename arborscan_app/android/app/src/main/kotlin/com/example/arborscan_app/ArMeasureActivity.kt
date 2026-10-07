@@ -153,6 +153,18 @@ class ArMeasureActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Sceneform creates Filament during layout inflation, before its ARCore
+        // unavailable callback exists. Unsupported renderers must return to
+        // Flutter rather than terminate the application with the selected photo.
+        try {
+            initializeMeasurementView()
+        } catch (exception: Exception) {
+            Log.w("ArMeasureActivity", "AR initialization failed: ${exception.javaClass.simpleName}")
+            finishUnavailable(ArAvailabilityFailure.initializationMessage(exception))
+        }
+    }
+
+    private fun initializeMeasurementView() {
         setContentView(R.layout.activity_ar_measure)
 
         arFragment = supportFragmentManager.findFragmentById(R.id.arFragment) as ArFragment
@@ -170,14 +182,8 @@ class ArMeasureActivity : AppCompatActivity() {
         // Sceneform otherwise leaves a non-functional measurement screen after
         // a failed Session constructor and only shows a short library Toast.
         arFragment.setOnArUnavailableListener { exception ->
-            if (!availabilityFailureHandled && !isFinishing && !isDestroyed) {
-                availabilityFailureHandled = true
-                Log.w("ArMeasureActivity", "AR unavailable: ${exception.javaClass.simpleName}")
-                val message = ArAvailabilityFailure.message(exception)
-                val data = message?.let { Intent().putExtra(EXTRA_ERROR_MESSAGE, it) }
-                setResult(Activity.RESULT_CANCELED, data)
-                finish()
-            }
+            Log.w("ArMeasureActivity", "AR unavailable: ${exception.javaClass.simpleName}")
+            finishUnavailable(ArAvailabilityFailure.message(exception))
         }
         arFragment.arSceneView.scene.addOnUpdateListener(this::onSceneUpdate)
         arFragment.setOnTapArPlaneListener { _, _, _ -> }
@@ -188,7 +194,16 @@ class ArMeasureActivity : AppCompatActivity() {
         updateUi()
     }
 
+    private fun finishUnavailable(message: String?) {
+        if (availabilityFailureHandled || isFinishing || isDestroyed) return
+        availabilityFailureHandled = true
+        val data = message?.let { Intent().putExtra(EXTRA_ERROR_MESSAGE, it) }
+        setResult(Activity.RESULT_CANCELED, data)
+        finish()
+    }
+
     private fun onSceneUpdate(@Suppress("UNUSED_PARAMETER") frameTime: FrameTime) {
+        if (availabilityFailureHandled || isFinishing || isDestroyed) return
         val frame = arFragment.arSceneView.arFrame ?: return
         totalFrames += 1
 
