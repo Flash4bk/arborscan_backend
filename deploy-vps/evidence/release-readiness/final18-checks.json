@@ -1,0 +1,216 @@
+{
+  "format": 1,
+  "source_commit": "1cf6ce3eaf8ae4bb7552b28c0cba0952294fb441",
+  "version_name": "1.3.0-readiness.1cf6ce3",
+  "version_code": 18,
+  "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+  "apk_bytes": 115577827,
+  "checks": {
+    "flutter": {
+      "status": "passed",
+      "tests": 35,
+      "runner_summary": "00:07 +35: All tests passed!",
+      "files": [
+        "test/contour_workflow_test.dart",
+        "test/platform_tls_trust_test.dart",
+        "test/reference_measurement_test.dart",
+        "test/report_export_test.dart",
+        "test/report_history_test.dart"
+      ],
+      "scope": "Selected relevant final18 Flutter suite; includes TLS tests, not the full historical suite"
+    },
+    "tls": {
+      "status": "passed",
+      "tests": 7,
+      "separate_targeted_run": true,
+      "included_in_flutter35": true,
+      "unique_total_not_42": true,
+      "checks": [
+        "Packaged official root loaded/idempotent",
+        "Other platforms untouched",
+        "Unexpected replacement CA refused",
+        "Existing trusted valid chain retained",
+        "Wrong hostname refused",
+        "Unrelated CA refused",
+        "Expired certificate refused"
+      ]
+    },
+    "analyze": {
+      "errors": 0,
+      "warnings": 5,
+      "info": 48,
+      "total": 53,
+      "status": "completed_with_existing_diagnostics",
+      "new_diagnostics": [],
+      "baseline_diagnostics_identical": true,
+      "no_warnings_suppressed": true
+    },
+    "release_build": {
+      "status": "successful",
+      "seconds": 104.0,
+      "artifact": "app-release.apk",
+      "unsigned_megabytes_reported": 110.2
+    },
+    "android": {
+      "status": "passed",
+      "gradle_seconds": 57,
+      "host_release_unit_tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "release_instrumentation_probe_built": true,
+      "probe_inventory_folders": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "suites": [
+        {
+          "class": "com.example.arborscan_app.ArAvailabilityFailureTest",
+          "tests": 3,
+          "skipped": 0,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 0.012,
+          "cases": [
+            "declinedInstallationIsCancellationRatherThanAnError",
+            "serviceAndSdkFailuresHaveDifferentRecoveryInstructions",
+            "failedSessionExplainsRecoveryWithoutExposingInternalExceptionDetails"
+          ]
+        },
+        {
+          "class": "com.example.arborscan_app.ArGeometryTest",
+          "tests": 2,
+          "skipped": 0,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 0.005,
+          "cases": [
+            "tangentRaysRecoverKnownCylinderAndRejectWrongTree",
+            "heightUsesWorldVerticalAndRejectsParallelOrBehindCamera"
+          ]
+        }
+      ],
+      "host_unit_tests_are_not_ar_tracking_proof": true
+    },
+    "signing": {
+      "format_version": 1,
+      "artifact_kind": "application",
+      "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+      "apk_bytes": 115577827,
+      "manifest": {
+        "application_id": "com.example.arborscan_app",
+        "version_code": 18,
+        "version_name": "1.3.0-readiness.1cf6ce3",
+        "min_sdk": 24,
+        "target_sdk": 36,
+        "debuggable": false,
+        "internet_permission": true
+      },
+      "rotation_min_sdk": 33,
+      "lineage_sha256": "93d10d0e6b813bf9053debf1cc879378a4e90e2d0e07ac755eba50eb57a87dfe",
+      "platform_signatures": [
+        {
+          "min_sdk": 24,
+          "max_sdk": 27,
+          "signer_role": "old",
+          "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+          "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+          "schemes": {
+            "v1": false,
+            "v2": true,
+            "v3": false,
+            "v3.1": false,
+            "v4": false
+          }
+        },
+        {
+          "min_sdk": 28,
+          "max_sdk": 32,
+          "signer_role": "old",
+          "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+          "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+          "schemes": {
+            "v1": false,
+            "v2": false,
+            "v3": true,
+            "v3.1": false,
+            "v4": false
+          }
+        },
+        {
+          "min_sdk": 33,
+          "max_sdk": 33,
+          "signer_role": "new",
+          "sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+          "sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+          "schemes": {
+            "v1": false,
+            "v2": false,
+            "v3": true,
+            "v3.1": true,
+            "v4": false
+          }
+        },
+        {
+          "min_sdk": 36,
+          "max_sdk": 36,
+          "signer_role": "new",
+          "sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+          "sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+          "schemes": {
+            "v1": false,
+            "v2": false,
+            "v3": true,
+            "v3.1": true,
+            "v4": false
+          }
+        }
+      ],
+      "lineage_capabilities": [
+        {
+          "signer_role": "old",
+          "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+          "installed_data": true,
+          "rollback": false
+        },
+        {
+          "signer_role": "new",
+          "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+          "installed_data": true,
+          "rollback": false
+        }
+      ],
+      "old_certificate_sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+      "new_certificate_sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+      "device_installation_verified": false
+    }
+  },
+  "execution_policy": {
+    "curated_from_actual_logs_and_JUnit_XML": true,
+    "tests_rerun_by_curator": false,
+    "devices_changed_by_curator": false,
+    "user_acceptance_claimed": false
+  },
+  "runtime_installation_evidence": "sdk-matrix18.json (Android24/33); S24 and Android36 separately documented by root",
+  "safe_logs": [
+    "final18-flutter-tests.txt",
+    "tls-trust-tests.txt",
+    "final18-analyze.txt",
+    "final18-build-summaries.txt",
+    "final18-android-unit-tests.json"
+  ],
+  "limitations": [
+    "Signed metadata device_installation_verified=false describes signer CLI only; actual installation evidence is separate",
+    "These checks prove software behavior; no field measurement accuracy or user visual approval claimed"
+  ],
+  "safe_log_sha256": {
+    "final18-flutter-tests.txt": "91874c31ac7d18d0a27abdd0008eee17f18b8d3ec52f50b05bd37e320af37a88",
+    "tls-trust-tests.txt": "c34cfc62ed9f899bc29d7cb858d477c43b6aa9a80e5f018b2e6a3ab21e4d2c2e",
+    "final18-analyze.txt": "b1b211234100a1375fe2ceaf6875b7bdd7fa7774b0c1231a1034e608f0732912",
+    "final18-build-summaries.txt": "773df01fb21abbef07471a1706e05605acc59e62d8395791ed15398f52fc4a35",
+    "final18-android-unit-tests.json": "f9964cfadb42e47e8f736ffc1d56f63887f4111b334a87953473ebbe1353414c"
+  }
+}

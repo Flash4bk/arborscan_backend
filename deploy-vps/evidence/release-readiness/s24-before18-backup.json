@@ -1,0 +1,19 @@
+{
+  "device": "S24 Ultra",
+  "sdk": 36,
+  "before_version_code": 12,
+  "debuggable_before": true,
+  "private_backup_complete": true,
+  "inventory_files": 61,
+  "directories": [
+    "files",
+    "shared_prefs",
+    "app_flutter",
+    "no_backup",
+    "databases"
+  ],
+  "private_tar_bytes": 91580416,
+  "sha256": "c7e9df41b9830e8b80589dee2dd6932064a4eead640887afe8a3e012fd6114a3",
+  "production_records_modified": false,
+  "new_apk_installed": false
+}

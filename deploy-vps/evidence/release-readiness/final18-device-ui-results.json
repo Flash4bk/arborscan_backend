@@ -1,0 +1,93 @@
+{
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "checked_on": "2026-10-07",
+  "apk_version_name": "1.3.0-readiness.1cf6ce3",
+  "apk_version_code": 18,
+  "source_commit": "1cf6ce3eaf8ae4bb7552b28c0cba0952294fb441",
+  "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+  "s24": {
+    "environment": "Real S24 Ultra Android16 API36",
+    "update": "12 to18 overlay, no clear/uninstall",
+    "before_first_launch_files_identical": 61,
+    "server_confirmed_profile": true,
+    "existing_account_not_changed": true,
+    "history_and_existing_demo_report_after_force_stop": true,
+    "original_photo_opened": true,
+    "saved_contour_list_opened_read_only": true,
+    "google_maps_tiles_visible": true,
+    "pdf_saved_through_android_saf": true,
+    "pdf_download_filename": "AS16_S24_release18_demo.pdf",
+    "pdf_pulled_bytes": 55774,
+    "pdf_sha256": "5288eead31f0c7e6364cc7db2c1e7b78865096e8a628ea2f1d615d7a5ef188b2",
+    "pdf_viewer_component": "com.google.android.apps.docs/com.google.android.apps.viewer.PdfViewerActivity",
+    "share_selector_component": "com.android.intentresolver/.ChooserActivityLauncher",
+    "share_cancelled_without_sending": true,
+    "pdf_uploaded_to_drive": false,
+    "phone_network_changed": false,
+    "real_report_or_moderation_changed": false,
+    "private_pdf_and_raw_user_screenshots_not_committed": true,
+    "ar_tracking_or_field_accuracy_checked": false
+  },
+  "avd36": {
+    "environment": "Isolated Android16 API36 DEMO account",
+    "update17_to18": {
+      "actual_sdk": 36,
+      "serial": "emulator-5582",
+      "inventory_scope": [
+        "files",
+        "shared_prefs",
+        "app_flutter",
+        "no_backup",
+        "databases"
+      ],
+      "version_code": 18,
+      "version_name": "1.3.0-readiness.1cf6ce3",
+      "baseline_files": 71,
+      "after_files": 71,
+      "identical_files": 71,
+      "missing_files": 0,
+      "changed_files": 0,
+      "new_files": 0,
+      "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+      "before_installed_signing": {
+        "installed_sdk": "36",
+        "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8"
+      },
+      "after_installed_signing": {
+        "installed_sdk": "36",
+        "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8"
+      }
+    },
+    "pdf_saved_through_saf": true,
+    "real_local_viewer_opened": true,
+    "share_selector_component": "com.android.intentresolver/.ChooserActivityLauncher",
+    "share_cancelled_without_sending": true,
+    "offline_after_force_stop_cached_version_available": true,
+    "offline_generated_pdf_opened_by_local_viewer": true,
+    "offline_pdf_viewer_values_visually_checked": {
+      "height_m": 8.1,
+      "crown_width_m": 5.19,
+      "demo_photo_visible": true
+    },
+    "network_reconnected": {
+      "environment": "AVD Android16 API36",
+      "version_code": 18,
+      "server_history_after_reconnect": true,
+      "network_after": {
+        "airplane_mode_on": "0",
+        "wifi_on": "1",
+        "mobile_data": "1"
+      },
+      "only_demo_account": true
+    },
+    "test_harness_notes": [
+      "First offline lookup used server timestamp; cache correctly has its earlier local timestamp. Expected selector was corrected, no app data change.",
+      "Initial UI dump/screenshot raced report rendering; values confirmed in actual PDF viewer after rendering.",
+      "Two BACK presses closed Activity during reconnect harness; corrected force-stop/start navigation completed."
+    ]
+  },
+  "scope": "Actual device/UI results plus real files; not a claim of user acceptance or experimental accuracy"
+}

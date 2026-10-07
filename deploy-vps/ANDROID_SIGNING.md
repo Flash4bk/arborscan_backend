@@ -182,14 +182,14 @@ python -m unittest tests_v4.test_ops_signing_key_recovery -v
 ```
 
 Финальный module SHA `45a0a996b9a4a14e2682bd0a57876a1b6c65853dc763b4eb58a90ddf9343bf8f`:
-generated recovery **23/23 на Windows за222,369с** (bundled Python/cryptography50.0.1,
-настоящие private ACL, symlinks, конкуренция и no-replace) и **23/23 на Linux за1,808с**
+Generated recovery: **23/23 на Windows за 222,369 с** (Python3.12.14/cryptography50.0.1,
+настоящие private ACL, symlinks, конкуренция и no-replace) и **23/23 на Linux за 1,808 с**
 (VPS host/cryptography41.0.7, отдельные private fixture каталоги, POSIX и renameat2).
 Последнее изменение обрабатывает слишком глубокий JSON безопасным отказом;
 содержимое действующего escrow не меняется. [Windows вывод](evidence/release-readiness/key-recovery-windows.txt),
 [Linux вывод](evidence/release-readiness/key-recovery-linux.txt).
 
-Последний outer-LF regression отдельно прошёл **1/1 за0,019с** в изолированном
+Отдельный outer-LF regression прошёл **1/1 за 0,019 с** в изолированном
 image034a9d, `--network none`, read-only source/rootfs, tmpfs4GiB;
 [вывод](evidence/release-readiness/outer-lf-linux-final.txt). Первый маленький tmpfs32MiB
 корректно отказал по настоящему2GiB free-space guard; guard не ослаблялся.

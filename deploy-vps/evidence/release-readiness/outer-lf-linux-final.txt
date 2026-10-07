@@ -1,0 +1,8 @@
+Environment: separate Linux container/network none/read-only/4GiB tmpfs
+Source tool SHA256: 4aab0f81b4d5fff63193ffce54aa3d8202ca62d2bff86996d8f5c9252ed865cd
+test_outer_manifest_preserves_trusted_source_bytes_on_windows (tests_v4.test_ops_pull.PullTest.test_outer_manifest_preserves_trusted_source_bytes_on_windows) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.019s
+
+OK

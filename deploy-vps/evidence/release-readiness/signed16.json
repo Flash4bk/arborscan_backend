@@ -1,0 +1,92 @@
+{
+  "format_version": 1,
+  "artifact_kind": "application",
+  "apk_sha256": "66a1d8aa37af9ba598923fa245b4bb83c1df6514d6ae677d6d6324fcac0183fa",
+  "apk_bytes": 115561339,
+  "manifest": {
+    "application_id": "com.example.arborscan_app",
+    "version_code": 16,
+    "version_name": "1.3.0-readiness",
+    "min_sdk": 24,
+    "target_sdk": 36,
+    "debuggable": false,
+    "internet_permission": true
+  },
+  "rotation_min_sdk": 33,
+  "lineage_sha256": "93d10d0e6b813bf9053debf1cc879378a4e90e2d0e07ac755eba50eb57a87dfe",
+  "platform_signatures": [
+    {
+      "min_sdk": 24,
+      "max_sdk": 27,
+      "signer_role": "old",
+      "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+      "schemes": {
+        "v1": false,
+        "v2": true,
+        "v3": false,
+        "v3.1": false,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 28,
+      "max_sdk": 32,
+      "signer_role": "old",
+      "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": false,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 33,
+      "max_sdk": 33,
+      "signer_role": "new",
+      "sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": true,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 36,
+      "max_sdk": 36,
+      "signer_role": "new",
+      "sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": true,
+        "v4": false
+      }
+    }
+  ],
+  "lineage_capabilities": [
+    {
+      "signer_role": "old",
+      "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "installed_data": true,
+      "rollback": false
+    },
+    {
+      "signer_role": "new",
+      "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "installed_data": true,
+      "rollback": false
+    }
+  ],
+  "old_certificate_sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+  "new_certificate_sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+  "device_installation_verified": false
+}

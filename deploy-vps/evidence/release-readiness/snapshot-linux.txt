@@ -1,0 +1,20 @@
+test_429_connection_pressure_is_reported_separately_from_sql_timeout (test_ops_snapshot.SnapshotReadTest.test_429_connection_pressure_is_reported_separately_from_sql_timeout) ... ok
+test_authorization_error_is_not_retried (test_ops_snapshot.SnapshotReadTest.test_authorization_error_is_not_retried) ... ok
+test_changed_exact_count_refuses_the_snapshot (test_ops_snapshot.SnapshotReadTest.test_changed_exact_count_refuses_the_snapshot) ... ok
+test_composite_primary_key_is_ordered_and_deduplicated (test_ops_snapshot.SnapshotReadTest.test_composite_primary_key_is_ordered_and_deduplicated) ... ok
+test_empty_table_is_valid_only_with_exact_zero_count (test_ops_snapshot.SnapshotReadTest.test_empty_table_is_valid_only_with_exact_zero_count) ... ok
+test_exhausted_retry_keeps_status_and_stage_without_private_details (test_ops_snapshot.SnapshotReadTest.test_exhausted_retry_keeps_status_and_stage_without_private_details) ... ok
+test_missing_exact_count_is_not_claimed_as_a_complete_table (test_ops_snapshot.SnapshotReadTest.test_missing_exact_count_is_not_claimed_as_a_complete_table) ... ok
+test_missing_or_unsafe_primary_key_refuses_before_read (test_ops_snapshot.SnapshotReadTest.test_missing_or_unsafe_primary_key_refuses_before_read) ... ok
+test_other_http_error_does_not_shrink_or_skip_the_table (test_ops_snapshot.SnapshotReadTest.test_other_http_error_does_not_shrink_or_skip_the_table) ... ok
+test_persistent_timeout_fails_at_one_row_without_skipping (test_ops_snapshot.SnapshotReadTest.test_persistent_timeout_fails_at_one_row_without_skipping) ... ok
+test_server_page_cap_cannot_silently_drop_rows (test_ops_snapshot.SnapshotReadTest.test_server_page_cap_cannot_silently_drop_rows) ... ok
+test_smaller_stable_pages_cover_every_row_once (test_ops_snapshot.SnapshotReadTest.test_smaller_stable_pages_cover_every_row_once) ... ok
+test_statement_timeout_is_observed_once_before_page_adaptation (test_ops_snapshot.SnapshotReadTest.test_statement_timeout_is_observed_once_before_page_adaptation) ... ok
+test_storage_transient_500_is_still_retried_and_can_succeed (test_ops_snapshot.SnapshotReadTest.test_storage_transient_500_is_still_retried_and_can_succeed) ... ok
+test_timeout_after_first_page_keeps_the_same_offset (test_ops_snapshot.SnapshotReadTest.test_timeout_after_first_page_keeps_the_same_offset) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 2.086s
+
+OK

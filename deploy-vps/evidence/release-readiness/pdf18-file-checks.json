@@ -1,0 +1,143 @@
+{
+  "scope": "Read-only validation of real final18 files pulled by root, not UI/system dialog automation",
+  "application_version_code": 18,
+  "source_commit": "1cf6ce3eaf8ae4bb7552b28c0cba0952294fb441",
+  "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+  "files": [
+    {
+      "filename": "AS16_AVD36_release18_v2.pdf",
+      "sha256": "11d3376e58f06170bbb55b6291d2b3b424318ac5b9e9fe01b2945336152fa00b",
+      "bytes": 43152,
+      "actual_pdf_pages": 5,
+      "poppler_rendered_pages": 5,
+      "all_pages_visually_reviewed": true,
+      "visual_findings": "No clipping, overlap, unreadable glyphs or misplaced photo/overlay found",
+      "checks": {
+        "pages": 5,
+        "height_m": 8.1,
+        "crown_width_m": 5.19,
+        "reference_height_m": 2,
+        "soil_clay_percent": 29.5,
+        "coordinate_system_present": true,
+        "image_dimensions_label_present": true,
+        "six_reference_measurement_lines_present": true,
+        "reference_polygon_separately_present": true,
+        "beta_correctly_unavailable": true,
+        "original_image_dimensions": [
+          256,
+          384
+        ],
+        "overlay_image_dimensions": [
+          256,
+          384
+        ],
+        "unmodified_pdf": true,
+        "privacy_scan": {
+          "email_count": 0,
+          "jwt_count": 0,
+          "bearer_credential_count": 0,
+          "secret_assignment_count": 0,
+          "explicit_owner_field_present": false,
+          "attachments_count": 0,
+          "metadata_author_is_product": true
+        }
+      },
+      "qa_preview_privacy": "UUID/GPS values masked only in review previews; original PDFs and Poppler renders not modified",
+      "original_pdf_curated": true,
+      "system_save_open_share_ui_checked_by_this_curator": false,
+      "user_acceptance_claimed": false,
+      "compared_against_prior_release17": {
+        "text_identical_except_generation_timestamp": true,
+        "original_and_overlay_pixels": [
+          {
+            "page": 1,
+            "dimensions": [
+              256,
+              384
+            ],
+            "mean_absolute_rgb_difference": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "decoded_pixels_identical": true
+          },
+          {
+            "page": 3,
+            "dimensions": [
+              256,
+              384
+            ],
+            "mean_absolute_rgb_difference": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "decoded_pixels_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "filename": "AS16_S24_release18_demo.pdf",
+      "sha256": "5288eead31f0c7e6364cc7db2c1e7b78865096e8a628ea2f1d615d7a5ef188b2",
+      "bytes": 55774,
+      "actual_pdf_pages": 5,
+      "poppler_rendered_pages": 5,
+      "all_pages_visually_reviewed": true,
+      "visual_findings": "No clipping, overlap, unreadable glyphs or misplaced photo/overlay found",
+      "checks": {
+        "pages": 5,
+        "height_m": 4.8,
+        "crown_width_m": 2.1,
+        "reference_height_m": 1,
+        "soil_clay_percent": 29.5,
+        "coordinate_system_present": true,
+        "image_dimensions_label_present": true,
+        "six_reference_measurement_lines_present": true,
+        "reference_polygon_separately_present": true,
+        "beta_correctly_unavailable": true,
+        "original_image_dimensions": [
+          400,
+          600
+        ],
+        "overlay_image_dimensions": [
+          400,
+          600
+        ],
+        "unmodified_pdf": true,
+        "privacy_scan": {
+          "email_count": 0,
+          "jwt_count": 0,
+          "bearer_credential_count": 0,
+          "secret_assignment_count": 0,
+          "explicit_owner_field_present": false,
+          "attachments_count": 0,
+          "metadata_author_is_product": true
+        }
+      },
+      "qa_preview_privacy": "UUID/GPS values masked only in review previews; original PDFs and Poppler renders not modified",
+      "original_pdf_curated": false,
+      "system_save_open_share_ui_checked_by_this_curator": false,
+      "user_acceptance_claimed": false,
+      "privacy_decision": "Original remains only in private D output: synthetic provenance of S24 GPS not established. Completed QA is published as safe hashes/checks and masked previews; no coordinates printed."
+    }
+  ],
+  "total_poppler_rendered_and_visually_reviewed_pages": 10,
+  "environment": "Bundled pypdf/pdfplumber, Poppler110dpi and image inspection; original files preserved",
+  "production_changes": false,
+  "devices_touched": false,
+  "layout_character_bbox_check": [
+    {
+      "filename": "AS16_AVD36_release18_v2.pdf",
+      "all_text_character_boxes_within_A4_margins": true,
+      "outside_margin_characters": 0
+    },
+    {
+      "filename": "AS16_S24_release18_demo.pdf",
+      "all_text_character_boxes_within_A4_margins": true,
+      "outside_margin_characters": 0
+    }
+  ],
+  "visual_review_qualification": "Privacy-masked previews covered all pages; UUID/GPS text spans were additionally verified within page margins from unmodified PDF character boxes. Unmodified Poppler renders remain private on D."
+}

@@ -1,0 +1,240 @@
+{
+  "format": 1,
+  "scope": "Actual Android24/33 isolated emulator package updates and DEMO UI; not physical-device tracking or field accuracy",
+  "final_apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+  "final_version_name": "1.3.0-readiness.1cf6ce3",
+  "final_version_code": 18,
+  "rotation_minimum_sdk": 33,
+  "old_debug_apk_sha256": "b0ddc1292fc894ae8c39c5e41d7c14a1fdf906a4b51aa67c7e4d0b3e45d813fe",
+  "platforms": {
+    "24": {
+      "official_image_verified": {
+        "api": 24,
+        "size": 1119800108,
+        "sha1": "46d09c0723b77ddba00f2281099a2c44a88ac971",
+        "official_catalog": "https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml",
+        "tag": "google_apis"
+      },
+      "old15_to16": {
+        "actual_sdk": 24,
+        "serial": "emulator-5586",
+        "baseline_files": 70,
+        "after_files": 70,
+        "identical_files": 70,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0,
+        "apk_sha256": "66a1d8aa37af9ba598923fa245b4bb83c1df6514d6ae677d6d6324fcac0183fa"
+      },
+      "release16_to17": {
+        "actual_sdk": 24,
+        "serial": "emulator-5586",
+        "baseline_files": 71,
+        "after_files": 71,
+        "identical_files": 71,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0,
+        "apk_sha256": "08eba2754ea14febab83235fc66752abd88e13c14d47f131fb4638df2276ae5b"
+      },
+      "release17_to18": {
+        "actual_sdk": 24,
+        "serial": "emulator-5586",
+        "inventory_scope": [
+          "files",
+          "shared_prefs",
+          "app_flutter",
+          "no_backup",
+          "databases"
+        ],
+        "version_code": 18,
+        "version_name": "1.3.0-readiness.1cf6ce3",
+        "baseline_files": 71,
+        "after_files": 71,
+        "identical_files": 71,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0,
+        "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+        "before_installed_signing": {
+          "installed_sdk": "24",
+          "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97"
+        },
+        "after_installed_signing": {
+          "installed_sdk": "24",
+          "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97"
+        }
+      },
+      "effective_certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "permanent_signer_used": false,
+      "fresh_login": {
+        "installed_version_code": 18,
+        "actual_sdk": 24,
+        "fresh_demo_login_succeeded": true,
+        "tls_errors": []
+      },
+      "ui": {
+        "actual_sdk": 24,
+        "version_code": 18,
+        "five_folder_overlay_files_unchanged": 71,
+        "fresh_demo_login_succeeded": true,
+        "profile_server_session_confirmed": true,
+        "history_online_server_versions_visible_before_restart": true,
+        "report_photo_displayed": true,
+        "report_height_m": 8.4,
+        "report_crown_width_m": 4.2,
+        "beta_calculated": false,
+        "cold_restart_history_visible": true,
+        "cached_reports_visible_after_restart": false,
+        "server_reports_visible_after_restart": true,
+        "physical_tracking_or_accuracy_validated": false
+      }
+    },
+    "33": {
+      "official_image_verified": {
+        "api": 33,
+        "size": 582115034,
+        "sha1": "6f0b094b55617719294a080bc08816b4e8cb270a",
+        "official_catalog": "https://dl.google.com/android/repository/sys-img/aosp_atd/sys-img2-3.xml",
+        "tag": "aosp_atd"
+      },
+      "old15_to16": {
+        "actual_sdk": 33,
+        "serial": "emulator-5584",
+        "baseline_files": 70,
+        "after_files": 70,
+        "identical_files": 70,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0,
+        "apk_sha256": "66a1d8aa37af9ba598923fa245b4bb83c1df6514d6ae677d6d6324fcac0183fa"
+      },
+      "release16_to17": {
+        "actual_sdk": 33,
+        "serial": "emulator-5584",
+        "baseline_files": 71,
+        "after_files": 71,
+        "identical_files": 71,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0,
+        "apk_sha256": "08eba2754ea14febab83235fc66752abd88e13c14d47f131fb4638df2276ae5b"
+      },
+      "release17_to18": {
+        "actual_sdk": 33,
+        "serial": "emulator-5584",
+        "inventory_scope": [
+          "files",
+          "shared_prefs",
+          "app_flutter",
+          "no_backup",
+          "databases"
+        ],
+        "version_code": 18,
+        "version_name": "1.3.0-readiness.1cf6ce3",
+        "baseline_files": 73,
+        "after_files": 73,
+        "identical_files": 73,
+        "missing_files": 0,
+        "changed_files": 0,
+        "new_files": 0,
+        "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+        "before_installed_signing": {
+          "installed_sdk": "33",
+          "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8"
+        },
+        "after_installed_signing": {
+          "installed_sdk": "33",
+          "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8"
+        }
+      },
+      "effective_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "permanent_signer_used": true,
+      "fresh_login": {
+        "installed_version_code": 18,
+        "actual_sdk": 33,
+        "fresh_demo_login_succeeded": true,
+        "tls_errors": [],
+        "old_expired_fixture_token_handled_with_login_form": true,
+        "explicit_logout_performed": false,
+        "environment_note": "AOSP_ATD has no IME; text entered without BACK keyboard-dismiss assumption"
+      },
+      "ui": {
+        "actual_sdk": 33,
+        "version_code": 18,
+        "five_folder_overlay_files_unchanged": 73,
+        "fresh_demo_login_succeeded": true,
+        "tls_errors": [],
+        "old_expired_fixture_token_handled_with_login_form": true,
+        "explicit_logout_performed": false,
+        "history_online_server_versions_visible_before_restart": true,
+        "report_photo_displayed": true,
+        "report_height_m": 8.4,
+        "report_crown_width_m": 4.2,
+        "beta_calculated": false,
+        "cold_restart_history_visible": true,
+        "server_reports_visible_after_restart": true,
+        "avd_restart_history_also_confirmed": true,
+        "google_play_services_present": false,
+        "keyboard_service_present": false,
+        "physical_tracking_or_accuracy_validated": false
+      }
+    }
+  },
+  "tls": {
+    "root_der_sha256": "96bcec06264976f37460779acf28c5a7cfe8a3c0aae11a8ffcee05c0bddf08c6",
+    "official_root_source": "https://letsencrypt.org/certs/isrgrootx1.pem",
+    "primary_compatibility": "https://letsencrypt.org/docs/certificate-compatibility/",
+    "primary_chain": "https://letsencrypt.org/certificates/",
+    "verified_server_chain": [
+      "leaf",
+      "YE1",
+      "Root YE",
+      "ISRG Root X2 cross-signed",
+      "ISRG Root X1"
+    ],
+    "baseline_api24_old15": {
+      "installed_version_code": 15,
+      "actual_sdk": "24",
+      "errors": [
+        "HandshakeHandshake error in client (OS Error: \n\tCERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate(handshake.cc:298))"
+      ],
+      "source_apk_sha256": "b0ddc1292fc894ae8c39c5e41d7c14a1fdf906a4b51aa67c7e4d0b3e45d813fe"
+    },
+    "api24_release17": {
+      "sdk": 24,
+      "login_success": false,
+      "error": "HandshakeHandshake error in client (OS Error: \n\tCERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate(handshake.cc:298))"
+    },
+    "fix": "Append exactly the official public X1 to existing Android default SecurityContext before network creation; preserve platform CA, chain, hostname and validity checks",
+    "synthetic_tls_tests_passed": 7,
+    "default_platform_roots_replaced": false,
+    "bad_certificate_callback_used": false,
+    "production_configuration_changed": false
+  },
+  "operations": [
+    "Old debug15 installed and isolated DEMO-only data seeded via legitimate debug run-as",
+    "Old15 to16 then16 to17 installed with -r; all before files SHA unchanged",
+    "ProbeV3 five-folder SHA inventory before17 to18 overlay and before any18 UI",
+    "Fresh DEMO email login, server report version list, photo and8.40m/4.20m frozen report opened",
+    "Force-stop/cold-start reopened server history; API33 also reopened after actual AVD restart"
+  ],
+  "limits": [
+    "API33 AOSP_ATD has no Google Play services and no IME; no Maps/AR/tracking claim from that image",
+    "Android24 remains signed by the legacy certificate as intended by rotationMinSdk33, not permanent signer transition",
+    "Original shared DEMO fixture token later expired after a separate DEMO logout; fresh login established final TLS results",
+    "VM UI changes/login cache writes occur after overlay comparison and are not claimed unchanged",
+    "No physical measurement accuracy or field validation in this matrix"
+  ],
+  "screenshots": {
+    "ui/api24-18-history-settled.png": "9fc559cdb25104da5afb635801c84076d0faa5e20f5298dd654289ee6b9f69c0",
+    "ui/api24-18-report-photo.png": "1b143f96b8e41871e06eb866742a889295fd27a87829cb8329ef48727a46b7b1",
+    "ui/api24-18-report-measurements.png": "b4daaf8a1b34a25bd5cf532269ea22912acb92497c8b38f965fab9c3b5ad0ed0",
+    "ui/api24-18-cold-restart-history.png": "7650d6339e7027f8023c38f1e1564db32ccb1fa52e31e87c93f2332dc7b39b55",
+    "ui/api33-18-history-after-avd-restart.png": "3f56eec006c7cb6186f8b89ec40799241774cf0e4b7495e863c53b4d05a6e789",
+    "ui/api33-18-report-photo.png": "71ae0c86e356d4f299b3d246dd9e2b5c00e1e71a6addf78f884254681caf87b0",
+    "ui/api33-18-report-measurements.png": "03a0f03da54b63466ae0f9aa1e44fd376c4b6c5e093ba4c9e6989b3a94ded1ba",
+    "ui/api33-18-cold-restart-history.png": "3f56eec006c7cb6186f8b89ec40799241774cf0e4b7495e863c53b4d05a6e789",
+    "ui/api24-15-tls-baseline.png": "56c75ee7d06523429481182e961f380c01263b307cae83e998ad776cdc66405a"
+  }
+}

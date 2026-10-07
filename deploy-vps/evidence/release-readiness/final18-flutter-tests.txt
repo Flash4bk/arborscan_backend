@@ -1,0 +1,38 @@
+00:00 +0: loading arborscan_app/test/platform_tls_trust_test.dart
+00:00 +0: arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:00 +1: arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:00 +2: arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:00 +2: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +3: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +4: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +5: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +6: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +7: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +8: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +9: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +10: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +11: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:00 +12: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +13: arborscan_app/test/contour_workflow_test.dart: mismatched editor dimensions stay blocked across rebuilds
+00:01 +14: arborscan_app/test/report_history_test.dart: rejected request permits correction, original photo cannot silently change
+00:01 +15: arborscan_app/test/report_history_test.dart: rejected request permits correction, original photo cannot silently change
+00:01 +16: arborscan_app/test/contour_workflow_test.dart: old API capabilities retain legacy save and return clear conflict
+00:01 +17: arborscan_app/test/report_history_test.dart: journal snapshots mutable photo before asynchronous write
+00:01 +18: arborscan_app/test/contour_workflow_test.dart: saved draft restores after screen recreation, retry is idempotent and send is blocked
+00:01 +19: arborscan_app/test/contour_workflow_test.dart: saved draft restores after screen recreation, retry is idempotent and send is blocked
+00:01 +20: arborscan_app/test/contour_workflow_test.dart: legacy PNG uses explicit new contour, accepted state restores editor and new edit loses acceptance
+00:03 +21: arborscan_app/test/reference_measurement_test.dart: optional geometry rotates with reference and old versions remain old
+00:03 +22: arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:04 +23: arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:04 +24: arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:04 +25: arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:04 +26: arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+00:04 +27: arborscan_app/test/report_export_test.dart: generate real PDFs, frozen fixtures and selected versions
+00:05 +28: arborscan_app/test/reference_measurement_test.dart: legacy ruler returns scale per original pixel, preserving its controls
+00:05 +29: arborscan_app/test/report_export_test.dart: session change invalidates export before loading another owner
+00:05 +30: arborscan_app/test/report_export_test.dart: session change invalidates export before loading another owner
+00:05 +31: arborscan_app/test/report_export_test.dart: session change invalidates export before loading another owner
+00:05 +32: arborscan_app/test/reference_measurement_test.dart: line endpoints remain normalized across viewport changes
+00:05 +33: arborscan_app/test/report_export_test.dart: double tap single operation; cancel partial export produces no save
+00:06 +34: arborscan_app/test/reference_measurement_test.dart: reference journal restores report after screen recreation and isolates owner
+00:07 +35: All tests passed!

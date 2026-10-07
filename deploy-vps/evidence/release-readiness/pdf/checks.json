@@ -1,0 +1,80 @@
+[
+  {
+    "kind": "server_v1",
+    "sha256": "4bf6835f547094c37f2ad19281b0c9f22450d2646d9662b197eef57c4b2523e7",
+    "bytes": 43157,
+    "checks": {
+      "pages": 5,
+      "height_matches": true,
+      "crown_matches": true,
+      "coordinate_system": true,
+      "dimensions": true,
+      "gps": true,
+      "weather": true,
+      "soil": true,
+      "reference_lines": true,
+      "beta_unavailable": true,
+      "original_dimensions_and_jpeg_similarity": true
+    },
+    "jpeg_mean_absolute_rgb_error": [
+      [
+        0.298095703125,
+        0.9823201497395834,
+        0.4251302083333333
+      ]
+    ],
+    "rendered_pages": 5
+  },
+  {
+    "kind": "server_v2",
+    "sha256": "cfa155da61c0e7631f8fdcc251632b39707fd80c54025ca48ff8a042479860c7",
+    "bytes": 43151,
+    "checks": {
+      "pages": 5,
+      "height_matches": true,
+      "crown_matches": true,
+      "coordinate_system": true,
+      "dimensions": true,
+      "gps": true,
+      "weather": true,
+      "soil": true,
+      "reference_lines": true,
+      "beta_unavailable": true,
+      "original_dimensions_and_jpeg_similarity": true
+    },
+    "jpeg_mean_absolute_rgb_error": [
+      [
+        0.298095703125,
+        0.9823201497395834,
+        0.4251302083333333
+      ]
+    ],
+    "rendered_pages": 5
+  },
+  {
+    "kind": "cached_offline",
+    "sha256": "6d67a1206b428352fa76cec05e2972026fad9ea43fe6ae4fa5564d43f16f5b7d",
+    "bytes": 43154,
+    "checks": {
+      "pages": 5,
+      "height_matches": true,
+      "crown_matches": true,
+      "coordinate_system": true,
+      "dimensions": true,
+      "gps": true,
+      "weather": true,
+      "soil": true,
+      "reference_lines": true,
+      "beta_unavailable": true,
+      "original_dimensions_and_jpeg_similarity": true
+    },
+    "jpeg_mean_absolute_rgb_error": [
+      [
+        0.298095703125,
+        0.9823201497395834,
+        0.4251302083333333
+      ]
+    ],
+    "rendered_pages": 5
+  }
+]

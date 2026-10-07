@@ -1,0 +1,97 @@
+{
+  "environment": "actual isolated Android Emulator, not physical S24 or tracking accuracy",
+  "source_commit_for_17": "5ec4a40",
+  "minimum_rotation_sdk": 33,
+  "API33": {
+    "image": "Android33 AOSP_ATD x86_64 r02, official SHA1 checked",
+    "google_play_services_present": false,
+    "old15_to_16": {
+      "actual_sdk": 33,
+      "serial": "emulator-5584",
+      "baseline_files": 70,
+      "after_files": 70,
+      "identical_files": 70,
+      "missing_files": 0,
+      "changed_files": 0,
+      "new_files": 0,
+      "apk_sha256": "66a1d8aa37af9ba598923fa245b4bb83c1df6514d6ae677d6d6324fcac0183fa"
+    },
+    "16_to_17": {
+      "actual_sdk": 33,
+      "serial": "emulator-5584",
+      "baseline_files": 71,
+      "after_files": 71,
+      "identical_files": 71,
+      "missing_files": 0,
+      "changed_files": 0,
+      "new_files": 0,
+      "apk_sha256": "08eba2754ea14febab83235fc66752abd88e13c14d47f131fb4638df2276ae5b"
+    },
+    "installed_signing": {
+      "installed_sdk": "33",
+      "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8"
+    },
+    "ui_report_observed": {
+      "height_m": 8.4,
+      "crown_width_m": 4.2,
+      "dbh": "not measured",
+      "beta": "not available"
+    },
+    "screenshots": [
+      "api33-final17-history.png",
+      "api33-final17-report.png",
+      "api33-final17-report-measurements.png"
+    ]
+  },
+  "API24": {
+    "image": "Android24 Google APIs x86_64 r27, official SHA1 checked",
+    "old15_to_16": {
+      "actual_sdk": 24,
+      "serial": "emulator-5586",
+      "baseline_files": 70,
+      "after_files": 70,
+      "identical_files": 70,
+      "missing_files": 0,
+      "changed_files": 0,
+      "new_files": 0,
+      "apk_sha256": "66a1d8aa37af9ba598923fa245b4bb83c1df6514d6ae677d6d6324fcac0183fa"
+    },
+    "16_to_17": {
+      "actual_sdk": 24,
+      "serial": "emulator-5586",
+      "baseline_files": 71,
+      "after_files": 71,
+      "identical_files": 71,
+      "missing_files": 0,
+      "changed_files": 0,
+      "new_files": 0,
+      "apk_sha256": "08eba2754ea14febab83235fc66752abd88e13c14d47f131fb4638df2276ae5b"
+    },
+    "installed_signing": {
+      "installed_sdk": "24",
+      "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97"
+    },
+    "permanent_signer_transition": false,
+    "old15_tls_baseline": {
+      "installed_version_code": 15,
+      "actual_sdk": "24",
+      "errors": [
+        "HandshakeHandshake error in client (OS Error: \n\tCERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate(handshake.cc:298))"
+      ],
+      "source_apk_sha256": "b0ddc1292fc894ae8c39c5e41d7c14a1fdf906a4b51aa67c7e4d0b3e45d813fe"
+    },
+    "release17_tls_login": {
+      "sdk": 24,
+      "login_success": false,
+      "error": "HandshakeHandshake error in client (OS Error: \n\tCERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate(handshake.cc:298))"
+    },
+    "network_notes": [
+      "Windows public health v3 and v4 returned 200 with normal TLS",
+      "Original copied DEMO token later returned 401 after a separate fixture logout, not product isolation failure",
+      "Fresh login with old15 on blank API24 and release17 on mainAPI24 independently failed issuer verification"
+    ],
+    "fix_status": "source implemented and 7 TLS tests passed; exact release18 runtime verification pending"
+  },
+  "root_ca_sha256": "96bcec06264976f37460779acf28c5a7cfe8a3c0aae11a8ffcee05c0bddf08c6",
+  "production_changed": false
+}

@@ -1,0 +1,66 @@
+{
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "environment": "AVD Android16/API36, only DEMO account and test records",
+  "apk": {
+    "application_id": "com.example.arborscan_app",
+    "version_code": 17,
+    "version_name": "1.3.0-readiness.5ec4a40",
+    "min_sdk": 24,
+    "target_sdk": 36,
+    "debuggable": false,
+    "internet_permission": true
+  },
+  "installed_certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+  "updates": {
+    "15_to_16": {
+      "baseline_files": 70,
+      "after_files": 70,
+      "identical_files": 70,
+      "missing_files": 0,
+      "changed_files": 0,
+      "new_files": 0,
+      "changed_categories": [],
+      "account_preferences_identical": true
+    },
+    "16_to_17": {
+      "baseline_files": 71,
+      "after_files": 71,
+      "identical_files": 71,
+      "missing_files": 0,
+      "changed_files": 0,
+      "new_files": 0,
+      "changed_categories": [],
+      "account_preferences_identical": true
+    }
+  },
+  "actual_ui_checks": [
+    "cold start after update",
+    "account confirmed by server",
+    "reference200cm+sixsegments restored",
+    "empty unsaved reference draft restored exactly; baseline length_text was empty",
+    "contour draft reopened in real editor",
+    "legacy PNG overlay with explicit absence of original points",
+    "accepted and rejected revision/reason read only",
+    "server versions100cm and200cm reopened",
+    "PDF saved using Android SAF, opened by viewer, Share sheet cancelled without sending",
+    "force-stop with airplane+wifi off; cached report and PDF available",
+    "network restored0/1/1; same five server reports",
+    "DEMO account logout: history hidden; UI email/password login succeeds; same history and points",
+    "Google Maps tiles displayed under new installed certificate; no cloud configuration modified"
+  ],
+  "phone_status": "S24 originally code12 olddebug observed, now absent;16/17 not installed",
+  "google_oauth": "Google sign-in flow/new Android OAuth credentials not verified; Bearer email/password UI login passed",
+  "ar_tracking_or_field_accuracy_verified": false,
+  "user_acceptance_claimed": false,
+  "pdf_visual_review": {
+    "count": 3,
+    "pages": 15,
+    "method": "pypdf extraction, original dimensions/JPEG comparison, Poppler100dpi; every page visually inspected",
+    "artifacts": "pdf/"
+  },
+  "private_raw_backup_or_credentials_committed": false,
+  "capture_scope": "Historical release17 run; current S24/AVD18 results are in final18-device-ui-results.json"
+}

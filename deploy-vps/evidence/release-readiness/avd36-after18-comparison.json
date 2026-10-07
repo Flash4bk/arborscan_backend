@@ -1,0 +1,28 @@
+{
+  "actual_sdk": 36,
+  "serial": "emulator-5582",
+  "inventory_scope": [
+    "files",
+    "shared_prefs",
+    "app_flutter",
+    "no_backup",
+    "databases"
+  ],
+  "version_code": 18,
+  "version_name": "1.3.0-readiness.1cf6ce3",
+  "baseline_files": 71,
+  "after_files": 71,
+  "identical_files": 71,
+  "missing_files": 0,
+  "changed_files": 0,
+  "new_files": 0,
+  "apk_sha256": "de4b262e6983b1d6941383f97e1c30bd4e1388c9d3e23c7714e784095f398033",
+  "before_installed_signing": {
+    "installed_sdk": "36",
+    "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8"
+  },
+  "after_installed_signing": {
+    "installed_sdk": "36",
+    "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8"
+  }
+}

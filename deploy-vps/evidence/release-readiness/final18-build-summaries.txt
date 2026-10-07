@@ -1,0 +1,4 @@
+Flutter assembleRelease: successful, 104.0 seconds; unsigned app-release.apk 110.2 MB.
+Android testReleaseUnitTest and assembleReleaseAndroidTest: BUILD SUCCESSFUL in 57s.
+244 actionable tasks: 14 executed, 230 up-to-date.
+JUnit XML independently parsed: 5 tests, 0 failures/errors/skipped.

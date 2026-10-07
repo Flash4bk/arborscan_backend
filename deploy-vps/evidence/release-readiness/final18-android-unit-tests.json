@@ -1,0 +1,34 @@
+{
+  "scope": "Host-side Android release JUnit; not emulator instrumentation or AR accuracy",
+  "tests": 5,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "suites": [
+    {
+      "class": "com.example.arborscan_app.ArAvailabilityFailureTest",
+      "tests": 3,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 0.012,
+      "cases": [
+        "declinedInstallationIsCancellationRatherThanAnError",
+        "serviceAndSdkFailuresHaveDifferentRecoveryInstructions",
+        "failedSessionExplainsRecoveryWithoutExposingInternalExceptionDetails"
+      ]
+    },
+    {
+      "class": "com.example.arborscan_app.ArGeometryTest",
+      "tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 0.005,
+      "cases": [
+        "tangentRaysRecoverKnownCylinderAndRejectWrongTree",
+        "heightUsesWorldVerticalAndRejectsParallelOrBehindCamera"
+      ]
+    }
+  ]
+}
