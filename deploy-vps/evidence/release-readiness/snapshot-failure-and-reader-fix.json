@@ -1,0 +1,118 @@
+{
+  "task_id": "AS-14",
+  "recorded_at_utc": "2026-10-06T20:20:01.253281+00:00",
+  "first_actual_systemd_run": {
+    "started_at_utc": "2026-10-06T19:52:58Z",
+    "finished_at_utc": "2026-10-06T20:03:15Z",
+    "elapsed_seconds": 617,
+    "result": "exit-code",
+    "exit_status": 1,
+    "candidate_name": "20261006T195518Z",
+    "attempt": 1,
+    "application_partial_bytes": 761230336,
+    "storage_objects_already_archived": 2247,
+    "published_complete": false,
+    "rotation_executed": false,
+    "previous_complete_sets_retained": 14,
+    "original_journal": [
+      "Snapshot failed (RetryError, HTTP None)",
+      "snapshot_stage_failed"
+    ]
+  },
+  "reproduced_cause": {
+    "stage": "PostgREST first analyses page",
+    "http_status": 500,
+    "safe_server_reason": "statement timeout",
+    "previous_limit": 500,
+    "read_only_smaller_page_result": {
+      "limit": 100,
+      "status": 200,
+      "rows": 100,
+      "response_bytes": 57676143,
+      "elapsed_seconds": 9.946
+    }
+  },
+  "separate_diagnostic_429": {
+    "stage": "rapid Storage-list diagnostic",
+    "http_status": 429,
+    "safe_reason": "too many connections",
+    "calls": 327,
+    "elapsed_seconds": 21.874,
+    "is_original_failure": false
+  },
+  "last_bucket_independent_read": {
+    "objects": 39,
+    "calls": 25,
+    "elapsed_seconds": 1.514,
+    "all_reads_succeeded": true
+  },
+  "fix": {
+    "source": "deploy-vps/ops_snapshot.py",
+    "sha256": "5b5c90e989cce11c1ac1eed4a1d015fe811735be42770ac471b385b18b33efde",
+    "page_sizes": [
+      100,
+      25,
+      5,
+      1
+    ],
+    "adaptive_only_on_explicit_statement_timeout": true,
+    "primary_key_order": "OpenAPI primary-key columns, all15tables have keys",
+    "exact_row_count_and_duplicate_check": true,
+    "same_offset_until_success": true,
+    "storage_transient_retry_count_unchanged": 3,
+    "safe_stage_last_status_and_history": true,
+    "production_schema_index_timeouts_unchanged": true
+  },
+  "actual_fixed_reader_validation": {
+    "table": "analyses",
+    "read_only": true,
+    "all_fields_preserved": true,
+    "rows_read_each_pass": 108,
+    "independent_primary_key_inventory_matches": true,
+    "both_full_table_digests_equal": true,
+    "canonical_table_sha256": "8066c9243259f9be04592be630305ad8e018df58554eea975e07af3b95a9524b",
+    "elapsed_seconds": 28.797
+  },
+  "tests": {
+    "windows_snapshot_plus_policy": {
+      "count": 38,
+      "seconds": 32.018,
+      "result": "passed"
+    },
+    "vps_linux_snapshot": {
+      "count": 15,
+      "seconds": 2.086,
+      "result": "passed"
+    },
+    "windows_snapshot_latest": {
+      "count": 17,
+      "seconds": 2.626,
+      "result": "passed",
+      "scope": "Includes actual synthetic snapshot/offline restore format and incomplete-manifest gate"
+    },
+    "vps_linux_snapshot_latest": {
+      "count": 17,
+      "seconds": 2.649,
+      "result": "passed"
+    }
+  },
+  "fixed_actual_systemd_repeat_observed": true,
+  "native_dump_format_changed": false,
+  "production_database_restored": false,
+  "secret_values_recorded": false,
+  "backup_reader_installation": {
+    "installed_at_utc": "2026-10-06T20:21:56.267413Z",
+    "only_updated_tool": "ops_snapshot.py",
+    "source_sha256": "5b5c90e989cce11c1ac1eed4a1d015fe811735be42770ac471b385b18b33efde",
+    "preimage_path": "/home/arborscan/ops-snapshot-before-20261006T202156Z/ops_snapshot.py",
+    "preimage_sha256": "5f6bf6aa9320a031893834cf63bcbbdbbfc3f0226a09ac7774a894e839a7a9d6",
+    "preimage_and_installed_mode": "600",
+    "backup_lock_acquired": true,
+    "main_pid_before": 0,
+    "app_services_restarted": false
+  },
+  "updated_at_utc": "2026-10-07T06:37:52.224542+00:00",
+  "fixed_actual_systemd_repeat_observed_at_initial_record": false,
+  "fixed_repeat_trigger": "automatic timer07Oct; no manual retry confirmation required",
+  "final_evidence": "service-result.json"
+}

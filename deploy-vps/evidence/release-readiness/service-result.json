@@ -1,0 +1,114 @@
+{
+  "task_ids": [
+    "AS-14"
+  ],
+  "observed_at_utc": "2026-10-07T06:32:52.885207+00:00",
+  "actual_systemd_service": {
+    "Result": "success",
+    "ExecMainStartTimestamp": "Wed 2026-10-07 03:21:52 UTC",
+    "ExecMainExitTimestamp": "Wed 2026-10-07 03:34:25 UTC",
+    "ExecMainCode": "1",
+    "ExecMainStatus": "0",
+    "ActiveState": "inactive",
+    "SubState": "dead"
+  },
+  "timer": {
+    "Unit": "arborscan-backup.service",
+    "NextElapseUSecRealtime": "Thu 2026-10-08 03:20:05 UTC",
+    "LastTriggerUSec": "Wed 2026-10-07 03:21:52 UTC",
+    "ActiveState": "active",
+    "SubState": "waiting"
+  },
+  "automatic_next_run_observed": true,
+  "production_db_restored": false,
+  "new_sql_restore_performed": false,
+  "native_dump_format_changed": false,
+  "runtime_restore_evidence": "separate runtime-restore-result.json",
+  "snapshot_started_at_utc": "2026-10-07T03:25:08.192865+00:00",
+  "snapshot_finished_at_utc": "2026-10-07T03:28:31.175725+00:00",
+  "automatic_timer_run_observed": true,
+  "backup_name_reused_for_interrupted_operation": true,
+  "publication_resumed_after_interruption": true,
+  "finished": true,
+  "success": true,
+  "backup_name": "20261006T195518Z",
+  "operation_id": "daily-2026-10-06",
+  "verified_at_utc": "2026-10-07T03:34:25.568252+00:00",
+  "backup_integrity": {
+    "name": "20261006T195518Z",
+    "manifest_sha256": "d850deae43556e2dcb69980cd3619b7013b428a66a7d5860a7310657fae17eb2",
+    "verified_files": 29,
+    "verified_bytes": 979545362,
+    "native_postgres": true,
+    "dependencies": [
+      "/home/arborscan/ops-runtime/api-v4-0437e98.tar",
+      "/home/arborscan/recovery-releases/reliability-691fb77/images.tar.zst",
+      "/home/arborscan/recovery-releases/reliability-691fb77/candidate-eaa39f4.tar"
+    ],
+    "native_manifest_covered": true,
+    "runtime_archives_verified": true
+  },
+  "deleted_after_verified_publication": [
+    "20260929T031924Z"
+  ],
+  "physical_retained_complete_count": 14,
+  "protected_manual_runtime_directory_unchanged": true,
+  "protected_reliability_in_new_snapshot": true,
+  "current_compose_sources": 12,
+  "automatic_operation_marker_verified": true,
+  "source_postgresql": "17.6",
+  "postgres_tls_mode": "verify-full",
+  "postgres_custom_dump_header": "PGDMP",
+  "postgres_native_manifest_entries": 4,
+  "application_offline_restore": {
+    "files_restored": 2265,
+    "bytes": 828196863,
+    "reports_linked": 18,
+    "seconds": 9.792,
+    "database_restored": false,
+    "production_credentials_loaded": false
+  },
+  "saved_report_original_photos_verified": 18,
+  "report_parent_links_verified": 11,
+  "storage_objects": 2247,
+  "public_tables": 15,
+  "schema_versions": {
+    "contour_workflow_version": 1,
+    "model_quality_version": 1,
+    "server_history_version": 1
+  },
+  "runtime_images": [
+    "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+    "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a"
+  ],
+  "runtime_assets_unique": 3,
+  "container_images_and_started_at_unchanged": true,
+  "production_containers": [
+    {
+      "name": "/arborscan-api",
+      "image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "/arborscan-api-v4",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "started_at": "2026-10-06T13:35:21.059827568Z",
+      "running": true,
+      "health": "healthy"
+    },
+    {
+      "name": "/arborscan-quality-worker",
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "running": true,
+      "health": "healthy"
+    }
+  ],
+  "verification_elapsed_seconds": 35.263,
+  "actual_systemd_elapsed_seconds": 753,
+  "manual_retry_command_was_needed": false,
+  "completion_trigger": "automatic existing systemd timer",
+  "current_compose_source_digests_match_all_running_container_labels": true
+}

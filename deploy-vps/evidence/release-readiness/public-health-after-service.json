@@ -1,0 +1,25 @@
+{
+  "checked_at_utc": "2026-10-07T06:34:45.154952Z",
+  "tls_verification": true,
+  "write_requests": 0,
+  "requests": [
+    {
+      "path": "/api/v3/health",
+      "status_code": 200,
+      "health_status": "ok"
+    },
+    {
+      "path": "/api/v4/health",
+      "status_code": 200,
+      "health_status": "ok"
+    },
+    {
+      "path": "/api/v4/v4/corrections",
+      "status_code": 401
+    },
+    {
+      "path": "/api/v4/v4/reports",
+      "status_code": 401
+    }
+  ]
+}

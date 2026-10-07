@@ -1,0 +1,80 @@
+{
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "checked_at_utc": "2026-10-07T06:33:23.728417+00:00",
+  "elapsed_seconds": 184.33,
+  "success": true,
+  "environment": "Fresh network-none nested Docker on existing VPS kernel; not a new VM",
+  "bootstrap_image": "docker@sha256:5efed980cba3fc126cf54e21a5a6ff8849d05b6e0623d6e7612f48e9cd6cd17e",
+  "engine_version": "29.8.0",
+  "initial_images": 0,
+  "initial_containers": 0,
+  "host_socket": false,
+  "production_bind_mounts": false,
+  "readonly_input_archives": 2,
+  "public_ports": false,
+  "resources": {
+    "memory_bytes": 2147483648,
+    "cpu_count": 1,
+    "pids_limit": 128
+  },
+  "archive_sha256_verified": {
+    "/home/arborscan/ops-runtime/api-v4-0437e98.tar": "a232aeff128924ce45ae0fd4a5ac312459f504b62702f9ad181f72815074b43f",
+    "/home/arborscan/recovery-releases/reliability-691fb77/images.tar.zst": "3f8d154c102db8ee06a0d3fd7e72df67d4b423b9c7a190d29ff54c3c02ad5140",
+    "/home/arborscan/recovery-releases/reliability-691fb77/candidate-eaa39f4.tar": "7a3e499fd51e7c5ede7a69a08b556c042b8c6d107450545db0b9a0b5ff8efe7a"
+  },
+  "unchanged_base_restore_repeated": false,
+  "restored_images": [
+    {
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "revision": "0437e98e0570e0b74a1705b5d3095d32f038ddda",
+      "isolated_python_runtime": {
+        "corrections_source_sha256": "4b1ab10d5eb96edcc8ba785ea481922f8b9fd608a27ada27eedfb4e9fc747d10",
+        "source_present": true
+      }
+    },
+    {
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "revision": "eaa39f415f6de434773cc099d02f407d435c86b1",
+      "isolated_python_runtime": {
+        "corrections_source_sha256": "1fc20d603a74a55b67ed7a7706aeb7a92617dc790e52c0c9637df4d037defc27",
+        "source_present": true
+      }
+    }
+  ],
+  "inference_executed": false,
+  "training_executed": false,
+  "postgres_restore_performed": false,
+  "production_containers_restarted": false,
+  "lab_container": "as14-readiness-runtime-20261007",
+  "lab_volume": "as14-readiness-runtime-20261007-images",
+  "lab_stopped": true,
+  "restored_base_image_count": 0,
+  "previous_lab_attempt": {
+    "name": "as14-readiness-runtime-20261006",
+    "success": false,
+    "result_file_created": false,
+    "stopped_at_utc": "2026-10-06T20:31:38.043535542Z",
+    "scope": "Unchanged six-image base unpack cancelled when lab stopped; not counted as successful"
+  },
+  "archive_oci_identifiers": [
+    {
+      "restored_image_id": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "oci_index": true,
+      "linux_amd64_manifest_digest": "sha256:fb9664076ae5ecf95a23c9e3db803c5f53507d29beda5a51e1b93df6e48e11b3",
+      "config_digest": "sha256:17b29ef31f91a1a6d7a19b24560fff8f4cf73b1c3340c2246ac38ca758e0795c",
+      "manifest_and_config_bytes_sha_verified": true,
+      "config_digest_is_image_id": false
+    },
+    {
+      "restored_image_id": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "oci_index": true,
+      "linux_amd64_manifest_digest": "sha256:08f37a923d3acb7e24e0640bb2bd16fcaa75eb1433000b4420268f942cf52c00",
+      "config_digest": "sha256:565fa6749e3d708ae9d4ae31c0db44702f04783e5b0077f801453fb804191567",
+      "manifest_and_config_bytes_sha_verified": true,
+      "config_digest_is_image_id": false
+    }
+  ]
+}
