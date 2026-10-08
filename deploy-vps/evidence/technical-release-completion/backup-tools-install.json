@@ -1,0 +1,14 @@
+{
+  "prepared_at_utc": "2026-10-08T14:15:00.318803+00:00",
+  "backup_tools_before": "/home/arborscan/ops-tools-technical-before-20261008T141453Z",
+  "installed": {
+    "ops_backup_policy.py": {
+      "before": "2aa70c5c6541ae2d76ac83f7a01c755186e24dd1408633a8c49ebac7c4a3b933",
+      "installed": "452bbae97bcc5a5f04317b9dc4f57074372cde69c2ca3ba61f6c01f76ba12097"
+    }
+  },
+  "runtime_index_sha256": "c1205e37a00c76f08e52d30663f313b208ef2835a8891e32474b5337284edd17",
+  "auth_archive_reused": true,
+  "auth_archive_sha256": "82f59d586d20b1e232175a53c0260ce9a68b5fc88da5f9f7d931d2096b1594a9",
+  "production_components_changed": false
+}

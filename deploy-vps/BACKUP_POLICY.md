@@ -50,8 +50,10 @@ then configure `/home/arborscan/ops-runtime/RUNTIME_INDEX.json` (mode600):
 {"format":1,"images":{"sha256:EXACT_IMAGE_ID":[{"path":"/private/immutable/archive","sha256":"SHA256_OF_ACTUAL_CONTENT"}]}}
 ```
 
-Include all required base/overlay parts and their manifests. The selected APIv4
-and worker mappings are copied into hash-covered `RUNTIME_DEPENDENCIES.json`.
+Include all required base/overlay parts and their manifests. New snapshots select the actual APIv3, APIv4
+and worker mappings, recording an additive format-1 `services` list. Legacy sets
+without this list remain v4/worker snapshots; they do not prove auth-image recovery.
+The selected mappings are copied into hash-covered `RUNTIME_DEPENDENCIES.json`.
 Every referenced file is read and verified before publication and when a set is
 used as the new usable replacement. The source archives remain outside ordinary
 daily rotation. Any runtime/Compose reference into a retained daily set protects
@@ -101,7 +103,7 @@ separately. COMPLETE alone is insufficient. Verified external receipts are shown
 as historical confirmation ages, explicitly **not** current receiver reachability.
 No notifications are sent.
 
-`tests_v4/test_ops_backup_policy.py` exercises full14→new→14, repeat, stage failure,
+`tests_v4/test_ops_backup_policy.py` exercises full14в†’newв†’14, repeat, stage failure,
 interruption before/after publication, next-day resume, low disk, corrupt content,
 concurrent locking, pinned/manual/live sources, runtime base dependencies, missing
 runtime archives, adoption, path traversal/symlinks and freshness diagnostics in
@@ -122,7 +124,7 @@ Exact installed hashes, preimages and actual VPS outcomes are in
 On 07.10.2026 the metadata policy was installed under `backup.lock` with the
 service inactive; its previous source is preserved privately. The actual
 `daily-2026-10-06` replay returned `verified_existing` with zero snapshot calls,
-zero deletions and **14→14** completed sets. Every set's manifest, COMPLETE
+zero deletions and **14в†’14** completed sets. Every set's manifest, COMPLETE
 timestamp, file count and size, plus staging files, remained unchanged. The
 03:29:58 UTC completion marker and original 03:34:25 UTC verification time were
 preserved; only the separate 07:01:09 UTC integrity recheck was recorded. Actual
@@ -130,3 +132,33 @@ source/preimage hashes were rechecked and v3/v4/worker remained running and
 healthy with their preceding image IDs and start times. See
 `evidence/release-readiness/backup-policy-existing-replay.json`. This was not a
 new full backup, PostgreSQL restore or systemd-service execution.
+
+
+## Windows completion, 08.10.2026
+
+`ops_pull_backups.py` uses only existing `D:\ArborScanBackups`. Besides the
+covered snapshot it transfers unique runtime archives to `runtime-assets` under
+the same root, verifies SHA, then writes the existing format-1
+`RELOCATED_RUNTIME.json`. A set plus this shared directory is a recoverable
+package; the timestamp directory alone is not an independent full package.
+Original covered manifests and source paths are not rewritten. A matching
+previous recovery archive can be reused by hard link, preserving the canonical
+bytes even after its old directory is retired. Interrupted downloads remain
+`.downloading`; checksum failures cannot publish relocation or authorize rotation.
+
+`ops_windows_retention.py` plans then applies the existing budget of 14 verified
+COMPLETE sets only after an actual native PostgreSQL manifest/dump and all three
+service/runtime SHA verifications. It rechecks before each bounded deletion.
+Pins, live Compose paths, retained runtime bases and manual/unadopted historical
+sets remain protected; shared image archives are never collected by this tool.
+Older observed automatic sets require explicit byte-SHA-bound adoption in private
+`WINDOWS_RETENTION_POLICY.private.json`, with the original successful-run evidence.
+A timestamp by itself is not adoption. Insufficient eligible sets refuse rotation;
+no shortening of the policy or deleting historical manual sets is implied.
+Windows junction/reparse root/parents are rejected before resolving paths.
+
+The pull holds its existing `pull.lock` across transfers and rotation. The
+installed Scheduled Task points to permanent `D:\ArborScanBackups\tools`, not
+a transient worktree. Its future schedule requires an enabled/logged-on Windows
+PC and available SSH. A manual success is distinct from a future calendar run.
+Actual run/restore/rotation receipts: [TECHNICAL_RELEASE_COMPLETION.md](TECHNICAL_RELEASE_COMPLETION.md).

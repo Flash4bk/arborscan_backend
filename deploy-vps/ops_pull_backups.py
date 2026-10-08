@@ -14,9 +14,17 @@ from ops_verify_offsite import verify
 
 REMOTE = '/home/arborscan/ops-backups'
 NAME = re.compile(r'\d{8}T\d{6}Z')
-INVENTORY = '''import pathlib,json,re,hashlib
+INVENTORY = '''import pathlib,json,re,hashlib,subprocess
 root=pathlib.Path('/home/arborscan/ops-backups')
 result=[]
+protected=set()
+live=json.loads(subprocess.run(['docker','inspect','arborscan-api','arborscan-api-v4','arborscan-quality-worker'],capture_output=True,text=True,check=True).stdout)
+for row in live:
+ paths=row['Config'].get('Labels',{}).get('com.docker.compose.project.config_files','').split(',')+[m['Source'] for m in row.get('Mounts',[])]
+ for path in paths:
+  match=re.search(r'/ops-backups/(\\d{8}T\\d{6}Z)(?:/|$)',path)
+  if match:protected.add(match.group(1))
+runtime_checked={}
 for p in sorted(root.iterdir()):
  if re.fullmatch(r'\\d{8}T\\d{6}Z',p.name) and (p/'COMPLETE').is_file() and (p/'SHA256SUMS').is_file():
   manifest=(p/'SHA256SUMS').read_text();blocks={}
@@ -28,7 +36,22 @@ for p in sorted(root.iterdir()):
      while raw:=stream.read(4*1024**2):
       parts.append({'offset':offset,'size':len(raw),'sha256':hashlib.sha256(raw).hexdigest()});offset+=len(raw)
     blocks[name]=parts
-  result.append({'name':p.name,'manifest':manifest,'blocks':blocks,'bytes':sum(f.stat().st_size for f in p.rglob('*') if f.is_file() and 'restored' not in f.relative_to(p).parts)})
+  record={'name':p.name,'manifest':manifest,'blocks':blocks,'bytes':sum(f.stat().st_size for f in p.rglob('*') if f.is_file() and 'restored' not in f.relative_to(p).parts),'protected_sets':sorted(protected)}
+  runtime_file=p/'RUNTIME_DEPENDENCIES.json'
+  if runtime_file.is_file():
+   expected=dict((name,digest) for digest,name in (line.split('  ',1) for line in manifest.splitlines())).get('RUNTIME_DEPENDENCIES.json')
+   if hashlib.sha256(runtime_file.read_bytes()).hexdigest()!=expected:raise ValueError('runtime_contract_not_verified')
+   runtime=json.loads(runtime_file.read_bytes());record['runtime']=runtime;assets={}
+   for items in runtime['images'].values():
+    for asset in items:
+     path=pathlib.Path(asset['path']);digest=asset['sha256']
+     if not path.is_absolute() or path.is_symlink() or any(x.is_symlink() for x in path.parents) or not re.fullmatch('[a-f0-9]{64}',digest):raise ValueError('unsafe_runtime_archive')
+     if path not in runtime_checked:
+      with path.open('rb') as stream:runtime_checked[path]=hashlib.file_digest(stream,'sha256').hexdigest()
+     if runtime_checked[path]!=digest:raise ValueError('runtime_archive_checksum_mismatch')
+     assets[str(path)]={'path':str(path),'sha256':digest,'bytes':path.stat().st_size}
+   record['runtime_assets']=list(assets.values())
+  result.append(record)
 print(json.dumps(result))
 '''
 
@@ -105,6 +128,79 @@ def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None):
         sleep(5 * attempt)
 
 
+def transfer_runtime(root, folder, record, download_many, free=shutil.disk_usage):
+    """One SHA-addressed shared store; original covered dependencies stay unchanged."""
+    if 'runtime' not in record:
+        return None
+    from ops_windows_retention import safe_path, verify_runtime
+    runtime_file = folder/'RUNTIME_DEPENDENCIES.json'
+    if json.loads(runtime_file.read_bytes()) != record['runtime']:
+        raise ValueError('runtime_contract_changed')
+    shared = safe_path(root, root/'runtime-assets')
+    shared.mkdir(exist_ok=True)
+    assets = record.get('runtime_assets', [])
+    expected = {(a['path'], a['sha256']) for items in record['runtime']['images'].values() for a in items}
+    if expected != {(a['path'], a['sha256']) for a in assets}:
+        raise ValueError('runtime_asset_inventory_mismatch')
+    pending = []
+    relocated = []
+    required_bytes = 0
+    checked = set()
+    for asset in assets:
+        source = asset['path']; digest = asset['sha256']
+        if (not re.fullmatch(r'/home/arborscan/[A-Za-z0-9_./-]+', source) or
+                '..' in PurePosixPath(source).parts or not re.fullmatch('[a-f0-9]{64}', digest)):
+            raise ValueError('unsafe_runtime_archive')
+        target = safe_path(root, shared/(digest+'.archive'))
+        relocated.append({'original_path':source,'restored_path':str(target),'sha256':digest})
+        if digest in checked:
+            continue
+        checked.add(digest)
+        if matches(target, digest):
+            continue
+        # Reuse a previously verified relocation asset with a hard link. Shared
+        # bytes remain available if a redundant recovery directory is removed.
+        candidates = list(root.glob('*-current-runtime-recovery.private/runtime-assets/'+digest+'.archive'))
+        for candidate in candidates:
+            safe_path(root, candidate)
+            if matches(candidate, digest):
+                link = safe_path(root, target.with_name(target.name+'.reusing'))
+                if link.exists():
+                    link.unlink()
+                os.link(candidate, link)
+                os.replace(link, target)
+                break
+        if matches(target, digest):
+            continue
+        temporary = safe_path(root, target.with_name(target.name+'.downloading'))
+        if matches(temporary, digest):
+            os.replace(temporary, target)
+            continue
+        size = int(asset['bytes'])
+        if size < 0 or (temporary.exists() and temporary.stat().st_size > size):
+            raise ValueError('invalid_runtime_size')
+        required_bytes += size - (temporary.stat().st_size if temporary.exists() else 0)
+        pending.append((source, temporary))
+    if pending:
+        if free(root).free < required_bytes + 2*1024**3:
+            raise ValueError('insufficient_disk')
+        if download_many is None:
+            raise ValueError('runtime_transfer_required')
+        download_many(None, pending)
+        for source, temporary in pending:
+            asset = next(a for a in assets if a['path'] == source)
+            if not matches(temporary, asset['sha256']):
+                # A failed resume cannot be retried as a complete asset.
+                temporary.unlink(missing_ok=True)
+                raise ValueError('checksum_mismatch')
+            os.replace(temporary, shared/(asset['sha256']+'.archive'))
+    mapping = folder/'RELOCATED_RUNTIME.json'
+    writing = safe_path(root, mapping.with_name(mapping.name+'.writing'))
+    writing.write_text(json.dumps({'format':1,'assets':relocated}),encoding='utf-8')
+    os.replace(writing, mapping)
+    return verify_runtime(root, folder)
+
+
 def transfer(root, record, download, free=shutil.disk_usage, download_many=None, delta=None):
     name = record['name']
     if not NAME.fullmatch(name):
@@ -124,6 +220,7 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
             # Revoke a genuinely damaged set, not a valid set while checking.
             (final/'COMPLETE').unlink(missing_ok=True)
             raise
+        transfer_runtime(root, final, record, download_many, free)
         if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
             (final/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
         (final/'COMPLETE').touch()
@@ -165,6 +262,7 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
     # Translating LF to CRLF would change its hash used by external receipts.
     (partial/'SHA256SUMS').write_text(record['manifest'], encoding='utf-8', newline='\n')
     result = verify(partial)
+    transfer_runtime(root, partial, record, download_many, free)
     if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
         # Parent manifest covers native files; native manifest may be omitted by
         # outer find. The required four native files must all be present.
@@ -182,7 +280,8 @@ def main():
     parser.add_argument('--host',default='arborscan@31.57.170.88')
     parser.add_argument('--port',type=int,default=22)
     args=parser.parse_args()
-    root=Path(args.root).resolve();root.mkdir(parents=True,exist_ok=True)
+    from ops_windows_retention import canonical_root
+    root=canonical_root(args.root)
     import msvcrt
     with (root/'pull.lock').open('a+b') as lock:
         lock.seek(0);lock.write(b'0');lock.flush();lock.seek(0)
@@ -217,7 +316,12 @@ def main():
                 result=subprocess.run([str(system/'scp.exe'),*options,'-P',str(args.port),f'{args.host}:{REMOTE}/{name}/{filename}',str(target)],capture_output=True,timeout=1800,**hidden)
                 if result.returncode:raise RuntimeError('transfer_interrupted')
             def download_many(name, files):
-                batch=''.join(f'{"reget" if p.exists() and p.stat().st_size else "get"} "{REMOTE}/{name}/{f}" "{p.as_posix()}"\n' for f,p in files)
+                lines=[]
+                for filename, destination in files:
+                    remote_path = filename if name is None else REMOTE+'/'+name+'/'+filename
+                    operation = 'reget' if destination.exists() and destination.stat().st_size else 'get'
+                    lines.append(f'{operation} "{remote_path}" "{destination.as_posix()}"\n')
+                batch=''.join(lines)
                 # One SSH connection per set, avoiding many short SCP sessions.
                 batchfile=root/'transfer-batch.private.txt';batchfile.write_text(batch,encoding='utf-8')
                 trace=root/'transfer.private.log'
@@ -249,6 +353,17 @@ def main():
                         log('retry_transfer',backup=record['name'],attempt=attempt+2)
                         time.sleep(5)
                 log(outcome,backup=record['name'])
+            # Rotation is available only after an all-three-service native
+            # replacement and SHA-addressed runtime readback. Old unadopted
+            # manual/historical sets and live Compose dependencies remain pinned.
+            latest = records[-1]
+            if set(latest.get('runtime',{}).get('services',[])) == {
+                    '/arborscan-api','/arborscan-api-v4','/arborscan-quality-worker'}:
+                from ops_windows_retention import plan, apply
+                proposal = plan(root, latest['name'], latest.get('protected_sets', []))
+                (root/'retention-dry-run.private.json').write_text(json.dumps(proposal,indent=2))
+                rotation = apply(root, proposal, latest.get('protected_sets', []), lock_held=True)
+                log('retention_complete', **rotation)
             log('success',complete_sets=len(records))
             return 0
         except Exception as error:

@@ -100,23 +100,41 @@ def verify_set(folder, require_native=False, require_runtime=False, complete=Tru
     elif require_native:
         raise PolicyError('native_postgres_required')
     dependencies = []
+    services = []
     if 'RUNTIME_DEPENDENCIES.json' in entries:
         runtime = json.loads(safe_file(folder, 'RUNTIME_DEPENDENCIES.json').read_text())
         dependencies = verify_runtime(folder, runtime)
+        services = runtime.get('services', sorted(RUNTIME_SERVICES))
     elif require_runtime:
         raise PolicyError('runtime_archives_required')
     return {'name': folder.name, 'manifest_sha256': digest(folder / 'SHA256SUMS'),
             'verified_files': len(entries), 'verified_bytes': total,
             'native_postgres': native, 'dependencies': dependencies,
             'native_manifest_covered': 'postgres/SHA256SUMS' in entries,
+            'runtime_services': services,
             'runtime_archives_verified': 'RUNTIME_DEPENDENCIES.json' in entries}
 
 
-def runtime_images(folder):
+RUNTIME_SERVICES = {'/arborscan-api-v4', '/arborscan-quality-worker'}
+AUTH_SERVICE = '/arborscan-api'
+
+
+def runtime_services(folder, include_auth=False):
     rows = json.loads(safe_file(folder, 'containers.private.json').read_text())
+    names = set(RUNTIME_SERVICES)
+    if include_auth and any(row.get('Name') == AUTH_SERVICE for row in rows):
+        names.add(AUTH_SERVICE)
+    return names
+
+
+def runtime_images(folder, services=None):
+    rows = json.loads(safe_file(folder, 'containers.private.json').read_text())
+    services = RUNTIME_SERVICES if services is None else set(services)
+    if services not in (RUNTIME_SERVICES, RUNTIME_SERVICES | {AUTH_SERVICE}):
+        raise PolicyError('invalid_runtime_services')
     selected = {row['Name']: row['Image'] for row in rows if row.get('Name') in
-                ('/arborscan-api-v4', '/arborscan-quality-worker')}
-    if set(selected) != {'/arborscan-api-v4', '/arborscan-quality-worker'}:
+                services}
+    if set(selected) != services:
         raise PolicyError('runtime_image_inventory_missing')
     if not all(re.fullmatch(r'sha256:[a-f0-9]{64}', image) for image in selected.values()):
         raise PolicyError('invalid_runtime_image_id')
@@ -124,7 +142,12 @@ def runtime_images(folder):
 
 
 def verify_runtime(folder, runtime):
-    if runtime.get('format') != 1 or set(runtime.get('images', {})) != runtime_images(folder):
+    # Historical format-1 sets cover v4/worker only. The additive services field
+    # makes the auth image mandatory in new snapshots without rewriting history.
+    services = runtime.get('services')
+    if services is not None and (not isinstance(services, list) or len(services) != len(set(services))):
+        raise PolicyError('invalid_runtime_services')
+    if runtime.get('format') != 1 or set(runtime.get('images', {})) != runtime_images(folder, services):
         raise PolicyError('runtime_index_image_mismatch')
     checked = {}
     for assets in runtime['images'].values():
@@ -410,11 +433,13 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
         attempt = staging / ('attempt-' + str(active['attempt']))
         attempt.mkdir(mode=0o700)
         create(attempt)
-        selected = runtime_images(attempt)
+        services = runtime_services(attempt, include_auth=True)
+        selected = runtime_images(attempt, services)
         runtime = read_json(runtime_index, {})
         if runtime.get('format') != 1 or not selected <= runtime.get('images', {}).keys():
             raise PolicyError('runtime_archive_index_missing')
-        runtime = {'format': 1, 'images': {image: runtime['images'][image] for image in selected}}
+        runtime = {'format': 1, 'services': sorted(services),
+                   'images': {image: runtime['images'][image] for image in selected}}
         verify_runtime(attempt, runtime)
         atomic_json(attempt / 'RUNTIME_DEPENDENCIES.json', runtime)
         atomic_json(attempt / 'AUTO_BACKUP.json', {'format': 1, 'kind': 'scheduled_backup',

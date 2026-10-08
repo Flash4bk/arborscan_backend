@@ -1,0 +1,30 @@
+{
+  "tasks": [
+    "AS-14",
+    "AS-16"
+  ],
+  "kind": "new tests of source changes",
+  "Windows": {
+    "python": "3.14",
+    "tests": 82,
+    "passed": 80,
+    "skipped": 2,
+    "seconds": 31.974,
+    "environment": "actual Windows, TEMP on D, native NTFS junction tests"
+  },
+  "Linux": {
+    "returncode": 0,
+    "python": "3.12.3",
+    "summary": [
+      "ss................................................................................",
+      "----------------------------------------------------------------------",
+      "Ran 82 tests in 56.036s",
+      "",
+      "OK (skipped=2)"
+    ]
+  },
+  "commands": [
+    "python -B -m unittest tests_v4.test_ops_backup_policy tests_v4.test_ops_pull tests_v4.test_ops_offsite_push tests_v4.test_ops_windows_runtime_retention"
+  ],
+  "client_suite_rerun": false
+}

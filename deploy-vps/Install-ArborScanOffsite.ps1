@@ -18,7 +18,7 @@ foreach ($rule in $acl.Access) {
 }
 $tools = Join-Path $Root 'tools'
 New-Item -ItemType Directory -Force -Path $tools | Out-Null
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ops_pull_backups.py'),(Join-Path $PSScriptRoot 'ops_verify_offsite.py'),(Join-Path $PSScriptRoot 'ops_windows_job.py'),(Join-Path $PSScriptRoot 'ops_delta_copy.py') -Destination $tools
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ops_pull_backups.py'),(Join-Path $PSScriptRoot 'ops_verify_offsite.py'),(Join-Path $PSScriptRoot 'ops_windows_job.py'),(Join-Path $PSScriptRoot 'ops_delta_copy.py'),(Join-Path $PSScriptRoot 'ops_windows_retention.py') -Destination $tools
 $action = New-ScheduledTaskAction -Execute $python -Argument ('-B "' + (Join-Path $tools 'ops_pull_backups.py') + '" --root "' + $Root + '"') -WorkingDirectory $tools
 $trigger = @((New-ScheduledTaskTrigger -Daily -At '08:00'), (New-ScheduledTaskTrigger -AtLogOn -User $identity.Name))
 $principal = New-ScheduledTaskPrincipal -UserId $identity.Name -LogonType Interactive -RunLevel Limited

@@ -214,6 +214,29 @@ class ExternalPushTests(unittest.TestCase):
         Path(runtime['images'][self.image][0]['path']).write_bytes(b'corrupt')
         with self.assertRaisesRegex(ValueError,'runtime_archive_checksum_mismatch'):
             sender.build_package(self.backup,None)
+    def test_all_three_service_contract_transports_auth_archive(self):
+        manifest,runtime=self.native_runtime_fixture()
+        auth='sha256:'+'c'*64
+        inventory=json.loads((self.backup/'containers.private.json').read_text())
+        inventory.append({'Name':'/arborscan-api','Image':auth})
+        (self.backup/'containers.private.json').write_text(json.dumps(inventory))
+        runtime['services']=['/arborscan-api','/arborscan-api-v4','/arborscan-quality-worker']
+        runtime['images'][auth]=runtime['images'][self.image]
+        manifest.write_text(json.dumps(runtime))
+        self.checksums(self.backup,recursive=True)
+        package,files=sender.build_package(self.backup,None)
+        sender.transfer(package,files,self.rpc)
+        destination=self.root/'all-three-recovery'
+        sender.readback(package,self.rpc,destination)
+        self.assertEqual(sender.runtime_images(destination/self.backup.name,runtime['services']),
+                         {self.image,auth})
+    def test_declared_auth_service_missing_inventory_is_refused(self):
+        manifest,runtime=self.native_runtime_fixture()
+        runtime['services']=['/arborscan-api','/arborscan-api-v4','/arborscan-quality-worker']
+        manifest.write_text(json.dumps(runtime))
+        self.checksums(self.backup,recursive=True)
+        with self.assertRaisesRegex(ValueError,'runtime_image_inventory_missing'):
+            sender.build_package(self.backup,None)
     def test_new_runtime_contract_wrong_image_or_uncovered_manifest_is_refused(self):
         manifest,runtime=self.native_runtime_fixture()
         runtime['images']={'sha256:'+'f'*64:runtime['images'][self.image]}

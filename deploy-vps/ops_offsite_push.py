@@ -39,9 +39,14 @@ def manifest_files(root):
     return result
 
 
-def runtime_images(backup):
+def runtime_images(backup, services=None):
     inventory = json.loads((backup / "containers.private.json").read_bytes())
     names = {"/arborscan-api-v4", "/arborscan-quality-worker"}
+    if services is not None:
+        if (not isinstance(services, list) or len(services) != len(set(services)) or
+                set(services) not in (names, names | {"/arborscan-api"})):
+            raise ValueError("invalid_runtime_services")
+        names = set(services)
     selected = {r["Name"]: r["Image"] for r in inventory if r["Name"] in names}
     if selected.keys() != names or not all(re.fullmatch(r"sha256:[a-f0-9]{64}", image) for image in selected.values()):
         raise ValueError("runtime_image_inventory_missing")
@@ -64,6 +69,7 @@ def build_package(backup, release_root):
         if backup.name + "/RUNTIME_DEPENDENCIES.json" not in files:
             raise ValueError("runtime_dependencies_not_hash_covered")
         runtime = json.loads(runtime_path.read_bytes())
+        images = runtime_images(backup, runtime.get("services"))
         if runtime.get("format") != 1 or set(runtime.get("images", {})) != images:
             raise ValueError("runtime_index_image_mismatch")
         for assets in runtime["images"].values():
@@ -111,7 +117,7 @@ def verify_relocated_runtime(package, destination):
     """Preserve hash-covered absolute source paths; verify a separate relocation map."""
     backup = destination / package["name"]
     runtime = json.loads((backup / "RUNTIME_DEPENDENCIES.json").read_bytes())
-    images = runtime_images(backup)
+    images = runtime_images(backup, runtime.get("services"))
     if runtime.get("format") != 1 or set(runtime.get("images", {})) != images:
         raise ValueError("runtime_index_image_mismatch")
     mapping = {(item["source_path"], item["sha256"]): item["package_path"]
