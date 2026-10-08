@@ -1,0 +1,48 @@
+{
+  "checked_at_utc": "2026-10-08T08:02:53.261078+00:00",
+  "task": "AS-16 Google security rollout",
+  "environment": "Actual owned Android API24 emulator, not S24",
+  "owned_avd": "Codex_AS16_FINAL_CLEAN_API24",
+  "adb_serial": "emulator-5590",
+  "client_release": "1.3.0+23",
+  "installed_apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "installed_apk_bytes": 115594211,
+  "effective_api24_old_signer_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+  "certificate_evidence": "Previously verified APK23 signer, same exact installed bytes freshly confirmed",
+  "gms_version": "20.24.14 (040800-319035315)",
+  "production_ready_reported_by_root": {
+    "image_id": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+    "identity_claims_enabled": true,
+    "unique_index_valid_ready": true
+  },
+  "actual_native_google_unique_authorized_account_selection_count": 2,
+  "actual_app_google_login_success_count": 2,
+  "actual_own_lab_account_logout_count": 2,
+  "native_account_picker_cancel_signed_out": true,
+  "server_confirmed_auth_me_after_cold_restart_count": 2,
+  "same_private_approved_account_after_each_cold_restart": true,
+  "authenticated_history_loaded_without_error_count": 2,
+  "test_history_explicitly_empty": true,
+  "signed_out_no_authenticated_controls": true,
+  "signed_out_test_email_prefilled_in_editable_login_input": true,
+  "private_profile_visibility_not_inferred_from_email_only": true,
+  "UI_helper_expectation_correction": "Refresh on Profile updates statistics, not auth/me; immediate login status is Google login success. Real auth/me was checked by cold restart. Initial overly strict helper assertions corrected without client/server changes.",
+  "offline_retry_proof": "Previous unchanged APK23/UI proof reused; not rerun in this targeted cycle",
+  "canonical_database_continuity": "Root performs a separate read-only check after both emulator cycles; not claimed by this UI proof",
+  "private_screenshots": [
+    {
+      "name": "native24-after-me-confirmed.png",
+      "sha256": "96ad443c6bb0943d922c615b25a14de1288f8066b617f07f2a25bdbf1e038805"
+    },
+    {
+      "name": "native24-signed-in-history.png",
+      "sha256": "8bea32805b54d479a0ea40d62bc56f42e907b3c102add8c40d0d394483e6b5fe"
+    }
+  ],
+  "S24_account_touched": false,
+  "data_clear_uninstall_or_reinstall": false,
+  "reports_contours_moderation_or_training_mutated": false,
+  "raw_email_name_owner_subject_or_tokens_published": false,
+  "session_type": "Opaque ArborScan session, not Supabase Auth/GoTrue",
+  "client_source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6"
+}

@@ -1,0 +1,112 @@
+{
+  "checked_at_utc": "2026-10-08T07:34:19.015721+00:00",
+  "production_applied": false,
+  "production_migration_executed": false,
+  "compose_version": "5.5.1",
+  "workdir": "/opt/arborscan/deploy-vps",
+  "source_compose": [
+    "/opt/arborscan/deploy-vps/docker-compose.yml"
+  ],
+  "operations": {
+    "deploy-claims-false": {
+      "override": "/home/arborscan/ops-google-security/20261008T072247Z/deploy-claims-false.private.yml",
+      "override_sha256": "bc5806e5c2ff3c790b1b914c1249fec27780d72eaf9654227418a2d29011e549",
+      "command": [
+        "docker",
+        "compose",
+        "-p",
+        "arborscan",
+        "--project-directory",
+        "/opt/arborscan/deploy-vps",
+        "-f",
+        "/opt/arborscan/deploy-vps/docker-compose.yml",
+        "-f",
+        "/home/arborscan/ops-google-security/20261008T072247Z/deploy-claims-false.private.yml",
+        "up",
+        "-d",
+        "--no-deps",
+        "--no-build",
+        "--pull",
+        "never",
+        "api"
+      ],
+      "environment_matches_exact_expected": true
+    },
+    "deploy-claims-true": {
+      "override": "/home/arborscan/ops-google-security/20261008T072247Z/deploy-claims-true.private.yml",
+      "override_sha256": "1f4db628ece4c2486520d9f690e966f0089817eea99adb9ce4c76d2159ffbf8d",
+      "command": [
+        "docker",
+        "compose",
+        "-p",
+        "arborscan",
+        "--project-directory",
+        "/opt/arborscan/deploy-vps",
+        "-f",
+        "/opt/arborscan/deploy-vps/docker-compose.yml",
+        "-f",
+        "/home/arborscan/ops-google-security/20261008T072247Z/deploy-claims-true.private.yml",
+        "up",
+        "-d",
+        "--no-deps",
+        "--no-build",
+        "--pull",
+        "never",
+        "api"
+      ],
+      "environment_matches_exact_expected": true
+    },
+    "rollback-original": {
+      "override": "/home/arborscan/ops-google-security/20261008T072247Z/rollback-original.private.yml",
+      "override_sha256": "70c5c634902181ea76b1739968fd6341f757043a631e780135398589fb75b9b7",
+      "command": [
+        "docker",
+        "compose",
+        "-p",
+        "arborscan",
+        "--project-directory",
+        "/opt/arborscan/deploy-vps",
+        "-f",
+        "/opt/arborscan/deploy-vps/docker-compose.yml",
+        "-f",
+        "/home/arborscan/ops-google-security/20261008T072247Z/rollback-original.private.yml",
+        "up",
+        "-d",
+        "--no-deps",
+        "--no-build",
+        "--pull",
+        "never",
+        "api"
+      ],
+      "environment_matches_exact_expected": true
+    },
+    "emergency-google-disabled": {
+      "override": "/home/arborscan/ops-google-security/20261008T072247Z/emergency-google-disabled.private.yml",
+      "override_sha256": "aa58c01e087da0620da18b90509f42c784db05707417e84d10a60964b8820a79",
+      "command": [
+        "docker",
+        "compose",
+        "-p",
+        "arborscan",
+        "--project-directory",
+        "/opt/arborscan/deploy-vps",
+        "-f",
+        "/opt/arborscan/deploy-vps/docker-compose.yml",
+        "-f",
+        "/home/arborscan/ops-google-security/20261008T072247Z/emergency-google-disabled.private.yml",
+        "up",
+        "-d",
+        "--no-deps",
+        "--no-build",
+        "--pull",
+        "never",
+        "api"
+      ],
+      "environment_matches_exact_expected": true
+    }
+  },
+  "normal_rollout_requires_explicit_v3_scope_expansion": true,
+  "claims_true_requires_explicit_schema_scope_expansion_and_index_verification": true,
+  "old_image_restores_security_defect": true,
+  "emergency_original_image_disables_google_login": true
+}

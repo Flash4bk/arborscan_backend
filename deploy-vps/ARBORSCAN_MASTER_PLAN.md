@@ -1,6 +1,6 @@
 # ArborScan — единый план проекта
 
-Версия: 1.24. Дата фиксации: 17.09.2026. Обновлено: 08.10.2026.
+Версия: 1.25. Дата фиксации: 17.09.2026. Обновлено: 08.10.2026.
 Назначение: постоянный реестр согласованного объёма проекта и основание всех последующих заданий Codex.
 
 ## Правила ведения
@@ -33,9 +33,9 @@
 | AS-11 | Механическая устойчивость при ветровой нагрузке | Исходная цель; расчётный метод и валидация не подтверждены |
 | AS-12 | Экспорт и оформление отчётов | Реализовано и проверено агентом, включая S24 и серверные версии; границы проверок описаны в REPORT_EXPORT.md |
 | AS-13 | Экспериментальная валидация | Для геометрии подготовлены протокол, CSV и расчёт ошибок; полевые данные и подтверждение точности отсутствуют |
-| AS-14 | Надёжность приложения и эксплуатация сервера | Calendar backup/restore и ключ проверены ранее, текущий service success/timer/14 COMPLETE подтверждены read-only. Independent always-on receiver и clean VM/test HTTPS не назначены; объём/команды подготовлены в FINAL_RELEASE_AS14.md, реального переноса/нового хоста нет, ограничение не принято |
+| AS-14 | Надёжность приложения и эксплуатация сервера | Calendar backup/restore и ключ проверены ранее; fresh29/native/runtime SHA, daily service success/14 COMPLETE подтверждены. После host boot08.10 timer active/waiting. Один запрос ресурсов и команды в AS14_RESOURCE_REQUEST.md: 14+shared runtime17,386538795GB, с staging/reserve24,295025575GB; новый exact v3 archive и его staging дают25,870026663GB/24,093GiB, minimum32/preferred64GiB. Independent always-on receiver и clean VM/test HTTPS не назначены; внешний daily transport/receiver GC и восстановление нового v3 на новом хосте не проверены, ограничение не принято |
 | AS-15 | Полный редизайн и брендирование | Новая лесная тема реализована и проверена агентом; серверный UI-цикл проверен на DEMO; точная версия S24 и границы финальных проверок в APP_REDESIGN.md, визуальная приёмка отсутствует |
-| AS-16 | Выпуск, обновление и итоговая приёмка | Кандидат 1.3.0+23/source bbcd5b5 подписан; 181 Flutter и 9 Android прошли, analyze: 0 ошибок/53 прежних/0 новых замечаний. Чистая установка и cold start на API24/33/36, прямое 18→23 с восстановлением отчёта/черновика и повторным обновлением, S24 22→23/62 SHA и сохранённый аккаунт проверены. Реальные AR-return, gallery cancel, PDF save/open/share-cancel на S24 прошли; полный авторский DEMO цикл/конфликт/два S24 решения, две серверные версии и15страниц трёх реальныхPDF23 проверены агентом. Offline/reconnect, реальные weather/partial soil и GPS-query/cancel S24 прошли; полевая точность не заявлена. API24–32 прежний signer, 33+ постоянный. Google Console/две регистрации доступны, тестовый аккаунт добавлен; actual Google API36/new signer login/session/history/restart/logout/relogin/cancel/offline/retry прошёл, canonical owner/subject/role сохранены без дубля; API24 old-signer Google flow также прошёл раздельно с тем же canonical owner/без дубля, cancel/offline/retry; запрещённый production security rollout открыт. AS14 resources отсутствуют. Стабильный тег/полный release не заявлены; FINAL_RELEASE.md |
+| AS-16 | Выпуск, обновление и итоговая приёмка | Кандидат 1.3.0+23/source bbcd5b5 подписан; 181 Flutter и 9 Android прошли, analyze: 0 ошибок/53 прежних/0 новых замечаний. Чистая установка и cold start на API24/33/36, прямое 18→23 с восстановлением отчёта/черновика и повторным обновлением, S24 22→23/62 SHA и сохранённый аккаунт проверены. Реальные AR-return, gallery cancel, PDF save/open/share-cancel на S24 прошли; полный авторский DEMO цикл/конфликт/два S24 решения, две серверные версии и15страниц трёх реальныхPDF23 проверены агентом. Offline/reconnect, реальные weather/partial soil и GPS-query/cancel S24 прошли; полевая точность не заявлена. API24–32 прежний signer, 33+ постоянный. Google Console/две регистрации доступны, тестовый аккаунт добавлен; actual Google API36/new signer login/session/history/restart/logout/relogin/cancel/offline/retry прошёл, canonical owner/subject/role сохранены без дубля; API24 old-signer Google flow также прошёл раздельно с тем же canonical owner/без дубля, cancel/offline/retry. 08.10 security-only v3 candidate policy6284f93/live base5a0b1d63/image60c6cf1f прошёл isolated full HTTP22/22; baseline21 ожидаемых red-наблюдений, local prepared21/baseline20 и overlay12 прошли. После узкого разрешения владельца security-only v3/index реально применены: image60c6cf1f/claims=true, unique/valid/ready index, existing SQL1/1/1. Postdeploy обе HTTPS health200/unauth401/missing-token422/malformed401. Настоящие API24/old signer и API36/new signer login/relogin/logout/history/cancel и два cold restart→auth/me каждый прошли, canonical owner/subject/role/created_at без дубля. После внешнего host reboot11:56:56UTC те же container IDs/images/env/index/model сохранились; final startup stdout/stderr/health/timer проверены. v4/worker не изменялись агентом; откат не выполнялся. AS14 resources отсутствуют. Стабильный тег/полный release не заявлены; GOOGLE_SECURITY_ROLLOUT.md и FINAL_RELEASE.md |
 
 ## Сверка редакций и текущий пакет — 06.10.2026
 
@@ -58,7 +58,102 @@
 
 Ближайшая очередь после пакета07.10: **AS-14 — разрешённый независимый always-on receiver и отдельная новая VM/HTTPS; AS-16 — закрытие технических ограничений Google OAuth/старого signer, окончательная версия и разрешённый release/tag/доставка**. Guard14, штатный ежедневный service-run и создание/восстановление постоянного ключа уже проверены; повторно разрабатывать их без дефекта не требуется. AS-11 и оценка моделей идут отдельно по мере доступности источников и данных. AS-10/AS-13 остаются открытыми до реальных экспериментов; визуальная приёмка AS-15 отдельная.
 
-## Последний пакет AS-16 / остаток AS-14 — 07–08.10.2026
+## Текущий пакет AS-16: безопасность Google / ресурсы AS-14 — 08.10.2026
+
+Основание — `AS16_GOOGLE_SECURITY_ROLLOUT_PROMPT.md`, актуальный main
+`d3ae1e129e54beba58f889630a97bdfd7fd8657a` и отдельная
+`codex/google-security-rollout`. Исходный D-checkout, пользовательские PDF и кеши
+сохранены. Приложенная чат-копия плана 1.6 не заменяет каноническую редакцию
+репозитория 1.24; все ID, прежние критерии, исторические результаты и журналы
+сохранены. Эта редакция 1.25 добавляет только факты затронутых AS-16/AS-14.
+
+Исправляемый компонент установлен по фактическому коду: Google native ID token →
+`/api/v3/auth/google` в `arborscan-api` → собственные
+`public.users/auth_sessions`, не Supabase Auth/GoTrue и не API v4.
+Подготовленный policy `6284f93204f3ef2f92543604eb5c7a2cea93c3cd` устраняет
+client-email fallback, отсутствие требования `email_verified=true` и
+неоднозначное связывание/перезапись Google subject по совпадению email.
+Используются подтверждённые claims и стабильный subject; права/owner не
+назначаются клиентскими полями. Новое создание/связывание при claims=false
+закрыто; включение требует проверенного unique subject index.
+
+**Разрешение владельца уточнено:** первоначальный документ запрещал v3 и схему
+БД; после определения реального пути пользователь явно разрешил только
+security-only изменение v3 и подготовленный additive unique subject index.
+Это не разрешение развёртывать остальной main, менять v4/worker, модели,
+контуры/отчёты, публичную маршрутизацию/HTTPS или запускать обучение.
+**Фактически выполнено после разрешения:** v3 claims=false → additive production
+SQL → claims=true. Unique subject index unique/valid/ready; действующий v3 image
+60c6cf1f здоров. Обновление всего main, v4 или worker не выполнялось.
+
+Кандидат собран поверх exact live v3 base
+`sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b`:
+image `sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990`.
+Изменены только auth_google/imports/claims constant и подготовленный auth module;
+остальные байты live server.py, зависимости, startup/healthcheck и модели
+сохранены. Build без pull/network; это policy+live-base, не весь main.
+Проверки агента: Windows overlay safety12/12; local actual-route HTTP prepared21/21
+и baseline20 ожидаемых наблюдений; VPS original full import/startup/HTTP21
+ожидаемое red-доказательство, включая восемь небезопасных случаев с200;
+VPS candidate full import/startup/HTTP22/22 с реальным RSA/google-auth verifier.
+Synthetic claims/REST fixture изолированы от production; private key/token не
+публикуются. Эти тесты не являются настоящим Google-входом на production.
+
+Fresh COMPLETE `20261008T032219Z` проверен: 29 outer SHA entries, native PostgreSQL
+coverage/PGDMP и три runtime dependency SHA. Актуальный приватный срез
+runtime/config/source и original Docker archive проверены и сохранены для
+отката. Это integrity/preflight, не повторный SQL restore. DB-preflight был
+только SELECT: PostgreSQL17.6, google_sub=text, invalid rows0, duplicate subject
+groups0, index absent. Затем exact concurrent unique index реально создан и
+проверен; contour/history/quality versions остались1/1/1. Утренний backup service exit0, timer active/waiting,
+14 COMPLETE; rotation не менялась. Exact image/source SHA, команды,
+совместимость и возврат с claims=false/ограничения исходного preimage описаны в
+[GOOGLE_SECURITY_ROLLOUT.md](GOOGLE_SECURITY_ROLLOUT.md) и
+[readiness](evidence/google-security-rollout/readiness.json).
+
+APK **1.3.0/code23/sourcebbcd5b5/SHA71f38189…** не изменён.
+Прежние 181 Flutter/9 Android/analyze0errors/53прежних/0новых и PDF сохранены
+без полного повтора при неизменённом клиенте. После switch настоящий API24/old
+signer выполнил два login/logout, два cold restart с server auth/me того же
+разрешённого аккаунта, history и cancel. Read-only continuity подтвердил прежние
+owner/subject/role/created_at и отсутствие дубля. Это целевой эмуляторный UI,
+не тест S24. API36/new signer также прошёл два Google login/logout, два app cold
+restart→auth/me того же аккаунта, history/cancel. SystemUI ANR первого boot
+устранён обычным AVD restart безwipe; новый APK не требовался. Read-only после
+обоих окружений подтвердил того же owner/subject/role/created_at без дубля.
+APK23/аккаунт/данные S24 не изменялись.
+Production обе health200, unauth me/corrections/reports401, missing/malformed
+Google token422/401, TLS штатный; source SHA/claims/index/logs проверены.
+v4/worker IDs/images/start/config, модели/HTTPS/VPS Git/operator env сохранены,
+training-state неизменён. [Postdeploy](evidence/google-security-rollout/postdeploy.json),
+[API24](evidence/google-security-rollout/native24-ui.json),
+[API36](evidence/google-security-rollout/native36-ui.json).
+Неизменные start times относятся к switch07:54UTC. После паузы установлена
+перезагрузка VPS11:56:56UTC вне действий агента; container IDs/images/effective
+env/claims/index и модель сохранились, start times стали11:57UTC. Final проверка
+после boot/UI подтвердила health/negative/TLS, полный stdout/stderr startup без
+fatal, training-state прежний и timer active/waiting/09.10,06:18:10Minsk:
+[final runtime](evidence/google-security-rollout/final-runtime.json).
+Причина host reboot не установлена; нельзя заявлять starts unchanged за всю паузу.
+
+AS-14: один конкретный комплект receiver+clean VM+test HTTPS в
+[AS14_RESOURCE_REQUEST.md](AS14_RESOURCE_REQUEST.md). Read-only metadata08.10
+для актуальных14 наборов: retained+shared runtime **17 386 538 795 B**,
+со staging и2GiBreserve **24 295 025 575 B**. Новый exact v3 archive787500544B
+с SHA82f59d58… реально сохранён приватно, но в старые shared runtime не входил;
+с ним и его staging итог **25 870 026 663 B /24,093GiB**. Minimum32/предпочтительно64GiB
+свободного private data места остаётся. Это суммирование metadata, не новая
+SHA-проверка всех14 наборов. Независимые always-on receiver, чистая Linux VM и
+test HTTPS не назначены; external daily transport и receiver GC не настроены.
+Ресурсы не куплены, эксплуатационное ограничение пользователем не принято.
+
+Следующий ресурсный этап — независимый receiver+clean VM/test HTTPS AS-14,
+проверка фактического переноса/restoration текущего runtime. Stable tag
+и полный release остаются открыты до обязательных технических критериев либо
+явно согласованного объёма эксплуатационных ограничений. AS-10/AS-11/AS-13,
+независимая оценка моделей и визуальное принятие AS-15 остаются отдельными.
+
+## Предыдущий пакет AS-16 / остаток AS-14 — 07–08.10.2026
 
 Работа по `AS16_FINAL_RELEASE_PROMPT.md` от `origin/main10b54e7`, отдельная
 `codex/final-release`; исходный D-checkout/PDF/cache сохранён. Фактический
@@ -351,6 +446,7 @@ receiver/OAuth ограничения остаются открытыми и п�
 - Подтверждение функционального сценария 25.09.2026 относится к AS-08. Последние шесть шагов в сообщении пользователю не включали AR с независимым контролем и заполнение полевого CSV; их выполнение и численные результаты не заявлены, AS-13 не закрыт.
 
 ### AS-14. Надёжность и эксплуатация
+- Текущий срез08.10: fresh29/native/runtime SHA и новый v3 archive проверены, после внешнего host boot timer active/waiting. Один запрос receiver/clean VM/test HTTPS и рассчитанные25,870026663GB с staging/reserve — [AS14_RESOURCE_REQUEST.md](AS14_RESOURCE_REQUEST.md). Current v3 archive/effective private override/index необходимы для нового DR, старые runtime dependencies автоматически их не включают. Независимые ресурсы не назначены, внешний daily transport/receiver GC и восстановление нового v3 на новом хосте не выполнены; AS-14 открыт. Следующие датированные записи сохраняют историю.
 - Актуальный пакет07.10: guard14 заменён verify→publish→dependency-safe rotation14; календарный systemd753с/exit0 и свежий native/Storage/runtime набор реально проверены. Timeout reader исправлен без SQL/production изменений. Последняя metadata-policy27Windows+27Linux/atomicinstall и real485с idempotent replay0create/delete/14→14 прошли; время копии не подменяется retry-time. Пустой isolatedDocker текущих exact v4/worker184с успешен. Windows calendar05UTC exit1 отделён от ручных успешных переносов; фактический fresh/offsite статус в [RELEASE_READINESS.md](RELEASE_READINESS.md). Always-on receiver/новаяVM/HTTPS не выполнены; AS-14 целиком не закрыт. Ниже сохраняется история предыдущих результатов.
 - Актуальная эксплуатационная проверка 06.10: daily timer active/waiting, последний service exit1 по guard14 COMPLETE. Все14 outer manifests и latest native/embedded SHA проверены. Fresh20261006T131325Z завершён exit0:30 outer/4 PostgreSQL/2261 embedded SHA, реальный file restore2261/16links; новый SQLrestore не выполнялся. Первое архивирование26.09 выявило runtime dependency и полностью отменено; независимый27.09 safely archived после29 mount/label checks. Fresh сам не содержит reliability.yml; verified private current-config/image snapshot дополняет его (все10 Compose sources, env, inspect, old image). [BACKUP_RETENTION.md](evidence/as16-integration/BACKUP_RETENTION.md), [RELEASE_INTEGRATION.md](RELEASE_INTEGRATION.md). Guard/таймер не обходились/не менялись; следующий штатный service-run, dependency-safe daily policy и offsite независимо от ПК остаются следующим пакетом.
 - Дополнительная проверка 30.09 (не переоткрытие этапа): готовится независимый архив runtime images и чистый вложенный Docker 29.8 без host socket/production mounts. Пока внешний архив не перенесён и не проверен целиком, автономное восстановление не засчитывается. Кандидат AS-16 отдельно проверен на прежней изолированной копии; эти доказательства не смешиваются. См. TECHNICAL_RELEASE.md.
@@ -394,6 +490,7 @@ receiver/OAuth ограничения остаются открытыми и п�
 - Завершение: принятый целостный интерфейс на телефоне без потери функций и данных, обновлённые фирменные отчёты.
 
 ### AS-16. Выпуск и итоговая приёмка
+- Текущий срез08.10: после отдельного разрешения владельца применены только policy6284f93+livebase5a0b1d63/image60c6cf1f в v3 и concurrent unique subject index; claims=true/index unique-valid-ready. Isolated full22/22, local21 и overlay12; настоящий Google API24/old signer и36/new signer/login/relogin/logout/history/cancel/coldrestart→auth/me прошли, owner/subject/role/created_at unchanged без дубля. После host boot11:56:56UTC source/env/index/image/model сохранились, final health/negative/logs/timer проверены. APK23 неизменён, прежние181Flutter/9Android/PDF/S24 доказательства сохранены; откат только подготовлен. [GOOGLE_SECURITY_ROLLOUT.md](GOOGLE_SECURITY_ROLLOUT.md). Stable tag открыт из-за неназначенных ресурсов AS-14/непринятого ограничения; последующие датированные записи — история, не запрет уже разрешённого rollout.
 - Пакет07.10 отmain946a632: release18 app1cf6ce3/SHAde4b262e… non-debuggable/min24/target36, actual signatures/lineage и восстановленным escrow ключом подписанный APK проверены. API33+ permanent7fb94e…, API24–32 legacy68ff98… (не новая подпись старыхплатформ); minSdk не уменьшен. AVD15→16→17→18/dataSHA, DEMO account/history/эталон/черновики/контуры/GPS/PDF/offline/перезапуск проверены в доступных средах. S24 actual12→18/61файл/сессия/history/report/Google Maps проверены; restart-history и DEMO PDF/SAF/local viewer/share-cancel подтверждены после восстановления USB. Final35Flutter/TLS7/5native/releasebuild, analyze0errors/53прежних. Проверка Google OAuth/новойAndroidpair и технические остатки по [RELEASE_READINESS.md](RELEASE_READINESS.md). Публичныйrelease/tag/store и окончательная приёмка не выполнялись.
 - Текущий AS-16,06.10: candidate1ab1743 APK1.3.0-integration.1ab1743+15, SHA b0ddc1292fc894ae8c39c5e41d7c14a1fdf906a4b51aa67c7e4d0b3e45d813fe, прежняя debug-подпись. Реализовано и проверено агентом в доступном объёме:130Flutter,216backend+3subtests,37последнихops,5native,70cleanresearch; analyze exit1/0errors/53прежних. AVDinstall-r61/61SHA,UI/frozenversions/PDF/offline/legacyконтуры прошли; S24 недоступен. Actualv4API0437/image034a9d послеfreshbackup/privateconfig и preparedrollback;SQL1/1/1/v3/worker/models/HTTPS неизменны. Main fast-forward/push5e11e4a фактически выполнен, originmain/workingbranch подтверждены; новые doc-only записи не меняют API/APK. Полный AS-16/release-signing/приёмка/полевая точность не закрыты. [RELEASE_INTEGRATION.md](RELEASE_INTEGRATION.md).
 - Фактическое дополнение 30.09: main fast-forward/push 96eaa99, API/worker eaa39f4 развёрнуты с проверенным rollback. Оба HTTPS health, права, истории/конкурентные версии и quality smoke после переключения прошли. Исходные v3/env/модели сохранены, миграций нет. Прежняя debug-подпись остаётся явным ограничением; это не окончательный подписанный релиз и не пользовательская приёмка. Внешние runtime images/чистое восстановление AS-14 пока проверяются отдельно.
@@ -567,6 +664,23 @@ AS-09/AS-15 и следующий AS-16 автоматически не закр
 
 ## Правило для следующего Codex
 
+Актуальный пакет версии **1.25** — `AS16_GOOGLE_SECURITY_ROLLOUT_PROMPT.md`,
+ветка `codex/google-security-rollout` от main `d3ae1e1`. Пользователь уже явно
+разрешил необходимое расширение: точечный security-only v3 и подготовленный
+unique subject index, после проверенного кандидата/резервной копии/отката.
+Actual switch, SQL и новые целевые native/postdeploy результаты проверять по
+[GOOGLE_SECURITY_ROLLOUT.md](GOOGLE_SECURITY_ROLLOUT.md), не по одному разрешению
+или наличию исходников. Google login в APK23 на API24/36 уже реально проверен;
+не объявлять его заново «ещё не проверенным» и не повторять весь клиентский
+прогон без причины. Для AS-14 запрос один:
+[AS14_RESOURCE_REQUEST.md](AS14_RESOURCE_REQUEST.md); наличие Windows-копии или
+Docker на прежнем VPS не закрывает receiver/новую VM/HTTPS. Stable tag запрещён
+при обязательном техническом блокере или несогласованном эксплуатационном
+остатке. Научные и визуальные критерии не подменяются техническим кандидатом.
+
+Следующий абзац — историческое правило редакции1.24; более новое разрешение
+v3/index и уже выполненные native Google проверки зафиксированы выше.
+
 Актуальный пакет версии **1.24** — `AS16_FINAL_RELEASE_PROMPT.md`, ветка
 `codex/final-release` от `main10b54e7`; результаты и точные границы в
 [FINAL_RELEASE.md](FINAL_RELEASE.md). Проверенную часть разрешено включить в main
@@ -687,3 +801,5 @@ independent receiver/clean VM/test HTTPS — следующие конкретн
 | 07.10.2026 | 1.23 | AS-14/AS-16: guard14 исправлен, фактический calendar systemd753с/exit0 опубликовал полный native/Storage snapshot и безопасно сохранил14наборов; final metadata27Windows/27Linux и real485с retry0create/delete прошли. Reader17/17 и fullrows проверены, exact current runtime restored в пустом Docker184с. Windows calendar05UTC exit1 сохранён честно; ручной Scheduler222с/exit0, fresh29outer/native4/3runtime SHA, relocated34files/4,76GB и file-only2265/18links реально проверены. Permanent key/lineage и независимое восстановление escrow23/23+actual signing прошли; APK18 app1cf6ce3 SHAde4b262e… non-debuggable проверен на AVD24/33/36, S24 обновлён12→18 безclear/uninstall,61/61SHA/аккаунт/история/force-stop/Google Maps/SAF/viewer/share-cancel подтверждены. Final35Flutter/TLS7/5native/build, analyze0errors/53прежних;5контрольныхPDF/25страниц проверены, S24original/GPS private. Официальный ISRG Root X1 исправил старыйAPI24issuer безbypass; API24–32 всё ещё oldsigner. APIv3/v4/worker/HTTPS/SQL/models не менялись, обучение не запускалось. Always-on receiver/новаяVM/HTTPS, GoogleOAuth/newpair и окончательныйrelease остаются открытыми; научная и визуальная приёмка не назначались. История/всеID сохранены; Gitpublication фиксируется отдельно по факту. |
 
 | 08.10.2026 | 1.24 | AS-16 от main10b54e7 в codex/final-release: D-checkout/PDF/cache сохранены. Google identity policy/index подготовлены: Python3.11 17+8/Windows8/realPG17.6 16 прошли; rollout production запрещён/не выполнен. Найденные renderer crash19, ANR20, gallery failure22 и owner-race исправлены отдельными коммитами; точный finalAPK1.3.0+23/sourcebbcd5b5/SHA71f38189…:181Flutter/9Android/analyze0errors/53прежних/0новых. Clean24/33/36, direct18→23/repeat8SHA/guestOS report+draftrestore, overlays24/33/36 и S24 22→23/repeat62SHA проверены. Real23 author DEMO reject/reason/draftrestore/newrevision/submit/S24accept/re-edit-draft/conflict+retry/legacyPNG прошёл. Эталон2→3м/server-v3/две версииPDF10страниц32+32+8checks, S24SAF/viewer/share-cancel/5PDFстраниц12checks и все15renderedpages просмотрены. Offline/reconnect/Maps/currentOpenWeather+partialSoilGrids/Analyze-no-tree и S24freshGPSquery0мин±17м/cancel выполнены; полевая точность не заявлена. ExistingGoogle Web/oldAndroid сохранены, newpermanentAndroid зарегистрирован, ownerдобавил testaccount/aggregate2verified; ownerприватно вошёл на API36, actualnativeGoogle/newsigner session/history/restart/logout/relogin/cancel/offline/retry прошёл, canonical test owner без дубля; API24oldsigner actualGoogle/session/history/restart/logout/relogin/cancel/offline/retry также прошёл, тот жеcanonicalowner; securityrollout запрещён и не выполнен. AS14service/timer/14COMPLETE read-only, independentreceiver/cleanVM/testHTTPS отсутствуют; ограничения не приняты. Три новыеsyntheticDEMO revision изолированы existingpurpose marker; только ancillarypurpose изменён, core/SQL decisions неизменны, runtimeexporter/publicHTTPS verified. Runtime API/worker/SQLschema/HTTPS/models неизменны, trainingне запускался. Gitpublication выполнена: codex/final-release и main fast-forward/push/remote verification на3ce8a88, без force/reset/protection bypass; последующая фиксация receipt не меняет APK. Stabletag/полныйrelease/useracceptance/эксперимент не заявлены, всеID/прежниеjournals сохранены. |
+
+| 08.10.2026 | 1.25 | AS-16 Google security от main d3ae1e1 в codex/google-security-rollout: чат-копия1.6 не заменила canonical1.24, всеID/критерии/history/журналы сохранены. Actual путь v3 custom users/auth_sessions установлен; policy6284f93+livebase5a0b1d63/image60c6cf1f без прочих main/dependency/model изменений. Overlay12/12, local preparedHTTP21/21/baseline20, isolated full baseline21 expected-red/candidate22/22 realcrypto/full startup/HTTP проверены. Fresh backup29outer/native/runtimeSHA/private config/source/preimage snapshot verified, повторного SQLrestore нет. Начальный DBpreflight SELECT PG17.6/text/invalid0/duplicates0/indexabsent; после узкого разрешения пользователя реально выполнены v3 claims=false→concurrent unique subject index→claims=true; unique/valid/ready и existing versions1/1/1. Postdeploy HTTPS200/unauth401/invalid401/missing422, startup checked. Exact APK23/sourcebbcd5b5/SHA71f38189… неизменён; прежние181Flutter/9Android/analyze0errors/53old/0new/PDF/S24/offline reused. Actual native24oldsigner и36newsigner по2login/logout/coldrestart/serverme/history+cancel прошли, owner/subject/role/created_at unchanged без дублей. Initial36SystemUIANR честно сохранён, normalAVDrestart безwipe восстановил UI. В паузу VPS boot11:56:56UTC вне действий агента изменил starttimes всехcontainer; exact IDs/images/env/claims/index/modelSHA сохранены, final stdout+stderr/startup/health/negative/timer active verified. Backup/current candidate private archive verified; rollback prepared/notexecuted. AS14 единый запрос: newv3archive учтён,25,870026663GB/24,093GiB, minimum32/preferred64GiB; receiver/cleanVM/testHTTPS отсутствуют, externaldaily/receiverGC/новыйDR не проверены, ограничение не принято. Stabletag/полныйrelease/useracceptance/эксперимент не объявлены; Gitpublication фиксируется отдельно по факту. |

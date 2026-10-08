@@ -1,0 +1,11 @@
+{
+  "checked_at_utc": "2026-10-08T08:02:51.147385+00:00",
+  "current_image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+  "archive": "/home/arborscan/ops-google-security/20261008T072247Z/candidate-image.private.tar",
+  "bytes": 787500544,
+  "sha256": "82f59d586d20b1e232175a53c0260ce9a68b5fc88da5f9f7d931d2096b1594a9",
+  "private_mode_600": true,
+  "production_restarted": false,
+  "archive_created_for_current_security_runtime": true,
+  "not_yet_in_independent_offsite_transport": true
+}

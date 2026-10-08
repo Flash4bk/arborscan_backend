@@ -1,0 +1,12 @@
+{
+  "checked_at_utc": "2026-10-08T12:38:33.223191+00:00",
+  "public_text_and_json_files_scanned": 32,
+  "relative_links_checked": 123,
+  "known_private_identity_leak_found": false,
+  "secret_pattern_match_found": false,
+  "APK_logs_env_keys_caches_selected": false,
+  "historic_journal_rows_preserved": 24,
+  "plan_register_ids_preserved": 16,
+  "diff_check_passed": true,
+  "limits": "Secret-pattern and known private identity checks; not proof against every arbitrary unknown secret"
+}

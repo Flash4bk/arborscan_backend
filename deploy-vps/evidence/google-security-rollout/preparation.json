@@ -1,0 +1,37 @@
+{
+  "checked_at_utc": "2026-10-08T07:22:47.446219+00:00",
+  "backup": {
+    "name": "20261008T032219Z",
+    "manifest_sha256": "eb2853a221cf7da269ecbb9c974f64348825d5acf1c311b5026562f8251e5fba",
+    "verified_files": 29,
+    "verified_bytes": 979618890,
+    "native_postgres": true,
+    "dependencies": [
+      "/home/arborscan/ops-runtime/api-v4-0437e98.tar",
+      "/home/arborscan/recovery-releases/reliability-691fb77/images.tar.zst",
+      "/home/arborscan/recovery-releases/reliability-691fb77/candidate-eaa39f4.tar"
+    ],
+    "native_manifest_covered": true,
+    "runtime_archives_verified": true
+  },
+  "snapshot": {
+    "path": "/home/arborscan/ops-google-security/20261008T072247Z",
+    "files": 5,
+    "original_image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+    "original_image_archive_bytes": 787466240,
+    "original_image_archive_sha256": "e703d1ac976a8266b2f89ab6f6954d145f35cb0b9230eef7db52922b4945d167",
+    "snapshot_verified": true,
+    "production_restarted": false
+  },
+  "database_preflight_read_only": {
+    "server_version": "17.6",
+    "subject_type": "text",
+    "invalid_subject_rows": 0,
+    "duplicate_subject_groups": 0,
+    "unique_subject_index_present": false
+  },
+  "changed_functions_or_classes": [
+    "auth_google"
+  ],
+  "source_baseline_sha256": "076268a262b78df5028a77c6b99d898b56d4e111437e102ee8b509a4cd1e23df"
+}

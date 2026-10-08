@@ -1,0 +1,22 @@
+{
+  "started_at_utc": "2026-10-08T07:51:40.494407+00:00",
+  "finished_at_utc": "2026-10-08T07:54:18.326180+00:00",
+  "phase": "true",
+  "api_v3_image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+  "api_v3_container_id": "aa91bec2effcb10cb062370e329b1bbb1ce5fb19c07988e37ae4d2c2c5d96218",
+  "api_v3_started_at": "2026-10-08T07:51:42.423894275Z",
+  "healthy": true,
+  "claims_enabled": true,
+  "unique_index": {
+    "unique": true,
+    "valid": true,
+    "ready": true
+  },
+  "production_schema_changed": false,
+  "production_training_state_unchanged": true,
+  "v4_worker_image_id_start_config_unchanged": true,
+  "models_nginx_operator_config_sha_unchanged": true,
+  "startup_logs_captured_privately": true,
+  "startup_fatal_error_detected": false,
+  "rollback_executed": false
+}

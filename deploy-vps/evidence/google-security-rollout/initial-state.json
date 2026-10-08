@@ -1,0 +1,70 @@
+{
+  "checked_at_utc": "2026-10-08T07:20:32.455335+00:00",
+  "VPS_git": {
+    "HEAD": "5d8176a22fddd6634c266a1ed09f1845019065c5",
+    "branch": "main",
+    "dirty_entries": 0
+  },
+  "containers": [
+    {
+      "name": "/arborscan-api",
+      "image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "id": "a007a01d0c3f5f6522398f59537d0b59cc21efa028d6dbd7113a387d17a6e316",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "name": "/arborscan-api-v4",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "id": "6069bc321256ce3c58db72448004db527321e214bc297f2ad24cf9163e70c03c",
+      "started_at": "2026-10-06T13:35:21.059827568Z",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "name": "/arborscan-quality-worker",
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "id": "9485b44faf742128519d94f66500434d3cbd8f89ce4ff9c376cd95bb7d6b863b",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "state": "running",
+      "health": "healthy"
+    }
+  ],
+  "v3_models_bind": [
+    {
+      "source": "/opt/arborscan/models",
+      "destination": "/app/models",
+      "read_only": true
+    }
+  ],
+  "v3_compose_project": "arborscan",
+  "v3_compose_files": [
+    "/opt/arborscan/deploy-vps/docker-compose.yml"
+  ],
+  "claims_flag_enabled": false,
+  "service_config_sha256": "d021e2bc5c91eb992d7b40ded3ea917f9a19b40b1db519437ce5f1e707ba5d33",
+  "v3_auth_function_sha256": "e96d3a12d9bf834f16c3f0dc046fa1dd77d3ec8cafd54a87e1404404ddce6a31",
+  "v3_source_sha256": "076268a262b78df5028a77c6b99d898b56d4e111437e102ee8b509a4cd1e23df",
+  "v3_prepared_module_present": false,
+  "root_free_bytes": 52205182976,
+  "physical_memory": 12504322048,
+  "arborscan-backup.service": {
+    "Result": "success",
+    "ExecMainExitTimestamp": "Thu 2026-10-08 03:33:24 UTC",
+    "ExecMainStatus": "0",
+    "ActiveState": "inactive",
+    "SubState": "dead"
+  },
+  "arborscan-backup.timer": {
+    "NextElapseUSecRealtime": "Fri 2026-10-09 03:18:04 UTC",
+    "Result": "success",
+    "ActiveState": "active",
+    "SubState": "waiting"
+  },
+  "backup_complete_sets": 14,
+  "latest_complete": "20261008T032219Z",
+  "psql_wrapper_available": true,
+  "private_service_files_ready": true,
+  "scope": "Read-only production state; no application/schema/config/model mutation"
+}

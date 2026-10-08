@@ -1,0 +1,80 @@
+{
+  "checked_at_utc": "2026-10-08T07:37:02.781664+00:00",
+  "complete_sets": 14,
+  "sets_manifest_payload_bytes": 13605154553,
+  "shared_runtime_bytes": 3781384242,
+  "shared_runtime_assets": 3,
+  "latest_set": "20261008T032219Z",
+  "latest_manifest_payload_bytes": 979618890,
+  "latest_full_package_bytes": 4761003132,
+  "capacity_metadata_only_not_all14_sha_verified": true,
+  "retained_plus_runtime_bytes": 17386538795,
+  "with_staging_and_2gib_reserve_bytes": 24295025575,
+  "containers": [
+    {
+      "name": "/arborscan-api",
+      "id": "a007a01d0c3f5f6522398f59537d0b59cc21efa028d6dbd7113a387d17a6e316",
+      "image": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+      "started_at": "2026-09-07T17:35:02.146108577Z",
+      "healthy": true
+    },
+    {
+      "name": "/arborscan-api-v4",
+      "id": "6069bc321256ce3c58db72448004db527321e214bc297f2ad24cf9163e70c03c",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "started_at": "2026-10-06T13:35:21.059827568Z",
+      "healthy": true
+    },
+    {
+      "name": "/arborscan-quality-worker",
+      "id": "9485b44faf742128519d94f66500434d3cbd8f89ce4ff9c376cd95bb7d6b863b",
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-09-29T21:03:49.935343028Z",
+      "healthy": true
+    }
+  ],
+  "production_container_id_image_start_unchanged": true,
+  "public_https_checks": [
+    {
+      "route": "/api/v3/health",
+      "status": 200,
+      "health_status": "ok"
+    },
+    {
+      "route": "/api/v4/health",
+      "status": 200,
+      "health_status": "ok"
+    },
+    {
+      "route": "/api/v3/auth/me",
+      "status": 401,
+      "bearer_absent": true
+    },
+    {
+      "route": "/api/v4/v4/corrections",
+      "status": 401,
+      "bearer_absent": true
+    },
+    {
+      "route": "/api/v4/v4/reports",
+      "status": 401,
+      "bearer_absent": true
+    },
+    {
+      "route": "/api/v3/auth/google",
+      "status": 422,
+      "case": "missing-id-token",
+      "synthetic_invalid_token_only": true
+    },
+    {
+      "route": "/api/v3/auth/google",
+      "status": 401,
+      "case": "malformed-id-token-client-fields",
+      "synthetic_invalid_token_only": true
+    }
+  ],
+  "tls_verification_disabled": false,
+  "production_security_policy_deployed": false,
+  "production_migration_executed": false,
+  "real_google_login_repeated": false
+}

@@ -1,0 +1,15 @@
+{
+  "checked_at_utc": "2026-10-08T08:09:05.622907+00:00",
+  "environment": "Owned API36 AVD coldboot,2048MB,swiftshader,no-window,no-snapshot",
+  "app_package_guard_1_3_0_code23_passed": true,
+  "installed_APK_SHA256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "installed_APK_bytes": 115594211,
+  "google_login_performed": false,
+  "ArborScan_or_Google_foreground": false,
+  "blocker": "Android OS Application Not Responding: com.android.systemui",
+  "ArborScan_defect_proven": false,
+  "foreign_dialog_read_or_clicked": false,
+  "S24_touched": false,
+  "userdata_cleared_or_reinstalled": false,
+  "normal_own_AVD_reboot_authorized": true
+}

@@ -1,0 +1,23 @@
+{
+  "started_at_utc": "2026-10-08T07:50:35.294494+00:00",
+  "finished_at_utc": "2026-10-08T07:50:38.646344+00:00",
+  "phase": "sql",
+  "api_v3_image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+  "api_v3_container_id": "d7ae2ad1d03e0a35b58e307ba34e245d996ec4d7de149c357efc18017a630f0a",
+  "api_v3_started_at": "2026-10-08T07:47:33.918016093Z",
+  "healthy": true,
+  "claims_enabled": false,
+  "unique_index": {
+    "unique": true,
+    "valid": true,
+    "ready": true,
+    "predicate": "((google_sub IS NOT NULL) AND (google_sub <> ''::text))"
+  },
+  "production_schema_changed": true,
+  "production_training_state_unchanged": true,
+  "v4_worker_image_id_start_config_unchanged": true,
+  "models_nginx_operator_config_sha_unchanged": true,
+  "startup_logs_captured_privately": true,
+  "startup_fatal_error_detected": false,
+  "rollback_executed": false
+}

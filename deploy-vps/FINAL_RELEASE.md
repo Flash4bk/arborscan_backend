@@ -6,11 +6,35 @@
 PDF и кеши сохранены. Это технические результаты агента. Пользовательская,
 визуальная и экспериментальная приёмка не назначены.
 
-**Стабильный release/tag не создан:** настоящий Google-вход с постоянным
-сертификатом на API36 и с прежним сертификатом на API24 проверен раздельно. Обнаруженное серверное security исправление подготовлено, но
-его rollout запрещён текущим заданием и не выполнен. Кандидат можно
-доставлять для проверенных функций. AS-14 не закрыт отсутствующим independent
+**Стабильный release/tag не создан:** AS-14 не закрыт отсутствующим independent
 receiver и новой VM/HTTPS. Молчание владельца не означает принятия этих ограничений.
+Настоящий Google-вход с обоими сертификатами APK23 был проверен раздельно;
+после отдельного разрешения08.10 серверное исправление также применено, как
+описано ниже. Кандидат можно доставлять для проверенных функций.
+
+**Обновление AS-16,08.10 — выполненный Google security rollout:** от main d3ae1e1
+в `codex/google-security-rollout` построен и применён security-only v3 image
+`sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990`
+из exact live base5a0b1d63 и policy6284f93. Full imported server/lifespan/models,
+HTTP и real cryptographic verifier: prepared22/22, baseline21 наблюдений red;
+12 overlay guards и local21/20 проверены. Fresh29/native/runtime SHA и private
+current image/config snapshot verified. После узкого разрешения владельца
+реально выполнены v3 claims=false → concurrent unique subject index →
+claims=true. Индекс unique/valid/ready, версии contour/history/quality1/1/1;
+оба HTTPS health200, без bearer401, missing/malformed Google token422/401.
+Startup logs проверены, v4/worker/models/HTTPS/VPS Git/operator config прежние.
+После обновления настоящие API24/old signer и API36/new signer Google
+login/logout/relogin/restart/history/cancel прошли раздельно; прежний canonical
+owner/subject/role без дублей проверен read-only. Первоначальный API36 SystemUI
+ANR разрешился обычным cold reboot без wipe, без правки клиента. Позднее VPS
+перезагрузился11:56:56UTC вне действий агента: same image/container IDs/env/index
+сохранились, start times изменились. Final health/logs/model SHA/timer проверены
+после boot и UI, причина reboot не установлена.
+APK23/client/signing/прежние PDF/S24/Flutter/Android доказательства сохранены;
+повторного полного прогона нет. Откат prepared/config-validated, не выполнялся.
+Состав, версии, checks, выполненные commands и подготовленный rollback —
+[GOOGLE_SECURITY_ROLLOUT.md](GOOGLE_SECURITY_ROLLOUT.md).
+Единый запрос receiver/VM/testHTTPS — [AS14_RESOURCE_REQUEST.md](AS14_RESOURCE_REQUEST.md).
 
 ## Точный артефакт и исходник
 
@@ -177,7 +201,7 @@ segmentation и classification; принятый DEMO без marker ранее �
 модерировать этот DEMO, каждую новую тестовую ревизию нужно отдельно исключить
 до создания датасета. [Точный proof](evidence/final-release/moderation23-test-quarantine.json).
 
-## Фактический production manifest
+## Исторический production manifest07.10 — до Google rollout08.10
 
 Read-only срез07.10, после всего UI и изоляции DEMO дополнительно **22:30UTC** на final23: оба публичных HTTPS health200/statusok со штатной TLS-проверкой;
 `/api/v3/auth/me`, `/api/v4/v4/reports`, `/api/v4/v4/corrections` без токена дают401.
@@ -201,7 +225,7 @@ V3 handler и весь canonical AST совпадают с `main10b54e7` (сра
 | Геометрия / эталон | measurement_method_version2 / `known_object_segment_v2` |
 | AR | `ar_measurement_v4`; height `fixed_vertical_tree_plane_ray_intersection_v1`, DBH `cylindrical_tangent_rays_median_v2` |
 
-Production runtime API/worker, схема БД, HTTPS и модели не менялись; containers
+В этом историческом пакете production runtime API/worker, схема БД, HTTPS и модели не менялись; containers
 не перезапускались, обучение не запускалось. Разрешённые UI-проверки могут создавать
 версии отдельных тестовых DEMO-записей на сервере; это не утверждение неизменности
 всех данных БД. Реальные пользовательские отчёты и решения не изменяются.
@@ -241,7 +265,7 @@ mock не выдаются за отдельный old-signer login; native API2
 версия и OTA32→33 здесь не проверялись. Фактические поля и
 доказательства — [FINAL_RELEASE_GOOGLE.md](FINAL_RELEASE_GOOGLE.md).
 
-Найден concrete server defect: старый handler может использовать присланный
+Исторический срез предыдущего задания до разрешения08.10: найден concrete server defect — старый handler может использовать присланный
 клиентом email при отсутствующем verified email, не проверяет email_verified и
 допускает неоднозначный subject/email linking. Воспроизведено только синтетически.
 Защищённая реализация/DB contract готовы и проверены, но deployment v3/SQL
@@ -267,10 +291,12 @@ restore/update на isolated AVD, затем `adb -s DEVICE install -r APK` и S
 Это план, фактический rollback +23 не выполнялся. Старые локальные/серверные форматы
 сохраняются; несовместимые будущие изменения потребуют отдельного migration/backup.
 
-Backend security rollback также только подготовлен: claims=false на всехinstances,
+Backend security rollback только подготовлен: claims=false на всехinstances,
 точный preimage/config при необходимости, additive unique index сохранить.
 Возврат старого Google handler возвращает найденный дефект и не является постоянным
-безопасным решением. Current production image этим пакетом не заменён.
+безопасным решением. Current production image заменён08.10 только security-only
+overlay60c6cf1f; точные private override команды и архивы приведены в
+[GOOGLE_SECURITY_ROLLOUT.md](GOOGLE_SECURITY_ROLLOUT.md).
 
 ## Короткая инструкция по функциям и данным
 
@@ -317,5 +343,6 @@ PDF/PNG сохраняют исходные бинарные SHA. Исходны
 Следующий отдельный коммит только фиксирует этот результат документацией и
 не меняет APK/source bbcd5b5. Его push и окончательные remote heads проверяются
 после отправки и приводятся в итоговом сообщении. Не создан stable tag или
-store release; production API/worker/SQL/config/model deployment не выполнялся.
+store release; **в предыдущем пакете final-release до08.10 rollout** production
+API/worker/SQL/config/model deployment не выполнялся.
 Разрешённые тестовые записи и Google client registration отдельно описаны выше.
