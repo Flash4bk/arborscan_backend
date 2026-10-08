@@ -203,6 +203,24 @@ class WindowsRuntimeRetentionTest(unittest.TestCase):
         self.assertEqual(len(list((self.root/'runtime-assets').glob('*.archive'))),3)
         self.assertEqual(retention.plan(self.root,latest.name)['delete'],[])
 
+    def test_pull_dry_run_verifies_and_writes_plan_without_deleting(self):
+        for i in range(14):self.fixture('20261008T%06dZ'%i)
+        latest,record=self.fixture();self.copy_runtime(latest,record)
+        locking=types.SimpleNamespace(LK_NBLCK=1,locking=lambda *_:None)
+        job=types.SimpleNamespace(contain_children=lambda:None)
+        with patch('sys.argv',['pull','--root',str(self.root),'--retention-dry-run']), \
+                patch.dict(sys.modules,{'msvcrt':locking,'ops_windows_job':job}), \
+                patch.dict(os.environ,{'WINDIR':r'C:\Windows'}), \
+                patch.object(subprocess,'CREATE_NO_WINDOW',0,create=True), \
+                patch.object(pull,'read_inventory',return_value=[record]), \
+                patch.object(pull,'transfer',return_value='already_verified'), \
+                patch.object(retention,'apply',side_effect=AssertionError('dry run deleted')):
+            self.assertEqual(pull.main(),0)
+        proposal=json.loads((self.root/'retention-dry-run.private.json').read_text())
+        self.assertEqual(proposal['before'],15)
+        self.assertEqual(len(proposal['delete']),1)
+        self.assertEqual(len([p for p in self.root.iterdir() if (p/'COMPLETE').exists()]),15)
+
     def test_unadopted_history_protected_and_wrong_sha_cannot_adopt(self):
         for i in range(14):self.fixture('20261008T%06dZ'%i,automatic=False)
         latest,record=self.fixture();self.copy_runtime(latest,record)
