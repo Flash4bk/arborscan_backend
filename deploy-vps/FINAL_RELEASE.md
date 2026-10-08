@@ -35,6 +35,11 @@ APK23/client/signing/прежние PDF/S24/Flutter/Android доказатель
 Состав, версии, checks, выполненные commands и подготовленный rollback —
 [GOOGLE_SECURITY_ROLLOUT.md](GOOGLE_SECURITY_ROLLOUT.md).
 Единый запрос receiver/VM/testHTTPS — [AS14_RESOURCE_REQUEST.md](AS14_RESOURCE_REQUEST.md).
+Публикация08.10,12:39UTC: `bc7d152` и `43cb0dc` отправлены в
+`codex/google-security-rollout`, main fast-forward отd3ae1e1/push/remote heads
+проверены без force/reset/protection bypass.
+[Фактический receipt](evidence/google-security-rollout/git-publication.json).
+Следующий doc-only commit фиксирует receipt, server image/policy/APK не меняет.
 
 ## Точный артефакт и исходник
 

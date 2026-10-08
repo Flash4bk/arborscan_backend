@@ -244,7 +244,19 @@ Private source/config/preimage и candidate archive хранятся в JOB, н�
 Для AS-14 переноса на новый хост необходимы current v3 archive/effective config
 и SQL index; их наличие в независимой/ежедневной копии пока не подтверждено.
 
-## Оставшийся шаг
+## Git-публикация — выполнена
+
+Логические коммиты: `bc7d152` — pinned overlay generator и содержательные
+HTTP/guard tests; `43cb0dc61e312d6125a58b2a0bd70c14681525d9` — фактический
+rollout/native/backup evidence, документация и ресурсный запрос. 08.10,12:39UTC
+ветка `codex/google-security-rollout` отправлена, main обновлён только
+fast-forward отd3ae1e1 и обычным push. Remote heads обеих веток на43cb0dc
+проверены, дерево чистое. GitHub protection=false/rulesets0/branch rules0,
+обходов/reset/force нет. [Receipt](evidence/google-security-rollout/git-publication.json).
+Следующий коммит фиксирует эту квитанцию, не меняет source/policy/SQL/API/APK;
+его окончательные remote heads проверяются после push и сообщаются в итоге.
+
+## Оставшийся этап
 
 Разрешённый security rollout выполнен. Stable tag не создан:
 ресурсный остаток AS-14 открыт, ограничение явно не принято владельцем.

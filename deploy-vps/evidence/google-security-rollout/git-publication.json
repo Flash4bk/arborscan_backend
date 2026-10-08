@@ -1,0 +1,27 @@
+{
+  "checked_at_utc": "2026-10-08T12:39:55.518678+00:00",
+  "initial_origin_main": "d3ae1e129e54beba58f889630a97bdfd7fd8657a",
+  "published_commit": "43cb0dc61e312d6125a58b2a0bd70c14681525d9",
+  "branches": {
+    "refs/heads/codex/google-security-rollout": "43cb0dc61e312d6125a58b2a0bd70c14681525d9",
+    "refs/heads/main": "43cb0dc61e312d6125a58b2a0bd70c14681525d9"
+  },
+  "working_branch": "codex/google-security-rollout",
+  "working_tree_clean": true,
+  "main_updated_by_fast_forward": true,
+  "force_push_reset_or_protection_bypass": false,
+  "protection_audit": {
+    "checked_at_utc": "2026-10-08T12:39:49.530567+00:00",
+    "branch_http_status": 200,
+    "main_protected": false,
+    "origin_api_main_sha": "d3ae1e129e54beba58f889630a97bdfd7fd8657a",
+    "rulesets_http_status": 200,
+    "rulesets_count": 0,
+    "rulesets_types": [],
+    "rules_http_status": 200,
+    "rules_count": 0,
+    "rules_types": []
+  },
+  "VPS_deployment_not_changed_by_git_publication": true,
+  "stable_tag_created": false
+}
