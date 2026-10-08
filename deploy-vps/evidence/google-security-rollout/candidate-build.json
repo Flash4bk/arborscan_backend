@@ -1,0 +1,41 @@
+{
+  "checked_at_utc": "2026-10-08T07:32:20.429309+00:00",
+  "candidate_image_id": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+  "candidate_local_tag": "arborscan-google-security:6284f93-base5a0b1d63",
+  "prepared_policy_commit": "6284f93204f3ef2f92543604eb5c7a2cea93c3cd",
+  "base_image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+  "base_tag_mapping_verified_before_and_after": true,
+  "additional_filesystem_layers": 1,
+  "source_file_sha256": {
+    "server.py": "a5490340b1d3bd56e999d7c2facba0ec3fc7142ad1273079cc37483e5d3d2979",
+    "auth_google_identity.py": "451b1273a68ecba63253eb12c48bc1a35c159d41329336234e60b4b6267b3bec"
+  },
+  "dependencies_entrypoint_user_models_preserved": true,
+  "production_container_id_image_start_unchanged": true,
+  "production_mutations": false,
+  "production_migration_executed": false,
+  "production_deployed": false,
+  "candidate_provenance": {
+    "base_image_id": "sha256:5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+    "base_local_tag": "arborscan-google-security-base:sha256-5a0b1d63e6c5eb13d14af84590dafebf900f59156613b987000ae8b6938f563b",
+    "base_tag_mapping_verified_by_this_tool": false,
+    "baseline_auth_sha256": "e96d3a12d9bf834f16c3f0dc046fa1dd77d3ec8cafd54a87e1404404ddce6a31",
+    "baseline_server_sha256": "076268a262b78df5028a77c6b99d898b56d4e111437e102ee8b509a4cd1e23df",
+    "file_sha256": {
+      "Dockerfile": "7bdc0254ba84cd9bb91eea3381e52ab92fd78e7f58ebdd97f382b4732d6ff3d3",
+      "auth_google_identity.py": "451b1273a68ecba63253eb12c48bc1a35c159d41329336234e60b4b6267b3bec",
+      "server.py": "a5490340b1d3bd56e999d7c2facba0ec3fc7142ad1273079cc37483e5d3d2979"
+    },
+    "format": 1,
+    "identity_claims_default_enabled": false,
+    "prepared_commit": "6284f93204f3ef2f92543604eb5c7a2cea93c3cd",
+    "production_mutations": false,
+    "purpose": "as16_google_security_candidate_not_deployed",
+    "required_build_guards": [
+      "verify_local_tag_equals_base_image_id_before_build",
+      "docker_build_pull_false",
+      "verify_local_tag_equals_base_image_id_after_build"
+    ],
+    "unchanged_baseline_bytes_sha256": "ba2502c4e2f568948d7ad29d72934fc81d2b1b5fdb28f4707bd14383d5c9a514"
+  }
+}

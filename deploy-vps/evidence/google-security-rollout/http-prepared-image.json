@@ -1,0 +1,208 @@
+{
+  "started_at_utc": "2026-10-08T07:32:57.434114+00:00",
+  "policy": "prepared",
+  "python_version": "3.11.16",
+  "platform": "linux",
+  "synthetic_data_only": true,
+  "production_credentials_used": false,
+  "production_mutations": false,
+  "production_migration_executed": false,
+  "real_google_login_proven": false,
+  "verifier_replaced": false,
+  "certificate_transport_synthetic": true,
+  "passed": true,
+  "server_source_sha256": "a5490340b1d3bd56e999d7c2facba0ec3fc7142ad1273079cc37483e5d3d2979",
+  "harness_source_sha256": "a3cf75fc20d45010d01ac854741e43ba3c42aa7fa64385d244b6467a61197b23",
+  "identity_helper_used": true,
+  "identity_helper_sha256": "451b1273a68ecba63253eb12c48bc1a35c159d41329336234e60b4b6267b3bec",
+  "dependency_versions": {
+    "fastapi": "0.141.1",
+    "uvicorn": "0.52.4",
+    "requests": "2.34.2",
+    "google-auth": "2.57.1",
+    "cryptography": "50.0.1"
+  },
+  "full_server_imported": true,
+  "exact_source_routes_compiled": false,
+  "lifespan_startup_executed": true,
+  "actual_loopback_http": true,
+  "claims_enabled": false,
+  "models_read_only": true,
+  "checks": [
+    {
+      "check": "full_server_models_ready",
+      "passed": true
+    },
+    {
+      "check": "missing_id_token",
+      "passed": true,
+      "http_status": 422,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "empty_id_token",
+      "passed": true,
+      "http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "malformed_id_token",
+      "passed": true,
+      "http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "real_rsa_signature_refused",
+      "passed": true,
+      "http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "real_verifier_audience_refused",
+      "passed": true,
+      "http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "real_verifier_issuer_refused",
+      "passed": true,
+      "http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "real_verifier_expiry_refused",
+      "passed": true,
+      "http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "real_verifier_future_iat_refused",
+      "passed": true,
+      "http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "database_calls": 0
+    },
+    {
+      "check": "missing_email_client_fallback_policy",
+      "passed": true,
+      "http_status": 401,
+      "required_secure_http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "email_verified_false_policy",
+      "passed": true,
+      "http_status": 401,
+      "required_secure_http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "email_verified_missing_policy",
+      "passed": true,
+      "http_status": 401,
+      "required_secure_http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "email_verified_string_policy",
+      "passed": true,
+      "http_status": 401,
+      "required_secure_http_status": 401,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "wrong_subject_reassignment_policy",
+      "passed": true,
+      "http_status": 409,
+      "required_secure_http_status": 409,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "ambiguous_subject_owner_policy",
+      "passed": true,
+      "http_status": 409,
+      "required_secure_http_status": 409,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "claims_false_unlinked_policy",
+      "passed": true,
+      "http_status": 503,
+      "required_secure_http_status": 503,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "claims_false_new_profile_policy",
+      "passed": true,
+      "http_status": 503,
+      "required_secure_http_status": 503,
+      "identity_modified": false,
+      "session_issued": false,
+      "unsafe_baseline_reproduced": false
+    },
+    {
+      "check": "linked_owner_client_identity_and_role_ignored",
+      "passed": true,
+      "http_status": 200,
+      "canonical_owner_unchanged": true,
+      "server_role_unchanged": true,
+      "identity_modified": false
+    },
+    {
+      "check": "bearer_me_logout_expiry_two_owner_isolation",
+      "passed": true
+    },
+    {
+      "check": "training_state_read_without_writes",
+      "passed": true
+    },
+    {
+      "check": "no_unexpected_rest_paths",
+      "passed": true
+    },
+    {
+      "check": "zero_identity_writes_all_requests",
+      "passed": true
+    }
+  ],
+  "checks_run": 22,
+  "certificate_transport_calls": 18,
+  "identity_write_attempts": 0,
+  "training_state_reads": 2,
+  "training_write_attempts": 0,
+  "synthetic_storage_listing_reads": 1,
+  "unexpected_rest_calls": 0,
+  "baseline_unsafe_policy_expected": false,
+  "model_file_sha_unchanged": true,
+  "duration_seconds": 129.267,
+  "finished_at_utc": "2026-10-08T07:35:06.700863+00:00"
+}

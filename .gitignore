@@ -46,3 +46,6 @@ __pycache__/
 # AS-14/AS-16 release-readiness: raw sessions, APKs and private recovery work.
 /output/release-readiness/
 /output/final-release/
+
+# AS-16: private Google security candidates, runtime copies and test credentials.
+/output/google-security-rollout/

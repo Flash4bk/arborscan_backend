@@ -1,0 +1,18 @@
+{
+  "started_at_utc": "2026-10-08T07:24:54.667936+00:00",
+  "policy": "prepared",
+  "python_version": "3.12.14",
+  "platform": "win32",
+  "synthetic_data_only": true,
+  "production_credentials_used": false,
+  "production_mutations": false,
+  "production_migration_executed": false,
+  "real_google_login_proven": false,
+  "verifier_replaced": false,
+  "certificate_transport_synthetic": true,
+  "passed": true,
+  "self_test": true,
+  "scope": "stdlib fixture only; not HTTP or crypto proof",
+  "duration_seconds": 0.0,
+  "finished_at_utc": "2026-10-08T07:24:54.667936+00:00"
+}
