@@ -8,7 +8,7 @@ import contextlib
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
@@ -69,12 +69,15 @@ def verify_data(folder):
     seen = {}
     for line in (folder/'SHA256SUMS').read_text(encoding='utf-8').splitlines():
         expected, relative = line.split('  ', 1)
-        if not SHA.fullmatch(expected) or relative in seen or '\\' in relative or ':' in relative:
+        parsed = PurePosixPath(relative)
+        canonical = str(parsed)
+        if (not SHA.fullmatch(expected) or canonical in seen or '\\' in relative or ':' in relative
+                or parsed.is_absolute() or '..' in parsed.parts or canonical == '.'):
             raise ValueError('invalid_manifest')
-        path = safe_path(folder, relative)
+        path = safe_path(folder, canonical)
         if not path.is_file() or digest(path) != expected:
             raise ValueError('checksum_mismatch')
-        seen[relative] = expected
+        seen[canonical] = expected
     if not {'application.tar', 'local-files.tar', 'arborscan.env.private',
             'containers.private.json'} <= seen.keys():
         raise ValueError('missing_required_archives')

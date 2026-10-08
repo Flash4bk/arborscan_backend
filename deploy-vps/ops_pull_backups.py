@@ -279,6 +279,8 @@ def main():
     parser.add_argument('--root',default=r'D:\ArborScanBackups')
     parser.add_argument('--host',default='arborscan@31.57.170.88')
     parser.add_argument('--port',type=int,default=22)
+    parser.add_argument('--retention-dry-run',action='store_true',
+                        help='Verify transfer and save rotation plan without removing sets')
     args=parser.parse_args()
     from ops_windows_retention import canonical_root
     root=canonical_root(args.root)
@@ -362,8 +364,11 @@ def main():
                 from ops_windows_retention import plan, apply
                 proposal = plan(root, latest['name'], latest.get('protected_sets', []))
                 (root/'retention-dry-run.private.json').write_text(json.dumps(proposal,indent=2))
-                rotation = apply(root, proposal, latest.get('protected_sets', []), lock_held=True)
-                log('retention_complete', **rotation)
+                if args.retention_dry_run:
+                    log('retention_dry_run',before=proposal['before'],candidates=len(proposal['delete']))
+                else:
+                    rotation = apply(root, proposal, latest.get('protected_sets', []), lock_held=True)
+                    log('retention_complete', **rotation)
             log('success',complete_sets=len(records))
             return 0
         except Exception as error:

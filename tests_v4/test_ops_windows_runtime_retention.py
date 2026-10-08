@@ -77,6 +77,30 @@ class WindowsRuntimeRetentionTest(unittest.TestCase):
         self.copy_runtime(folder, record, lambda *_:self.fail('repeat downloaded runtime'))
         self.assertEqual(retention.verify_replacement(self.root,folder.name)['unique_runtime_archives'],3)
 
+    def test_historical_dot_prefix_manifest_keeps_bytes_and_verifies(self):
+        folder,record=self.fixture()
+        checksum=folder/'SHA256SUMS'
+        checksum.write_text(''.join(line.replace('  ','  ./',1)+'\n'
+                                   for line in checksum.read_text().splitlines()),newline='\n')
+        original=checksum.read_bytes()
+        entries=retention.verify_data(folder)
+        self.assertIn('application.tar',entries)
+        self.assertEqual(checksum.read_bytes(),original)
+        record['manifest']=checksum.read_text()
+        self.copy_runtime(folder,record)
+        retention.verify_replacement(self.root,folder.name)
+
+    def test_canonical_duplicate_and_traversal_manifest_refused(self):
+        folder,_=self.fixture()
+        checksum=folder/'SHA256SUMS'
+        original=checksum.read_text()
+        checksum.write_text(original+retention.digest(folder/'application.tar')+'  ./application.tar\n')
+        with self.assertRaisesRegex(ValueError,'invalid_manifest'):
+            retention.verify_data(folder)
+        checksum.write_text(original+'0'*64+'  ../outside\n')
+        with self.assertRaisesRegex(ValueError,'invalid_manifest'):
+            retention.verify_data(folder)
+
     def test_interrupted_runtime_keeps_partial_and_retry_publishes(self):
         folder,record = self.fixture()
         (folder/'COMPLETE').unlink()
