@@ -1,0 +1,78 @@
+{
+  "checked_at_utc": "2026-10-08T15:23:12.658964+00:00",
+  "service": {
+    "Result": "success",
+    "ExecMainStartTimestamp": "Thu 2026-10-08 14:34:00 UTC",
+    "ExecMainExitTimestamp": "Thu 2026-10-08 14:51:27 UTC",
+    "ExecMainStatus": "0",
+    "ActiveState": "inactive"
+  },
+  "last_success": {
+    "completed_at_utc": "2026-10-08T14:45:06.206863+00:00",
+    "deleted": [
+      "20261001T032150Z"
+    ],
+    "format": 1,
+    "last_integrity_check_at_utc": "2026-10-08T14:51:27.896515+00:00",
+    "manifest_sha256": "ff7c4aee721a501cfb20997c4c100038b09bdd401ef9c88dbf79944d30c5abfa",
+    "name": "20261008T141824Z",
+    "operation_id": "release-after-google-20261008T141530Z",
+    "retained_verified_sets": 14,
+    "verified_at_utc": "2026-10-08T14:51:27.896515+00:00"
+  },
+  "active_operation_absent": true,
+  "complete_sets": 14,
+  "release_backup_pinned": true,
+  "manifest_sha256": "ff7c4aee721a501cfb20997c4c100038b09bdd401ef9c88dbf79944d30c5abfa",
+  "timer": {
+    "NextElapseUSecRealtime": "Fri 2026-10-09 03:21:53 UTC",
+    "ActiveState": "active",
+    "SubState": "waiting"
+  },
+  "journal": {
+    "exit": 0,
+    "bytes": 570,
+    "completed_verified_event": true,
+    "snapshot_stages_succeeded": true,
+    "scope": "arborscan-owned service records; system messages restricted by journal permissions",
+    "private_log_sha256": "8987ebfcd252038c6ce386b91fc061fcb76c232fd3d30d7f9280303c0803c1a3"
+  },
+  "Windows": {
+    "verified_replacement": {
+      "runtime_services": [
+        "/arborscan-api",
+        "/arborscan-api-v4",
+        "/arborscan-quality-worker"
+      ],
+      "unique_runtime_archives": 4
+    },
+    "release_backup_pinned": true,
+    "sets_after_rotation": 14,
+    "rotation": {
+      "deleted": [
+        "20260929T031924Z",
+        "20260930T031949Z",
+        "20261001T032150Z",
+        "20261002T031752Z"
+      ],
+      "retained_verified_sets": 14
+    }
+  },
+  "targeted_restore": {
+    "backup": "20261008T141824Z",
+    "checked_at_utc": "2026-10-08T14:49:04.592180+00:00",
+    "seconds": 154.55,
+    "existing_isolated_labs_reused": true,
+    "new_VM_or_full_restore_stack_created": false,
+    "network": "none",
+    "auth_archive_load_image_exact": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+    "restored_auth_sources": {
+      "server.py": "a5490340b1d3bd56e999d7c2facba0ec3fc7142ad1273079cc37483e5d3d2979",
+      "auth_google_identity.py": "451b1273a68ecba63253eb12c48bc1a35c159d41329336234e60b4b6267b3bec"
+    },
+    "production_credentials_mounted": false,
+    "production_database_written": false,
+    "schema_acl_and_synthetic_workflow_checked": true,
+    "new_google_index_restored": true
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "before_directory": "D:\\ArborScanBackups\\tools\\technical-before-20261008T142000Z",
+  "installed": {
+    "ops_pull_backups.py": "fd7c4ff1ee5db80f9e23de349557e71fbe63dc8253e43dd83ef49ff725ae6441",
+    "ops_windows_retention.py": "3c6d6d31557b73429387bc08a67f4a5eddfc5b1d58572770b1bddab79638149a"
+  },
+  "observed_automatic_adoptions": 7,
+  "protected_sets": [
+    "20260926T202023Z",
+    "20261006T131325Z",
+    "20261006T195518Z"
+  ],
+  "new_format": false,
+  "scheduled_task_changed": false
+}

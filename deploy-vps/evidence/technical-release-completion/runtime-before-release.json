@@ -1,0 +1,119 @@
+{
+  "checked_at_utc": "2026-10-08T14:08:59.997342+00:00",
+  "production_security_applied": true,
+  "prepared_policy_commit": "6284f93204f3ef2f92543604eb5c7a2cea93c3cd",
+  "containers": [
+    {
+      "name": "/arborscan-api",
+      "id": "aa91bec2effcb10cb062370e329b1bbb1ce5fb19c07988e37ae4d2c2c5d96218",
+      "image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+      "started_at": "2026-10-08T11:57:09.878810804Z",
+      "healthy": true
+    },
+    {
+      "name": "/arborscan-api-v4",
+      "id": "6069bc321256ce3c58db72448004db527321e214bc297f2ad24cf9163e70c03c",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "started_at": "2026-10-08T11:57:09.881274985Z",
+      "healthy": true
+    },
+    {
+      "name": "/arborscan-quality-worker",
+      "id": "9485b44faf742128519d94f66500434d3cbd8f89ce4ff9c376cd95bb7d6b863b",
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "started_at": "2026-10-08T11:57:09.880052707Z",
+      "healthy": true
+    }
+  ],
+  "claims_enabled": true,
+  "live_source_sha256": {
+    "server.py": "a5490340b1d3bd56e999d7c2facba0ec3fc7142ad1273079cc37483e5d3d2979",
+    "auth_google_identity.py": "451b1273a68ecba63253eb12c48bc1a35c159d41329336234e60b4b6267b3bec"
+  },
+  "unique_subject_index": {
+    "table_correct": true,
+    "unique": true,
+    "valid": true,
+    "ready": true,
+    "one_key": true,
+    "subject_key": true,
+    "predicate": "((google_sub IS NOT NULL) AND (google_sub <> ''::text))"
+  },
+  "existing_schema_versions_unchanged": {
+    "contours": 1,
+    "history": 1,
+    "quality": 1
+  },
+  "operator_config_sha256": "d021e2bc5c91eb992d7b40ded3ea917f9a19b40b1db519437ce5f1e707ba5d33",
+  "VPS_git_HEAD": "5d8176a22fddd6634c266a1ed09f1845019065c5",
+  "VPS_git_dirty_entries": 0,
+  "rollback_executed": false,
+  "effective_runtime_env_matches_preimage_except_claims_flag": true,
+  "base_compose_unchanged": true,
+  "training_state_unchanged": {
+    "active_model_version": 4,
+    "retrain_requested": false
+  },
+  "startup_and_target_route_logs_checked_stdout_and_stderr": true,
+  "startup_complete_marker_present": true,
+  "startup_fatal_error_detected": false,
+  "private_runtime_logs_mode_600": true,
+  "host_boot_at_utc": "2026-10-08T11:56:56+00:00",
+  "backup_timer_after_host_boot": {
+    "NextElapseUSecRealtime": "Fri 2026-10-09 03:18:10 UTC",
+    "ActiveState": "active",
+    "SubState": "waiting"
+  },
+  "active_model_file_sha256_unchanged": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+  "root_did_not_initiate_host_reboot_or_restart_v4_worker": true,
+  "public_https_checks": [
+    {
+      "route": "/api/v3/health",
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "route": "/api/v4/health",
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "route": "/api/v3/auth/me",
+      "http_status": 401,
+      "bearer_absent": true
+    },
+    {
+      "route": "/api/v4/v4/corrections",
+      "http_status": 401,
+      "bearer_absent": true
+    },
+    {
+      "route": "/api/v4/v4/reports",
+      "http_status": 401,
+      "bearer_absent": true
+    },
+    {
+      "route": "/api/v3/auth/google",
+      "case": "missing-token",
+      "http_status": 422,
+      "synthetic_invalid_token_only": true
+    },
+    {
+      "route": "/api/v3/auth/google",
+      "case": "malformed-token",
+      "http_status": 401,
+      "synthetic_invalid_token_only": true
+    }
+  ],
+  "tls_verification_disabled": false,
+  "v4_worker_container_identity_image_unchanged": true,
+  "v4_worker_start_times_changed_since_early_preflight": true,
+  "intervening_host_reboot_observed": true,
+  "production_negative_checks_did_not_use_real_idtokens": true,
+  "native_google_postdeploy_checked": true,
+  "native_evidence": [
+    "native24-ui.json",
+    "native36-ui.json"
+  ],
+  "owner_continuity_evidence": "identity-after36.json"
+}

@@ -1,0 +1,19 @@
+{
+  "checked_at_utc": "2026-10-08T15:23:16.8437733Z",
+  "State": "Ready",
+  "Enabled": true,
+  "LastRun": "2026-10-08T15:04:23.0000000Z",
+  "LastResult": 0,
+  "NextRun": "2026-10-09T05:00:00.0000000Z",
+  "Actions": [
+    {
+      "Execute": "C:\\Python314\\pythonw.exe",
+      "Arguments": "-B \"D:\\ArborScanBackups\\tools\\ops_pull_backups.py\" --root \"D:\\ArborScanBackups\"",
+      "WorkingDirectory": "D:\\ArborScanBackups\\tools"
+    }
+  ],
+  "Trigger": "Explicit start of existing Task, not future calendar",
+  "rotation": [
+    "20261003T031731Z"
+  ]
+}

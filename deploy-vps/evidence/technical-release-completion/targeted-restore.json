@@ -1,0 +1,17 @@
+{
+  "backup": "20261008T141824Z",
+  "checked_at_utc": "2026-10-08T14:49:04.592180+00:00",
+  "seconds": 154.55,
+  "existing_isolated_labs_reused": true,
+  "new_VM_or_full_restore_stack_created": false,
+  "network": "none",
+  "auth_archive_load_image_exact": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+  "restored_auth_sources": {
+    "server.py": "a5490340b1d3bd56e999d7c2facba0ec3fc7142ad1273079cc37483e5d3d2979",
+    "auth_google_identity.py": "451b1273a68ecba63253eb12c48bc1a35c159d41329336234e60b4b6267b3bec"
+  },
+  "production_credentials_mounted": false,
+  "production_database_written": false,
+  "schema_acl_and_synthetic_workflow_checked": true,
+  "new_google_index_restored": true
+}

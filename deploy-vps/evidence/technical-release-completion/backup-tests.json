@@ -10,15 +10,21 @@
     "passed": 80,
     "skipped": 2,
     "seconds": 31.974,
-    "environment": "actual Windows, TEMP on D, native NTFS junction tests"
+    "environment": "actual Windows, TEMP on D, native NTFS junction tests",
+    "after_last_changes": {
+      "tests": 21,
+      "passed": 21,
+      "seconds": 5.797,
+      "scope": "historical-dot canonical/traversal and actual NTFS guards plus pull dry-run; no full client rerun"
+    }
   },
   "Linux": {
     "returncode": 0,
     "python": "3.12.3",
     "summary": [
-      "ss................................................................................",
+      "ss...................................................................................",
       "----------------------------------------------------------------------",
-      "Ran 82 tests in 56.036s",
+      "Ran 85 tests in 62.708s",
       "",
       "OK (skipped=2)"
     ]

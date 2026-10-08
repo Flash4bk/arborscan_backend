@@ -1,0 +1,164 @@
+{
+  "format": 1,
+  "tasks": [
+    "AS-14",
+    "AS-16"
+  ],
+  "checked_at_utc": "2026-10-08T13:55:58.598886+00:00",
+  "kind": "new read-only exact APK23 and signing availability audit",
+  "apk_path": "D:\\arborscan_backend\\output\\final-release\\ArborScan-1.3.0-23.apk",
+  "apk_sha256": "71f38189ee62a7825029ec7c25bf635891d3adcd0fa3eea3d9b618a223e4a31c",
+  "apk_bytes": 115594211,
+  "manifest": {
+    "application_id": "com.example.arborscan_app",
+    "version_code": 23,
+    "version_name": "1.3.0",
+    "min_sdk": 24,
+    "target_sdk": 36,
+    "debuggable": false,
+    "internet_permission": true
+  },
+  "native_zip_alignment_16k_verified": true,
+  "platform_signatures": [
+    {
+      "min_sdk": 24,
+      "max_sdk": 27,
+      "signer_role": "old",
+      "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+      "schemes": {
+        "v1": false,
+        "v2": true,
+        "v3": false,
+        "v3.1": false,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 28,
+      "max_sdk": 32,
+      "signer_role": "old",
+      "sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "sha1": "2c08b4d637574c16be5cba1a595a4baac8541a4c",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": false,
+        "v4": false
+      }
+    },
+    {
+      "min_sdk": 33,
+      "max_sdk": 36,
+      "signer_role": "new",
+      "sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "sha1": "e4dfd76dc3ec5f96be6b740949c678aebf1f110e",
+      "schemes": {
+        "v1": false,
+        "v2": false,
+        "v3": true,
+        "v3.1": true,
+        "v4": false
+      }
+    }
+  ],
+  "embedded_lineage": [
+    {
+      "signer_role": "old",
+      "certificate_sha256": "68ff9861f52fdb22744b30ee27092008097f9eff4ead7eb38f80e662115f5b97",
+      "installed_data": true,
+      "rollback": false
+    },
+    {
+      "signer_role": "new",
+      "certificate_sha256": "7fb94ede4099199db9166609c34d6278ebe51c7d80bd6ce1cd0208bf863863b8",
+      "installed_data": true,
+      "rollback": false
+    }
+  ],
+  "source": {
+    "apk_source_commit": "bbcd5b539427e62da58739fc2dbeff8550ee72c6",
+    "audited_head": "3c2838b99f8445f83f98f7b3c17f1390160d3b4a",
+    "client_source_tree_oid": "02dcff79d7121e25f7264cf849752f364be4a181",
+    "client_current_tree_oid": "02dcff79d7121e25f7264cf849752f364be4a181",
+    "tracked_client_files": 270,
+    "tree_identical": true,
+    "local_tracked_client_differences": 0,
+    "untracked_nonignored_client_files": 0
+  },
+  "signing_material": {
+    "private_config_valid": true,
+    "dpapi_credentials_decrypted_in_memory": true,
+    "private_key_entries": [
+      {
+        "role": "old",
+        "private_key_entry_accessible": true,
+        "certificate_sha256_matches_release": true
+      },
+      {
+        "role": "new",
+        "private_key_entry_accessible": true,
+        "certificate_sha256_matches_release": true
+      }
+    ],
+    "lineage_matches_embedded": true,
+    "lineage_sha256": "93d10d0e6b813bf9053debf1cc879378a4e90e2d0e07ac755eba50eb57a87dfe",
+    "encrypted_key_backup_present": true,
+    "recovery_dpapi_present": true,
+    "new_apk_signing_executed": false,
+    "windows_acl_audited": true,
+    "protected_parent_unexpected_allowed_principals": 0,
+    "config_keystores_lineage_credentials_unexpected_allowed_principals": 0
+  },
+  "client_rollback": {
+    "source_commit_available": true,
+    "strategy": "same applicationId/signers/lineage, compatible source, code greater than 23",
+    "locally_retained_release_apks": [
+      {
+        "filename": "ArborScan-1.3.0-19.apk",
+        "version_code": 19
+      },
+      {
+        "filename": "ArborScan-1.3.0-20.apk",
+        "version_code": 20
+      },
+      {
+        "filename": "ArborScan-1.3.0-21.apk",
+        "version_code": 21
+      },
+      {
+        "filename": "ArborScan-1.3.0-22.apk",
+        "version_code": 22
+      },
+      {
+        "filename": "ArborScan-1.3.0-23.apk",
+        "version_code": 23
+      }
+    ],
+    "prebuilt_code_above_23_available": false,
+    "built_or_installed_now": false,
+    "new_forward_fix_must_be_validated_before_install": true,
+    "retained_DPAPI_helper_verified_read_only": true,
+    "retained_helper_uses_final_D_repository": true,
+    "availability_inventory_before_cleanup": true
+  },
+  "reused_evidence": {
+    "flutter_passed": 181,
+    "android_passed": 9,
+    "analyzer_errors": 0,
+    "analyzer_existing_findings": 53,
+    "analyzer_new_findings": 0,
+    "tests_rerun_now": false,
+    "reason": "all 270 tracked client files identical to APK source"
+  },
+  "mutations": {
+    "client_rebuilt": false,
+    "APK_resigned": false,
+    "APK_reinstalled": false,
+    "version_code_changed": false,
+    "S24_account_or_data_modified": false,
+    "AVD_started": false,
+    "VPS_modified": false
+  }
+}

@@ -1,5 +1,7 @@
 # AS-14 — один запрос ресурсов для внешней копии и восстановления
 
+Запрос ниже отложен явным заданием08.10: используется только существующая Windows-папка. Новые receiver/VM/domain не запрашиваются. Текущие факты: [TECHNICAL_RELEASE_COMPLETION.md](TECHNICAL_RELEASE_COMPLETION.md).
+
 Подготовлено 08.10.2026. Основание — существующий
 [общий план](ARBORSCAN_MASTER_PLAN.md), версия 1.25, и
 [FINAL_RELEASE_AS14.md](FINAL_RELEASE_AS14.md). **AS-14 остаётся открыт:**

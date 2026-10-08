@@ -1,5 +1,7 @@
 # AS-16 — подписанный кандидат 1.3.0 и остаток AS-14
 
+Текущий08.10 пакет AS-14/AS-16 и согласованный выбор Windows-копий: [TECHNICAL_RELEASE_COMPLETION.md](TECHNICAL_RELEASE_COMPLETION.md). Прежний запрет stable tag ниже — исторический срез до этого решения; публикация фиксируется отдельным receipt.
+
 Работа от `origin/main` **10b54e77ae77fa7a51621bc1902889ce4d2a8ef6**,
 в отдельном managed worktree `codex/final-release`, по
 `AS16_FINAL_RELEASE_PROMPT.md`. Исходный `D:\arborscan_backend`, его пользовательские

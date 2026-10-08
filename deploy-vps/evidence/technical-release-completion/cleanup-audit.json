@@ -1,0 +1,417 @@
+{
+  "schema": 1,
+  "task_ids": [
+    "AS-14",
+    "AS-16"
+  ],
+  "audited_at_utc": "2026-10-08T14:01:55.975903+00:00",
+  "read_only_audit": true,
+  "cleanup_performed": false,
+  "canonical_plan_at_start": "1.25",
+  "origin": "https://github.com/Flash4bk/arborscan_backend.git",
+  "origin_main_at_audit": "3c2838b99f8445f83f98f7b3c17f1390160d3b4a",
+  "windows_target": "D:\\arborscan_backend",
+  "private_preservation_manifest": "D:\\arborscan_backend\\output\\final-release\\technical-completion-private\\cleanup-preservation-detail.private.json",
+  "worktrees": [
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "head_at_audit": "946a632ce6c57232cea16119ae28e3a8adea08b7",
+      "branch_at_audit": "codex/release-integration",
+      "tracked_dirty_files_at_audit": [],
+      "untracked_files_at_audit_count": 0,
+      "required_private_preservation_files": 313,
+      "required_private_preservation_bytes": 24343967,
+      "action_stage": "after_release_only",
+      "proposed_action": "normal_git_worktree_remove_after_unique_material_preservation_and_active_thread_exit",
+      "reason": "completed intermediary source checkout; all observed commits contained in origin/main",
+      "conditions": [
+        "remote main/working branch/stable tag verified",
+        "APK23/signature and compatible rollback verified",
+        "current usable backup and runtime bases verified",
+        "unique ignored output preserved by source path and SHA256",
+        "no active own or other process uses directory",
+        "detach or remove only reparse links without following their targets",
+        "normal Git removal must succeed without --force"
+      ],
+      "active_current_release_source": false
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "head_at_audit": "10b54e77ae77fa7a51621bc1902889ce4d2a8ef6",
+      "branch_at_audit": "codex/release-readiness",
+      "tracked_dirty_files_at_audit": [],
+      "untracked_files_at_audit_count": 0,
+      "required_private_preservation_files": 0,
+      "required_private_preservation_bytes": 0,
+      "action_stage": "after_release_only",
+      "proposed_action": "normal_git_worktree_remove_after_unique_material_preservation_and_active_thread_exit",
+      "reason": "completed intermediary source checkout; all observed commits contained in origin/main",
+      "conditions": [
+        "remote main/working branch/stable tag verified",
+        "APK23/signature and compatible rollback verified",
+        "current usable backup and runtime bases verified",
+        "unique ignored output preserved by source path and SHA256",
+        "no active own or other process uses directory",
+        "detach or remove only reparse links without following their targets",
+        "normal Git removal must succeed without --force"
+      ],
+      "active_current_release_source": false
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "head_at_audit": "d3ae1e129e54beba58f889630a97bdfd7fd8657a",
+      "branch_at_audit": "codex/final-release",
+      "tracked_dirty_files_at_audit": [],
+      "untracked_files_at_audit_count": 0,
+      "required_private_preservation_files": 10,
+      "required_private_preservation_bytes": 552842,
+      "action_stage": "after_release_only",
+      "proposed_action": "normal_git_worktree_remove_after_unique_material_preservation_and_active_thread_exit",
+      "reason": "completed intermediary source checkout; all observed commits contained in origin/main",
+      "conditions": [
+        "remote main/working branch/stable tag verified",
+        "APK23/signature and compatible rollback verified",
+        "current usable backup and runtime bases verified",
+        "unique ignored output preserved by source path and SHA256",
+        "no active own or other process uses directory",
+        "detach or remove only reparse links without following their targets",
+        "normal Git removal must succeed without --force"
+      ],
+      "active_current_release_source": false
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "head_at_audit": "3c2838b99f8445f83f98f7b3c17f1390160d3b4a",
+      "branch_at_audit": "codex/technical-release-completion",
+      "tracked_dirty_files_at_audit": [],
+      "untracked_files_at_audit_count": 1,
+      "required_private_preservation_files": 0,
+      "required_private_preservation_bytes": 0,
+      "action_stage": "after_release_only",
+      "proposed_action": "normal_git_worktree_remove_after_unique_material_preservation_and_active_thread_exit",
+      "reason": "completed intermediary source checkout; all observed commits contained in origin/main",
+      "conditions": [
+        "remote main/working branch/stable tag verified",
+        "APK23/signature and compatible rollback verified",
+        "current usable backup and runtime bases verified",
+        "unique ignored output preserved by source path and SHA256",
+        "no active own or other process uses directory",
+        "detach or remove only reparse links without following their targets",
+        "normal Git removal must succeed without --force"
+      ],
+      "active_current_release_source": true
+    }
+  ],
+  "historical_fragment_folders": [
+    {
+      "path": "D:\\arborscan_ar_alpha1",
+      "file_count": 5,
+      "bytes": 40076,
+      "action_stage": "after_release_only",
+      "reason": "historical supplied source fragments; no Git repository or full project clone",
+      "condition": "preserve any blob absent from reachable Git refs in compact private historical source archive, SHA verified; never overlay current code"
+    },
+    {
+      "path": "D:\\arborscan_ar_alpha2",
+      "file_count": 6,
+      "bytes": 85787,
+      "action_stage": "after_release_only",
+      "reason": "historical supplied source fragments; no Git repository or full project clone",
+      "condition": "preserve any blob absent from reachable Git refs in compact private historical source archive, SHA verified; never overlay current code"
+    },
+    {
+      "path": "D:\\arborscan_ar_alpha2_1_ui_fix",
+      "file_count": 1,
+      "bytes": 27973,
+      "action_stage": "after_release_only",
+      "reason": "historical supplied source fragments; no Git repository or full project clone",
+      "condition": "preserve any blob absent from reachable Git refs in compact private historical source archive, SHA verified; never overlay current code"
+    },
+    {
+      "path": "D:\\arborscan_flutter_unified_alpha1",
+      "file_count": 6,
+      "bytes": 61722,
+      "action_stage": "after_release_only",
+      "reason": "historical supplied source fragments; no Git repository or full project clone",
+      "condition": "preserve any blob absent from reachable Git refs in compact private historical source archive, SHA verified; never overlay current code"
+    }
+  ],
+  "pre_release_temp_candidates": [
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\build\\app\\intermediates",
+      "logical_bytes": 1963906428,
+      "reason": "reproducible primary-D debug build intermediates; no tracked files or links; independent from final-release rollback build",
+      "conditions": [
+        "recheck no live Flutter/Gradle process",
+        "verify final APK23 remains output/final-release",
+        "preserve sibling outputs/reports/test-results",
+        "resolved target stays inside D:/arborscan_backend/arborscan_app/build/app"
+      ]
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\build\\test_cache",
+      "logical_bytes": 126893272,
+      "reason": "reproducible Flutter test cache in primary-D old build",
+      "conditions": [
+        "recheck no live Flutter/Gradle process",
+        "preserve test evidence outside cache",
+        "resolved target stays inside D:/arborscan_backend/arborscan_app/build"
+      ]
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend\\output\\as16-integration\\research-env",
+      "logical_bytes": 288305934,
+      "reason": "task-owned reproducible isolated research environment; 70-test results and requirements preserved; no active process referenced at audit",
+      "conditions": [
+        "not needed by ongoing release checks",
+        "explicit resolved path boundary verified",
+        "preservation excludes evidence and source folders"
+      ]
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend\\output\\as16-integration\\backend-wheels",
+      "logical_bytes": 1819996,
+      "reason": "reproducible test dependency downloads",
+      "conditions": [
+        "not needed by ongoing release checks",
+        "no shared SDK deletion"
+      ]
+    }
+  ],
+  "git_migration": {
+    "D_head_at_audit": "0fe95eb9a6d5c115b8c094bff68addaa86d7d14a",
+    "D_branch_at_audit": "codex/beta-dynamics",
+    "D_head_ancestor_of_origin_main": true,
+    "unique_unpublished_D_commits": 0,
+    "new_tracked_paths_colliding_with_D_untracked": 0,
+    "five_modified_AS12_PDF_tracked_blobs_unchanged_HEAD_to_main": true,
+    "suggested_sequence": [
+      "preserve current 5 PDF bytes plus SHA in compact private location",
+      "verify current main and branch ownership",
+      "ordinary git switch main in D; never force/reset",
+      "ordinary fast-forward integration if required",
+      "recheck PDFs and untracked private files after switch",
+      "move active release execution to D before removing current source worktree"
+    ]
+  },
+  "junctions": [
+    {
+      "source": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend\\arborscan_app\\build",
+      "target": "D:\\arborscan_backend\\output\\as16-integration\\20261006-7d05e51-build"
+    },
+    {
+      "source": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend\\arborscan_app\\build",
+      "target": "D:\\arborscan_backend\\output\\release-readiness\\flutter-build"
+    },
+    {
+      "source": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend\\output\\release-readiness",
+      "target": "D:\\arborscan_backend\\output\\release-readiness"
+    },
+    {
+      "source": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend\\arborscan_app\\.dart_tool",
+      "target": "D:\\arborscan_backend\\output\\final-release\\dart-tool"
+    },
+    {
+      "source": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend\\arborscan_app\\build",
+      "target": "D:\\arborscan_backend\\output\\final-release\\flutter-build"
+    },
+    {
+      "source": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend\\arborscan_app\\android\\.gradle",
+      "target": "D:\\arborscan_backend\\output\\final-release\\android-gradle"
+    },
+    {
+      "source": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend\\output\\final-release",
+      "target": "D:\\arborscan_backend\\output\\final-release"
+    }
+  ],
+  "retained_local": [
+    "D:\\arborscan_backend",
+    "D:\\ArborScanBackups",
+    "D:\\ArborScanSigning",
+    "C:\\src\\flutter",
+    "C:\\Users\\danik\\AppData\\Local\\Android\\Sdk",
+    "D:\\ArborScanSdk",
+    "shared Python/JDK/Gradle/Pub caches of other projects",
+    "all user PDFs/photos/source data and historical unique evidence",
+    "final APK23 and minimum compatible code>23 rollback"
+  ],
+  "local_runtime_dependencies": {
+    "scheduled_task_name": "ArborScan Offsite Backup",
+    "state_at_audit": "Ready",
+    "executable": "C:\\Python314\\pythonw.exe",
+    "script": "D:\\ArborScanBackups\\tools\\ops_pull_backups.py",
+    "working_directory": "D:\\ArborScanBackups\\tools",
+    "task_references_deletable_worktree": false,
+    "actual_signing_config_references_deletable_worktree": false,
+    "retained_private_helpers_requiring_path_migration": [
+      "output/final-release/Invoke-FinalRelease.private.ps1",
+      "output/final-release/android23_matrix.private.py",
+      "output/final-release/android23_matrix_lab36.private.py",
+      "output/final-release/direct18_to23_lab36.private.py"
+    ],
+    "historical_helpers_note": "Audit full private helper set before keeping any as current runnable tooling; either migrate worktree path to D or explicitly retire historic scripts",
+    "tracked_backup_working_source": {
+      "path": "arborscan_app_backup_working",
+      "tracked_files": 47,
+      "current_script_refs_found": 0,
+      "note": "historical tracked source snapshot; Git retains history; any source removal is a reviewed release change, not forced filesystem cleanup"
+    }
+  },
+  "project_owned_AVD_candidates_after_release": [
+    "D:\\ArborScanAvds\\Codex_AS16_API24_20261006.avd",
+    "D:\\ArborScanAvds\\Codex_AS16_API24_BASELINE_20261007.avd",
+    "D:\\ArborScanAvds\\Codex_AS16_API33_20261006.avd",
+    "D:\\arborscan_backend\\output\\final-release\\clean-avds\\Codex_AS16_FINAL_CLEAN_API24.avd",
+    "D:\\arborscan_backend\\output\\final-release\\clean-avds\\Codex_AS16_FINAL_CLEAN_API33.avd",
+    "D:\\arborscan_backend\\output\\final-release\\clean-avds\\Codex_AS16_FINAL_CLEAN_API36.avd"
+  ],
+  "AVD_conditions": [
+    "specific task-owned emulator completed and stopped",
+    "DEMO/user data and required evidence already preserved",
+    "resolve matching ini and no active emulator process",
+    "do not remove shared SDK images or unrelated AVDs"
+  ],
+  "server": {
+    "read_only_only": true,
+    "no_process_cwd_referenced_candidates": true,
+    "retained_live_compose_mount_backup_or_rollback_dependencies": [
+      "/opt/arborscan",
+      "/opt/arborscan/models",
+      "/var/lib/arborscan/model-cache",
+      "/var/lib/arborscan/u2net",
+      "/home/arborscan/model-quality",
+      "/home/arborscan/contour-5af8dd1",
+      "/home/arborscan/contour-backup-20260916",
+      "/home/arborscan/measurement-backup-20260916-review",
+      "/home/arborscan/server-history-backup-20260917",
+      "/home/arborscan/model-quality-2938d89",
+      "/home/arborscan/geometry-backup-20260924",
+      "/home/arborscan/ops-backups/20260926T202023Z",
+      "/home/arborscan/as16-predeploy/rollout",
+      "/home/arborscan/as09-rollout-4483d48",
+      "/home/arborscan/as09-weather-20261005T200900Z",
+      "/home/arborscan/as16-v4-20261006T132500Z",
+      "/home/arborscan/ops-google-security/20261008T072247Z",
+      "/home/arborscan/ops-tools",
+      "/home/arborscan/ops-runtime",
+      "/home/arborscan/recovery-releases",
+      "/home/arborscan/signing-private"
+    ],
+    "after_release_candidates": [
+      {
+        "path": "/home/arborscan/as14-recovery-20260928T134911Z",
+        "logical_bytes": 96981517,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as14-recovery-20260928T135137Z",
+        "logical_bytes": 96996335,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-external-input",
+        "logical_bytes": 1171423981,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-integration-0437e98",
+        "logical_bytes": 443479365,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-integration-20261006",
+        "logical_bytes": 3236402,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-integration-candidate901-20261006T132300Z",
+        "logical_bytes": 2473988,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-integration-frozen0437e98-20261006",
+        "logical_bytes": 4962672,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-key-recovery-tests-20261006",
+        "logical_bytes": 61254,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-readiness-offsite-tests-20261006T152605Z",
+        "logical_bytes": 84253,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/as16-rollout-linux8ef-20261006T135229Z",
+        "logical_bytes": 64775,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/ops-snapshot-tests-20261006",
+        "logical_bytes": 201888,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/release-readiness-runtime-restore-20261006",
+        "logical_bytes": 3155,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/release-readiness-runtime-restore-20261007",
+        "logical_bytes": 4849,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      },
+      {
+        "path": "/home/arborscan/release-readiness-tests",
+        "logical_bytes": 80285,
+        "condition": "conditional only: unique artifacts/config must be compared/preserved, lab container completed/stopped; no running mount/compose/service/rollback dependency; source backup dependencies retained",
+        "automatic_delete_authorized_by_this_audit": false
+      }
+    ],
+    "isolated_stopped_volume_candidates": [
+      "as16-clean-engine29",
+      "as16-clean-engine",
+      "as14-readiness-runtime-20261007-images",
+      "as14-readiness-runtime-20261006-images",
+      "as14-recovery-20260928t135137z_runtime",
+      "as14-recovery-20260928t135137z_storage",
+      "as14-recovery-20260928t135137z_db",
+      "as14-recovery-20260928t134911z_db"
+    ],
+    "volume_conditions": [
+      "exact task/lab ownership",
+      "every dependent container completed and stopped",
+      "usable source backup and SHA retained",
+      "remove individual known lab resource only; no global Docker prune"
+    ]
+  },
+  "limitations": [
+    "logical bytes are not physically occupied sparse/shared disk bytes",
+    "process and branch cleanliness snapshots must be rechecked at deletion time",
+    "main audit/root disk inventory supplies total directory sizes",
+    "no deletion/archive/move/branch switch/production mutation performed",
+    "Windows task and key paths survive cleanup, but historical private runners need migration or retirement"
+  ],
+  "historical_unique_fragments": {
+    "unreachable_blobs_count": 11,
+    "unreachable_blob_bytes": 126770,
+    "proposal": "preserve exact historical fragment bytes in existing D private output plus SHA manifest; optionally local Git archive ref/tree and a compact private bundle, never overlay main; do not publish unchecked historical file contents"
+  },
+  "pre_release_reproducible_D_candidates_logical_bytes": 2090799700,
+  "last_audit_update_utc": "2026-10-08T14:04:08.420562+00:00"
+}

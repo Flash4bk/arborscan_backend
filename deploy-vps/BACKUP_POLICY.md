@@ -103,7 +103,7 @@ separately. COMPLETE alone is insufficient. Verified external receipts are shown
 as historical confirmation ages, explicitly **not** current receiver reachability.
 No notifications are sent.
 
-`tests_v4/test_ops_backup_policy.py` exercises full14в†’newв†’14, repeat, stage failure,
+`tests_v4/test_ops_backup_policy.py` exercises full14→new→14, repeat, stage failure,
 interruption before/after publication, next-day resume, low disk, corrupt content,
 concurrent locking, pinned/manual/live sources, runtime base dependencies, missing
 runtime archives, adoption, path traversal/symlinks and freshness diagnostics in
@@ -124,7 +124,7 @@ Exact installed hashes, preimages and actual VPS outcomes are in
 On 07.10.2026 the metadata policy was installed under `backup.lock` with the
 service inactive; its previous source is preserved privately. The actual
 `daily-2026-10-06` replay returned `verified_existing` with zero snapshot calls,
-zero deletions and **14в†’14** completed sets. Every set's manifest, COMPLETE
+zero deletions and **14→14** completed sets. Every set's manifest, COMPLETE
 timestamp, file count and size, plus staging files, remained unchanged. The
 03:29:58 UTC completion marker and original 03:34:25 UTC verification time were
 preserved; only the separate 07:01:09 UTC integrity recheck was recorded. Actual
