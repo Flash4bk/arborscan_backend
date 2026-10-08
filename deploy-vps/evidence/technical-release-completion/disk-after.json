@@ -1,0 +1,1411 @@
+{
+  "checked_at_utc": "2026-10-08T15:35:59.390169+00:00",
+  "environment": "Actual Windows NTFS, named ArborScan roots only",
+  "root_totals": [
+    {
+      "path": "D:\\ArborScanBackups",
+      "files": 10032,
+      "logical_bytes": 31268035766,
+      "allocated_bytes": 31279697424,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 3781384242,
+      "skipped_reparse_entries": 0,
+      "errors": 0
+    },
+    {
+      "path": "D:\\arborscan_backend",
+      "files": 24191,
+      "logical_bytes": 20288128074,
+      "allocated_bytes": 20329245664,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 951166446,
+      "skipped_reparse_entries": 13,
+      "errors": 0
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "files": 9141,
+      "logical_bytes": 722234214,
+      "allocated_bytes": 738472560,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 0,
+      "skipped_reparse_entries": 0,
+      "errors": 0
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "files": 1231,
+      "logical_bytes": 495298648,
+      "allocated_bytes": 497377096,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 0,
+      "skipped_reparse_entries": 0,
+      "errors": 0
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "files": 1341,
+      "logical_bytes": 302939598,
+      "allocated_bytes": 305328712,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 0,
+      "skipped_reparse_entries": 0,
+      "errors": 0
+    },
+    {
+      "path": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "files": 1315,
+      "logical_bytes": 299234568,
+      "allocated_bytes": 301546912,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 0,
+      "skipped_reparse_entries": 0,
+      "errors": 0
+    },
+    {
+      "path": "D:\\ArborScanAvds",
+      "files": 0,
+      "logical_bytes": 0,
+      "allocated_bytes": 0,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 0,
+      "skipped_reparse_entries": 0,
+      "errors": 0
+    },
+    {
+      "path": "D:\\ArborScanSdk",
+      "files": 468,
+      "logical_bytes": 12401319170,
+      "allocated_bytes": 12402199328,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 0,
+      "skipped_reparse_entries": 1,
+      "errors": 0
+    },
+    {
+      "path": "D:\\ArborScanSigning",
+      "files": 23,
+      "logical_bytes": 115670065,
+      "allocated_bytes": 115720960,
+      "allocated_unknown_files": 0,
+      "hardlink_bytes_already_counted": 0,
+      "skipped_reparse_entries": 0,
+      "errors": 0
+    }
+  ],
+  "groups": [
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "(root files)",
+      "files": 8,
+      "logical_bytes": 66963,
+      "allocated_bytes": 78480
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "tools",
+      "files": 11,
+      "logical_bytes": 122678,
+      "allocated_bytes": 139264
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "runtime-current-20261006.private",
+      "files": 12,
+      "logical_bytes": 1841266993,
+      "allocated_bytes": 1841287472
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "runtime-assets",
+      "files": 4,
+      "logical_bytes": 4568884786,
+      "allocated_bytes": 4568891392
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "releases",
+      "files": 2481,
+      "logical_bytes": 5745112623,
+      "allocated_bytes": 5745153072
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "postgres-20260928T130712Z",
+      "files": 16,
+      "logical_bytes": 52155911,
+      "allocated_bytes": 52164784
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "as14-unreachable-test",
+      "files": 2,
+      "logical_bytes": 192,
+      "allocated_bytes": 200
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "application-reuse-20261007-b.private",
+      "files": 241,
+      "logical_bytes": 1338047482,
+      "allocated_bytes": 1338576896
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261008T141824Z",
+      "files": 35,
+      "logical_bytes": 979626776,
+      "allocated_bytes": 979663152
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261008T032219Z",
+      "files": 33,
+      "logical_bytes": 979622549,
+      "allocated_bytes": 979658960
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261006T195518Z-current-runtime-recovery.private",
+      "files": 2299,
+      "logical_bytes": 1807754680,
+      "allocated_bytes": 1811337560
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261006T195518Z",
+      "files": 34,
+      "logical_bytes": 979549144,
+      "allocated_bytes": 979581264
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261006T131325Z-offsite-recovery-check",
+      "files": 2261,
+      "logical_bytes": 828152403,
+      "allocated_bytes": 831691024
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261006T131325Z",
+      "files": 35,
+      "logical_bytes": 979478810,
+      "allocated_bytes": 979507816
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261005T032052Z",
+      "files": 35,
+      "logical_bytes": 979173332,
+      "allocated_bytes": 979200632
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261004T031919Z",
+      "files": 35,
+      "logical_bytes": 979173329,
+      "allocated_bytes": 979200632
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261002T031752Z",
+      "files": 35,
+      "logical_bytes": 979173302,
+      "allocated_bytes": 979200624
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20261001T201335Z",
+      "files": 34,
+      "logical_bytes": 979173091,
+      "allocated_bytes": 979200520
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20260929T205205Z",
+      "files": 32,
+      "logical_bytes": 979172261,
+      "allocated_bytes": 979200104
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20260928T135802Z",
+      "files": 32,
+      "logical_bytes": 979161782,
+      "allocated_bytes": 979191912
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20260928T133059Z",
+      "files": 32,
+      "logical_bytes": 979161878,
+      "allocated_bytes": 979191912
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20260928T031731Z",
+      "files": 2277,
+      "logical_bytes": 1946451703,
+      "allocated_bytes": 1949982496
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20260927T032112Z",
+      "files": 26,
+      "logical_bytes": 1440547012,
+      "allocated_bytes": 1440568848
+    },
+    {
+      "root": "D:\\ArborScanBackups",
+      "group": "20260926T202023Z",
+      "files": 22,
+      "logical_bytes": 927006086,
+      "allocated_bytes": 927028408
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "__pycache__",
+      "files": 2,
+      "logical_bytes": 16475,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "(root files)",
+      "files": 11,
+      "logical_bytes": 151573,
+      "allocated_bytes": 172224
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "tools",
+      "files": 103,
+      "logical_bytes": 85995955,
+      "allocated_bytes": 86229648
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "tests_v4",
+      "files": 67,
+      "logical_bytes": 748318,
+      "allocated_bytes": 880640
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "services",
+      "files": 4,
+      "logical_bytes": 10455,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "research",
+      "files": 23,
+      "logical_bytes": 661769,
+      "allocated_bytes": 700792
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/release-readiness",
+      "files": 436,
+      "logical_bytes": 664555624,
+      "allocated_bytes": 665269304
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/pdf",
+      "files": 152,
+      "logical_bytes": 23112862,
+      "allocated_bytes": 23437736
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/google-security-rollout",
+      "files": 2177,
+      "logical_bytes": 25829265,
+      "allocated_bytes": 29677640
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/final-release",
+      "files": 1622,
+      "logical_bytes": 303524454,
+      "allocated_bytes": 306051288
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as16-integration",
+      "files": 78,
+      "logical_bytes": 6766558,
+      "allocated_bytes": 6931280
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as16",
+      "files": 640,
+      "logical_bytes": 834690686,
+      "allocated_bytes": 835745200
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as15",
+      "files": 244,
+      "logical_bytes": 334044350,
+      "allocated_bytes": 334488048
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as14-source.tar",
+      "files": 1,
+      "logical_bytes": 250460160,
+      "allocated_bytes": 250462208
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as14-check.tar",
+      "files": 1,
+      "logical_bytes": 604160,
+      "allocated_bytes": 606208
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as14",
+      "files": 32,
+      "logical_bytes": 1775680,
+      "allocated_bytes": 1841096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as10",
+      "files": 2804,
+      "logical_bytes": 80906261,
+      "allocated_bytes": 85934688
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as09-test-deps-install.txt",
+      "files": 1,
+      "logical_bytes": 5080,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "output/as09",
+      "files": 3658,
+      "logical_bytes": 254264233,
+      "allocated_bytes": 260506456
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "models",
+      "files": 4,
+      "logical_bytes": 96974111,
+      "allocated_bytes": 96980992
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "env",
+      "files": 881,
+      "logical_bytes": 11855000,
+      "allocated_bytes": 13537384
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "deploy-vps",
+      "files": 685,
+      "logical_bytes": 45494309,
+      "allocated_bytes": 46703328
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_v4",
+      "files": 35,
+      "logical_bytes": 317438,
+      "allocated_bytes": 378048
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_tests_verified.log",
+      "files": 1,
+      "logical_bytes": 3597,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_tests_final.log",
+      "files": 1,
+      "logical_bytes": 3597,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_tests4.log",
+      "files": 1,
+      "logical_bytes": 3597,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_tests3.log",
+      "files": 1,
+      "logical_bytes": 5366,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_tests2.log",
+      "files": 1,
+      "logical_bytes": 6287,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_tests.log",
+      "files": 1,
+      "logical_bytes": 8099,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_pub.log",
+      "files": 1,
+      "logical_bytes": 3646,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_build_verified.log",
+      "files": 1,
+      "logical_bytes": 129,
+      "allocated_bytes": 136
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_build2.log",
+      "files": 1,
+      "logical_bytes": 129,
+      "allocated_bytes": 136
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_build.log",
+      "files": 1,
+      "logical_bytes": 615,
+      "allocated_bytes": 616
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_baseline_analyze.log",
+      "files": 1,
+      "logical_bytes": 17362,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_analyze_final.log",
+      "files": 1,
+      "logical_bytes": 16658,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_analyze2.log",
+      "files": 1,
+      "logical_bytes": 16658,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/workflow_analyze.log",
+      "files": 1,
+      "logical_bytes": 20268,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/windows",
+      "files": 18,
+      "logical_bytes": 69634,
+      "allocated_bytes": 107560
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/web",
+      "files": 15,
+      "logical_bytes": 5737586,
+      "allocated_bytes": 5767168
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/test",
+      "files": 36,
+      "logical_bytes": 270637,
+      "allocated_bytes": 344064
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/README.md",
+      "files": 1,
+      "logical_bytes": 572,
+      "allocated_bytes": 576
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/pubspec.yaml",
+      "files": 1,
+      "logical_bytes": 1372,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/pubspec.lock",
+      "files": 1,
+      "logical_bytes": 30701,
+      "allocated_bytes": 32768
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/PUBLIC_HTTPS.md",
+      "files": 1,
+      "logical_bytes": 8563,
+      "allocated_bytes": 12288
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/macos",
+      "files": 30,
+      "logical_bytes": 226054,
+      "allocated_bytes": 254536
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/linux",
+      "files": 10,
+      "logical_bytes": 16950,
+      "allocated_bytes": 33696
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/lib",
+      "files": 53,
+      "logical_bytes": 680684,
+      "allocated_bytes": 767600
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/ios",
+      "files": 53,
+      "logical_bytes": 3107808,
+      "allocated_bytes": 3171552
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/https_tests.log",
+      "files": 1,
+      "logical_bytes": 4666,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/https_override_tests.log",
+      "files": 1,
+      "logical_bytes": 4596,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/https_build.log",
+      "files": 1,
+      "logical_bytes": 256,
+      "allocated_bytes": 256
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/https_baseline_analyze.log",
+      "files": 1,
+      "logical_bytes": 34204,
+      "allocated_bytes": 36864
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/https_analyze.log",
+      "files": 1,
+      "logical_bytes": 34168,
+      "allocated_bytes": 36864
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/devtools_options.yaml",
+      "files": 1,
+      "logical_bytes": 187,
+      "allocated_bytes": 192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/corrections_test.log",
+      "files": 1,
+      "logical_bytes": 0,
+      "allocated_bytes": 0
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/corrections_analyze_verified.log",
+      "files": 1,
+      "logical_bytes": 34224,
+      "allocated_bytes": 36864
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/corrections_analyze_final.log",
+      "files": 1,
+      "logical_bytes": 34644,
+      "allocated_bytes": 36864
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/corrections_analyze.log",
+      "files": 1,
+      "logical_bytes": 0,
+      "allocated_bytes": 0
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/build",
+      "files": 2618,
+      "logical_bytes": 2666576556,
+      "allocated_bytes": 2670646680
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/assets",
+      "files": 12,
+      "logical_bytes": 4183831,
+      "allocated_bytes": 4202504
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/arborscan_app.iml",
+      "files": 1,
+      "logical_bytes": 859,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/settings.gradle",
+      "files": 1,
+      "logical_bytes": 989,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/local.properties",
+      "files": 1,
+      "logical_bytes": 168,
+      "allocated_bytes": 168
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/gradlew.bat",
+      "files": 1,
+      "logical_bytes": 2404,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/gradlew",
+      "files": 1,
+      "logical_bytes": 4971,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/gradle.properties",
+      "files": 1,
+      "logical_bytes": 961,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/gradle",
+      "files": 2,
+      "logical_bytes": 53717,
+      "allocated_bytes": 57432
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/build.gradle",
+      "files": 1,
+      "logical_bytes": 501,
+      "allocated_bytes": 504
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/build",
+      "files": 1,
+      "logical_bytes": 126041,
+      "allocated_bytes": 126976
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/arborscan_app_android.iml",
+      "files": 1,
+      "logical_bytes": 1630,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/app",
+      "files": 2948,
+      "logical_bytes": 1107588897,
+      "allocated_bytes": 1113264928
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/.kotlin",
+      "files": 45,
+      "logical_bytes": 971351,
+      "allocated_bytes": 1003520
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/.gradle",
+      "files": 16,
+      "logical_bytes": 27012643,
+      "allocated_bytes": 27025600
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/android/.gitignore",
+      "files": 1,
+      "logical_bytes": 267,
+      "allocated_bytes": 272
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/analysis_options.yaml",
+      "files": 1,
+      "logical_bytes": 1448,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/.metadata",
+      "files": 1,
+      "logical_bytes": 1706,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/.idea",
+      "files": 10,
+      "logical_bytes": 98226,
+      "allocated_bytes": 108136
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/.gitignore",
+      "files": 1,
+      "logical_bytes": 748,
+      "allocated_bytes": 4096
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/.flutter-plugins-dependencies",
+      "files": 1,
+      "logical_bytes": 13766,
+      "allocated_bytes": 16384
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": "arborscan_app/.dart_tool",
+      "files": 102,
+      "logical_bytes": 295822293,
+      "allocated_bytes": 295927480
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": ".vs",
+      "files": 14,
+      "logical_bytes": 23856152,
+      "allocated_bytes": 23876208
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": ".tmp.driveupload",
+      "files": 678,
+      "logical_bytes": 954206762,
+      "allocated_bytes": 954884808
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": ".pytest_cache",
+      "files": 5,
+      "logical_bytes": 13994,
+      "allocated_bytes": 21016
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": ".idea",
+      "files": 8,
+      "logical_bytes": 98947,
+      "allocated_bytes": 103976
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": ".git",
+      "files": 3797,
+      "logical_bytes": 12174106664,
+      "allocated_bytes": 12180338872
+    },
+    {
+      "root": "D:\\arborscan_backend",
+      "group": ".gemini",
+      "files": 18,
+      "logical_bytes": 213292,
+      "allocated_bytes": 231920
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "__pycache__",
+      "files": 1,
+      "logical_bytes": 7606,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "(root files)",
+      "files": 11,
+      "logical_bytes": 144632,
+      "allocated_bytes": 160648
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "tools",
+      "files": 96,
+      "logical_bytes": 85979614,
+      "allocated_bytes": 86196344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "tests_v4",
+      "files": 42,
+      "logical_bytes": 429611,
+      "allocated_bytes": 512000
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "services",
+      "files": 4,
+      "logical_bytes": 10455,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "research",
+      "files": 23,
+      "logical_bytes": 664232,
+      "allocated_bytes": 708992
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "output",
+      "files": 8158,
+      "logical_bytes": 334845058,
+      "allocated_bytes": 349458488
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "models",
+      "files": 4,
+      "logical_bytes": 96974111,
+      "allocated_bytes": 96980992
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "deploy-vps",
+      "files": 364,
+      "logical_bytes": 29584378,
+      "allocated_bytes": 30217672
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "arborscan_v4",
+      "files": 22,
+      "logical_bytes": 196159,
+      "allocated_bytes": 234232
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "arborscan_app_backup_working",
+      "files": 47,
+      "logical_bytes": 13276192,
+      "allocated_bytes": 13348392
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": "arborscan_app",
+      "files": 344,
+      "logical_bytes": 136165425,
+      "allocated_bytes": 136645400
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": ".vs",
+      "files": 14,
+      "logical_bytes": 23856152,
+      "allocated_bytes": 23876208
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": ".pytest_cache",
+      "files": 4,
+      "logical_bytes": 8067,
+      "allocated_bytes": 8728
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-integration\\arborscan_backend",
+      "group": ".idea",
+      "files": 7,
+      "logical_bytes": 92522,
+      "allocated_bytes": 95792
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "__pycache__",
+      "files": 1,
+      "logical_bytes": 7606,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "(root files)",
+      "files": 11,
+      "logical_bytes": 144743,
+      "allocated_bytes": 160648
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "tools",
+      "files": 96,
+      "logical_bytes": 85979614,
+      "allocated_bytes": 86196344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "tests_v4",
+      "files": 45,
+      "logical_bytes": 385314,
+      "allocated_bytes": 471040
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "services",
+      "files": 4,
+      "logical_bytes": 10455,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "research",
+      "files": 18,
+      "logical_bytes": 520900,
+      "allocated_bytes": 553344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "output",
+      "files": 90,
+      "logical_bytes": 8095299,
+      "allocated_bytes": 8283888
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "models",
+      "files": 4,
+      "logical_bytes": 96974111,
+      "allocated_bytes": 96980992
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "deploy-vps",
+      "files": 473,
+      "logical_bytes": 36221061,
+      "allocated_bytes": 37068344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "arborscan_v4",
+      "files": 21,
+      "logical_bytes": 168905,
+      "allocated_bytes": 205560
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "arborscan_app_backup_working",
+      "files": 47,
+      "logical_bytes": 13276192,
+      "allocated_bytes": 13348392
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": "arborscan_app",
+      "files": 400,
+      "logical_bytes": 229565774,
+      "allocated_bytes": 230107872
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": ".vs",
+      "files": 14,
+      "logical_bytes": 23856152,
+      "allocated_bytes": 23876208
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\release-readiness\\arborscan_backend",
+      "group": ".idea",
+      "files": 7,
+      "logical_bytes": 92522,
+      "allocated_bytes": 95792
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "__pycache__",
+      "files": 3,
+      "logical_bytes": 26044,
+      "allocated_bytes": 32768
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "(root files)",
+      "files": 12,
+      "logical_bytes": 151967,
+      "allocated_bytes": 168840
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "tools",
+      "files": 96,
+      "logical_bytes": 85979614,
+      "allocated_bytes": 86196344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "tests_v4",
+      "files": 48,
+      "logical_bytes": 396418,
+      "allocated_bytes": 491520
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "services",
+      "files": 4,
+      "logical_bytes": 10455,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "research",
+      "files": 18,
+      "logical_bytes": 520900,
+      "allocated_bytes": 553344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "output",
+      "files": 145,
+      "logical_bytes": 11992150,
+      "allocated_bytes": 12302064
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "models",
+      "files": 4,
+      "logical_bytes": 96974111,
+      "allocated_bytes": 96980992
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "deploy-vps",
+      "files": 638,
+      "logical_bytes": 45189945,
+      "allocated_bytes": 46324736
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "arborscan_v4",
+      "files": 21,
+      "logical_bytes": 168905,
+      "allocated_bytes": 205560
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "arborscan_app_backup_working",
+      "files": 47,
+      "logical_bytes": 13276192,
+      "allocated_bytes": 13348392
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": "arborscan_app",
+      "files": 284,
+      "logical_bytes": 24304223,
+      "allocated_bytes": 24731672
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": ".vs",
+      "files": 14,
+      "logical_bytes": 23856152,
+      "allocated_bytes": 23876208
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\final-release\\arborscan_backend",
+      "group": ".idea",
+      "files": 7,
+      "logical_bytes": 92522,
+      "allocated_bytes": 95792
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "__pycache__",
+      "files": 1,
+      "logical_bytes": 7606,
+      "allocated_bytes": 8192
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "(root files)",
+      "files": 12,
+      "logical_bytes": 152086,
+      "allocated_bytes": 168840
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "tools",
+      "files": 96,
+      "logical_bytes": 85979614,
+      "allocated_bytes": 86196344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "tests_v4",
+      "files": 49,
+      "logical_bytes": 401863,
+      "allocated_bytes": 495616
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "services",
+      "files": 4,
+      "logical_bytes": 10455,
+      "allocated_bytes": 20480
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "research",
+      "files": 18,
+      "logical_bytes": 520900,
+      "allocated_bytes": 553344
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "output",
+      "files": 90,
+      "logical_bytes": 8095299,
+      "allocated_bytes": 8283888
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "models",
+      "files": 4,
+      "logical_bytes": 96974111,
+      "allocated_bytes": 96980992
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "deploy-vps",
+      "files": 682,
+      "logical_bytes": 45478943,
+      "allocated_bytes": 46682632
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "arborscan_v4",
+      "files": 21,
+      "logical_bytes": 168905,
+      "allocated_bytes": 205560
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "arborscan_app_backup_working",
+      "files": 47,
+      "logical_bytes": 13276192,
+      "allocated_bytes": 13348392
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": "arborscan_app",
+      "files": 270,
+      "logical_bytes": 24219920,
+      "allocated_bytes": 24630632
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": ".vs",
+      "files": 14,
+      "logical_bytes": 23856152,
+      "allocated_bytes": 23876208
+    },
+    {
+      "root": "C:\\Users\\danik\\.codex\\worktrees\\google-security-rollout\\arborscan_backend",
+      "group": ".idea",
+      "files": 7,
+      "logical_bytes": 92522,
+      "allocated_bytes": 95792
+    },
+    {
+      "root": "D:\\ArborScanSdk",
+      "group": "system-images",
+      "files": 64,
+      "logical_bytes": 7773181970,
+      "allocated_bytes": 7773293008
+    },
+    {
+      "root": "D:\\ArborScanSdk",
+      "group": "quarantined",
+      "files": 8,
+      "logical_bytes": 3506246415,
+      "allocated_bytes": 3506254104
+    },
+    {
+      "root": "D:\\ArborScanSdk",
+      "group": "licenses",
+      "files": 1,
+      "logical_bytes": 42,
+      "allocated_bytes": 48
+    },
+    {
+      "root": "D:\\ArborScanSdk",
+      "group": "java-temp",
+      "files": 7,
+      "logical_bytes": 277649,
+      "allocated_bytes": 283104
+    },
+    {
+      "root": "D:\\ArborScanSdk",
+      "group": "emulator",
+      "files": 387,
+      "logical_bytes": 1121613078,
+      "allocated_bytes": 1122369048
+    },
+    {
+      "root": "D:\\ArborScanSdk",
+      "group": "(root files)",
+      "files": 1,
+      "logical_bytes": 16,
+      "allocated_bytes": 16
+    },
+    {
+      "root": "D:\\ArborScanSigning",
+      "group": "(root files)",
+      "files": 7,
+      "logical_bytes": 31524,
+      "allocated_bytes": 45616
+    },
+    {
+      "root": "D:\\ArborScanSigning",
+      "group": "restore-tool-check",
+      "files": 7,
+      "logical_bytes": 115574489,
+      "allocated_bytes": 115589200
+    },
+    {
+      "root": "D:\\ArborScanSigning",
+      "group": "restore-check",
+      "files": 7,
+      "logical_bytes": 43483,
+      "allocated_bytes": 61520
+    },
+    {
+      "root": "D:\\ArborScanSigning",
+      "group": "escrow-tool-input",
+      "files": 2,
+      "logical_bytes": 20569,
+      "allocated_bytes": 24624
+    }
+  ],
+  "skipped_reparse_entries": [
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\windows\\flutter\\ephemeral\\.plugin_symlinks\\url_launcher_windows",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\url_launcher_windows-3.1.5\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\windows\\flutter\\ephemeral\\.plugin_symlinks\\shared_preferences_windows",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\shared_preferences_windows-2.4.1\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\windows\\flutter\\ephemeral\\.plugin_symlinks\\printing",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\printing-5.14.3\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\windows\\flutter\\ephemeral\\.plugin_symlinks\\path_provider_windows",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\path_provider_windows-2.3.0\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\windows\\flutter\\ephemeral\\.plugin_symlinks\\image_picker_windows",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\image_picker_windows-0.2.2\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\windows\\flutter\\ephemeral\\.plugin_symlinks\\geolocator_windows",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\geolocator_windows-0.2.5\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\windows\\flutter\\ephemeral\\.plugin_symlinks\\file_selector_windows",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\file_selector_windows-0.9.3+5\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\linux\\flutter\\ephemeral\\.plugin_symlinks\\url_launcher_linux",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\url_launcher_linux-3.2.2\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\linux\\flutter\\ephemeral\\.plugin_symlinks\\shared_preferences_linux",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\shared_preferences_linux-2.4.1\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\linux\\flutter\\ephemeral\\.plugin_symlinks\\printing",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\printing-5.14.3\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\linux\\flutter\\ephemeral\\.plugin_symlinks\\path_provider_linux",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\path_provider_linux-2.2.1\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\linux\\flutter\\ephemeral\\.plugin_symlinks\\image_picker_linux",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\image_picker_linux-0.2.2\\"
+    },
+    {
+      "path": "D:\\arborscan_backend\\arborscan_app\\linux\\flutter\\ephemeral\\.plugin_symlinks\\file_selector_linux",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\file_selector_linux-0.9.3+3\\"
+    },
+    {
+      "path": "D:\\ArborScanSdk\\platform-tools",
+      "target": "\\\\?\\C:\\Users\\danik\\AppData\\Local\\Android\\Sdk\\platform-tools"
+    }
+  ],
+  "errors": [],
+  "global_hardlink_deduplication": true,
+  "allocated_method": "FILE_STANDARD_INFO AllocationSize; GetCompressedFileSizeW fallback, filesystem metadata overhead excluded",
+  "shared_Docker_disk_note": "If present, whole VHDX allocation is shared and not attributed entirely to ArborScan",
+  "drive_space": {
+    "C": {
+      "total": 213848682496,
+      "used": 213769994240,
+      "free": 78688256
+    },
+    "D": {
+      "total": 297132879872,
+      "used": 237814902784,
+      "free": 59317977088
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "checked_at_utc": "2026-10-08T15:42:04.018328+00:00",
+  "actual_release_commit": "3e0e1e615c5181a12b8743c15fd24a8a750624c8",
+  "annotated_tag_object": "10b6b41418fea8479deffd20a0aed830e5803420",
+  "remote_refs_at_release": {
+    "refs/heads/codex/technical-release-completion": "3e0e1e615c5181a12b8743c15fd24a8a750624c8",
+    "refs/heads/main": "3e0e1e615c5181a12b8743c15fd24a8a750624c8",
+    "refs/tags/v1.3.0": "10b6b41418fea8479deffd20a0aed830e5803420",
+    "refs/tags/v1.3.0^{}": "3e0e1e615c5181a12b8743c15fd24a8a750624c8"
+  },
+  "tag_stays_fixed": true,
+  "following_cleanup_commit_may_advance_main": true,
+  "protection_audit": {
+    "checked_at_utc": "2026-10-08T15:39:48.105921+00:00",
+    "branch_http_status": 200,
+    "main_protected": false,
+    "origin_api_main_sha": "3e0e1e615c5181a12b8743c15fd24a8a750624c8",
+    "rulesets_http_status": 200,
+    "rulesets_count": 0,
+    "rulesets_types": [],
+    "rules_http_status": 200,
+    "rules_count": 0,
+    "rules_types": []
+  }
+}

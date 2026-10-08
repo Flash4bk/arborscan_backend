@@ -14,8 +14,14 @@ APK23 готов и заново проверен. Backup tools установл
 `20261008T141824Z` опубликована и полностью проверена; service exit0,
 14:34:00–14:51:27UTC. Fresh replacement доставлен в существующую Windows-папку,
 native/runtime/SHA проверены. Ротация действительно выполнена на обоих концах.
-Технические gates закрыты; публикация main/annotated tag и последующая уборка
-фиксируются отдельным receipt после действий, не объявляются заранее.
+Технический выпуск **состоялся**: main и рабочая ветка реально fast-forward/
+push на3e0e1e615c5181a12b8743c15fd24a8a750624c8; annotatedv1.3.0
+object10b6b41418fea8479deffd20a0aed830e5803420 и peeledcommit3e0e1e6
+подтверждены в origin. Этот postrelease отчёт сохраняет тег неизменным.
+Большая разрешённая уборка выполнена; **цель одного checkout ещё не завершена**:
+4worktree защищены закреплением текущего чата/workspace в Codex, штатный
+archive_worktree отказал. Запрошен только конкретный шаг снятия закрепления;
+Git/remove-force и другие обходы не выполнялись.
 
 ## Измеренное место до уборки
 
@@ -165,19 +171,70 @@ ManifestSHA2078f9d0b6fa4d3e13ce79c74058a7c12c75be1e1a7765863d84e30d8ef115b4.
 Одна основная D-копия уже main3c2838b без reset;5userPDFdiff сохранены отдельно
 от release-source. Нужные исходники/научные материалы/Git/signing/backup остаются.
 [Предварительный аудит](evidence/technical-release-completion/cleanup-audit.json)
-не является удалением. После release будет отдельный фактический receipt.
+не является удалением. [Фактический receipt](evidence/technical-release-completion/cleanup-result.json)
+отделён от этого предварительного аудита.
 
 Pre-release удаление D:\arborscan_backend\arborscan_app\build\app\intermediates
 и build\test_cache отклонено автоматической проверкой; эти два пути не удалены,
 не повторяются и не обходятся удалением родительского каталога.
-Остальная разрешённая уборка выполняется только после нужных release gates.
+После подтверждённого тега фактически удалены20именованных каталогов:
+4старых D source-copy,3завершённых AVD, as12-avd,2старых integration build,
+readiness/flutter-build,8final-release build/cache/temp и obsolete
+arborscan_app_backup_working. Его47trackedsourcefiles удалены через git rm;
+историческое дерево5da6f973… сохранено в опубликованном Git/tag, актуальный
+arborscan_app не изменён. 12старых/duplicate APK удалены по точным путям;
+единственный пользовательский APK23 и private signed recovery24 сохранены.
+Оригинальный S24code12/private phone backup сохраняется как пользовательская
+страховочная копия, не рабочий проект. Каждый удалённый путь/размер/SHA APK
+в cleanup-result; dry-run не выдан за действие.
+
+После SHA-проверки preservation339files отсоединены46reparse entries C-worktree
+**только как ссылки**, их targets не обходились. Все4archive_worktree получили
+точный отказ «This worktree is protected by a pinned task or workspace».
+Остались C:/Users/danik/.codex/worktrees/{release-integration,release-readiness,
+final-release,google-security-rollout}/arborscan_backend (1.843GBallocation).
+Их source не удалён и не объявлен архивированным; текущий чат закреплён,
+запрошено снятие закрепления. Основная D-папка — main, пользовательские5PDF
+побайтно сохранены/не staged. Собственные release changes отдельно committed.
+
+На VPS реально удалены5мелких законченных test-source dirs после сохранения
+184972Bprivate archive/проверкиSHA/исключенияcontainer mounts/Compose/unit/runtime
+refs. 4проверенных candidate directories пока связаны mount/config существующих
+изоляционных recovery/test контейнеров и сохранены как служебные зависимости.
+Live v3/v4/worker/HTTPS/Storage/БД/models/ops-tools/runtime/rollback paths сохранены;
+массового Docker prune/production restart нет. Список и конкретные resource refs
+в исходном dependency audit; productionIDs остались прежними.
+
+Фактический после-замер Windows:0ошибок/0unknown allocation,
+[disk-after](evidence/technical-release-completion/disk-after.json).
+
+| Показатель | До, байт | После, байт | Изменение |
+|---|---:|---:|---:|
+| Именованные данные NTFS allocation |116664936864|65969588656|−50695348208 |
+| Свободно D |8599552000|59317977088|+50718425088 |
+| Свободно C |112328704|78688256|-33640448 |
+
+Это net measurements с учётом новых backup/recovery/proofs и текущих внешних
+записей, не сумма logical sizes удалённых sparse AVD. Реально D +50.718GB
+(47.235GiB); оставшиеся2blocked caches и4pinnedcheckout отдельно.
+Signing --verify-release повторно прошёл после удаления cache: APK23 unchanged,
+keys/lineage/SDK/privateD-helper доступны. Backup/WindowsTask uses permanentDtools.
+[Final runtime check](evidence/technical-release-completion/runtime-after-cleanup.json):
+обаHTTPS200, unauthorized401, обычныйTLS, currentimages/IDs/index/SQL/model неизменны.
+S24данные не затронуты, новыйphoneUI не заявлен; прежнийexact23proof применим.
 
 ## Публикация
 
-Разрешён annotated `v1.3.0`, локальное/remote имя проверено свободным14:09UTC.
-Main protection/rules проверяются через GitHub API перед публикацией;
-история fast-forward сохраняется. Fresh usable backup/service gate закрыт,
-неизменённый APK и все3 runtime подтверждены. Release/tag ещё не объявлены
-выполненными в этом pre-publication срезе. После публикации tag не передвигать;
-cleanup/results будут отдельным последующим main commit. Магазин и публичный
-GitHub Release не создаются автоматически.
+08.10.2026 main/working branch реально отправлены на releasecommit
+`3e0e1e615c5181a12b8743c15fd24a8a750624c8`. Annotated `v1.3.0` object
+`10b6b41418fea8479deffd20a0aed830e5803420`, peeled commit совпадает;
+[origin receipt](evidence/technical-release-completion/release-publication.json).
+Protection/rules API200/protectedfalse/rules0/rulesets0 проверены до FF/push;
+reset/force/передвижениятега нет. Последующий cleanup/report commit отправляется
+в main/ту же originрабочуюветку, оставляя этот тег на releasecommit. Магазин и
+публичный GitHub Release не создавались. Это технический выпуск существующих
+функций, не пользовательская визуальная приёмка/экспериментальная валидация.
+
+Остаток текущего поручения — штатно архивировать4pinned C-worktree после снятия
+закрепления и обновить замер/receipt. Следующий продуктовый этап — отдельный
+полный промпт AS-15, автоматически не начинать.
