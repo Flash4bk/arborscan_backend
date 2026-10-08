@@ -74,7 +74,7 @@ Future<void> _snapshot(WidgetTester tester, String name) async {
         _capture.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     final image = await boundary.toImage(pixelRatio: 2);
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    final directory = Directory('../output/as15/widget-extra');
+    final directory = Directory(Platform.environment['ARBORSCAN_UI_TEST_OUTPUT'] ?? '../output/as15/widget-extra');
     await directory.create(recursive: true);
     await File('${directory.path}/$name.png')
         .writeAsBytes(bytes!.buffer.asUint8List());

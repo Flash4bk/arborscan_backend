@@ -74,7 +74,7 @@ void main() {
             as RenderRepaintBoundary;
         final image = await boundary.toImage(pixelRatio: 2);
         final png = await image.toByteData(format: ui.ImageByteFormat.png);
-        final output = Directory('../output/as15/concept-widget');
+        final output = Directory(Platform.environment['ARBORSCAN_UI_TEST_OUTPUT'] ?? '../output/as15/concept-widget');
         await output.create(recursive: true);
         await File('${output.path}/home-empty-${(scale * 100).toInt()}.png')
             .writeAsBytes(png!.buffer.asUint8List());
