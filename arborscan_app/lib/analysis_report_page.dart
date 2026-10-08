@@ -153,7 +153,7 @@ class AnalysisReportPageV2 extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.color(context, AppTheme.background),
       appBar: AppBar(
         title: const Text(
           'ОТЧЁТ ПО АНАЛИЗУ',
@@ -197,7 +197,8 @@ class AnalysisReportPageV2 extends StatelessWidget {
               trunkSource: _sourceLabel(sourceMap?['trunk_diameter_m']),
             ),
             const SizedBox(height: 12),
-            const Text('Исторические расчёты прежнего метода. Значения ниже сохранены без пересчёта и не являются подтверждённой оценкой β или безопасности дерева.'),
+            const Text(
+                'Исторические расчёты прежнего метода. Значения ниже сохранены без пересчёта и не являются подтверждённой оценкой β или безопасности дерева.'),
             _BetaCard(beta: beta),
             const SizedBox(height: 12),
             _AnalyticWindModelCard(model: analyticWindModel),
@@ -216,7 +217,7 @@ class AnalysisReportPageV2 extends StatelessWidget {
       floatingActionButton: SizedBox(
           width: 290,
           child: Material(
-              color: AppTheme.bg,
+              color: AppTheme.color(context, AppTheme.bg),
               child: ReportExportButton(
                   load: () async => ReportExportData(
                           snapshot: {
@@ -300,23 +301,23 @@ class _HeroCard extends StatelessWidget {
                       'ИТОГОВАЯ ОЦЕНКА',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w900,
-                        color: AppTheme.text,
+                        color: AppTheme.color(context, AppTheme.text),
                         letterSpacing: 1.0,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       species,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 20,
-                          color: AppTheme.primary2,
+                          color: AppTheme.color(context, AppTheme.primary2),
                           fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _formatDateTime(timestamp),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: AppTheme.muted),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.color(context, AppTheme.muted)),
                     ),
                   ],
                 ),
@@ -339,19 +340,20 @@ class _HeroCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.surface3.withOpacity(0.5),
+                color:
+                    AppTheme.color(context, AppTheme.surface3).withOpacity(0.5),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.image_not_supported_outlined,
-                      color: AppTheme.muted),
+                  Icon(Icons.image_not_supported_outlined,
+                      color: AppTheme.color(context, AppTheme.muted)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Аннотированное изображение недоступно.',
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: AppTheme.muted),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.color(context, AppTheme.muted)),
                     ),
                   ),
                 ],
@@ -460,38 +462,45 @@ class _BetaCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.15),
+              color:
+                  AppTheme.color(context, AppTheme.primary).withOpacity(0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.air_outlined,
-                color: AppTheme.primary, size: 24),
+            child: Icon(Icons.air_outlined,
+                color: AppTheme.color(context, AppTheme.primary), size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'ИСТОРИЧЕСКИЙ РАСЧЁТ (β)',
                   style: TextStyle(
-                      color: AppTheme.text,
+                      color: AppTheme.color(context, AppTheme.text),
                       fontWeight: FontWeight.w900,
                       fontSize: 12,
                       letterSpacing: 1.0),
                 ),
                 const SizedBox(height: 12),
-                _buildRow('Ожидаемый β:', _fmt(betaValue, suffix: ' кг/с'),
-                    AppTheme.success),
+                _buildRow(
+                    context,
+                    'Ожидаемый β:',
+                    _fmt(betaValue, suffix: ' кг/с'),
+                    AppTheme.color(context, AppTheme.success)),
                 if (betaMax != null &&
                     (betaValue == null || betaMax > betaValue)) ...[
                   const SizedBox(height: 6),
-                  _buildRow('Худший сценарий\n(жесткая крона):',
-                      _fmt(betaMax, suffix: ' кг/с'), AppTheme.warning),
+                  _buildRow(
+                      context,
+                      'Худший сценарий\n(жесткая крона):',
+                      _fmt(betaMax, suffix: ' кг/с'),
+                      AppTheme.color(context, AppTheme.warning)),
                 ],
                 const SizedBox(height: 8),
                 Text('$source · $methodText',
-                    style: const TextStyle(
-                        color: AppTheme.muted,
+                    style: TextStyle(
+                        color: AppTheme.color(context, AppTheme.muted),
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         height: 1.3)),
@@ -503,14 +512,15 @@ class _BetaCard extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(String label, String value, Color valueColor) {
+  Widget _buildRow(
+      BuildContext context, String label, String value, Color valueColor) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
             child: Text(label,
-                style: const TextStyle(
-                    color: AppTheme.muted,
+                style: TextStyle(
+                    color: AppTheme.color(context, AppTheme.muted),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     height: 1.2))),
@@ -548,12 +558,14 @@ class _AnalyticWindModelCard extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: available
-                  ? AppTheme.primary2.withOpacity(0.15)
-                  : AppTheme.surface3,
+                  ? AppTheme.color(context, AppTheme.primary2).withOpacity(0.15)
+                  : AppTheme.color(context, AppTheme.surface3),
               shape: BoxShape.circle,
             ),
             child: Icon(available ? Icons.science_outlined : Icons.info_outline,
-                color: available ? AppTheme.primary2 : AppTheme.muted),
+                color: available
+                    ? AppTheme.color(context, AppTheme.primary2)
+                    : AppTheme.color(context, AppTheme.muted)),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -561,42 +573,43 @@ class _AnalyticWindModelCard extends StatelessWidget {
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('НАГРУЗКА ИЗЛОМА (SIA)',
+                      Text('НАГРУЗКА ИЗЛОМА (SIA)',
                           style: TextStyle(
-                              color: AppTheme.text,
+                              color: AppTheme.color(context, AppTheme.text),
                               fontWeight: FontWeight.w900,
                               fontSize: 12,
                               letterSpacing: 1.0)),
                       const SizedBox(height: 12),
-                      _miniRow('Сила ветра (F)',
+                      _miniRow(context, 'Сила ветра (F)',
                           _fmt(outputs['total_force_n'], suffix: ' Н')),
-                      _miniRow('Момент излома у основания',
+                      _miniRow(context, 'Момент излома у основания',
                           _fmt(outputs['base_moment_nm'], suffix: ' Н·м')),
                     ],
                   )
-                : const Text('Аналитическая модель недоступна.',
+                : Text('Аналитическая модель недоступна.',
                     style: TextStyle(
-                        color: AppTheme.muted, fontWeight: FontWeight.w700)),
+                        color: AppTheme.color(context, AppTheme.muted),
+                        fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
   }
 
-  Widget _miniRow(String title, String value) {
+  Widget _miniRow(BuildContext context, String title, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
           Expanded(
               child: Text(title,
-                  style: const TextStyle(
-                      color: AppTheme.muted,
+                  style: TextStyle(
+                      color: AppTheme.color(context, AppTheme.muted),
                       fontSize: 12,
                       fontWeight: FontWeight.w600))),
           Text(value,
-              style: const TextStyle(
-                  color: AppTheme.text,
+              style: TextStyle(
+                  color: AppTheme.color(context, AppTheme.text),
                   fontSize: 14,
                   fontWeight: FontWeight.w900)),
         ],
@@ -617,8 +630,8 @@ class _SourceSummaryCard extends StatelessWidget {
     return GlassPanel(
       border: Border.all(
           color: hasArMeasurements
-              ? AppTheme.primary.withOpacity(0.5)
-              : AppTheme.border),
+              ? AppTheme.color(context, AppTheme.primary).withOpacity(0.5)
+              : AppTheme.color(context, AppTheme.border)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -626,22 +639,24 @@ class _SourceSummaryCard extends StatelessWidget {
               hasArMeasurements
                   ? Icons.view_in_ar_outlined
                   : Icons.image_search_outlined,
-              color: hasArMeasurements ? AppTheme.primary : AppTheme.muted),
+              color: hasArMeasurements
+                  ? AppTheme.color(context, AppTheme.primary)
+                  : AppTheme.color(context, AppTheme.muted)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('ИСТОЧНИК ДАННЫХ',
+                Text('ИСТОЧНИК ДАННЫХ',
                     style: TextStyle(
-                        color: AppTheme.text,
+                        color: AppTheme.color(context, AppTheme.text),
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
                         letterSpacing: 1.0)),
                 const SizedBox(height: 4),
                 Text(dimensionsSource ?? 'Фото + ИИ',
-                    style: const TextStyle(
-                        color: AppTheme.primary2,
+                    style: TextStyle(
+                        color: AppTheme.color(context, AppTheme.primary2),
                         fontWeight: FontWeight.w900,
                         fontSize: 14)),
               ],
@@ -737,10 +752,11 @@ class _MetricCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isSecondary
-            ? AppTheme.surface3.withOpacity(0.3)
-            : AppTheme.surface3,
+            ? AppTheme.color(context, AppTheme.surface3).withOpacity(0.3)
+            : AppTheme.color(context, AppTheme.surface3),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        border: Border.all(
+            color: AppTheme.color(context, AppTheme.primary).withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,12 +764,16 @@ class _MetricCard extends StatelessWidget {
           Row(
             children: [
               Icon(icon,
-                  color: isSecondary ? AppTheme.muted : AppTheme.primary,
+                  color: isSecondary
+                      ? AppTheme.color(context, AppTheme.muted)
+                      : AppTheme.color(context, AppTheme.primary),
                   size: 18),
               const SizedBox(width: 8),
               Text(title,
                   style: TextStyle(
-                      color: isSecondary ? AppTheme.muted : AppTheme.text,
+                      color: isSecondary
+                          ? AppTheme.color(context, AppTheme.muted)
+                          : AppTheme.color(context, AppTheme.text),
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.0)),
@@ -761,8 +781,8 @@ class _MetricCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(value,
-              style: const TextStyle(
-                  color: AppTheme.text,
+              style: TextStyle(
+                  color: AppTheme.color(context, AppTheme.text),
                   fontSize: 16,
                   fontWeight: FontWeight.w900)),
         ],
@@ -787,10 +807,11 @@ class _LocationCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-                color: AppTheme.primary2.withOpacity(0.15),
+                color: AppTheme.color(context, AppTheme.primary2)
+                    .withOpacity(0.15),
                 shape: BoxShape.circle),
-            child: const Icon(Icons.location_on_outlined,
-                color: AppTheme.primary2),
+            child: Icon(Icons.location_on_outlined,
+                color: AppTheme.color(context, AppTheme.primary2)),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -808,8 +829,9 @@ class _LocationCard extends StatelessWidget {
                     lat != null && lon != null
                         ? 'GPS: ${lat!.toStringAsFixed(6)}, ${lon!.toStringAsFixed(6)}'
                         : 'Координаты отсутствуют.',
-                    style:
-                        const TextStyle(color: AppTheme.muted, fontSize: 12)),
+                    style: TextStyle(
+                        color: AppTheme.color(context, AppTheme.muted),
+                        fontSize: 12)),
               ],
             ),
           ),
@@ -827,8 +849,9 @@ class _ExplanationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (lines.isEmpty) return const SizedBox.shrink();
     return GlassPanel(
-      color: AppTheme.danger.withOpacity(0.05),
-      border: Border.all(color: AppTheme.danger.withOpacity(0.5)),
+      color: AppTheme.color(context, AppTheme.danger).withOpacity(0.05),
+      border: Border.all(
+          color: AppTheme.color(context, AppTheme.danger).withOpacity(0.5)),
       child: Column(
         children: lines
             .map((l) => Padding(
@@ -836,13 +859,15 @@ class _ExplanationCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.warning_amber_rounded,
-                          color: AppTheme.danger, size: 16),
+                      Icon(Icons.warning_amber_rounded,
+                          color: AppTheme.color(context, AppTheme.danger),
+                          size: 16),
                       const SizedBox(width: 8),
                       Expanded(
                           child: Text(l,
-                              style: const TextStyle(
-                                  color: AppTheme.text, height: 1.4))),
+                              style: TextStyle(
+                                  color: AppTheme.color(context, AppTheme.text),
+                                  height: 1.4))),
                     ],
                   ),
                 ))
@@ -861,34 +886,39 @@ class _FootnoteCard extends StatelessWidget {
     final analysisId = raw?['analysis_id'] as String?;
 
     return GlassPanel(
-      color: AppTheme.surface3.withOpacity(0.3),
+      color: AppTheme.color(context, AppTheme.surface3).withOpacity(0.3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.shield_outlined, color: AppTheme.muted),
+          Icon(Icons.shield_outlined,
+              color: AppTheme.color(context, AppTheme.muted)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'ПРИМЕЧАНИЕ',
                   style: TextStyle(
                       fontWeight: FontWeight.w900,
-                      color: AppTheme.muted,
+                      color: AppTheme.color(context, AppTheme.muted),
                       letterSpacing: 1.0,
                       fontSize: 11),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Оценка является аналитической подсказкой и не заменяет осмотр специалистом.',
-                  style: TextStyle(color: AppTheme.muted, fontSize: 11),
+                  style: TextStyle(
+                      color: AppTheme.color(context, AppTheme.muted),
+                      fontSize: 11),
                 ),
                 if (analysisId != null && analysisId.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     'ID: $analysisId',
-                    style: const TextStyle(color: AppTheme.muted, fontSize: 9),
+                    style: TextStyle(
+                        color: AppTheme.color(context, AppTheme.muted),
+                        fontSize: 9),
                   ),
                 ]
               ],
@@ -925,7 +955,7 @@ class _RiskHeroData {
       return _RiskHeroData(
         label: 'БЕЗОПАСНО',
         valueText: idx != null ? idx.toStringAsFixed(2) : '—',
-        background: AppTheme.success,
+        background: AppTheme.resolve(AppTheme.success, theme.brightness),
         foreground: Colors.black,
       );
     }
@@ -933,7 +963,7 @@ class _RiskHeroData {
       return _RiskHeroData(
         label: 'ВНИМАНИЕ',
         valueText: idx != null ? idx.toStringAsFixed(2) : '—',
-        background: AppTheme.warning,
+        background: AppTheme.resolve(AppTheme.warning, theme.brightness),
         foreground: Colors.black,
       );
     }
@@ -941,16 +971,16 @@ class _RiskHeroData {
       return _RiskHeroData(
         label: 'КРИТИЧНО',
         valueText: idx != null ? idx.toStringAsFixed(2) : '—',
-        background: AppTheme.danger,
-        foreground: AppTheme.danger,
+        background: AppTheme.resolve(AppTheme.danger, theme.brightness),
+        foreground: AppTheme.resolve(AppTheme.danger, theme.brightness),
       );
     }
 
     return _RiskHeroData(
       label: 'РИСК',
       valueText: idx != null ? idx.toStringAsFixed(2) : '—',
-      background: AppTheme.surface3,
-      foreground: AppTheme.muted,
+      background: AppTheme.resolve(AppTheme.surface3, theme.brightness),
+      foreground: AppTheme.resolve(AppTheme.muted, theme.brightness),
     );
   }
 }

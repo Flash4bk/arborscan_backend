@@ -470,7 +470,13 @@ class _ArborScanPageState extends State<ArborScanPage> {
     final busy = _loading || _openingAr || _pickingImage;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ArborScan'),
+        title: Row(children: [
+          if (MediaQuery.textScalerOf(context).scale(1) <= 1.3) ...[
+            const AtlasMark(),
+            const SizedBox(width: 12),
+          ],
+          const Flexible(child: Text('ArborScan')),
+        ]),
         actions: [
           if (_imageFile != null || _arResult != null)
             IconButton(
@@ -483,21 +489,43 @@ class _ArborScanPageState extends State<ArborScanPage> {
               padding: const EdgeInsets.only(right: 12),
               child: IconButton.filledTonal(
                 tooltip: 'Профиль',
-                style: IconButton.styleFrom(backgroundColor: AppTheme.surface3),
+                style: IconButton.styleFrom(
+                    backgroundColor:
+                        AppTheme.color(context, AppTheme.surface3)),
                 onPressed: widget.onOpenProfile,
                 icon: const Icon(Icons.person_outline),
               ),
             ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+          top: false,
+          child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const ValueKey('analyze-photo'),
+                  onPressed: _imageFile == null || busy ? null : _analyze,
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.arrow_forward),
+                  iconAlignment: IconAlignment.end,
+                  label: Text(_loading ? 'Анализируем…' : 'Анализировать'),
+                ),
+              ))),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             Text('Новое исследование',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
                     fontSize: MediaQuery.textScalerOf(context).scale(1) > 1.3
                         ? 22
                         : null)),
@@ -555,22 +583,6 @@ class _ArborScanPageState extends State<ArborScanPage> {
               _ArSummary(result: _arResult!, bound: _arPhotoHash != null),
             ],
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                key: const ValueKey('analyze-photo'),
-                onPressed: _imageFile == null || busy ? null : _analyze,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.arrow_forward),
-                iconAlignment: IconAlignment.end,
-                label: Text(_loading ? 'Анализируем…' : 'Анализировать'),
-              ),
-            ),
             // AS-09: the location/conditions panel belongs after the main action.
             if (_imageFile != null)
               SurveyEnvironmentEditor(
@@ -578,10 +590,11 @@ class _ArborScanPageState extends State<ArborScanPage> {
                   original: _original,
                   enabled: !busy),
             if (_imageFile == null)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(4, 8, 4, 0),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
                 child: Text('Добавьте фото для анализа.',
-                    style: TextStyle(color: AppTheme.muted)),
+                    style: TextStyle(
+                        color: AppTheme.color(context, AppTheme.muted))),
               ),
             if (_error != null) ...[
               const SizedBox(height: 14),
@@ -654,7 +667,7 @@ class _PhotoCard extends StatelessWidget {
               onPressed: loading ? null : onGallery),
         ];
         return ClipRRect(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(13),
           child: SizedBox(
               height: height,
               width: double.infinity,
@@ -668,7 +681,7 @@ class _PhotoCard extends StatelessWidget {
                     child: file == null
                         ? Container(
                             key: const ValueKey('empty-photo'),
-                            color: AppTheme.surface2,
+                            color: AppTheme.color(context, AppTheme.surface2),
                             padding: EdgeInsets.fromLTRB(
                                 28, 28, 28, largeText ? 160 : 80),
                             alignment: Alignment.center,
@@ -692,9 +705,10 @@ class _PhotoCard extends StatelessWidget {
                             height: double.infinity,
                             fit: BoxFit.cover,
                             semanticLabel: 'Выбранная фотография дерева',
-                            errorBuilder: (_, __, ___) => const ColoredBox(
-                                color: AppTheme.surface2,
-                                child: Center(
+                            errorBuilder: (_, __, ___) => ColoredBox(
+                                color:
+                                    AppTheme.color(context, AppTheme.surface2),
+                                child: const Center(
                                     child: Icon(Icons.broken_image_outlined,
                                         size: 48)))),
                   ),
@@ -726,13 +740,14 @@ class _PhotoCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 9),
                               decoration: BoxDecoration(
-                                  color: AppTheme.primary.withValues(alpha: .9),
+                                  color: AppTheme.brand.withValues(alpha: .9),
                                   borderRadius: BorderRadius.circular(24)),
                               child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.check_circle,
-                                        color: AppTheme.surface3, size: 20),
+                                        color: AppTheme.surface3,
+                                        size: 20),
                                     SizedBox(width: 8),
                                     Flexible(
                                         child: Text('Фото добавлено',
@@ -775,7 +790,7 @@ class _PhotoButton extends StatelessWidget {
         child: FilledButton.icon(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primary.withValues(alpha: .92),
+              backgroundColor: AppTheme.brand.withValues(alpha: .92),
               foregroundColor: Colors.white,
               side: const BorderSide(color: Color(0xFFCED5BA)),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
@@ -830,7 +845,7 @@ class _ArSummary extends StatelessWidget {
   Widget build(BuildContext context) => Card(
         child: ExpansionTile(
           leading: Icon(bound ? Icons.check_circle_outline : Icons.link,
-              color: AppTheme.primary2),
+              color: AppTheme.color(context, AppTheme.primary2)),
           title: Text('AR · ${result.heightMeters!.toStringAsFixed(2)} м'),
           subtitle: Text(bound
               ? 'Связано с этим фото'
@@ -870,13 +885,14 @@ class _ErrorCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.error_outline, color: AppTheme.danger),
+            Icon(Icons.error_outline,
+                color: AppTheme.color(context, AppTheme.danger)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.danger,
+                      color: AppTheme.color(context, AppTheme.danger),
                       height: 1.4,
                     ),
               ),
@@ -958,7 +974,7 @@ class _DebugEndpointCard extends StatelessWidget {
           Text(
             ApiConfig.connectionHint(url),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.muted,
+                  color: AppTheme.color(context, AppTheme.muted),
                 ),
           ),
         ],

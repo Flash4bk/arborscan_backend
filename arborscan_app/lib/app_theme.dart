@@ -1,136 +1,246 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// AS-15: one palette for screens, controls and status messages.
+/// Forest Atlas tokens. Static colors describe the light palette; [color]
+/// resolves a semantic token against the nearest theme (including dialogs).
 class AppTheme {
-  static const background = Color(0xFFF5F4EA);
+  static const background = Color(0xFFF6F3EA);
   static const bg = background;
-  static const surface = Color(0xFFFCFBF4);
-  static const surface2 = Color(0xFFECECDF);
-  static const surface3 = Color(0xFFDCE7B8);
-  static const primary = Color(0xFF263D2C);
-  static const primary2 = Color(0xFF657147);
+  static const surface = Color(0xFFFFFDF7);
+  static const surface2 = Color(0xFFECEEE2);
+  static const surface3 = Color(0xFFDAE7A7);
+  static const primary = Color(0xFF173E32);
+  static const primary2 = Color(0xFF53645C);
   static const accent = primary2;
-  static const text = Color(0xFF17291D);
-  static const muted = Color(0xFF59604F);
-  static const border = Color(0xFFD6D8C9);
-  static const danger = Color(0xFFA33132);
-  static const warning = Color(0xFF805716);
+  static const text = Color(0xFF173E32);
+  static const muted = Color(0xFF53645C);
+  static const border = Color(0xFF788B7C);
+  static const danger = Color(0xFF922D22);
+  static const warning = Color(0xFF78501C);
   static const success = Color(0xFF386445);
   static const textOnLight = text;
   static const mutedOnLight = muted;
+  // A filled brand surface keeps white text legible in both modes.
+  static const brand = primary;
 
-  static ThemeData light() {
+  static Color color(BuildContext context, Color token) =>
+      resolve(token, Theme.of(context).brightness);
+
+  static Color resolve(Color token, Brightness brightness) {
+    if (brightness == Brightness.light) return token;
+    if (token == background) return const Color(0xFF122B25);
+    if (token == surface) return const Color(0xFF1A3930);
+    if (token == surface2) return const Color(0xFF24483B);
+    if (token == surface3) return const Color(0xFF3B5540);
+    if (token == primary || token == text) return const Color(0xFFEFF3E6);
+    if (token == muted || token == primary2) return const Color(0xFFC0CDBD);
+    if (token == border) return const Color(0xFF8C9E8F);
+    if (token == danger) return const Color(0xFFFFB4A8);
+    if (token == warning) return const Color(0xFFF1CB89);
+    if (token == success) return const Color(0xFFB1D6AA);
+    return token;
+  }
+
+  static ThemeData light() => _theme(Brightness.light);
+  static ThemeData dark() => _theme(Brightness.dark);
+  static ThemeData _theme(Brightness brightness) {
+    final dark = brightness == Brightness.dark;
+    Color c(Color token) => resolve(token, brightness);
     final scheme =
-        ColorScheme.fromSeed(seedColor: primary, brightness: Brightness.light)
+        ColorScheme.fromSeed(seedColor: primary, brightness: brightness)
             .copyWith(
-                primary: primary,
-                secondary: primary2,
-                surface: surface,
-                onSurface: text,
-                onSurfaceVariant: muted,
-                outline: border,
-                error: danger,
-                onPrimary: Colors.white,
-                onSecondary: Colors.white);
+                primary: dark ? surface3 : primary,
+                onPrimary: dark ? primary : surface,
+                secondary: c(muted),
+                onSecondary: c(surface),
+                surface: c(surface),
+                onSurface: c(text),
+                onSurfaceVariant: c(muted),
+                outline: c(border),
+                error: c(danger),
+                onError: dark ? primary : surface);
     final base = ThemeData(
         useMaterial3: true,
         colorScheme: scheme,
-        scaffoldBackgroundColor: background,
-        canvasColor: surface);
+        fontFamily: 'Atlas',
+        scaffoldBackgroundColor: c(background),
+        canvasColor: c(surface));
     final shape =
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(13));
     final button = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(48, 52)),
-      padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-      shape: WidgetStatePropertyAll(shape),
-      textStyle: const WidgetStatePropertyAll(
-          TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-    );
+        minimumSize: const WidgetStatePropertyAll(Size(48, 52)),
+        padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+        shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+        textStyle: const WidgetStatePropertyAll(TextStyle(
+            fontFamily: 'Atlas', fontSize: 15, fontWeight: FontWeight.w600)),
+        animationDuration: const Duration(milliseconds: 120));
+    final textTheme = base.textTheme.copyWith(
+        headlineLarge: TextStyle(
+            fontFamily: 'Literata',
+            fontSize: 34,
+            height: 1.16,
+            color: c(text),
+            fontWeight: FontWeight.w600),
+        headlineMedium: TextStyle(
+            fontFamily: 'Literata',
+            fontSize: 30,
+            height: 1.2,
+            color: c(text),
+            fontWeight: FontWeight.w600),
+        headlineSmall: TextStyle(
+            fontFamily: 'Literata',
+            fontSize: 24,
+            height: 1.22,
+            color: c(text),
+            fontWeight: FontWeight.w600),
+        titleLarge: TextStyle(
+            fontFamily: 'Literata',
+            fontSize: 22,
+            height: 1.3,
+            color: c(text),
+            fontWeight: FontWeight.w600),
+        titleMedium: TextStyle(
+            fontFamily: 'Atlas',
+            fontSize: 17,
+            height: 1.35,
+            color: c(text),
+            fontWeight: FontWeight.w600));
     return base.copyWith(
-      textTheme:
-          base.textTheme.apply(bodyColor: text, displayColor: text).copyWith(
-                headlineSmall: const TextStyle(
-                    fontSize: 24,
-                    height: 1.25,
-                    fontWeight: FontWeight.w700,
-                    color: text),
-                titleLarge: const TextStyle(
-                    fontSize: 21,
-                    height: 1.3,
-                    fontWeight: FontWeight.w700,
-                    color: text),
-                titleMedium: const TextStyle(
-                    fontSize: 17,
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
-                    color: text),
-              ),
-      appBarTheme: const AppBarTheme(
-          backgroundColor: background,
-          foregroundColor: text,
+      textTheme: textTheme,
+      appBarTheme: AppBarTheme(
+          backgroundColor: c(background),
+          foregroundColor: c(text),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           centerTitle: false,
-          systemOverlayStyle: SystemUiOverlayStyle.dark,
+          systemOverlayStyle:
+              dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
           titleTextStyle: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.w700, color: text)),
+              fontFamily: 'Atlas',
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: c(text))),
       cardTheme: CardThemeData(
-          color: surface,
+          color: c(surface),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
-          shape: shape.copyWith(side: const BorderSide(color: border))),
+          shape: shape.copyWith(
+              side: BorderSide(color: c(border).withValues(alpha: .55)))),
       elevatedButtonTheme: ElevatedButtonThemeData(
           style: button.copyWith(
-              backgroundColor: WidgetStateProperty.resolveWith(
-                  (s) => s.contains(WidgetState.disabled) ? surface2 : primary),
+              backgroundColor: WidgetStateProperty.resolveWith((s) =>
+                  s.contains(WidgetState.disabled)
+                      ? c(surface2)
+                      : scheme.primary),
               foregroundColor: WidgetStateProperty.resolveWith((s) =>
-                  s.contains(WidgetState.disabled) ? muted : Colors.white),
+                  s.contains(WidgetState.disabled)
+                      ? c(muted)
+                      : scheme.onPrimary),
               elevation: const WidgetStatePropertyAll(0))),
       filledButtonTheme: FilledButtonThemeData(style: button),
       outlinedButtonTheme: OutlinedButtonThemeData(
           style: button.copyWith(
-              side: const WidgetStatePropertyAll(BorderSide(color: border)))),
+              side: WidgetStatePropertyAll(BorderSide(color: c(border))))),
       textButtonTheme: TextButtonThemeData(style: button),
       iconButtonTheme: const IconButtonThemeData(
           style:
               ButtonStyle(minimumSize: WidgetStatePropertyAll(Size(48, 48)))),
       dialogTheme: DialogThemeData(
-          backgroundColor: surface,
+          backgroundColor: c(surface),
           surfaceTintColor: Colors.transparent,
           shape: shape),
-      bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: surface, showDragHandle: true),
+      bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: c(surface), showDragHandle: true),
       snackBarTheme: SnackBarThemeData(
-          backgroundColor: text,
-          contentTextStyle: const TextStyle(color: Colors.white),
+          backgroundColor: c(text),
+          contentTextStyle: TextStyle(color: c(background)),
           behavior: SnackBarBehavior.floating,
           shape: shape),
-      navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: surface,
+      navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: c(background),
           indicatorColor: surface3,
+          iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(
+              color: s.contains(WidgetState.selected) ? primary : c(muted))),
           labelTextStyle: WidgetStatePropertyAll(TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600, color: text))),
-      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+              fontFamily: 'Atlas',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: c(text)))),
+      dividerTheme: DividerThemeData(
+          color: c(border).withValues(alpha: .55), thickness: 1),
       inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: surface,
-          labelStyle: const TextStyle(color: muted),
+          fillColor: c(surface),
+          labelStyle: TextStyle(color: c(muted)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: border)),
+              borderRadius: BorderRadius.circular(11),
+              borderSide: BorderSide(color: c(border))),
           enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: border)),
+              borderRadius: BorderRadius.circular(11),
+              borderSide: BorderSide(color: c(border))),
           focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: primary, width: 2))),
+              borderRadius: BorderRadius.circular(11),
+              borderSide: BorderSide(color: scheme.primary, width: 2))),
     );
   }
+}
+
+/// The approved SVG path, painted without an extra runtime dependency.
+class AtlasMark extends StatelessWidget {
+  final double size;
+  const AtlasMark({super.key, this.size = 32});
+  @override
+  Widget build(BuildContext context) => Semantics(
+      label: 'ArborScan — ось и крона',
+      image: true,
+      child: SizedBox.square(
+          dimension: size,
+          child: CustomPaint(
+              painter:
+                  _AtlasMarkPainter(AppTheme.color(context, AppTheme.text)))));
+}
+
+class _AtlasMarkPainter extends CustomPainter {
+  final Color color;
+  _AtlasMarkPainter(this.color);
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 100, size.height / 100);
+    final p = Path()
+      ..moveTo(20, 84)
+      ..lineTo(20, 39)
+      ..lineTo(50, 13)
+      ..lineTo(80, 39)
+      ..lineTo(80, 84)
+      ..moveTo(34, 84)
+      ..lineTo(34, 47)
+      ..lineTo(50, 32)
+      ..lineTo(66, 47)
+      ..lineTo(66, 84)
+      ..moveTo(50, 32)
+      ..lineTo(50, 84)
+      ..moveTo(14, 58)
+      ..lineTo(86, 58);
+    canvas.drawPath(
+        p,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_AtlasMarkPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class GlassPanel extends StatelessWidget {
@@ -152,7 +262,7 @@ class GlassPanel extends StatelessWidget {
     required this.child,
     this.padding,
     this.margin,
-    this.radius = 24,
+    this.radius = 13,
     this.color,
     this.gradient,
     this.border,
@@ -170,10 +280,10 @@ class GlassPanel extends StatelessWidget {
       height: height,
       margin: margin,
       child: Material(
-        color: color ?? AppTheme.surface,
+        color: color ?? AppTheme.color(context, AppTheme.surface),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
-            side: const BorderSide(color: AppTheme.border)),
+            side: BorderSide(color: AppTheme.color(context, AppTheme.border))),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
             onTap: onTap,
@@ -191,7 +301,7 @@ class Ui {
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.primary,
+              color: AppTheme.color(context, AppTheme.primary),
               letterSpacing: 0,
             ),
       ),
@@ -286,23 +396,23 @@ class AppActionButton extends StatelessWidget {
     final isEnabled = enabled && !loading && callback != null;
     final bg = color ??
         (danger
-            ? AppTheme.danger.withValues(alpha: 0.2)
+            ? AppTheme.color(context, AppTheme.danger).withValues(alpha: 0.2)
             : primary
-                ? AppTheme.primary
-                : AppTheme.surface2);
+                ? AppTheme.brand
+                : AppTheme.color(context, AppTheme.surface2));
     final fg = !isEnabled
-        ? AppTheme.muted
+        ? AppTheme.color(context, AppTheme.muted)
         : foregroundColor ??
             (danger
-                ? AppTheme.danger
+                ? AppTheme.color(context, AppTheme.danger)
                 : primary
                     ? Colors.white
-                    : AppTheme.text);
+                    : AppTheme.color(context, AppTheme.text));
     final borderColor = danger
-        ? AppTheme.danger
+        ? AppTheme.color(context, AppTheme.danger)
         : primary
-            ? AppTheme.primary
-            : AppTheme.border;
+            ? AppTheme.brand
+            : AppTheme.color(context, AppTheme.border);
 
     final hasSubtitle = subtitle != null && subtitle!.isNotEmpty;
 
@@ -362,7 +472,7 @@ class AppActionButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: isEnabled ? callback : null,
-          borderRadius: BorderRadius.circular(compact ? 16 : 20),
+          borderRadius: BorderRadius.circular(11),
           child: Container(
             constraints: const BoxConstraints(minHeight: 48),
             padding: padding ??
@@ -371,12 +481,15 @@ class AppActionButton extends StatelessWidget {
                   vertical: compact ? 10 : 14,
                 ),
             decoration: BoxDecoration(
-              color: isEnabled ? bg : AppTheme.surface2.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(compact ? 16 : 20),
+              color: isEnabled
+                  ? bg
+                  : AppTheme.color(context, AppTheme.surface2)
+                      .withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(11),
               border: Border.all(
                   color: isEnabled
                       ? borderColor.withValues(alpha: 0.5)
-                      : AppTheme.border),
+                      : AppTheme.color(context, AppTheme.border)),
             ),
             child: child,
           ),
@@ -406,14 +519,15 @@ class AppStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppTheme.primary;
+    final c = color ?? AppTheme.color(context, AppTheme.primary);
     final t = title ?? label ?? '';
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface2.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(24),
+        color:
+            AppTheme.color(context, AppTheme.surface2).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(13),
         border: Border.all(color: c.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -435,23 +549,23 @@ class AppStatCard extends StatelessWidget {
               children: [
                 if (t.isNotEmpty)
                   Text(t,
-                      style: const TextStyle(
-                          color: AppTheme.muted,
+                      style: TextStyle(
+                          color: AppTheme.color(context, AppTheme.muted),
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0)),
                 if (t.isNotEmpty) const SizedBox(height: 4),
                 Text(value,
-                    style: const TextStyle(
-                      color: AppTheme.text,
+                    style: TextStyle(
+                      color: AppTheme.color(context, AppTheme.text),
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
                     )),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(subtitle!,
-                      style: const TextStyle(
-                          color: AppTheme.muted,
+                      style: TextStyle(
+                          color: AppTheme.color(context, AppTheme.muted),
                           fontSize: 13,
                           fontWeight: FontWeight.w600)),
                 ],

@@ -374,7 +374,7 @@ class _MapPageState extends State<MapPage> {
                           ]),
                           if (_error != null)
                             Text(_error!,
-                                style: const TextStyle(color: AppTheme.danger)),
+                                style: TextStyle(color: AppTheme.color(context, AppTheme.danger))),
                           if (_result.notices.isNotEmpty)
                             ExpansionTile(
                                 tilePadding: EdgeInsets.zero,
@@ -470,7 +470,7 @@ class _MapPageState extends State<MapPage> {
                         right: 12,
                         bottom: 8,
                         child: Material(
-                            color: AppTheme.surface,
+                            color: AppTheme.color(context, AppTheme.surface),
                             borderRadius: BorderRadius.circular(16),
                             child: Padding(
                                 padding: const EdgeInsets.all(10),
@@ -631,28 +631,28 @@ class _SurveyCardState extends State<_SurveyCard> {
                     if (entry.heightM != null)
                       Ui.badge(
                           text: 'Высота ${entry.heightM!.toStringAsFixed(2)} м',
-                          color: AppTheme.primary),
+                          color: AppTheme.color(context, AppTheme.primary)),
                     if (entry.crownM != null)
                       Ui.badge(
                           text: 'Крона ${entry.crownM!.toStringAsFixed(2)} м',
-                          color: AppTheme.primary),
+                          color: AppTheme.color(context, AppTheme.primary)),
                     if (entry.trunkM != null)
                       Ui.badge(
                           text:
                               'Ствол ${(entry.trunkM! * 100).toStringAsFixed(1)} см',
-                          color: AppTheme.primary),
+                          color: AppTheme.color(context, AppTheme.primary)),
                   ]),
                   const SizedBox(height: 14),
                   Text(
                       point?.coordinates ?? 'Нет GPS данных, карта недоступна'),
                   if (point != null)
                     Text(point.label,
-                        style: const TextStyle(color: AppTheme.muted)),
+                        style: TextStyle(color: AppTheme.color(context, AppTheme.muted))),
                   if (_error != null)
                     Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text(_error!,
-                            style: const TextStyle(color: AppTheme.warning))),
+                            style: TextStyle(color: AppTheme.color(context, AppTheme.warning)))),
                   const SizedBox(height: 14),
                   FilledButton.icon(
                       onPressed: () async {

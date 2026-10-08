@@ -65,7 +65,7 @@ class DatasetSummaryCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: AppTheme.primary,
+            color: AppTheme.brand,
             borderRadius: BorderRadius.circular(22),
           ),
           child: LayoutBuilder(builder: (context, constraints) {
@@ -137,10 +137,10 @@ class _DataRevisionTileState extends State<DataRevisionTile> {
     final pending = widget.reason?.contains(':submitted') == true ||
         widget.reason?.contains(':pending_review') == true;
     final color = widget.eligible
-        ? AppTheme.success
+        ? AppTheme.color(context, AppTheme.success)
         : pending
-            ? AppTheme.warning
-            : AppTheme.danger;
+            ? AppTheme.color(context, AppTheme.warning)
+            : AppTheme.color(context, AppTheme.danger);
     return ExpansionTile(
       tilePadding: const EdgeInsets.symmetric(vertical: 6),
       childrenPadding: const EdgeInsets.only(bottom: 12),
@@ -160,7 +160,7 @@ class _DataRevisionTileState extends State<DataRevisionTile> {
                           const Icon(Icons.broken_image_outlined));
                 }
                 return ColoredBox(
-                    color: AppTheme.surface2,
+                    color: AppTheme.color(context, AppTheme.surface2),
                     child: IconButton(
                       tooltip: snapshot.hasError
                           ? 'Повторить загрузку фото'

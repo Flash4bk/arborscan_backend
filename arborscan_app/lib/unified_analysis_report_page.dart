@@ -130,7 +130,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
               child: Text('Аккаунт изменился. Откройте свой отчёт заново.')));
     }
     final displayImage = result.annotatedImageBytes ?? fallbackImageBytes;
-    final status = _statusPresentation(result.status);
+    final status = _statusPresentation(context, result.status);
 
     return WillPopScope(
       onWillPop: () async => true,
@@ -186,7 +186,9 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 fallbackImageBytes == null || fallbackImageBytes!.isEmpty
                     ? 'Для редактирования нужно исходное фото. Откройте результат сразу после анализа.'
                     : 'Сохраните исправленный контур отдельной кнопкой. Исходные измерения не пересчитываются.',
-                style: const TextStyle(color: AppTheme.muted, fontSize: 13),
+                style: TextStyle(
+                    color: AppTheme.color(context, AppTheme.muted),
+                    fontSize: 13),
               ),
               const SizedBox(height: 14),
               _StatusCard(
@@ -292,42 +294,43 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   }
 }
 
-(String, String, IconData, Color) _statusPresentation(String status) {
+(String, String, IconData, Color) _statusPresentation(
+    BuildContext context, String status) {
   switch (status) {
     case 'measured':
       return (
         'Измерение завершено',
         'Показаны отдельные AR-размеры и/или оценки по эталону. Полевая точность ещё не подтверждена.',
         Icons.check_circle_outline,
-        AppTheme.success,
+        AppTheme.color(context, AppTheme.success),
       );
     case 'partial_measurement':
       return (
         'Частичный результат',
         'Часть параметров измерена, но для полного результата данных недостаточно.',
         Icons.info_outline,
-        AppTheme.warning,
+        AppTheme.color(context, AppTheme.warning),
       );
     case 'absolute_scale_required':
       return (
         'Нужен физический масштаб',
         'Дерево найдено, но без AR или эталона метры не рассчитываются.',
         Icons.straighten,
-        AppTheme.warning,
+        AppTheme.color(context, AppTheme.warning),
       );
     case 'tree_not_detected':
       return (
         'Дерево не найдено',
         'Система не создаёт искусственную маску. Сделайте другой кадр.',
         Icons.search_off,
-        AppTheme.danger,
+        AppTheme.color(context, AppTheme.danger),
       );
     default:
       return (
         'Результат анализа',
         'Статус: $status',
         Icons.analytics_outlined,
-        AppTheme.primary,
+        AppTheme.color(context, AppTheme.primary),
       );
   }
 }
@@ -377,7 +380,7 @@ class _StatusCard extends StatelessWidget {
                   Text(
                     description,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.muted,
+                          color: AppTheme.color(context, AppTheme.muted),
                           height: 1.35,
                         ),
                   ),
@@ -407,7 +410,8 @@ class _SpeciesCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.park_outlined, color: AppTheme.primary),
+                Icon(Icons.park_outlined,
+                    color: AppTheme.color(context, AppTheme.primary)),
                 const SizedBox(width: 8),
                 Text(
                   'Порода',
@@ -430,7 +434,7 @@ class _SpeciesCard extends StatelessWidget {
                 result.scientificName!,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontStyle: FontStyle.italic,
-                      color: AppTheme.muted,
+                      color: AppTheme.color(context, AppTheme.muted),
                     ),
               ),
             ],
@@ -439,7 +443,9 @@ class _SpeciesCard extends StatelessWidget {
               Ui.badge(
                 text:
                     'Оценка Pl@ntNet ${conf.toStringAsFixed(3)} — не точность',
-                color: conf >= 0.80 ? AppTheme.success : AppTheme.warning,
+                color: conf >= 0.80
+                    ? AppTheme.color(context, AppTheme.success)
+                    : AppTheme.color(context, AppTheme.warning),
                 icon: Icons.eco_outlined,
               ),
             ],
@@ -470,10 +476,10 @@ class _MetricCard extends StatelessWidget {
     final value = metric.valueM;
     final source = _sourceLabel(metric.source);
     final sourceColor = metric.source == 'ar' || metric.source == 'ar+vision'
-        ? AppTheme.success
+        ? AppTheme.color(context, AppTheme.success)
         : value != null
-            ? AppTheme.primary
-            : AppTheme.muted;
+            ? AppTheme.color(context, AppTheme.primary)
+            : AppTheme.color(context, AppTheme.muted);
 
     return Card(
       child: Padding(
@@ -485,10 +491,12 @@ class _MetricCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.08),
+                color:
+                    AppTheme.color(context, AppTheme.primary).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: AppTheme.primary),
+              child:
+                  Icon(icon, color: AppTheme.color(context, AppTheme.primary)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -523,7 +531,7 @@ class _MetricCard extends StatelessWidget {
                       Ui.badge(
                         text:
                             'Эвристический балл ${metric.confidence.toStringAsFixed(2)}',
-                        color: _qualityColor(metric.confidence),
+                        color: _qualityColor(context, metric.confidence),
                         icon: Icons.verified_outlined,
                       ),
                     ],
@@ -533,7 +541,7 @@ class _MetricCard extends StatelessWidget {
                     Text(
                       'Диагностическая геометрия маски: ${metric.valuePx!.toStringAsFixed(1)} px. Нужны явные границы измеряемой части и физический эталон. AR не задаёт масштаб фото.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.muted,
+                            color: AppTheme.color(context, AppTheme.muted),
                             height: 1.35,
                           ),
                     ),
@@ -544,7 +552,7 @@ class _MetricCard extends StatelessWidget {
                       Text(
                         'Сохранённый уровень сечения: ${metric.measurementHeightM!.toStringAsFixed(2)} м.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.muted,
+                              color: AppTheme.color(context, AppTheme.muted),
                               height: 1.35,
                             ),
                       ),
@@ -553,7 +561,7 @@ class _MetricCard extends StatelessWidget {
                           ? 'Историческая метка DBH из сохранённого отчёта; соблюдение полевого протокола не подтверждено.'
                           : 'DBH не подтверждён: уровень 1,30 м сам по себе недостаточен; нужно проверить основание, уклон, наклон и развилки по полевой методике.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.muted,
+                            color: AppTheme.color(context, AppTheme.muted),
                             height: 1.35,
                           ),
                     ),
@@ -588,7 +596,7 @@ class _QualityCard extends StatelessWidget {
                   value.toStringAsFixed(2),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w900,
-                        color: _qualityColor(value),
+                        color: _qualityColor(context, value),
                       ),
                 ),
                 const SizedBox(width: 10),
@@ -608,7 +616,7 @@ class _QualityCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: value,
                 minHeight: 8,
-                backgroundColor: AppTheme.border,
+                backgroundColor: AppTheme.color(context, AppTheme.border),
               ),
             ),
             const SizedBox(height: 12),
@@ -619,7 +627,7 @@ class _QualityCard extends StatelessWidget {
                 Ui.badge(
                   text:
                       'Оценка модели ${result.segmentationConfidence.toStringAsFixed(2)}',
-                  color: _qualityColor(result.segmentationConfidence),
+                  color: _qualityColor(context, result.segmentationConfidence),
                   icon: Icons.auto_awesome_motion_outlined,
                 ),
                 Ui.badge(
@@ -627,17 +635,19 @@ class _QualityCard extends StatelessWidget {
                       ? 'Эвристика масштаба ${result.calibrationConfidence.toStringAsFixed(2)}'
                       : 'Масштаб отсутствует',
                   color: result.calibrationAvailable
-                      ? _qualityColor(result.calibrationConfidence)
-                      : AppTheme.muted,
+                      ? _qualityColor(context, result.calibrationConfidence)
+                      : AppTheme.color(context, AppTheme.muted),
                   icon: Icons.straighten,
                 ),
               ],
             ),
             if (result.calibrationConflict) ...[
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 'Обнаружено противоречие между источниками масштаба. Производные метрические размеры ограничены.',
-                style: TextStyle(color: AppTheme.warning, height: 1.35),
+                style: TextStyle(
+                    color: AppTheme.color(context, AppTheme.warning),
+                    height: 1.35),
               ),
             ],
           ],
@@ -660,7 +670,8 @@ class _RiskCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Icon(Icons.shield_outlined, color: AppTheme.primary),
+              Icon(Icons.shield_outlined,
+                  color: AppTheme.color(context, AppTheme.primary)),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -680,7 +691,8 @@ class _RiskCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.science_outlined, color: AppTheme.warning),
+            Icon(Icons.science_outlined,
+                color: AppTheme.color(context, AppTheme.warning)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -698,7 +710,7 @@ class _RiskCard extends StatelessWidget {
                         ? 'Механический профиль найден, но Risk Engine отключён до общей валидации.'
                         : 'Для ${result.scientificName ?? result.speciesName} нет валидированного механического профиля. Параметры другой породы не подставляются.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.muted,
+                          color: AppTheme.color(context, AppTheme.muted),
                           height: 1.35,
                         ),
                   ),
@@ -729,12 +741,12 @@ class _WarningsCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
                     child: Icon(
                       Icons.info_outline,
                       size: 18,
-                      color: AppTheme.warning,
+                      color: AppTheme.color(context, AppTheme.warning),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -807,7 +819,7 @@ class _TechnicalRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
+                    color: AppTheme.color(context, AppTheme.muted),
                   ),
             ),
           ),
@@ -844,7 +856,7 @@ class _SectionTitle extends StatelessWidget {
         Text(
           subtitle,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.muted,
+                color: AppTheme.color(context, AppTheme.muted),
                 height: 1.35,
               ),
         ),
@@ -859,9 +871,10 @@ class _ImageErrorBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppTheme.surface,
+      color: AppTheme.color(context, AppTheme.surface),
       alignment: Alignment.center,
-      child: const Icon(Icons.broken_image_outlined, color: AppTheme.muted),
+      child: Icon(Icons.broken_image_outlined,
+          color: AppTheme.color(context, AppTheme.muted)),
     );
   }
 }
@@ -896,11 +909,11 @@ IconData _sourceIcon(String source) {
   }
 }
 
-Color _qualityColor(double value) {
-  if (value >= 0.80) return AppTheme.success;
-  if (value >= 0.60) return AppTheme.primary;
-  if (value >= 0.40) return AppTheme.warning;
-  return AppTheme.danger;
+Color _qualityColor(BuildContext context, double value) {
+  if (value >= 0.80) return AppTheme.color(context, AppTheme.success);
+  if (value >= 0.60) return AppTheme.color(context, AppTheme.primary);
+  if (value >= 0.40) return AppTheme.color(context, AppTheme.warning);
+  return AppTheme.color(context, AppTheme.danger);
 }
 
 String _qualityStatusLabel(String value) {

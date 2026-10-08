@@ -222,7 +222,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
         body: AppContentList(padding: const EdgeInsets.all(16), children: [
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) ...[
-            Text(_error!, style: const TextStyle(color: AppTheme.danger)),
+            Text(_error!, style: TextStyle(color: AppTheme.color(context, AppTheme.danger))),
             if (!_invalidSession)
               OutlinedButton(
                   onPressed: _busy ? null : _load,
@@ -261,10 +261,10 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                                         errorBuilder: (_, __, ___) =>
                                             const Icon(
                                                 Icons.broken_image_outlined))
-                                    : const ColoredBox(
-                                        color: AppTheme.surface2,
+                                    : ColoredBox(
+                                        color: AppTheme.color(context, AppTheme.surface2),
                                         child: Icon(Icons.layers_outlined,
-                                            color: AppTheme.primary))))),
+                                            color: AppTheme.color(context, AppTheme.primary)))))),
                 trailing: const Icon(Icons.chevron_right),
                 title: Text(widget.localDrafts
                     ? 'Черновик контура'
@@ -299,7 +299,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
             ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  color: AppTheme.surface2,
+                  color: AppTheme.color(context, AppTheme.surface2),
                   height: 320,
                   child: _view == 'mask'
                       ? Image.memory(_mask!,

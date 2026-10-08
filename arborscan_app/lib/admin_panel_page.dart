@@ -251,9 +251,9 @@ class _AdminIdentityBlock extends StatelessWidget {
                 Text(identity.email),
               ],
               const SizedBox(height: 3),
-              const Text(
+              Text(
                 'Права подтверждены сервером',
-                style: TextStyle(color: AppTheme.success),
+                style: TextStyle(color: AppTheme.color(context, AppTheme.success)),
               ),
             ],
           ),

@@ -657,24 +657,24 @@ class _ProfilePageState extends State<ProfilePage> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.12),
+        color: AppTheme.color(context, AppTheme.primary).withOpacity(0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.primary.withOpacity(0.30)),
+        border: Border.all(color: AppTheme.color(context, AppTheme.primary).withOpacity(0.30)),
       ),
       clipBehavior: Clip.antiAlias,
       child: hasAvatar
           ? Image.network(
               ApiConfig.imageUrl(_avatarUrl),
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, __, ___) => Icon(
                 Icons.account_circle,
-                color: AppTheme.primary,
+                color: AppTheme.color(context, AppTheme.primary),
                 size: 34,
               ),
             )
-          : const Icon(
+          : Icon(
               Icons.account_circle,
-              color: AppTheme.primary,
+              color: AppTheme.color(context, AppTheme.primary),
               size: 34,
             ),
     );
@@ -690,11 +690,11 @@ class _ProfilePageState extends State<ProfilePage> {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.12),
+              color: AppTheme.color(context, AppTheme.primary).withOpacity(0.12),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.22)),
+              border: Border.all(color: AppTheme.color(context, AppTheme.primary).withOpacity(0.22)),
             ),
-            child: const Icon(Icons.forest, color: AppTheme.primary, size: 32),
+            child: const AtlasMark(size: 36),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -711,14 +711,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text(
                   'Фото, измерения и история обследований',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.color(context, AppTheme.muted),
                       ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   _statusText,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.muted,
+                        color: AppTheme.color(context, AppTheme.muted),
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -788,7 +788,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.login, color: AppTheme.primary),
+              Icon(Icons.login, color: AppTheme.color(context, AppTheme.primary)),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -833,18 +833,18 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           const SizedBox(height: 10),
-          const Row(
+          Row(
             children: [
-              Expanded(child: Divider(color: AppTheme.border)),
+              Expanded(child: Divider(color: AppTheme.color(context, AppTheme.border))),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
                   'или',
                   style: TextStyle(
-                      color: AppTheme.muted, fontWeight: FontWeight.w700),
+                      color: AppTheme.color(context, AppTheme.muted), fontWeight: FontWeight.w700),
                 ),
               ),
-              Expanded(child: Divider(color: AppTheme.border)),
+              Expanded(child: Divider(color: AppTheme.color(context, AppTheme.border))),
             ],
           ),
           const SizedBox(height: 14),
@@ -909,7 +909,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 4),
                 SelectableText(_email,
-                    style: const TextStyle(color: AppTheme.muted)),
+                    style: TextStyle(color: AppTheme.color(context, AppTheme.muted))),
               ])),
         ]),
         const SizedBox(height: 12),
@@ -917,11 +917,11 @@ class _ProfilePageState extends State<ProfilePage> {
           if (_isAdmin)
             Ui.badge(
                 text: 'Администратор',
-                color: AppTheme.primary,
+                color: AppTheme.color(context, AppTheme.primary),
                 icon: Icons.admin_panel_settings),
           Ui.badge(
               text: _serverOnline ? 'Серверная сессия' : 'Локальная копия',
-              color: _serverOnline ? AppTheme.success : AppTheme.warning,
+              color: _serverOnline ? AppTheme.color(context, AppTheme.success) : AppTheme.color(context, AppTheme.warning),
               icon: _serverOnline ? Icons.cloud_done : Icons.storage),
         ]),
         const SizedBox(height: 16),
@@ -1008,19 +1008,19 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.surface2,
+        color: AppTheme.color(context, AppTheme.surface2),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: AppTheme.color(context, AppTheme.border)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppTheme.primary),
+          Icon(icon, color: AppTheme.color(context, AppTheme.primary)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                color: AppTheme.muted,
+              style: TextStyle(
+                color: AppTheme.color(context, AppTheme.muted),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -1028,8 +1028,8 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: AppTheme.text,
+            style: TextStyle(
+              color: AppTheme.color(context, AppTheme.text),
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
@@ -1064,7 +1064,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppTheme.primary, size: 20),
+          Icon(icon, color: AppTheme.color(context, AppTheme.primary), size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: RichText(
@@ -1076,7 +1076,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: const TextStyle(fontWeight: FontWeight.w900)),
                   TextSpan(
                       text: text,
-                      style: const TextStyle(color: AppTheme.muted)),
+                      style: TextStyle(color: AppTheme.color(context, AppTheme.muted))),
                 ],
               ),
             ),

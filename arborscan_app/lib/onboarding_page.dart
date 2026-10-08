@@ -55,7 +55,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             itemBuilder: (context, index) =>
                 ListView(padding: const EdgeInsets.all(24), children: [
                   Icon(_getIcon(_pages[index]['icon']!),
-                      size: 64, color: AppTheme.primary),
+                      size: 64, color: AppTheme.color(context, AppTheme.primary)),
                   const SizedBox(height: 24),
                   Text(_pages[index]['title']!,
                       style: Theme.of(context).textTheme.headlineSmall),

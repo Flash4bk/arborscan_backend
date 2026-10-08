@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'app_root.dart';
 import 'app_theme.dart';
 import 'splash_screen_new.dart';
 import 'platform_tls_trust.dart';
@@ -20,6 +19,8 @@ class ArborScanApp extends StatelessWidget {
       title: 'ArborScan',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
       home: const SplashScreen(),
     );
   }

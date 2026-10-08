@@ -358,7 +358,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         actions: [
           IconButton(
               tooltip: 'Обновить',
-              icon: const Icon(Icons.refresh, color: AppTheme.primary),
+              icon: Icon(Icons.refresh, color: AppTheme.color(context, AppTheme.primary)),
               onPressed: _load),
           IconButton(
               tooltip: 'Измерения по эталону',
@@ -369,7 +369,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                       builder: (_) => const ReferenceHistoryPage()))),
           IconButton(
             tooltip: 'Очистить всё',
-            icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+            icon: Icon(Icons.delete_outline, color: AppTheme.color(context, AppTheme.danger)),
             onPressed: _all.isEmpty ? null : _clearAll,
           ),
         ],
@@ -403,7 +403,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                                     value: '${_all.length}',
                                     label: 'ВСЕГО',
                                     icon: Icons.history_rounded,
-                                    color: AppTheme.primary,
+                                    color: AppTheme.color(context, AppTheme.primary),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -413,7 +413,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                                         '${_all.where((e) => e.lat != null && e.lon != null).length}',
                                     label: 'С GPS',
                                     icon: Icons.location_on_rounded,
-                                    color: AppTheme.warning,
+                                    color: AppTheme.color(context, AppTheme.warning),
                                   ),
                                 ),
                               ],
@@ -444,7 +444,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                             const SizedBox(width: 8),
                             FilterChip(
                               label: const Text('Только GPS'),
-                              selectedColor: AppTheme.primary.withOpacity(0.3),
+                              selectedColor: AppTheme.color(context, AppTheme.primary).withOpacity(0.3),
                               selected: _onlyWithGeo,
                               onSelected: (v) {
                                 setState(() => _onlyWithGeo = v);
@@ -469,8 +469,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.inbox_outlined,
-                                      color: AppTheme.muted),
+                                  Icon(Icons.inbox_outlined,
+                                      color: AppTheme.color(context, AppTheme.muted)),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
@@ -522,14 +522,14 @@ class _HistoryPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isHighRisk = item.riskCategory == 'высокий';
-    final riskColor = isHighRisk ? AppTheme.danger : AppTheme.primary;
+    final riskColor = isHighRisk ? AppTheme.color(context, AppTheme.danger) : AppTheme.color(context, AppTheme.primary);
 
     return GlassPanel(
       padding: EdgeInsets.zero,
       onTap: onTap,
       border: Border.all(
           color:
-              isHighRisk ? AppTheme.danger.withOpacity(0.5) : AppTheme.border),
+              isHighRisk ? AppTheme.color(context, AppTheme.danger).withOpacity(0.5) : AppTheme.color(context, AppTheme.border)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -569,7 +569,7 @@ class _HistoryPreviewCard extends StatelessWidget {
                       if (item.lat != null && item.lon != null)
                         Ui.badge(
                             text: 'GPS',
-                            color: AppTheme.success,
+                            color: AppTheme.color(context, AppTheme.success),
                             icon: Icons.location_on),
                     ],
                   ),
@@ -577,7 +577,7 @@ class _HistoryPreviewCard extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+              icon: Icon(Icons.delete_outline, color: AppTheme.color(context, AppTheme.danger)),
               onPressed: onDelete,
             )
           ],
@@ -602,7 +602,7 @@ class _ErrorState extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.error_outline, color: AppTheme.danger),
+              Icon(Icons.error_outline, color: AppTheme.color(context, AppTheme.danger)),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -610,7 +610,7 @@ class _ErrorState extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .bodyMedium
-                      ?.copyWith(color: AppTheme.danger),
+                      ?.copyWith(color: AppTheme.color(context, AppTheme.danger)),
                 ),
               ),
             ],
@@ -646,17 +646,17 @@ class _FilterChipGroup extends StatelessWidget {
         ChoiceChip(
             label: const Text('Все'),
             selected: value == _FilterMode.all,
-            selectedColor: AppTheme.primary.withOpacity(0.3),
+            selectedColor: AppTheme.color(context, AppTheme.primary).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.all)),
         ChoiceChip(
             label: const Text('С риском'),
             selected: value == _FilterMode.withRisk,
-            selectedColor: AppTheme.danger.withOpacity(0.3),
+            selectedColor: AppTheme.color(context, AppTheme.danger).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.withRisk)),
         ChoiceChip(
             label: const Text('Без риска'),
             selected: value == _FilterMode.noRisk,
-            selectedColor: AppTheme.success.withOpacity(0.3),
+            selectedColor: AppTheme.color(context, AppTheme.success).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.noRisk)),
       ],
     );

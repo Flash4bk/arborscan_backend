@@ -28,9 +28,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: AppTheme.background,
-        body: Center(
-            child: Image.asset('assets/icons/arborscan_icon.png',
-                width: 144, height: 144, semanticLabel: 'ArborScan')),
+        backgroundColor: AppTheme.color(context, AppTheme.background),
+        body: const Center(
+            child: AtlasMark(size: 112)),
       );
 }

@@ -415,7 +415,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     );
 
     final textPainter = TextPainter(
-      text: TextSpan(
+      text: const TextSpan(
         text: 'Зелёный: маска ИИ | Синий: моя маска',
         style: textStyle,
       ),
@@ -695,7 +695,24 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Исправление маски'),
+          title: const Text('Контур'),
+          actions: [
+            IconButton(
+                tooltip: 'Как изменить контур',
+                icon: const Icon(Icons.help_outline),
+                onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                            title: const Text('Работа с контуром'),
+                            content: const SingleChildScrollView(
+                                child: Text(
+                                    'Точки можно перетаскивать. После замыкания коснитесь линии, чтобы добавить точку. Два пальца — масштаб и перемещение. Отмена возвращает предыдущее действие; подтверждение ещё не отправляет контур на проверку.')),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.pop(c),
+                                  child: const Text('Понятно'))
+                            ]))),
+          ],
           bottom: PreferredSize(
               preferredSize: const Size.fromHeight(52),
               child: SingleChildScrollView(
@@ -803,6 +820,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                     width: drawSize.width,
                     height: drawSize.height,
                     child: Listener(
+                      key: const ValueKey('mask-image-canvas'),
                       behavior: HitTestBehavior.translucent,
                       onPointerDown: (e) {
                         if (_finishing) return;
@@ -835,7 +853,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                       onPointerMove: (e) {
                         if (_finishing ||
                             _inPinch ||
-                            _primaryPointer != e.pointer) { return; }
+                            _primaryPointer != e.pointer) {
+                          return;
+                        }
                         final distance = _tapDownLocal == null
                             ? 0.0
                             : (e.localPosition - _tapDownLocal!).distance;
@@ -978,11 +998,6 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text(
-                  'Точки можно перетаскивать. После замыкания коснитесь линии, '
-                  'чтобы добавить точку. Два пальца — масштаб и перемещение.',
-                  style: TextStyle(fontSize: 13)),
-              const SizedBox(height: 8),
               SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(

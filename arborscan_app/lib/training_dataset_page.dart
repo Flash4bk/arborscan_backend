@@ -199,13 +199,13 @@ class _TrainingDatasetPageState extends State<TrainingDatasetPage> {
                                 setState(() => _filter = filter.key)),
                     ]),
                   if (_items.isEmpty && !_invalid)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 40),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40),
                       child: Center(
                         child: Text(
                           'В архиве пока нет примеров.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppTheme.muted),
+                          style: TextStyle(color: AppTheme.color(context, AppTheme.muted)),
                         ),
                       ),
                     )
@@ -262,9 +262,9 @@ class _SummaryCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Это прежний каталог. Его флаг не допускает запись к новому обучению: нужна принятая ревизия в разделе «Модели и данные».',
-              style: TextStyle(color: AppTheme.muted),
+              style: TextStyle(color: AppTheme.color(context, AppTheme.muted)),
             ),
           ],
         ),
@@ -346,8 +346,8 @@ class _DatasetItemCardState extends State<_DatasetItemCard> {
                       const SizedBox(height: 2),
                       Text(
                         'ID: ${it.analysisId}',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.muted),
+                        style: TextStyle(
+                            fontSize: 12, color: AppTheme.color(context, AppTheme.muted)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -564,7 +564,7 @@ class _ImageTile extends StatelessWidget {
             height: height,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: AppTheme.color(context, AppTheme.border)),
             ),
             clipBehavior: Clip.antiAlias,
             child: Stack(
@@ -585,7 +585,7 @@ class _ImageTile extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.muted,
+                color: AppTheme.color(context, AppTheme.muted),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(

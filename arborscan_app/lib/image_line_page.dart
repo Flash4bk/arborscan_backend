@@ -73,25 +73,36 @@ class _ImageLinePageState extends State<ImageLinePage> {
       canPop: invalid || !_dirty || _allowLeave,
       onPopInvokedWithResult: _confirmLeave,
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.title)),
+        appBar: AppBar(title: const Text('Разметка отрезка'), actions: [
+          IconButton(
+              tooltip: 'Как разметить отрезок',
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (c) => AlertDialog(
+                          title: Text(widget.title),
+                          content: const SingleChildScrollView(
+                              child: Text(
+                                  'Выберите начало или конец и коснитесь фото. Два пальца — масштаб и перемещение. Координаты сохраняются в исходном изображении.')),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(c),
+                                child: const Text('Понятно'))
+                          ]))),
+          IconButton(
+              tooltip: 'Сброс зума',
+              onPressed: () => transform.value = Matrix4.identity(),
+              icon: const Icon(Icons.zoom_out_map)),
+        ]),
         body: invalid
             ? const Center(child: Text('Аккаунт изменился. Закройте разметку.'))
             : Column(children: [
-                ConstrainedBox(
-                    constraints: BoxConstraints(
-                        maxHeight: MediaQuery.sizeOf(context).height * .25),
-                    child: const SingleChildScrollView(
-                        child: Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Text(
-                                'Выберите конец и коснитесь нужного места. Двумя пальцами увеличивайте и перемещайте фото. Можно переставлять точки сколько угодно.')))),
                 SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: SegmentedButton<int>(
                         segments: const [
-                          ButtonSegment(
-                              value: 0, label: Text('Основание / слева')),
-                          ButtonSegment(value: 1, label: Text('Верх / справа'))
+                          ButtonSegment(value: 0, label: Text('Начало')),
+                          ButtonSegment(value: 1, label: Text('Конец'))
                         ],
                         selected: {
                           selected

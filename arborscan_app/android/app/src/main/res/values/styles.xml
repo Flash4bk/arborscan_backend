@@ -4,6 +4,6 @@
     </style>
 
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">#F5F4EA</item>
+        <item name="android:windowBackground">@color/atlas_background</item>
     </style>
 </resources>

@@ -4,6 +4,12 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'report_export_data.dart';
 
+// Approved A “Axis and crown”; exact path from assets/icons/forest_atlas.svg.
+// Kept inline for the background isolate: export never needs a network font/logo.
+const _atlasMarkSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+    '<g fill="none" stroke="#fffdf7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M20 84V39L50 13l30 26v45M34 84V47l16-15 16 15v37M50 32v52M14 58h72"/></g></svg>';
+
 Future<Uint8List> buildReportPdfInWorker(Map<String, dynamic> args) =>
     buildReportPdf(args['data'] as ReportExportData,
         partial: args['partial'] as bool, fontData: args['font'] as ByteData);
@@ -217,9 +223,12 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
                 child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('ArborScan',
-                          style: const pw.TextStyle(
-                              fontSize: 27, color: PdfColors.white)),
+                      pw.Row(children: [
+                        pw.SvgImage(svg: _atlasMarkSvg, width: 30, height: 30),
+                        pw.SizedBox(width: 10),
+                        pw.Text('ArborScan', style: const pw.TextStyle(
+                            fontSize: 27, color: PdfColors.white)),
+                      ]),
                       pw.SizedBox(height: 5),
                       pw.Text('Отчёт об обследовании дерева',
                           style:
