@@ -18,13 +18,18 @@ INVENTORY = '''import pathlib,json,re,hashlib,subprocess
 root=pathlib.Path('/home/arborscan/ops-backups')
 result=[]
 protected=set()
-live=json.loads(subprocess.run(['docker','inspect','arborscan-api','arborscan-api-v4','arborscan-quality-worker'],capture_output=True,text=True,check=True).stdout)
+ids=subprocess.run(['docker','ps','-aq'],capture_output=True,text=True,check=True).stdout.split()
+if not ids:raise ValueError('live_container_inventory_empty')
+live=json.loads(subprocess.run(['docker','inspect',*ids],capture_output=True,text=True,check=True).stdout)
 for row in live:
- paths=row['Config'].get('Labels',{}).get('com.docker.compose.project.config_files','').split(',')+[m['Source'] for m in row.get('Mounts',[])]
+ paths=(row['Config'].get('Labels') or {}).get('com.docker.compose.project.config_files','').split(',')+[m['Source'] for m in row.get('Mounts',[])]
  for path in paths:
   match=re.search(r'/ops-backups/(\\d{8}T\\d{6}Z)(?:/|$)',path)
   if match:protected.add(match.group(1))
 runtime_checked={}
+transition=root/'SELFHOST_TRANSITION_PROTECTION.private.json'
+if transition.is_symlink():raise ValueError('unsafe_transition_protection')
+protection=json.loads(transition.read_bytes()) if transition.is_file() else None
 for p in sorted(root.iterdir()):
  if re.fullmatch(r'\\d{8}T\\d{6}Z',p.name) and (p/'COMPLETE').is_file() and (p/'SHA256SUMS').is_file():
   manifest=(p/'SHA256SUMS').read_text();blocks={}
@@ -37,6 +42,7 @@ for p in sorted(root.iterdir()):
       parts.append({'offset':offset,'size':len(raw),'sha256':hashlib.sha256(raw).hexdigest()});offset+=len(raw)
     blocks[name]=parts
   record={'name':p.name,'manifest':manifest,'blocks':blocks,'bytes':sum(f.stat().st_size for f in p.rglob('*') if f.is_file() and 'restored' not in f.relative_to(p).parts),'protected_sets':sorted(protected)}
+  if protection is not None:record['transition_protection']=protection
   runtime_file=p/'RUNTIME_DEPENDENCIES.json'
   if runtime_file.is_file():
    expected=dict((name,digest) for digest,name in (line.split('  ',1) for line in manifest.splitlines())).get('RUNTIME_DEPENDENCIES.json')
@@ -274,6 +280,45 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
     return 'downloaded_verified'
 
 
+def preserve_transition_history(root, records):
+    """After copying exact originals, install the trusted additive protection.
+
+    A changed existing registry is refused; this is never implicit adoption or
+    permission to rotate the original copies. Other Windows policy stays intact.
+    """
+    from ops_runtime_contract import TRANSITION_FILE, transition_protection
+    from ops_windows_retention import safe_path
+    values = [row['transition_protection'] for row in records if 'transition_protection' in row]
+    if not values:
+        return False
+    value = values[0]
+    if (any(item != value for item in values) or not isinstance(value, dict)
+            or value.get('format') != 1 or value.get('kind') != 'selfhost_backup_transition'
+            or not isinstance(value.get('sets'), list)):
+        raise ValueError('invalid_transition_protection')
+    names = set()
+    for row in value['sets']:
+        if (not isinstance(row, dict) or not NAME.fullmatch(row.get('name', ''))
+                or not re.fullmatch('[a-f0-9]{64}', row.get('manifest_sha256', ''))
+                or row['name'] in names):
+            raise ValueError('invalid_transition_protection')
+        names.add(row['name'])
+        folder = safe_path(root, root / row['name'])
+        if not (folder / 'COMPLETE').is_file() or not matches(folder / 'SHA256SUMS', row['manifest_sha256']):
+            raise ValueError('transition_original_not_verified_locally')
+    target = safe_path(root, root / TRANSITION_FILE)
+    if target.exists():
+        if json.loads(target.read_bytes()) != value:
+            raise ValueError('existing_transition_protection_preserved')
+    else:
+        partial = safe_path(root, target.with_name(target.name + '.writing'))
+        with partial.open('w', encoding='utf-8') as output:
+            json.dump(value, output, sort_keys=True); output.flush(); os.fsync(output.fileno())
+        os.replace(partial, target)
+    transition_protection(root)
+    return True
+
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--root',default=r'D:\ArborScanBackups')
@@ -355,11 +400,13 @@ def main():
                         log('retry_transfer',backup=record['name'],attempt=attempt+2)
                         time.sleep(5)
                 log(outcome,backup=record['name'])
-            # Rotation is available only after an all-three-service native
+            preserve_transition_history(root, records)
+            # Rotation is available only after a full native/runtime
             # replacement and SHA-addressed runtime readback. Old unadopted
             # manual/historical sets and live Compose dependencies remain pinned.
             latest = records[-1]
-            if set(latest.get('runtime',{}).get('services',[])) == {
+            runtime = latest.get('runtime', {})
+            if runtime.get('selfhost') is True or set(runtime.get('services',[])) == {
                     '/arborscan-api','/arborscan-api-v4','/arborscan-quality-worker'}:
                 from ops_windows_retention import plan, apply
                 proposal = plan(root, latest['name'], latest.get('protected_sets', []))

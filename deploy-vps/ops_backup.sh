@@ -3,5 +3,5 @@
 set -eu
 umask 077
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec python3 "$script_dir/ops_backup_policy.py" run \
+exec python3 "$script_dir/ops_backup_dispatch.py" \
   --root "${ARBORSCAN_BACKUP_DIR:-/home/arborscan/ops-backups}" "$@"

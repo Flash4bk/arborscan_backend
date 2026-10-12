@@ -12,6 +12,9 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
+import tarfile
+
+from ops_runtime_contract import selected_runtime, transition_protection
 
 NAME = re.compile(r'\d{8}T\d{6}Z')
 SHA = re.compile(r'[a-f0-9]{64}')
@@ -89,17 +92,18 @@ def verify_runtime(root, folder, require_auth=False):
     if 'RUNTIME_DEPENDENCIES.json' not in entries:
         raise ValueError('runtime_archives_required')
     runtime = json.loads((folder/'RUNTIME_DEPENDENCIES.json').read_bytes())
-    services = runtime.get('services', sorted(SERVICES - {'/arborscan-api'}))
-    if (runtime.get('format') != 1 or not isinstance(services, list) or
-            len(services) != len(set(services)) or
-            set(services) not in (SERVICES, SERVICES - {'/arborscan-api'})):
-        raise ValueError('invalid_runtime_services')
-    if require_auth and set(services) != SERVICES:
+    contract = selected_runtime(folder, runtime, entries)
+    if contract['selfhost']:
+        from ops_selfhost_backup import verify_set as verify_selfhost, BackupError
+        try:
+            verify_selfhost(folder)
+        except BackupError as error:
+            raise ValueError(str(error)) from None
+        except tarfile.TarError:
+            raise ValueError('invalid_selfhost_archive') from None
+    services = contract['services']
+    if require_auth and not contract['auth_present']:
         raise ValueError('auth_runtime_required')
-    rows = json.loads((folder/'containers.private.json').read_bytes())
-    selected = {row['Name']: row['Image'] for row in rows if row.get('Name') in services}
-    if selected.keys() != set(services) or set(selected.values()) != set(runtime.get('images', {})):
-        raise ValueError('runtime_index_image_mismatch')
     mapping = json.loads((folder/'RELOCATED_RUNTIME.json').read_bytes())
     if mapping.get('format') != 1:
         raise ValueError('invalid_runtime_relocation')
@@ -121,7 +125,8 @@ def verify_runtime(root, folder, require_auth=False):
                 checked[path] = digest(path)
             if checked[path] != expected:
                 raise ValueError('runtime_archive_checksum_mismatch')
-    return {'runtime_services': sorted(services), 'unique_runtime_archives': len(checked)}
+    return {'runtime_services': sorted(services), 'unique_runtime_archives': len(checked),
+            'selfhost': contract['selfhost']}
 
 
 def verify_replacement(root, name):
@@ -154,6 +159,7 @@ def plan(root, replacement, protected=(), retain=14):
     verify_replacement(root, replacement)
     policy_file = root/'WINDOWS_RETENTION_POLICY.private.json'
     adoption = {}
+    transition = transition_protection(root)
     if policy_file.is_file():
         policy = json.loads(safe_path(root, policy_file).read_bytes())
         if policy.get('format') != 1 or policy.get('retention') != 14:
@@ -195,6 +201,10 @@ def plan(root, replacement, protected=(), retain=14):
             continue
         manifest_sha = digest(folder/'SHA256SUMS')
         reasons = []
+        if folder.name in transition:
+            if transition[folder.name] != manifest_sha:
+                raise ValueError('transition_protection_manifest_mismatch')
+            reasons.append('selfhost_transition_original')
         for pin in ('PINNED', 'DO_NOT_ROTATE', 'ROLLBACK_PIN'):
             if (folder/pin).exists():
                 reasons.append(pin)
@@ -214,12 +224,14 @@ def plan(root, replacement, protected=(), retain=14):
         rows.append({'name':folder.name,'manifest_sha256':manifest_sha,'verified':True,
                      'protected':reasons,'automatic':automatic})
     verified = [r for r in rows if r['verified']]
-    excess = max(0, len(verified)-retain)
+    pool = [r for r in verified if 'selfhost_transition_original' not in r['protected']]
+    excess = max(0, len(pool)-retain)
     eligible = [r for r in verified if not r['protected'] and r['name'] < replacement]
     # An older replacement cannot authorize deletion of a newer completed set.
     if len(eligible) < excess:
         raise ValueError('rotation_blocked_all_remaining_sets_protected')
     return {'format':1,'replacement':replacement,'retain':retain,'before':len(verified),
+            'retention_pool_sets':len(pool),'transition_protected_sets':len(verified)-len(pool),
             'delete':[r['name'] for r in eligible[:excess]],'sets':rows}
 
 

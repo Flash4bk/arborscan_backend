@@ -14,7 +14,10 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
+
+from ops_runtime_contract import selected_runtime, selfhost_inventory, transition_protection
 
 NAME = re.compile(r'\d{8}T\d{6}Z')
 SHA = re.compile(r'[a-f0-9]{64}')
@@ -105,6 +108,14 @@ def verify_set(folder, require_native=False, require_runtime=False, complete=Tru
         runtime = json.loads(safe_file(folder, 'RUNTIME_DEPENDENCIES.json').read_text())
         dependencies = verify_runtime(folder, runtime)
         services = runtime.get('services', sorted(RUNTIME_SERVICES))
+        if runtime.get('selfhost') is True:
+            from ops_selfhost_backup import verify_set as verify_selfhost, BackupError
+            try:
+                verify_selfhost(folder)
+            except BackupError as error:
+                raise PolicyError(str(error)) from None
+            except tarfile.TarError:
+                raise PolicyError('invalid_selfhost_archive') from None
     elif require_runtime:
         raise PolicyError('runtime_archives_required')
     return {'name': folder.name, 'manifest_sha256': digest(folder / 'SHA256SUMS'),
@@ -121,6 +132,12 @@ AUTH_SERVICE = '/arborscan-api'
 
 def runtime_services(folder, include_auth=False):
     rows = json.loads(safe_file(folder, 'containers.private.json').read_text())
+    if (Path(folder) / 'SELFHOST_BACKUP.json').exists():
+        try:
+            names, _ = selfhost_inventory(rows)
+        except ValueError as error:
+            raise PolicyError(str(error)) from None
+        return set(names)
     names = set(RUNTIME_SERVICES)
     if include_auth and any(row.get('Name') == AUTH_SERVICE for row in rows):
         names.add(AUTH_SERVICE)
@@ -129,6 +146,14 @@ def runtime_services(folder, include_auth=False):
 
 def runtime_images(folder, services=None):
     rows = json.loads(safe_file(folder, 'containers.private.json').read_text())
+    if (Path(folder) / 'SELFHOST_BACKUP.json').exists():
+        try:
+            names, images = selfhost_inventory(rows)
+        except ValueError as error:
+            raise PolicyError(str(error)) from None
+        if services is not None and set(services) != set(names):
+            raise PolicyError('invalid_runtime_services')
+        return images
     services = RUNTIME_SERVICES if services is None else set(services)
     if services not in (RUNTIME_SERVICES, RUNTIME_SERVICES | {AUTH_SERVICE}):
         raise PolicyError('invalid_runtime_services')
@@ -144,11 +169,12 @@ def runtime_images(folder, services=None):
 def verify_runtime(folder, runtime):
     # Historical format-1 sets cover v4/worker only. The additive services field
     # makes the auth image mandatory in new snapshots without rewriting history.
-    services = runtime.get('services')
-    if services is not None and (not isinstance(services, list) or len(services) != len(set(services))):
-        raise PolicyError('invalid_runtime_services')
-    if runtime.get('format') != 1 or set(runtime.get('images', {})) != runtime_images(folder, services):
-        raise PolicyError('runtime_index_image_mismatch')
+    try:
+        covered = (manifest(folder) if runtime.get('selfhost') is True
+                   and (Path(folder) / 'SHA256SUMS').exists() else set())
+        selected_runtime(folder, runtime, covered)
+    except ValueError as error:
+        raise PolicyError(str(error)) from None
     checked = {}
     for assets in runtime['images'].values():
         if not isinstance(assets, list) or not assets:
@@ -238,6 +264,10 @@ def inventory(root, live=()):
     if registry.get('format') != 1:
         raise PolicyError('invalid_automatic_registry')
     rows = []
+    try:
+        transition = transition_protection(root)
+    except ValueError as error:
+        raise PolicyError(str(error)) from None
     references = list(live() if callable(live) else live)
     for folder in sorted(root.iterdir()):
         if not NAME.fullmatch(folder.name):
@@ -263,6 +293,10 @@ def inventory(root, live=()):
         try:
             checked = verify_set(folder)
             row.update(checked); row['valid'] = True
+            if folder.name in transition:
+                if transition[folder.name] != checked['manifest_sha256']:
+                    raise PolicyError('transition_protection_manifest_mismatch')
+                row['protected'].append('selfhost_transition_original')
             row['bytes'] = sum(p.stat().st_size for p in folder.rglob('*') if p.is_file())
             references.extend(checked['dependencies'])
             marker = read_json(folder / 'AUTO_BACKUP.json', {})
@@ -297,11 +331,13 @@ def inventory(root, live=()):
 def plan(root, live=(), retain=RETENTION, new_name=None):
     rows = inventory(root, live)
     valid = [row for row in rows if row['valid']]
-    excess = max(0, len(valid) - retain)
+    pool = [row for row in valid if 'selfhost_transition_original' not in row['protected']]
+    excess = max(0, len(pool) - retain)
     eligible = [row for row in valid if row['automatic'] and not row['protected'] and row['name'] != new_name]
     selected = eligible[:excess]
     unknown_dependencies = any('dependency_inventory_unreadable' in row['protected'] for row in rows)
-    return {'retain': retain, 'verified_sets': len(valid), 'excess': excess,
+    return {'retain': retain, 'verified_sets': len(valid), 'retention_pool_sets': len(pool),
+            'transition_protected_sets': len(valid) - len(pool), 'excess': excess,
             'candidates': [{'name': row['name'], 'reason': 'oldest_verified_automatic_unpinned',
                             'manifest_sha256': row['manifest_sha256'], 'bytes': row['bytes']}
                            for row in selected],
@@ -377,6 +413,8 @@ def record_success(root, name, operation_id, checked, deleted, proposal, replaye
         'last_integrity_check_at_utc': now.isoformat(),
         'manifest_sha256': checked['manifest_sha256'],
         'retained_verified_sets': proposal['verified_sets'] - len(deleted),
+        'retained_rotation_pool_sets': proposal.get('retention_pool_sets', proposal['verified_sets']) - len(deleted),
+        'transition_protected_sets': proposal.get('transition_protected_sets', 0),
         'deleted': list(dict.fromkeys([*history, *deleted]))})
 
 
@@ -440,6 +478,10 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
             raise PolicyError('runtime_archive_index_missing')
         runtime = {'format': 1, 'services': sorted(services),
                    'images': {image: runtime['images'][image] for image in selected}}
+        if (attempt / 'SELFHOST_BACKUP.json').exists():
+            runtime['selfhost'] = True
+            # Cover the marker before validating the additive runtime branch.
+            write_manifest(attempt)
         verify_runtime(attempt, runtime)
         atomic_json(attempt / 'RUNTIME_DEPENDENCIES.json', runtime)
         atomic_json(attempt / 'AUTO_BACKUP.json', {'format': 1, 'kind': 'scheduled_backup',
