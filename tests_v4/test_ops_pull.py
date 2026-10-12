@@ -120,11 +120,14 @@ class InventoryRetryTest(unittest.TestCase):
         self.assertNotIn('/private/location',json.dumps(self.logs))
         self.assertNotIn('private stdout',json.dumps(self.logs))
 
-    def test_timeout_is_retried_and_timeout_output_is_redacted(self):
+    def test_timeout_is_not_retried_because_remote_work_can_outlive_ssh(self):
         timeout=subprocess.TimeoutExpired(self.command,180,output=b'PRIVATE_SENTINEL',stderr=b'/private/location')
-        self.assertEqual(self.read([timeout,self.success()]),self.record)
-        self.assertEqual(len(self.calls),2)
-        self.assertEqual(self.logs,[{'event':'inventory_attempt_failed','attempt':1,'categories':['timeout']}])
+        with self.assertRaisesRegex(RuntimeError,'^ssh_inventory_timeout_remote_status_unknown$'):
+            self.read([timeout,self.success()])
+        self.assertEqual(len(self.calls),1)
+        self.assertFalse(self.waits)
+        self.assertEqual(self.logs,[{'event':'inventory_attempt_failed','attempt':1,'categories':['timeout'],
+                                    'remote_status':'unknown_no_retry'}])
         self.assertNotIn('PRIVATE_SENTINEL',json.dumps(self.logs))
 
     def test_success_is_not_repeated(self):

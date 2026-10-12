@@ -17,6 +17,7 @@ NAME = re.compile(r'\d{8}T\d{6}Z')
 INVENTORY = '''import pathlib,json,re,hashlib,subprocess
 root=pathlib.Path('/home/arborscan/ops-backups')
 result=[]
+known=globals().get('KNOWN_LOCAL_MANIFESTS',{})
 protected=set()
 ids=subprocess.run(['docker','ps','-aq'],capture_output=True,text=True,check=True).stdout.split()
 if not ids:raise ValueError('live_container_inventory_empty')
@@ -32,10 +33,14 @@ if transition.is_symlink():raise ValueError('unsafe_transition_protection')
 protection=json.loads(transition.read_bytes()) if transition.is_file() else None
 for p in sorted(root.iterdir()):
  if re.fullmatch(r'\\d{8}T\\d{6}Z',p.name) and (p/'COMPLETE').is_file() and (p/'SHA256SUMS').is_file():
-  manifest=(p/'SHA256SUMS').read_text();blocks={}
+  raw_manifest=(p/'SHA256SUMS').read_bytes();manifest=(p/'SHA256SUMS').read_text();blocks={}
+  # Existing local bytes are still fully verified by transfer(). These hints
+  # only avoid generating network-resume blocks which cannot be used for an
+  # already present, unchanged manifest; they are not a source-integrity proof.
+  already_local=known.get(p.name)==hashlib.sha256(raw_manifest).hexdigest()
   for line in manifest.splitlines():
    digest,name=line.split('  ',1);name=str(pathlib.PurePosixPath(name));file=p/name
-   if file.stat().st_size>32*1024**2:
+   if not already_local and file.stat().st_size>32*1024**2:
     parts=[];offset=0
     with file.open('rb') as stream:
      while raw:=stream.read(4*1024**2):
@@ -83,21 +88,51 @@ def matches(path, digest):
         return hashlib.file_digest(f, 'sha256').hexdigest() == digest
 
 
-def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None):
+def known_local_manifests(root):
+    """Cheap hints only. Transfer still reads every covered local file's SHA."""
+    root = Path(root)
+    from ops_windows_retention import safe_path
+    result = {}
+    for folder in sorted(root.iterdir()):
+        if not NAME.fullmatch(folder.name):
+            continue
+        folder = safe_path(root, folder)
+        manifest = safe_path(root, folder / 'SHA256SUMS')
+        complete = safe_path(root, folder / 'COMPLETE')
+        if complete.is_file() and manifest.is_file() and manifest.stat().st_size <= 4 * 1024**2:
+            result[folder.name] = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    return result
+
+
+def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None,
+                   known=None, timeout=180):
     """At most three read-only attempts; never log private subprocess output.
 
-    Each SSH invocation is bounded to 180 seconds. Authentication and host-key
+    Each SSH invocation is bounded to 180 seconds (600 for explicit recovery).
+    A timed-out remote read may survive SSH termination, so it is not retried.
+    Authentication and host-key
     arguments remain identical; retries cannot authorize an untrusted peer.
     Invalid successful responses are validation failures, not transport retries.
     """
     run = subprocess.run if run is None else run
     sleep = time.sleep if sleep is None else sleep
+    if type(timeout) is not int or timeout not in (180, 600):
+        raise ValueError('bounded_inventory_timeout_required')
+    if known is not None and (not isinstance(known, dict) or any(
+            not isinstance(name, str) or not NAME.fullmatch(name)
+            or not isinstance(sha, str) or not re.fullmatch('[a-f0-9]{64}', sha)
+            for name, sha in known.items())):
+        raise ValueError('invalid_local_manifest_hint')
+    source = INVENTORY if not known else 'KNOWN_LOCAL_MANIFESTS = ' + repr(dict(sorted(known.items()))) + '\n' + INVENTORY
     for attempt in range(1, 4):
         try:
-            result = run(command, input=INVENTORY.encode(), capture_output=True,
-                         timeout=180, **(hidden or {}))
+            result = run(command, input=source.encode(), capture_output=True,
+                         timeout=timeout, **(hidden or {}))
         except subprocess.TimeoutExpired:
-            fields = {'categories': ['timeout']}
+            if log:
+                log('inventory_attempt_failed', attempt=attempt,
+                    categories=['timeout'], remote_status='unknown_no_retry')
+            raise RuntimeError('ssh_inventory_timeout_remote_status_unknown') from None
         except OSError:
             if log:
                 log('inventory_attempt_failed', attempt=attempt,
@@ -326,6 +361,8 @@ def main():
     parser.add_argument('--port',type=int,default=22)
     parser.add_argument('--retention-dry-run',action='store_true',
                         help='Verify transfer and save rotation plan without removing sets')
+    parser.add_argument('--inventory-timeout',type=int,choices=(180,600),default=180,
+                        help='Bounded initial recovery allowance; timed-out reads are never retried automatically')
     args=parser.parse_args()
     from ops_windows_retention import canonical_root
     root=canonical_root(args.root)
@@ -348,7 +385,8 @@ def main():
             contain_children()
             hidden={'creationflags':subprocess.CREATE_NO_WINDOW}
             records=read_inventory([str(system/'ssh.exe'),*options,'-p',str(args.port),
-                                    args.host,'python3 -'],hidden=hidden,log=log)
+                                    args.host,'python3 -'],hidden=hidden,log=log,
+                                    known=known_local_manifests(root),timeout=args.inventory_timeout)
             def delta(record,filename,target):
                 import gzip
                 from ops_delta_copy import reconstruct
@@ -420,7 +458,8 @@ def main():
             return 0
         except Exception as error:
             # Never print subprocess output, connection details, or private paths.
-            safe=str(error) if str(error) in ('ssh_inventory_failed','ssh_inventory_invalid_response','transfer_interrupted',
+            safe=str(error) if str(error) in ('ssh_inventory_failed','ssh_inventory_invalid_response',
+                'ssh_inventory_timeout_remote_status_unknown','transfer_interrupted',
                 'transfer_stalled','checksum_mismatch','insufficient_disk','existing_set_manifest_changed') else 'validation_or_local_error'
             log('failed',error_type=type(error).__name__,reason=safe)
             return 1
