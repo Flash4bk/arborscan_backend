@@ -1,0 +1,125 @@
+{
+  "checked_at_utc": "2026-10-12T21:33:21.048414+00:00",
+  "task": {
+    "state": "Ready",
+    "last_run_utc": "2026-10-12T21:26:14.0000000Z",
+    "last_result": 0,
+    "next_run_utc": "2026-10-13T05:00:00.0000000Z",
+    "definition_sha256": "8d91e857d7d6a502409742b1140142718d286e322e0526b81ecf0e5671fb3344"
+  },
+  "started_at_utc": "2026-10-12T21:26:14.1086081Z",
+  "task_configuration_unchanged": true,
+  "inventory_timeout_seconds": 180,
+  "events": [
+    {
+      "at": "2026-10-12T21:26:14.742823+00:00",
+      "event": "started"
+    },
+    {
+      "at": "2026-10-12T21:27:43.586368+00:00",
+      "event": "verified_existing",
+      "backup": "20260926T202023Z"
+    },
+    {
+      "at": "2026-10-12T21:27:45.512516+00:00",
+      "event": "verified_existing",
+      "backup": "20260928T031731Z"
+    },
+    {
+      "at": "2026-10-12T21:27:47.544490+00:00",
+      "event": "verified_existing",
+      "backup": "20260928T133059Z"
+    },
+    {
+      "at": "2026-10-12T21:27:49.478154+00:00",
+      "event": "verified_existing",
+      "backup": "20260928T135802Z"
+    },
+    {
+      "at": "2026-10-12T21:27:51.561761+00:00",
+      "event": "verified_existing",
+      "backup": "20260929T205205Z"
+    },
+    {
+      "at": "2026-10-12T21:27:53.576329+00:00",
+      "event": "verified_existing",
+      "backup": "20261001T201335Z"
+    },
+    {
+      "at": "2026-10-12T21:27:55.636975+00:00",
+      "event": "verified_existing",
+      "backup": "20261004T031919Z"
+    },
+    {
+      "at": "2026-10-12T21:27:57.876861+00:00",
+      "event": "verified_existing",
+      "backup": "20261005T032052Z"
+    },
+    {
+      "at": "2026-10-12T21:28:00.159170+00:00",
+      "event": "verified_existing",
+      "backup": "20261006T131325Z"
+    },
+    {
+      "at": "2026-10-12T21:28:16.992893+00:00",
+      "event": "verified_existing",
+      "backup": "20261006T195518Z"
+    },
+    {
+      "at": "2026-10-12T21:28:33.521849+00:00",
+      "event": "verified_existing",
+      "backup": "20261008T032219Z"
+    },
+    {
+      "at": "2026-10-12T21:28:50.846142+00:00",
+      "event": "verified_existing",
+      "backup": "20261008T141824Z"
+    },
+    {
+      "at": "2026-10-12T21:29:08.296730+00:00",
+      "event": "verified_existing",
+      "backup": "20261009T032420Z"
+    },
+    {
+      "at": "2026-10-12T21:29:25.936508+00:00",
+      "event": "verified_existing",
+      "backup": "20261010T032353Z"
+    },
+    {
+      "at": "2026-10-12T21:29:55.480300+00:00",
+      "event": "verified_existing",
+      "backup": "20261012T183850Z"
+    },
+    {
+      "at": "2026-10-12T21:30:25.463711+00:00",
+      "event": "verified_existing",
+      "backup": "20261012T193726Z"
+    },
+    {
+      "at": "2026-10-12T21:32:55.336272+00:00",
+      "event": "retention_complete",
+      "deleted": [],
+      "retained_verified_sets": 19
+    },
+    {
+      "at": "2026-10-12T21:32:55.336694+00:00",
+      "event": "success",
+      "complete_sets": 16
+    }
+  ],
+  "complete_windows_sets": 19,
+  "transition_protected_sets": 14,
+  "source_manifests_with_local_crlf_binding": 5,
+  "protected_payload_and_outer_manifest_rewrites": false,
+  "verification_metadata_refreshed": true,
+  "retention_plan": {
+    "before": 19,
+    "retain": 14,
+    "retention_pool_sets": 5,
+    "transition_protected_sets": 14,
+    "delete": []
+  },
+  "disk_free_bytes": 45120217088,
+  "same_day_vps_systemd_proof": "systemd-success.json",
+  "future_calendar_execution_claimed": false
+}

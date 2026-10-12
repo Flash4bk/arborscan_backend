@@ -1,0 +1,13 @@
+{
+  "reason": "transition_original_not_verified_locally",
+  "counts": {
+    "originals": 14,
+    "raw_equal": 9,
+    "normalized_equal": 14,
+    "complete": 14,
+    "crlf": 5,
+    "other_mismatch": 0
+  },
+  "existing_registry": false,
+  "backup_bytes_changed": false
+}

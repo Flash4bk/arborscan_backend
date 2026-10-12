@@ -1,0 +1,84 @@
+{
+  "baseline_ops_suite": {
+    "passed": 264,
+    "skipped": 3,
+    "subtests_passed": 97,
+    "environment": "Windows Python 3.14"
+  },
+  "installer_windows": {
+    "passed": 29,
+    "skipped": 1,
+    "source_commit": "983706f9917bf9d9f4334ffbc1ac5b668f151984"
+  },
+  "reader_windows": {
+    "passed": 63,
+    "subtests_passed": 5,
+    "source_commit": "31967af38f36bf08b22326a384e83a5b3824123e"
+  },
+  "runtime_cache_windows": {
+    "passed": 84,
+    "skipped": 9,
+    "source_commit": "ddb7cc21f46182585a37f9459a7de13051aeee2c",
+    "windows_behavior": "full uncached SHA reads"
+  },
+  "runtime_cache_linux": {
+    "source_commit": "ddb7cc21f46182585a37f9459a7de13051aeee2c",
+    "environment": "VPS private test directory, Python 3.12; synthetic fixtures only",
+    "command": "python -m pytest -q -p no:cacheprovider tests_v4/test_ops_runtime_archive_cache.py tests_v4/test_ops_backup_policy.py tests_v4/test_ops_selfhost_readers.py tests_v4/test_ops_selfhost_backup.py tests_v4/test_ops_windows_runtime_retention.py",
+    "passed": 111,
+    "skipped": 3,
+    "skipped_reasons": [
+      "Windows producer fallback",
+      "two Windows junction-only tests"
+    ],
+    "cache_integrity_cases": "shared read once, separate invocation rehash, mutation/replacement/permissions refusal, uncached destructive-candidate check"
+  },
+  "installer_linux": {
+    "source_commit": "ddb7cc21f46182585a37f9459a7de13051aeee2c",
+    "command": "python -m pytest -q -rs -p no:cacheprovider tests_v4/test_ops_install_selfhost_backup.py",
+    "passed": 30,
+    "skipped": 0,
+    "unix_modes_checked": true
+  },
+  "test_harness_omissions_resolved": [
+    "pytest py.py shim missing in initial upload",
+    "ops_backup.sh missing in initial Python-only test bundle; thirty fixture errors corrected by adding exact Git shell and rerunning those tests"
+  ],
+  "production_files_used_as_test_fixtures": false,
+  "production_service_modified_by_tests": false,
+  "suites_overlap_do_not_sum_as_unique_tests": true,
+  "new_flutter_or_phone_tests_claimed": false,
+  "reader_path_guards_windows": {
+    "command": "python -m pytest -q -p no:cacheprovider tests_v4/test_ops_pull_path_guards.py tests_v4/test_ops_pull.py tests_v4/test_ops_pull_inventory_hints.py tests_v4/test_ops_selfhost_readers.py tests_v4/test_ops_windows_runtime_retention.py tests_v4/test_ops_delta.py",
+    "source_commit": "073b17d644cb87e65084d7e9d06a2e8df1df74e5",
+    "subtests_passed": 5,
+    "environment": "Windows Python 3.14",
+    "real_symlink_junction_refusals_before_download": true,
+    "passed": 74,
+    "legitimate_resume_checked": true
+  },
+  "reader_write_guards_windows": {
+    "hardlink_defect_reproduced_only_in_isolated_temporary_data": true,
+    "protected_production_files_modified_by_tests": false,
+    "passed": 86,
+    "environment": "Windows Python 3.14",
+    "readonly_shared_hardlinks_preserved": true,
+    "subtests_passed": 5,
+    "source_commit": "6456170b17dd3e4b2431bdc3f9032c5b8467b138",
+    "real_symlink_junction_hardlink_checked": true,
+    "command": "python -m pytest -q -p no:cacheprovider tests_v4/test_ops_pull_path_guards.py tests_v4/test_ops_pull.py tests_v4/test_ops_pull_inventory_hints.py tests_v4/test_ops_selfhost_readers.py tests_v4/test_ops_windows_runtime_retention.py tests_v4/test_ops_delta.py"
+  },
+  "reader_crlf_final_windows": {
+    "source_commit": "e65d836717020b732f508e4b6a55eed8121a854b",
+    "environment": "Windows Python 3.14",
+    "passed": 108,
+    "subtests_passed": 5,
+    "command": "python -m pytest -q -p no:cacheprovider tests_v4/test_ops_pull_path_guards.py tests_v4/test_ops_pull.py tests_v4/test_ops_pull_inventory_hints.py tests_v4/test_ops_selfhost_readers.py tests_v4/test_ops_windows_runtime_retention.py tests_v4/test_ops_delta.py tests_v4/test_ops_transition_crlf.py",
+    "exact_final_state_checked": true,
+    "mixed_fourteen_originals_nine_lf_five_crlf": true,
+    "covered_sha_required_on_adoption_and_repeat": true,
+    "protected_data_or_manifests_rewritten": false,
+    "actual_windows_symlink_junction_hardlink_checks": true,
+    "independent_code_review": "no blocking defects found; read-only review, not another test run"
+  }
+}

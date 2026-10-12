@@ -1,0 +1,22 @@
+{
+  "anonymous_401_json": "passed",
+  "bounded_real_tree_analysis": "passed",
+  "capabilities_versions": [
+    1,
+    1
+  ],
+  "demo_password_login": "passed",
+  "health_v3_v4": "passed",
+  "model_sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+  "moderated_contours_read": 3,
+  "normal_user_admin_refused": "passed",
+  "owner_isolation": "passed",
+  "phone_ui_checked": false,
+  "photo_mask_measurements_identical": true,
+  "public_https_normal_tls": "passed",
+  "real_user_records_changed": false,
+  "save_idempotency_readback": "passed",
+  "saved_reference_versions_read": 2,
+  "training_started": false,
+  "wrong_password_401_json": "passed"
+}

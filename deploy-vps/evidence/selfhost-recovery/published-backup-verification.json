@@ -1,0 +1,12 @@
+{
+  "event": "published_local_backup_attempt_retained",
+  "service_before_install": "failed_timeout",
+  "name": "20261012T193726Z",
+  "operation_id": "selfhost-daily-2026-10-12",
+  "retained_attempt": "active-backup.local-retained-20261012T203914Z.private.json",
+  "backup_manifest_sha256": "7f2a73ab64ca22813ccd9aa3d1f69ca1c48d17c59f24b7c7a2a43a132ba55a6e",
+  "native_postgres_verified": true,
+  "runtime_archives_verified": true,
+  "backup_content_changed": false,
+  "same_operation_replay_supported": true
+}

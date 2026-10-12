@@ -1,0 +1,24 @@
+{
+  "source_commit": "682ec13bd6e896d656153669c1f85ff1e996b242",
+  "previous_scripts_sha256": {
+    "ops_pull_backups.py": "fd7c4ff1ee5db80f9e23de349557e71fbe63dc8253e43dd83ef49ff725ae6441",
+    "ops_verify_offsite.py": "3e9029ffc303e871f1c7a78fda0c650a862c20b35a7c202965852c46dca1e108",
+    "ops_windows_job.py": "5a042b7e709d0d643d7a84e052f5c3290377acf57165efa70e8f51c8273f1dd7",
+    "ops_delta_copy.py": "b19caadc0a8aa02c39fce0a9e1aa0ad684264ce3edab03ba723bc6d5278eb059",
+    "ops_windows_retention.py": "3c6d6d31557b73429387bc08a67f4a5eddfc5b1d58572770b1bddab79638149a"
+  },
+  "installed_scripts_sha256": {
+    "ops_pull_backups.py": "7d2bbeee01ff6c4534333d53f4c0892ac44136e5a622a5c780542bb360256352",
+    "ops_verify_offsite.py": "3e9029ffc303e871f1c7a78fda0c650a862c20b35a7c202965852c46dca1e108",
+    "ops_windows_job.py": "5a042b7e709d0d643d7a84e052f5c3290377acf57165efa70e8f51c8273f1dd7",
+    "ops_delta_copy.py": "b19caadc0a8aa02c39fce0a9e1aa0ad684264ce3edab03ba723bc6d5278eb059",
+    "ops_windows_retention.py": "e8c5429facac8a13a4d59849cbde2dd444ee5b5fc08b012da8cee820db903b81",
+    "ops_runtime_contract.py": "fad605f2428701f2300dab999dcb949008d1dfbc0259571721051cb59a37e5c9",
+    "ops_selfhost_backup.py": "245aecc851b33e60593d10b651d3305271c59c9a3ddd24cd38380a97e5739a89",
+    "ops_backup_policy.py": "49dc6f5831672f4df54aa6311f1a657b792812f7b6ce37cb5db6d104befe2b3f",
+    "ops_verify_restore.py": "52ea215bb460fc3d73863a1e846ed73f61be9288b075448006d12f57f9201312"
+  },
+  "rollback_directory": "D:\\ArborScanBackups\\tools\\pre-selfhost-20261012T191315Z",
+  "task_configuration_changed": false,
+  "backup_files_changed": false
+}

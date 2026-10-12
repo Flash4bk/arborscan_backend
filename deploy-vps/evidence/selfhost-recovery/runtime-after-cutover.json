@@ -1,0 +1,68 @@
+{
+  "checked_at_utc": "2026-10-12T19:33:16.170002+00:00",
+  "services": [
+    {
+      "service": "v3",
+      "image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+      "running": true,
+      "health": "healthy",
+      "restart": "unless-stopped"
+    },
+    {
+      "service": "api",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "running": true,
+      "health": "healthy",
+      "restart": "unless-stopped"
+    },
+    {
+      "service": "db",
+      "image": "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+      "running": true,
+      "health": "healthy",
+      "restart": "unless-stopped"
+    },
+    {
+      "service": "gateway",
+      "image": "sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "running": true,
+      "health": null,
+      "restart": "unless-stopped"
+    },
+    {
+      "service": "rest",
+      "image": "sha256:c9dc201e555f5d8e37e7f39cdd4df0229774996e213bfd7de8d10ac609030f2c",
+      "running": true,
+      "health": null,
+      "restart": "unless-stopped"
+    },
+    {
+      "service": "storage",
+      "image": "sha256:b393ac5759a45a934557a150ecdb97157bbdd419e0193e4c5dc5770b9ddd7ee1",
+      "running": true,
+      "health": null,
+      "restart": "unless-stopped"
+    },
+    {
+      "service": "worker",
+      "image": "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "running": false,
+      "health": null,
+      "restart": "no"
+    }
+  ],
+  "last_20_minutes_log_summary": [
+    {
+      "container": "arborscan-api",
+      "log_lines": 39,
+      "traceback_occurrences": 0,
+      "http_500_occurrences": 0
+    },
+    {
+      "container": "arborscan-api-v4",
+      "log_lines": 76,
+      "traceback_occurrences": 0,
+      "http_500_occurrences": 0
+    }
+  ]
+}

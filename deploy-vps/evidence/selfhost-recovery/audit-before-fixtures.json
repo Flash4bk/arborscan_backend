@@ -1,0 +1,111 @@
+{
+  "api_health": "passed",
+  "authorization_without_token": "refused",
+  "checked_at": "2026-10-12T18:15:57.415104+00:00",
+  "database": {
+    "accounts_password_hashes_sessions_owners": "identical",
+    "fingerprint_sha256": "6c3543762862ec4faeddc83ed527cea69f8a8d99b2dbfeba442cd01151dcd0ce",
+    "reports_contours_decisions_jobs": "identical",
+    "rows": 221,
+    "schema_versions": {
+      "contours": 1,
+      "history": 1,
+      "quality": 1
+    },
+    "tables": 15
+  },
+  "exact_images_policy_models": "identical",
+  "indexed_file_integrity": {
+    "indexed_contour_pairs_decoded": 16,
+    "report_photos_decoded": 19,
+    "stored_payload_url_categories": {
+      "other_external": 20
+    }
+  },
+  "production_modified": false,
+  "running_services": [
+    {
+      "health": "healthy",
+      "image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+      "running": true,
+      "service": "api"
+    },
+    {
+      "health": "healthy",
+      "image": "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+      "running": true,
+      "service": "db"
+    },
+    {
+      "health": null,
+      "image": "sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "running": true,
+      "service": "gateway"
+    },
+    {
+      "health": null,
+      "image": "sha256:c9dc201e555f5d8e37e7f39cdd4df0229774996e213bfd7de8d10ac609030f2c",
+      "running": true,
+      "service": "rest"
+    },
+    {
+      "health": null,
+      "image": "sha256:b393ac5759a45a934557a150ecdb97157bbdd419e0193e4c5dc5770b9ddd7ee1",
+      "running": true,
+      "service": "storage"
+    },
+    {
+      "health": "healthy",
+      "image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+      "running": true,
+      "service": "v3"
+    }
+  ],
+  "source_user_data_printed": false,
+  "storage": {
+    "all_object_sha256": "identical",
+    "bytes": 759394548,
+    "manifest_sha256": "f411b000bb9b18810518decc678bc1733dcc4848e864c5ae0504fffdc456c2f6",
+    "objects": 2252
+  },
+  "storage_database": {
+    "all_columns_including_owners_versions_timestamps_metadata": "identical",
+    "buckets": 9,
+    "checked_phase": "before_http_reads_and_before_demo_writes",
+    "fingerprint_sha256": "c884a80d9945e2b02fc371696f65847ab3e709e9f95e92c54eedcb5abc275909",
+    "objects": 2252
+  },
+  "stored_url_compatibility": {
+    "absolute_urls": 36,
+    "by_source": {
+      "analyses": {
+        "google_avatar": 13
+      },
+      "auth_sessions": {},
+      "contour_revisions": {},
+      "dataset_builds": {},
+      "ml_active_models": {},
+      "ml_jobs": {},
+      "ml_models": {},
+      "ml_snapshots": {},
+      "ml_taxon_labels": {},
+      "model_versions": {},
+      "predictions": {},
+      "report_versions": {
+        "other_external": 20
+      },
+      "training_queue": {},
+      "training_state": {},
+      "users": {
+        "google_avatar": 3
+      },
+      "users.avatar_url": {
+        "google_avatar": 3
+      }
+    },
+    "client_absolute_url_behavior": "preserved_by_ApiConfig.imageUrl",
+    "current_client_network_images": "profile_avatar_only; report_and_contour_images_use_base64",
+    "old_supabase_avatar_urls": 0,
+    "old_supabase_urls": 0
+  }
+}

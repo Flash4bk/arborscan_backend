@@ -1,0 +1,16 @@
+{
+  "event": "selfhost_backup_tools_installed",
+  "rollback_directory": "/home/arborscan/selfhost-20261012T140855Z/backup-tools-rollback-20261012T203949Z",
+  "source_files_sha256": {
+    "ops_backup.sh": "92ca7bddaf5d0eec0631eb746f5dbc57538819bea3784ac2d1a3f68de4258852",
+    "ops_backup_dispatch.py": "1ce1940e2c5e66dd6c8427bdd8f1d5b64e416d5dd2d7193fc51eaa1e63f207e5",
+    "ops_backup_policy.py": "51b6a4646971cf2562ba3e5c036b2de298cbf8232f1d6739c46032609880ff34",
+    "ops_runtime_contract.py": "fad605f2428701f2300dab999dcb949008d1dfbc0259571721051cb59a37e5c9",
+    "ops_selfhost_backup.py": "245aecc851b33e60593d10b651d3305271c59c9a3ddd24cd38380a97e5739a89",
+    "ops_verify_restore.py": "52ea215bb460fc3d73863a1e846ed73f61be9288b075448006d12f57f9201312"
+  },
+  "systemd_changed": false,
+  "service_started": false,
+  "backup_sets_changed": false,
+  "source_commit": "ddb7cc21f46182585a37f9459a7de13051aeee2c"
+}

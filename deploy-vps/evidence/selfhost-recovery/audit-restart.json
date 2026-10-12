@@ -1,0 +1,6 @@
+{
+  "smoke": {
+    "new_test_data": true,
+    "restart_password_login_versions_contours": "passed"
+  }
+}

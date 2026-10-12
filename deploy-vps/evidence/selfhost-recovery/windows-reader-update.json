@@ -1,0 +1,9 @@
+{
+  "source_commit": "31967af38f36bf08b22326a384e83a5b3824123e",
+  "installed_reader_sha256": "a90d8caec5fc4b0c89a3ccf698a06ccbb3594e38b9712404666d0f48a37fb30c",
+  "previous_reader_sha256": "7d2bbeee01ff6c4534333d53f4c0892ac44136e5a622a5c780542bb360256352",
+  "rollback_directory": "D:\\ArborScanBackups\\tools\\pre-inventory-hints-31967af",
+  "task_configuration_changed": false,
+  "backup_files_changed": false,
+  "test_results": "63 passed, 5 subtests"
+}

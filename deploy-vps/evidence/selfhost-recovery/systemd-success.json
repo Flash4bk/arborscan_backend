@@ -1,0 +1,63 @@
+{
+  "checked_at_utc": "2026-10-12T21:05:51.386753+00:00",
+  "service": {
+    "TimeoutStartUSec": "40min",
+    "Result": "success",
+    "ExecMainStartTimestamp": "Mon 2026-10-12 20:45:27 UTC",
+    "ExecMainExitTimestamp": "Mon 2026-10-12 21:05:21 UTC",
+    "ExecMainStatus": "0",
+    "ActiveState": "inactive",
+    "SubState": "dead"
+  },
+  "timer": {
+    "NextElapseUSecRealtime": "Tue 2026-10-13 03:18:48 UTC",
+    "LastTriggerUSec": "Mon 2026-10-12 03:20:04 UTC",
+    "ActiveState": "active",
+    "SubState": "waiting"
+  },
+  "timer_enabled": "enabled",
+  "journal_read_returncode": 0,
+  "journal_access_limited": true,
+  "journal_visible_entries": 1,
+  "journal_timeout_timestamps_us": [],
+  "journal_safe_events": [
+    {
+      "event": "verified_existing",
+      "name": "20261012T193726Z",
+      "deleted": []
+    }
+  ],
+  "published_backup": {
+    "name": "20261012T193726Z",
+    "complete": true,
+    "bytes": 1747867196,
+    "manifest_sha256": "7f2a73ab64ca22813ccd9aa3d1f69ca1c48d17c59f24b7c7a2a43a132ba55a6e"
+  },
+  "active_attempt_present": false,
+  "last_success": {
+    "format": 1,
+    "name": "20261012T193726Z",
+    "operation_id": "selfhost-daily-2026-10-12",
+    "completed_at_utc": "2026-10-12T19:53:32.653047+00:00",
+    "verified_at_utc": "2026-10-12T19:53:32.653047+00:00",
+    "last_integrity_check_at_utc": "2026-10-12T21:05:21.894164+00:00",
+    "manifest_sha256": "7f2a73ab64ca22813ccd9aa3d1f69ca1c48d17c59f24b7c7a2a43a132ba55a6e",
+    "retained_verified_sets": 16,
+    "retained_rotation_pool_sets": 2,
+    "transition_protected_sets": 14,
+    "deleted": []
+  },
+  "protection": {
+    "format": 1,
+    "kind": "selfhost_backup_transition"
+  },
+  "installed_policy_sha256": "51b6a4646971cf2562ba3e5c036b2de298cbf8232f1d6739c46032609880ff34",
+  "published_full_verification": {
+    "name": "20261012T193726Z",
+    "backup_manifest_sha256": "7f2a73ab64ca22813ccd9aa3d1f69ca1c48d17c59f24b7c7a2a43a132ba55a6e",
+    "native_postgres_verified": true,
+    "runtime_archives_verified": true,
+    "backup_content_changed": false,
+    "same_operation_replay_supported": true
+  }
+}

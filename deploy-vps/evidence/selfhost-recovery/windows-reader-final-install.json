@@ -1,0 +1,21 @@
+{
+  "source_commit": "e65d836717020b732f508e4b6a55eed8121a854b",
+  "installed_at_utc": "2026-10-12T21:25:46.154502+00:00",
+  "installed_scripts_sha256": {
+    "ops_runtime_contract.py": "82f8ad38a19d75354e82a98fd226efdeaad08377c03d6c84a406c9f8b8daff12",
+    "ops_pull_backups.py": "9232cfd84d926e21e61e8b9751469caf63706940c45c1c37dbf56ff21b0e7d6e"
+  },
+  "previous_scripts_sha256": {
+    "ops_runtime_contract.py": "fad605f2428701f2300dab999dcb949008d1dfbc0259571721051cb59a37e5c9",
+    "ops_pull_backups.py": "a90d8caec5fc4b0c89a3ccf698a06ccbb3594e38b9712404666d0f48a37fb30c"
+  },
+  "rollback_directory": "D:\\ArborScanBackups\\tools\\pre-windows-reader-e65d836-20261012T212546Z",
+  "task_configuration_changed": false,
+  "backup_payload_or_manifests_changed_by_install": false,
+  "tests": {
+    "passed": 108,
+    "subtests_passed": 5,
+    "environment": "Windows Python 3.14",
+    "real_symlink_junction_hardlink_and_mixed_legacy_crlf": true
+  }
+}

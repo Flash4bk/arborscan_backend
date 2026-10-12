@@ -1,0 +1,16 @@
+[
+  {
+    "Api": "v3",
+    "StatusCode": 200,
+    "Status": "ok",
+    "TlsValidation": "default",
+    "CheckedAtUtc": "2026-10-12T19:40:00.1899032Z"
+  },
+  {
+    "Api": "v4",
+    "StatusCode": 200,
+    "Status": "ok",
+    "TlsValidation": "default",
+    "CheckedAtUtc": "2026-10-12T19:40:00.9858105Z"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "actual_exporter_segmentation_classification_refusals": 8,
+  "dataset_created": false,
+  "immutable_content_preserved": true,
+  "objects_marked": 4,
+  "real_user_records_changed": false,
+  "snapshot_sha256": "8aaa251601e8507010b4d27380404991c66be7ecbfbaf64e816f69541b2c468d",
+  "source_accounts_absent": true,
+  "sql_decisions_preserved": true,
+  "training_started": false
+}

@@ -1,0 +1,10 @@
+{
+  "analysis_saved": true,
+  "bounded_real_tree_inference": "passed",
+  "model_sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+  "new_demo_owner_only": true,
+  "photo_mask_measurements_roundtrip": "passed",
+  "real_user_records_changed": false,
+  "restart_read": true,
+  "training_started": false
+}

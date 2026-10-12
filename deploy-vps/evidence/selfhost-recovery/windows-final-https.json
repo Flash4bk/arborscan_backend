@@ -1,0 +1,22 @@
+{
+  "checked_at_utc": "2026-10-12T21:18:35.9242477Z",
+  "ordinary_windows_tls": true,
+  "checks": [
+    {
+      "path": "/api/v3/health",
+      "status": 200,
+      "json": true
+    },
+    {
+      "path": "/api/v4/health",
+      "status": 200,
+      "json": true
+    },
+    {
+      "path": "/api/v4/v4/corrections",
+      "status": 401,
+      "json": true
+    }
+  ],
+  "new_user_records_created": false
+}

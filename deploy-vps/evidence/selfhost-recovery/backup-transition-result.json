@@ -1,0 +1,8 @@
+{
+  "archive_path": "/home/arborscan/ops-backups/active-backup.cloud-retained-20261012T191204Z.private.json",
+  "original_sets_changed": false,
+  "original_sets_protected": 14,
+  "service_was_stopped": true,
+  "source_manifests_sha256_bound": true,
+  "unfinished_cloud_attempt_retained": true
+}

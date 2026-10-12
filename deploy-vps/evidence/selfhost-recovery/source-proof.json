@@ -1,0 +1,13 @@
+{
+  "captured_at_utc": "20261012T190140Z",
+  "public_rows": 221,
+  "read_only_single_snapshot": true,
+  "source_public_exact": true,
+  "source_public_sha256": "6c3543762862ec4faeddc83ed527cea69f8a8d99b2dbfeba442cd01151dcd0ce",
+  "source_storage_exact": true,
+  "source_storage_sha256": "c884a80d9945e2b02fc371696f65847ab3e709e9f95e92c54eedcb5abc275909",
+  "sql_writes": false,
+  "storage_buckets": 9,
+  "storage_objects": 2252,
+  "tables": 15
+}

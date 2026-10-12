@@ -1,0 +1,18 @@
+[
+  {
+    "Api": "v3",
+    "StatusCode": 200,
+    "Status": "ok",
+    "TlsValidation": "default",
+    "CheckedAtUtc": "2026-10-12T20:51:55.6629880Z",
+    "DuringBackupAndTransfer": true
+  },
+  {
+    "Api": "v4",
+    "StatusCode": 200,
+    "Status": "ok",
+    "TlsValidation": "default",
+    "CheckedAtUtc": "2026-10-12T20:51:56.5953462Z",
+    "DuringBackupAndTransfer": true
+  }
+]

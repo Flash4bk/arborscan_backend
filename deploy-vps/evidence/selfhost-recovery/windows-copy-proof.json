@@ -1,0 +1,48 @@
+{
+  "checked_at_utc": "2026-10-12T21:22:43.016946+00:00",
+  "sets": [
+    {
+      "name": "20261012T183850Z",
+      "complete": true,
+      "manifest_sha256": "06a0d01b3778e7a4969779a0e61ee016fd2ab4d3a27a4e46cd9ebf08dbfb0924",
+      "complete_at_utc": "2026-10-12T20:56:15.636359+00:00",
+      "native_file_checksums": {
+        "database.dump": true,
+        "roles.sql": true,
+        "source.json": true,
+        "archive-list.private.txt": true
+      },
+      "native_dump_header_valid": true,
+      "offsite_verification": {
+        "verified_files": 17,
+        "verified_bytes": 1747316449,
+        "scope": "one application/configuration/native PostgreSQL backup set"
+      },
+      "runtime_services_count": 7,
+      "unique_runtime_images_count": 7,
+      "actual_isolated_restore_claimed": true
+    },
+    {
+      "name": "20261012T193726Z",
+      "complete": true,
+      "manifest_sha256": "7f2a73ab64ca22813ccd9aa3d1f69ca1c48d17c59f24b7c7a2a43a132ba55a6e",
+      "complete_at_utc": "2026-10-12T21:09:35.850430+00:00",
+      "native_file_checksums": {
+        "database.dump": true,
+        "roles.sql": true,
+        "source.json": true,
+        "archive-list.private.txt": true
+      },
+      "native_dump_header_valid": true,
+      "offsite_verification": {
+        "verified_files": 18,
+        "verified_bytes": 1747865622,
+        "scope": "one application/configuration/native PostgreSQL backup set"
+      },
+      "runtime_services_count": 7,
+      "unique_runtime_images_count": 7,
+      "actual_isolated_restore_claimed": false
+    }
+  ],
+  "disk_free_bytes": 6478790656
+}

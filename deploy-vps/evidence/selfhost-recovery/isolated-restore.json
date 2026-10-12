@@ -1,0 +1,39 @@
+{
+  "auth_sessions_rows_matched": 41,
+  "backup": "20261012T183850Z",
+  "backup_manifest_sha256": "06a0d01b3778e7a4969779a0e61ee016fd2ab4d3a27a4e46cd9ebf08dbfb0924",
+  "db_image": "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+  "event": "isolated_selfhost_restore_verified",
+  "migration_versions": [
+    1,
+    1,
+    1
+  ],
+  "native_sql_restore": true,
+  "network": "none",
+  "production_credentials_mounted": false,
+  "public_tables_matched": 15,
+  "quality_jobs_rows_matched": 0,
+  "raw_volumes": {
+    "runtime-files.tar": {
+      "directories_restored": 1,
+      "files_restored": 2,
+      "ownership_restored": true,
+      "volume": "as14-selfhost-runtime-files-20261012t184346z-bcad9cd5ecc3",
+      "xattrs_restored": true
+    },
+    "storage-files.tar": {
+      "directories_restored": 2825,
+      "files_restored": 2258,
+      "ownership_restored": true,
+      "volume": "as14-selfhost-storage-files-20261012t184346z-bcad9cd5ecc3",
+      "xattrs_restored": true
+    }
+  },
+  "restore_verified": true,
+  "restored_backup": "/home/arborscan/ops-backups/20261012T183850Z",
+  "roles_owner_acl_restored_by_pg_restore": true,
+  "storage_objects_matched": 2258,
+  "training_started": false,
+  "worker_started": false
+}
