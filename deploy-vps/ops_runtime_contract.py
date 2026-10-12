@@ -15,6 +15,11 @@ IMAGE = re.compile(r'sha256:[a-f0-9]{64}')
 TRANSITION_FILE = 'SELFHOST_TRANSITION_PROTECTION.private.json'
 
 
+def source_manifest_sha256(raw):
+    """Only undo legacy Windows newline translation; this proves no data SHA."""
+    return hashlib.sha256(raw.replace(b'\r\n', b'\n')).hexdigest()
+
+
 def selected_runtime(folder, runtime, covered):
     """Return the exact services/images backed by the covered container inventory."""
     folder = Path(folder)
@@ -98,11 +103,20 @@ def transition_protection(root):
     for row in value['sets']:
         if (not isinstance(row, dict) or not re.fullmatch(r'\d{8}T\d{6}Z', row.get('name', ''))
                 or not re.fullmatch(r'[a-f0-9]{64}', row.get('manifest_sha256', ''))
+                or ('local_manifest_sha256' in row and (not isinstance(row['local_manifest_sha256'], str) or not re.fullmatch(
+                    r'[a-f0-9]{64}', row.get('local_manifest_sha256', ''))
+                    or row['local_manifest_sha256'] == row['manifest_sha256']))
                 or row['name'] in protected):
             raise ValueError('invalid_transition_protection')
-        protected[row['name']] = row['manifest_sha256']
         manifest = Path(root) / row['name'] / 'SHA256SUMS'
-        if (not manifest.is_file() or manifest.is_symlink() or manifest.parent.is_symlink()
-                or hashlib.sha256(manifest.read_bytes()).hexdigest() != row['manifest_sha256']):
+        if not manifest.is_file() or manifest.is_symlink() or manifest.parent.is_symlink():
             raise ValueError('transition_protection_manifest_mismatch')
+        raw = manifest.read_bytes()
+        local_sha = row.get('local_manifest_sha256', row['manifest_sha256'])
+        if (hashlib.sha256(raw).hexdigest() != local_sha or
+                ('local_manifest_sha256' in row and source_manifest_sha256(raw) != row['manifest_sha256'])):
+            raise ValueError('transition_protection_manifest_mismatch')
+        # Retention compares actual local bytes. The source SHA remains in the
+        # ledger and is independently checked for every annotated local copy.
+        protected[row['name']] = local_sha
     return protected

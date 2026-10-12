@@ -92,6 +92,7 @@ def known_local_manifests(root):
     """Cheap hints only. Transfer still reads every covered local file's SHA."""
     root = Path(root)
     from ops_windows_retention import safe_path
+    from ops_runtime_contract import source_manifest_sha256
     result = {}
     for folder in sorted(root.iterdir()):
         if not NAME.fullmatch(folder.name):
@@ -100,7 +101,9 @@ def known_local_manifests(root):
         manifest = safe_path(root, folder / 'SHA256SUMS')
         complete = safe_path(root, folder / 'COMPLETE')
         if complete.is_file() and manifest.is_file() and manifest.stat().st_size <= 4 * 1024**2:
-            result[folder.name] = hashlib.sha256(manifest.read_bytes()).hexdigest()
+            raw = manifest.read_bytes()
+            result[folder.name] = (hashlib.sha256(raw).hexdigest() if (folder / 'SELFHOST_BACKUP.json').exists()
+                                   else source_manifest_sha256(raw))
     return result
 
 
@@ -364,7 +367,7 @@ def preserve_transition_history(root, records):
     A changed existing registry is refused; this is never implicit adoption or
     permission to rotate the original copies. Other Windows policy stays intact.
     """
-    from ops_runtime_contract import TRANSITION_FILE, transition_protection
+    from ops_runtime_contract import TRANSITION_FILE, transition_protection, source_manifest_sha256
     from ops_windows_retention import safe_path
     values = [row['transition_protection'] for row in records if 'transition_protection' in row]
     if not values:
@@ -374,25 +377,49 @@ def preserve_transition_history(root, records):
             or value.get('format') != 1 or value.get('kind') != 'selfhost_backup_transition'
             or not isinstance(value.get('sets'), list)):
         raise ValueError('invalid_transition_protection')
+    target = safe_path(root, root / TRANSITION_FILE)
+    writing = None if target.exists() else writable_destination(root, target.with_name(target.name + '.writing'))
     names = set()
+    local_rows = []
     for row in value['sets']:
         if (not isinstance(row, dict) or not NAME.fullmatch(row.get('name', ''))
                 or not re.fullmatch('[a-f0-9]{64}', row.get('manifest_sha256', ''))
+                or ('local_manifest_sha256' in row and (not isinstance(row['local_manifest_sha256'], str) or not re.fullmatch(
+                    '[a-f0-9]{64}', row.get('local_manifest_sha256', ''))
+                    or row['local_manifest_sha256'] == row['manifest_sha256']))
                 or row['name'] in names):
             raise ValueError('invalid_transition_protection')
         names.add(row['name'])
         folder = safe_path(root, root / row['name'])
-        if not (folder / 'COMPLETE').is_file() or not matches(folder / 'SHA256SUMS', row['manifest_sha256']):
+        manifest = safe_path(root, folder / 'SHA256SUMS')
+        if not safe_path(root, folder / 'COMPLETE').is_file() or not manifest.is_file():
             raise ValueError('transition_original_not_verified_locally')
-    target = safe_path(root, root / TRANSITION_FILE)
+        raw = manifest.read_bytes()
+        local_sha = hashlib.sha256(raw).hexdigest()
+        local_row = dict(row)
+        if local_sha != row['manifest_sha256']:
+            if source_manifest_sha256(raw) != row['manifest_sha256']:
+                raise ValueError('transition_original_not_verified_locally')
+            local_row['local_manifest_sha256'] = local_sha
+        if 'local_manifest_sha256' in row and row['local_manifest_sha256'] != local_sha:
+            raise ValueError('transition_original_not_verified_locally')
+        # An unchanged manifest/hint alone does not prove its files. Verify all
+        # covered bytes even on an idempotent adoption, without rewriting it.
+        writable_destination(root, folder / 'OFFSITE_VERIFIED.json')
+        verify(folder)
+        local_rows.append(local_row)
+    local_value = {**value, 'sets': local_rows}
     if target.exists():
-        if json.loads(target.read_bytes()) != value:
+        if json.loads(target.read_bytes()) != local_value:
             raise ValueError('existing_transition_protection_preserved')
     else:
-        partial = safe_path(root, target.with_name(target.name + '.writing'))
-        with partial.open('w', encoding='utf-8') as output:
-            json.dump(value, output, sort_keys=True); output.flush(); os.fsync(output.fileno())
-        os.replace(partial, target)
+        writable_destination(root, target)
+        writable_destination(root, writing)
+        with writing.open('w', encoding='utf-8') as output:
+            json.dump(local_value, output, sort_keys=True); output.flush(); os.fsync(output.fileno())
+        writable_destination(root, writing)
+        writable_destination(root, target)
+        os.replace(writing, target)
     transition_protection(root)
     return True
 
@@ -491,7 +518,7 @@ def main():
                     '/arborscan-api','/arborscan-api-v4','/arborscan-quality-worker'}:
                 from ops_windows_retention import plan, apply
                 proposal = plan(root, latest['name'], latest.get('protected_sets', []))
-                (root/'retention-dry-run.private.json').write_text(json.dumps(proposal,indent=2))
+                writable_destination(root, root/'retention-dry-run.private.json').write_text(json.dumps(proposal,indent=2))
                 if args.retention_dry_run:
                     log('retention_dry_run',before=proposal['before'],candidates=len(proposal['delete']))
                 else:
