@@ -12,6 +12,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -35,6 +36,56 @@ class PolicyError(Exception):
 def digest(path):
     with Path(path).open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+class _RuntimeArchiveCache:
+    """Read shared image bytes once within one locked backup invocation.
+
+    This is never a persisted integrity receipt. Every use opens the actual
+    regular file and checks its identity; mutation refuses the invocation.
+    Backup-set files and immediate deletion-candidate checks are not cached.
+    """
+    def __init__(self):
+        self._verified = {}
+
+    @staticmethod
+    def _state(path, info=None):
+        if not path.is_absolute() or path.is_symlink():
+            raise PolicyError('unsafe_runtime_archive')
+        if any(parent.is_symlink() for parent in path.parents):
+            raise PolicyError('symlink_refused')
+        info = path.stat(follow_symlinks=False) if info is None else info
+        if not stat.S_ISREG(info.st_mode):
+            raise PolicyError('unsafe_runtime_archive')
+        return (str(path.resolve(strict=True)), info.st_dev, info.st_ino,
+                info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_mode,
+                info.st_uid, info.st_gid)
+
+    def digest(self, path):
+        path = Path(path)
+        before = self._state(path)
+        # The producer runs on Linux. Windows ctime is a creation timestamp,
+        # and NTFS path/descriptor stat can disagree just after file creation.
+        # Keep the previous full-read behavior there; never weaken Linux's
+        # mutation fingerprint to make a Windows fast path appear valid.
+        if os.name == 'nt':
+            return digest(path)
+        cached = self._verified.get(before[0])
+        if cached is not None and cached[0] != before:
+            raise PolicyError('runtime_archive_changed_after_verification')
+        flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+        with os.fdopen(os.open(path, flags), 'rb') as stream:
+            opened = self._state(path, os.fstat(stream.fileno()))
+            if opened != before:
+                raise PolicyError('runtime_archive_changed_during_verification')
+            actual = cached[1] if cached is not None else hashlib.file_digest(stream, 'sha256').hexdigest()
+            if self._state(path, os.fstat(stream.fileno())) != opened:
+                raise PolicyError('runtime_archive_changed_during_verification')
+        if self._state(path) != before:
+            raise PolicyError('runtime_archive_changed_during_verification')
+        if cached is None:
+            self._verified[before[0]] = (before, actual)
+        return actual
 
 
 def safe_file(root, relative):
@@ -70,7 +121,7 @@ def manifest(root):
     return entries
 
 
-def verify_set(folder, require_native=False, require_runtime=False, complete=True):
+def verify_set(folder, require_native=False, require_runtime=False, complete=True, *, runtime_cache=None):
     folder = Path(folder)
     if folder.is_symlink() or not folder.is_dir():
         raise PolicyError('unsafe_backup_directory')
@@ -106,7 +157,7 @@ def verify_set(folder, require_native=False, require_runtime=False, complete=Tru
     services = []
     if 'RUNTIME_DEPENDENCIES.json' in entries:
         runtime = json.loads(safe_file(folder, 'RUNTIME_DEPENDENCIES.json').read_text())
-        dependencies = verify_runtime(folder, runtime)
+        dependencies = verify_runtime(folder, runtime, runtime_cache=runtime_cache)
         services = runtime.get('services', sorted(RUNTIME_SERVICES))
         if runtime.get('selfhost') is True:
             from ops_selfhost_backup import verify_set as verify_selfhost, BackupError
@@ -166,7 +217,7 @@ def runtime_images(folder, services=None):
     return set(selected.values())
 
 
-def verify_runtime(folder, runtime):
+def verify_runtime(folder, runtime, *, runtime_cache=None):
     # Historical format-1 sets cover v4/worker only. The additive services field
     # makes the auth image mandatory in new snapshots without rewriting history.
     try:
@@ -188,7 +239,7 @@ def verify_runtime(folder, runtime):
                 if parent.is_symlink():
                     raise PolicyError('symlink_refused')
             if path not in checked:
-                checked[path] = digest(path)
+                checked[path] = digest(path) if runtime_cache is None else runtime_cache.digest(path)
             if checked[path] != expected:
                 raise PolicyError('runtime_archive_checksum_mismatch')
     return [str(path) for path in checked]
@@ -258,7 +309,7 @@ def live_dependencies():
     return paths
 
 
-def inventory(root, live=()):
+def inventory(root, live=(), *, runtime_cache=None):
     root = Path(root)
     registry = read_json(root / 'automatic-sets.json', {'format': 1, 'sets': {}})
     if registry.get('format') != 1:
@@ -291,7 +342,7 @@ def inventory(root, live=()):
         except (OSError, ValueError, KeyError, TypeError, PolicyError):
             row['protected'].append('dependency_inventory_unreadable')
         try:
-            checked = verify_set(folder)
+            checked = verify_set(folder, runtime_cache=runtime_cache)
             row.update(checked); row['valid'] = True
             if folder.name in transition:
                 if transition[folder.name] != checked['manifest_sha256']:
@@ -328,8 +379,8 @@ def inventory(root, live=()):
     return rows
 
 
-def plan(root, live=(), retain=RETENTION, new_name=None):
-    rows = inventory(root, live)
+def plan(root, live=(), retain=RETENTION, new_name=None, *, runtime_cache=None):
+    rows = inventory(root, live, runtime_cache=runtime_cache)
     valid = [row for row in rows if row['valid']]
     pool = [row for row in valid if 'selfhost_transition_original' not in row['protected']]
     excess = max(0, len(pool) - retain)
@@ -344,10 +395,10 @@ def plan(root, live=(), retain=RETENTION, new_name=None):
             'blocked': len(selected) < excess or (excess > 0 and unknown_dependencies), 'sets': rows}
 
 
-def rotate(root, proposal, new_name, live=()):
+def rotate(root, proposal, new_name, live=(), *, runtime_cache=None):
     root = Path(root)
-    verify_set(root / new_name, require_native=True, require_runtime=True)
-    current = plan(root, live, proposal['retain'], new_name)
+    verify_set(root / new_name, require_native=True, require_runtime=True, runtime_cache=runtime_cache)
+    current = plan(root, live, proposal['retain'], new_name, runtime_cache=runtime_cache)
     if current['blocked']:
         raise PolicyError('rotation_blocked_all_remaining_sets_protected')
     if current['candidates'] != proposal['candidates']:
@@ -357,6 +408,8 @@ def rotate(root, proposal, new_name, live=()):
         folder = root / row['name']
         # Re-check exact digest and all descendants immediately before unlinking;
         # shutil.rmtree's fd-based symlink protection supplements these guards.
+        # Immediate destructive-candidate verification always reads all image
+        # bytes again; the invocation cache cannot authorize this deletion.
         checked = verify_set(folder)
         if checked['manifest_sha256'] != row['manifest_sha256']:
             raise PolicyError('rotation_candidate_changed')
@@ -425,6 +478,7 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,100}', operation_id):
         raise PolicyError('invalid_operation_id')
     with locked(root):
+        runtime_cache = _RuntimeArchiveCache()
         active_path = root / 'active-backup.json'
         active = read_json(active_path, {})
         if active and (active.get('format') != 1 or not NAME.fullmatch(active.get('name', ''))
@@ -435,16 +489,17 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
         if active and active.get('operation_id') != operation_id:
             # Always finish the interrupted operation before starting another.
             operation_id = active['operation_id']
-        rows = inventory(root, live)
+        rows = inventory(root, live, runtime_cache=runtime_cache)
         for row in rows:
             if not row['valid']:
                 continue
             marker = read_json(root / row['name'] / 'AUTO_BACKUP.json', {})
             if marker.get('operation_id') == operation_id:
-                checked = verify_set(root / row['name'], require_native=True, require_runtime=True)
-                proposal = plan(root, live, retain, row['name'])
+                checked = verify_set(root / row['name'], require_native=True, require_runtime=True,
+                                     runtime_cache=runtime_cache)
+                proposal = plan(root, live, retain, row['name'], runtime_cache=runtime_cache)
                 atomic_json(root / 'rotation-dry-run.json', proposal)
-                deleted = rotate(root, proposal, row['name'], live)
+                deleted = rotate(root, proposal, row['name'], live, runtime_cache=runtime_cache)
                 record_success(root, row['name'], operation_id, checked, deleted, proposal, replayed=True)
                 if active.get('name') == row['name']:
                     active_path.unlink(missing_ok=True)
@@ -457,7 +512,7 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
         if free(root).free < minimum_free:
             raise PolicyError('insufficient_disk_no_fresh_external_verification_for_predelete')
         # Explain exactly which sets would rotate after a successful extra set.
-        preflight = plan(root, live, max(0, retain - 1), name)
+        preflight = plan(root, live, max(0, retain - 1), name, runtime_cache=runtime_cache)
         atomic_json(root / 'rotation-dry-run.json', preflight)
         if preflight['blocked']:
             raise PolicyError('rotation_blocked_all_remaining_sets_protected')
@@ -482,18 +537,19 @@ def run_backup(root, create, runtime_index, operation_id=None, live=(), free=shu
             runtime['selfhost'] = True
             # Cover the marker before validating the additive runtime branch.
             write_manifest(attempt)
-        verify_runtime(attempt, runtime)
+        verify_runtime(attempt, runtime, runtime_cache=runtime_cache)
         atomic_json(attempt / 'RUNTIME_DEPENDENCIES.json', runtime)
         atomic_json(attempt / 'AUTO_BACKUP.json', {'format': 1, 'kind': 'scheduled_backup',
                                                  'operation_id': operation_id, 'name': name})
         write_manifest(attempt)
-        checked = verify_set(attempt, require_native=True, require_runtime=True, complete=False)
+        checked = verify_set(attempt, require_native=True, require_runtime=True, complete=False,
+                             runtime_cache=runtime_cache)
         (attempt / 'COMPLETE').touch(mode=0o600)
         os.replace(attempt, root / name)
         # A crash here is recovered by the same operation_id marker above.
-        proposal = plan(root, live, retain, name)
+        proposal = plan(root, live, retain, name, runtime_cache=runtime_cache)
         atomic_json(root / 'rotation-dry-run.json', proposal)
-        deleted = rotate(root, proposal, name, live)
+        deleted = rotate(root, proposal, name, live, runtime_cache=runtime_cache)
         record_success(root, name, operation_id, checked, deleted, proposal)
         active_path.unlink(missing_ok=True)
         return {'event': 'completed_verified', 'name': name, 'deleted': deleted}
