@@ -243,6 +243,8 @@ def transfer_runtime(root, folder, record, download_many, free=shutil.disk_usage
 
 
 def transfer(root, record, download, free=shutil.disk_usage, download_many=None, delta=None):
+    from ops_windows_retention import canonical_root, safe_path
+    root = canonical_root(root)
     name = record['name']
     if not NAME.fullmatch(name):
         raise ValueError('invalid_backup_name')
@@ -250,8 +252,10 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
     native=('database.dump','roles.sql','source.json','archive-list.private.txt')
     if 'postgres/database.dump' in files and not all('postgres/'+n in files for n in (*native,'COMPLETE')):
         raise ValueError('incomplete_postgres_set')
-    final = root / name
+    final = safe_path(root, root / name)
     if final.exists():
+        for filename in (*files, 'SHA256SUMS', 'COMPLETE', 'OFFSITE_VERIFIED.json'):
+            safe_path(root, final / filename)
         # Older manually copied sets may lack our COMPLETE; verify before marking.
         if (final/'SHA256SUMS').read_text() != record['manifest']:
             raise ValueError('existing_set_manifest_changed')
@@ -263,18 +267,24 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
             raise
         transfer_runtime(root, final, record, download_many, free)
         if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
-            (final/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
-        (final/'COMPLETE').touch()
+            safe_path(root, final/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
+        safe_path(root, final/'COMPLETE').touch()
         return 'verified_existing'
-    partial = root / (name+'.partial')
+    partial = safe_path(root, root / (name+'.partial'))
     partial.mkdir(exist_ok=True)
+    # Reject all existing redirects before a download can write any bytes.
+    for filename in (*files, 'SHA256SUMS', 'COMPLETE', 'OFFSITE_VERIFIED.json',
+                     'postgres/SHA256SUMS'):
+        safe_path(root, partial / filename)
+    for filename in files:
+        target = partial / filename
+        safe_path(root, target.with_name(target.name + '.downloading'))
     if free(root).free < int(record['bytes']) + 2*1024**3:
         raise ValueError('insufficient_disk')
     pending=[]
     for filename, digest in files.items():
-        target = partial/filename
-        if not target.resolve().is_relative_to(partial.resolve()):
-            raise ValueError('unsafe_destination')
+        target = safe_path(root, partial/filename)
+        temporary = safe_path(root, target.with_name(target.name+'.downloading'))
         target.parent.mkdir(parents=True, exist_ok=True)
         if matches(target, digest):
             continue
@@ -282,35 +292,41 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
             if not matches(target,digest):raise ValueError('checksum_mismatch')
             # Only redundant staging bytes, after full-file verification. Never
             # remove a completed backup or the source used for matching blocks.
-            target.with_name(target.name+'.downloading').unlink(missing_ok=True)
+            temporary.unlink(missing_ok=True)
             continue
-        temporary = target.with_name(target.name+'.downloading')
         if matches(temporary,digest):
             os.replace(temporary,target)
             continue
         pending.append((filename,temporary))
     if download_many and pending:
+        for _, temporary in pending:
+            safe_path(root, temporary)
         download_many(name,pending)
     for filename,temporary in pending:
-        digest=files[filename];target=partial/filename
+        digest=files[filename];target=safe_path(root, partial/filename)
+        temporary=safe_path(root, temporary)
         if not download_many:download(name, filename, temporary)
         if not matches(temporary, digest):
-            quarantine=root/'transfer-errors';quarantine.mkdir(exist_ok=True)
-            temporary.rename(quarantine/(name+'-'+str(time.time_ns())+'.bad-sha'))
+            quarantine=safe_path(root, root/'transfer-errors');quarantine.mkdir(exist_ok=True)
+            temporary.rename(safe_path(root, quarantine/(name+'-'+str(time.time_ns())+'.bad-sha')))
             raise ValueError('checksum_mismatch')
+        safe_path(root, target)
         os.replace(temporary, target)
     # Preserve the trusted SSH manifest byte for byte on Windows as well.
     # Translating LF to CRLF would change its hash used by external receipts.
-    (partial/'SHA256SUMS').write_text(record['manifest'], encoding='utf-8', newline='\n')
+    safe_path(root, partial/'SHA256SUMS').write_text(record['manifest'], encoding='utf-8', newline='\n')
+    safe_path(root, partial/'OFFSITE_VERIFIED.json')
     result = verify(partial)
     transfer_runtime(root, partial, record, download_many, free)
     if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
         # Parent manifest covers native files; native manifest may be omitted by
         # outer find. The required four native files must all be present.
-        (partial/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
+        safe_path(root, partial/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
         result['scope'] = 'one application/configuration/native PostgreSQL backup set'
-    (partial/'OFFSITE_VERIFIED.json').write_text(json.dumps(result,indent=2))
-    (partial/'COMPLETE').touch()
+    safe_path(root, partial/'OFFSITE_VERIFIED.json').write_text(json.dumps(result,indent=2))
+    safe_path(root, partial/'COMPLETE').touch()
+    safe_path(root, partial)
+    safe_path(root, final)
     partial.rename(final)
     return 'downloaded_verified'
 
