@@ -169,6 +169,15 @@ def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None,
         sleep(5 * attempt)
 
 
+def writable_destination(root, path):
+    """A mutable transfer file must not alias an existing immutable file."""
+    from ops_windows_retention import safe_path
+    path = safe_path(root, path)
+    if path.is_file() and path.stat(follow_symlinks=False).st_nlink > 1:
+        raise ValueError('multiply_linked_writable_destination')
+    return path
+
+
 def transfer_runtime(root, folder, record, download_many, free=shutil.disk_usage):
     """One SHA-addressed shared store; original covered dependencies stay unchanged."""
     if 'runtime' not in record:
@@ -177,6 +186,8 @@ def transfer_runtime(root, folder, record, download_many, free=shutil.disk_usage
     runtime_file = folder/'RUNTIME_DEPENDENCIES.json'
     if json.loads(runtime_file.read_bytes()) != record['runtime']:
         raise ValueError('runtime_contract_changed')
+    mapping = folder/'RELOCATED_RUNTIME.json'
+    writing = writable_destination(root, mapping.with_name(mapping.name+'.writing'))
     shared = safe_path(root, root/'runtime-assets')
     shared.mkdir(exist_ok=True)
     assets = record.get('runtime_assets', [])
@@ -213,8 +224,9 @@ def transfer_runtime(root, folder, record, download_many, free=shutil.disk_usage
                 break
         if matches(target, digest):
             continue
-        temporary = safe_path(root, target.with_name(target.name+'.downloading'))
+        temporary = writable_destination(root, target.with_name(target.name+'.downloading'))
         if matches(temporary, digest):
+            writable_destination(root, temporary)
             os.replace(temporary, target)
             continue
         size = int(asset['bytes'])
@@ -227,17 +239,21 @@ def transfer_runtime(root, folder, record, download_many, free=shutil.disk_usage
             raise ValueError('insufficient_disk')
         if download_many is None:
             raise ValueError('runtime_transfer_required')
+        for _, temporary in pending:
+            writable_destination(root, temporary)
         download_many(None, pending)
         for source, temporary in pending:
+            writable_destination(root, temporary)
             asset = next(a for a in assets if a['path'] == source)
             if not matches(temporary, asset['sha256']):
                 # A failed resume cannot be retried as a complete asset.
                 temporary.unlink(missing_ok=True)
                 raise ValueError('checksum_mismatch')
+            writable_destination(root, temporary)
             os.replace(temporary, shared/(asset['sha256']+'.archive'))
-    mapping = folder/'RELOCATED_RUNTIME.json'
-    writing = safe_path(root, mapping.with_name(mapping.name+'.writing'))
+    writable_destination(root, writing)
     writing.write_text(json.dumps({'format':1,'assets':relocated}),encoding='utf-8')
+    writable_destination(root, writing)
     os.replace(writing, mapping)
     return verify_runtime(root, folder)
 
@@ -256,6 +272,10 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
     if final.exists():
         for filename in (*files, 'SHA256SUMS', 'COMPLETE', 'OFFSITE_VERIFIED.json'):
             safe_path(root, final / filename)
+        for filename in ('COMPLETE', 'OFFSITE_VERIFIED.json'):
+            writable_destination(root, final / filename)
+        if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
+            writable_destination(root, final / 'postgres/SHA256SUMS')
         # Older manually copied sets may lack our COMPLETE; verify before marking.
         if (final/'SHA256SUMS').read_text() != record['manifest']:
             raise ValueError('existing_set_manifest_changed')
@@ -267,8 +287,8 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
             raise
         transfer_runtime(root, final, record, download_many, free)
         if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
-            safe_path(root, final/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
-        safe_path(root, final/'COMPLETE').touch()
+            writable_destination(root, final/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
+        writable_destination(root, final/'COMPLETE').touch()
         return 'verified_existing'
     partial = safe_path(root, root / (name+'.partial'))
     partial.mkdir(exist_ok=True)
@@ -276,15 +296,19 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
     for filename in (*files, 'SHA256SUMS', 'COMPLETE', 'OFFSITE_VERIFIED.json',
                      'postgres/SHA256SUMS'):
         safe_path(root, partial / filename)
+    for filename in ('SHA256SUMS', 'COMPLETE', 'OFFSITE_VERIFIED.json'):
+        writable_destination(root, partial / filename)
+    if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
+        writable_destination(root, partial / 'postgres/SHA256SUMS')
     for filename in files:
         target = partial / filename
-        safe_path(root, target.with_name(target.name + '.downloading'))
+        writable_destination(root, target.with_name(target.name + '.downloading'))
     if free(root).free < int(record['bytes']) + 2*1024**3:
         raise ValueError('insufficient_disk')
     pending=[]
     for filename, digest in files.items():
         target = safe_path(root, partial/filename)
-        temporary = safe_path(root, target.with_name(target.name+'.downloading'))
+        temporary = writable_destination(root, target.with_name(target.name+'.downloading'))
         target.parent.mkdir(parents=True, exist_ok=True)
         if matches(target, digest):
             continue
@@ -295,36 +319,39 @@ def transfer(root, record, download, free=shutil.disk_usage, download_many=None,
             temporary.unlink(missing_ok=True)
             continue
         if matches(temporary,digest):
+            writable_destination(root, temporary)
             os.replace(temporary,target)
             continue
         pending.append((filename,temporary))
     if download_many and pending:
         for _, temporary in pending:
-            safe_path(root, temporary)
+            writable_destination(root, temporary)
         download_many(name,pending)
     for filename,temporary in pending:
         digest=files[filename];target=safe_path(root, partial/filename)
-        temporary=safe_path(root, temporary)
+        temporary=writable_destination(root, temporary)
         if not download_many:download(name, filename, temporary)
+        writable_destination(root, temporary)
         if not matches(temporary, digest):
             quarantine=safe_path(root, root/'transfer-errors');quarantine.mkdir(exist_ok=True)
             temporary.rename(safe_path(root, quarantine/(name+'-'+str(time.time_ns())+'.bad-sha')))
             raise ValueError('checksum_mismatch')
         safe_path(root, target)
+        writable_destination(root, temporary)
         os.replace(temporary, target)
     # Preserve the trusted SSH manifest byte for byte on Windows as well.
     # Translating LF to CRLF would change its hash used by external receipts.
-    safe_path(root, partial/'SHA256SUMS').write_text(record['manifest'], encoding='utf-8', newline='\n')
-    safe_path(root, partial/'OFFSITE_VERIFIED.json')
+    writable_destination(root, partial/'SHA256SUMS').write_text(record['manifest'], encoding='utf-8', newline='\n')
+    writable_destination(root, partial/'OFFSITE_VERIFIED.json')
     result = verify(partial)
     transfer_runtime(root, partial, record, download_many, free)
     if 'postgres/database.dump' in files and 'postgres/SHA256SUMS' not in files:
         # Parent manifest covers native files; native manifest may be omitted by
         # outer find. The required four native files must all be present.
-        safe_path(root, partial/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
+        writable_destination(root, partial/'postgres/SHA256SUMS').write_text(''.join(files['postgres/'+n]+'  '+n+'\n' for n in native), newline='\n')
         result['scope'] = 'one application/configuration/native PostgreSQL backup set'
-    safe_path(root, partial/'OFFSITE_VERIFIED.json').write_text(json.dumps(result,indent=2))
-    safe_path(root, partial/'COMPLETE').touch()
+    writable_destination(root, partial/'OFFSITE_VERIFIED.json').write_text(json.dumps(result,indent=2))
+    writable_destination(root, partial/'COMPLETE').touch()
     safe_path(root, partial)
     safe_path(root, final)
     partial.rename(final)
@@ -476,7 +503,8 @@ def main():
             # Never print subprocess output, connection details, or private paths.
             safe=str(error) if str(error) in ('ssh_inventory_failed','ssh_inventory_invalid_response',
                 'ssh_inventory_timeout_remote_status_unknown','transfer_interrupted',
-                'transfer_stalled','checksum_mismatch','insufficient_disk','existing_set_manifest_changed') else 'validation_or_local_error'
+                'transfer_stalled','checksum_mismatch','insufficient_disk','existing_set_manifest_changed',
+                'multiply_linked_writable_destination') else 'validation_or_local_error'
             log('failed',error_type=type(error).__name__,reason=safe)
             return 1
 
