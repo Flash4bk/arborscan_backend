@@ -16,14 +16,15 @@ Finder get _paint =>
     find.descendant(of: _canvas, matching: find.byType(CustomPaint));
 
 Future<void> _open(WidgetTester tester, List<Offset> points,
-    {ValueChanged<Map<String, dynamic>>? onDraftChanged}) async {
+    {ValueChanged<Map<String, dynamic>>? onDraftChanged,
+    bool closed = false}) async {
   await tester.binding.setSurfaceSize(const Size(600, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(MaterialApp(
     home: MaskDrawingPage(
       originalImageBase64: base64Encode(_photo),
       editorState: ContourEditorState(
-          width: 100, height: 100, closed: false, points: points),
+          width: 100, height: 100, closed: closed, points: points),
       onDraftChanged: onDraftChanged,
     ),
   ));
@@ -89,6 +90,90 @@ Rect _colouredBounds(ByteData data) {
 }
 
 void main() {
+  for (final scale in [1.0, 5.0]) {
+    testWidgets('nearby taps add vertices without moving or closing at $scale',
+        (tester) async {
+      Map<String, dynamic>? draft;
+      await _open(
+          tester, const [Offset(.5, .5), Offset(.6, .5), Offset(.6, .6)],
+          onDraftChanged: (value) => draft = value);
+      _zoom(tester, scale);
+      await tester.pump();
+      final size = tester.widget<CustomPaint>(_paint).size;
+      // Three screen pixels from the first vertex: inside its drag target.
+      await tester.tapAt(tester.getCenter(_canvas) + const Offset(3, 0));
+      await tester.pump();
+      final points = (draft!['points'] as List).cast<Map<String, dynamic>>();
+      expect(points, hasLength(4));
+      expect(points.first, {'x': .5, 'y': .5});
+      expect(points.last['x'], closeTo(.5 + 3 / scale / size.width, 1e-8));
+      expect(draft!['closed'], false);
+      // Repeating the exact tap does not create a duplicate vertex.
+      await tester.tapAt(tester.getCenter(_canvas) + const Offset(3, 0));
+      await tester.pump();
+      expect(draft!['points'], hasLength(4));
+      await tester.tap(find.byTooltip('Отменить последнее действие'));
+      await tester.pump();
+      expect(draft!['points'], hasLength(3));
+      await tester.tap(find.byTooltip('Замкнуть контур'));
+      await tester.pump();
+      expect(draft!['closed'], true);
+    });
+
+    testWidgets('closed edge accepts a nearby vertex and undo at $scale',
+        (tester) async {
+      Map<String, dynamic>? draft;
+      await _open(
+          tester, const [Offset(.5, .5), Offset(.6, .5), Offset(.6, .6)],
+          closed: true, onDraftChanged: (value) => draft = value);
+      _zoom(tester, scale);
+      await tester.pump();
+      final size = tester.widget<CustomPaint>(_paint).size;
+      await tester.tapAt(tester.getCenter(_canvas) + const Offset(3, 0));
+      await tester.pump();
+      final points = (draft!['points'] as List).cast<Map<String, dynamic>>();
+      expect(points, hasLength(4));
+      expect(points.first, {'x': .5, 'y': .5});
+      expect(points[1]['x'], closeTo(.5 + 3 / scale / size.width, 1e-8));
+      expect(points[1]['y'], .5);
+      expect(draft!['closed'], true);
+      await tester.tap(find.byTooltip('Отменить последнее действие'));
+      await tester.pump();
+      expect(draft!['points'], hasLength(3));
+      expect(draft!['closed'], true);
+    });
+  }
+
+  testWidgets('pinch and cancelled drag leave no extra contour vertices',
+      (tester) async {
+    Map<String, dynamic>? draft;
+    await _open(tester, const [Offset(.5, .5), Offset(.6, .5)],
+        onDraftChanged: (value) => draft = value);
+    final first =
+        await tester.startGesture(tester.getCenter(_canvas), pointer: 1);
+    await first.moveBy(const Offset(25, 0));
+    await tester.pump();
+    final second = await tester.startGesture(
+        tester.getCenter(_canvas) + const Offset(60, 0),
+        pointer: 2);
+    await tester.pump();
+    await first.up();
+    await second.up();
+    await tester.pump();
+    expect(draft!['points'], [
+      {'x': .5, 'y': .5},
+      {'x': .6, 'y': .5}
+    ]);
+    final drag = await tester.startGesture(tester.getCenter(_canvas));
+    await drag.moveBy(const Offset(25, 0));
+    await drag.cancel();
+    await tester.pump();
+    expect(draft!['points'], [
+      {'x': .5, 'y': .5},
+      {'x': .6, 'y': .5}
+    ]);
+  });
+
   testWidgets('rings remain compact and hollow at every photo zoom',
       (tester) async {
     await _open(tester, const [Offset(.5, .5)]);

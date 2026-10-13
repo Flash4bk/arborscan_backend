@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as im;
 import 'combined_reference.dart';
 import 'corrections_service.dart';
+import 'photo_markup_style.dart';
 import 'package:crypto/crypto.dart';
 
 Uint8List? savedTreeMask(Map<String, dynamic>? report) {
@@ -67,6 +68,8 @@ class ReferencePreview extends StatefulWidget {
   final Map<String, dynamic>? report, reference;
   final String? correctionId;
   final Offset? tap;
+  final TransformationController? controller;
+  final bool showHandles;
   const ReferencePreview(
       {super.key,
       required this.image,
@@ -75,7 +78,9 @@ class ReferencePreview extends StatefulWidget {
       this.report,
       this.reference,
       this.correctionId,
-      this.tap});
+      this.tap,
+      this.controller,
+      this.showHandles = true});
   @override
   State<ReferencePreview> createState() => _ReferencePreviewState();
 }
@@ -139,7 +144,9 @@ class _ReferencePreviewState extends State<ReferencePreview> {
         Image.memory(widget.image, fit: BoxFit.fill),
         if (_overlay != null) Image.memory(_overlay!, fit: BoxFit.fill),
         CustomPaint(
-            painter: ReferencePreviewPainter(widget.reference, widget.tap)),
+            painter: ReferencePreviewPainter(widget.reference, widget.tap,
+                controller: widget.controller,
+                showHandles: widget.showHandles)),
         if (_invalidPin)
           const Positioned(
               bottom: 0,
@@ -155,7 +162,11 @@ class _ReferencePreviewState extends State<ReferencePreview> {
 class ReferencePreviewPainter extends CustomPainter {
   final Map<String, dynamic>? reference;
   final Offset? tap;
-  ReferencePreviewPainter(this.reference, this.tap);
+  final TransformationController? controller;
+  final bool showHandles;
+  ReferencePreviewPainter(this.reference, this.tap,
+      {this.controller, this.showHandles = true})
+      : super(repaint: controller);
   static const colors = <String, Color>{
     'outline': Color(0xffffa000),
     'reference': Color(0xffffa000),
@@ -167,6 +178,7 @@ class ReferencePreviewPainter extends CustomPainter {
   };
   @override
   void paint(Canvas canvas, Size size) {
+    final scale = controller?.value.getMaxScaleOnAxis().clamp(1.0, 12.0) ?? 1.0;
     for (final entry in colors.entries) {
       final points = reference?[entry.key];
       if (points is! List || points.isEmpty) continue;
@@ -184,7 +196,7 @@ class ReferencePreviewPainter extends CustomPainter {
       }
       final paint = Paint()
         ..color = entry.value
-        ..strokeWidth = 2.5
+        ..strokeWidth = photoMarkupLineWidth / scale
         ..style = PaintingStyle.stroke;
       final path = Path()..moveTo(offsets.first.dx, offsets.first.dy);
       for (final p in offsets.skip(1)) {
@@ -192,26 +204,25 @@ class ReferencePreviewPainter extends CustomPainter {
       }
       if (entry.key == 'outline' && offsets.length >= 3) path.close();
       canvas.drawPath(path, paint);
-      for (final p in offsets) {
-        canvas.drawCircle(p, 3, Paint()..color = entry.value);
+      if (showHandles) {
+        for (var i = 0; i < offsets.length; i++) {
+          paintPhotoMarkupHandle(canvas, offsets[i],
+              scale: scale, color: entry.value, first: i == 0);
+        }
       }
     }
-    if (tap != null) {
+    if (tap != null && showHandles) {
       final p = Offset(tap!.dx * size.width, tap!.dy * size.height);
-      canvas.drawCircle(
-          p,
-          8,
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
-      canvas.drawCircle(p, 4, Paint()..color = Colors.black);
+      paintPhotoMarkupHandle(canvas, p, scale: scale, first: true);
     }
   }
 
   @override
   bool shouldRepaint(ReferencePreviewPainter oldDelegate) =>
-      oldDelegate.reference != reference || oldDelegate.tap != tap;
+      oldDelegate.reference != reference ||
+      oldDelegate.tap != tap ||
+      oldDelegate.controller != controller ||
+      oldDelegate.showHandles != showHandles;
 }
 
 /// Selection is expressed in the uncropped, oriented original even after zoom.
@@ -235,6 +246,7 @@ class _SelectTreePointPageState extends State<SelectTreePointPage> {
   late Offset? _point = widget.initial;
   final _transform = TransformationController();
   bool _invalid = false;
+  bool _showHandles = true;
   @override
   void initState() {
     super.initState();
@@ -255,6 +267,10 @@ class _SelectTreePointPageState extends State<SelectTreePointPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Выбор дерева'), actions: [
+        IconButton(
+            tooltip: _showHandles ? 'Скрыть точки' : 'Показать точки',
+            onPressed: () => setState(() => _showHandles = !_showHandles),
+            icon: Icon(_showHandles ? Icons.adjust : Icons.panorama_fish_eye)),
         IconButton(
             tooltip: 'Сброс зума',
             onPressed: () => _transform.value = Matrix4.identity(),
@@ -293,6 +309,8 @@ class _SelectTreePointPageState extends State<SelectTreePointPage> {
                                     image: widget.image,
                                     width: widget.width,
                                     height: widget.height,
+                                    controller: _transform,
+                                    showHandles: _showHandles,
                                     tap: _point)))));
               })),
               SafeArea(

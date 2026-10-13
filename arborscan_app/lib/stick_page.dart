@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
+import 'photo_markup_style.dart';
 
 class StickPage extends StatefulWidget {
   final String originalImageBase64;
@@ -33,6 +34,11 @@ class _StickPageState extends State<StickPage> {
   bool _lockPan = false;
   Offset? _downScenePos;
   bool _moved = false;
+  bool _showHandles = true;
+  final Set<int> _pointers = {};
+  int? _primaryPointer;
+  bool _pinching = false;
+  List<Offset>? _pointsBeforeGesture;
 
   static const double _hitRadius = 18;
   static const double _moveThreshold = 4;
@@ -73,35 +79,67 @@ class _StickPageState extends State<StickPage> {
   }
 
   int? _hitPoint(Offset scenePos) {
+    var nearestDistance = _hitRadius *
+        _imageSize!.width /
+        _displaySize.width /
+        _controller.value.getMaxScaleOnAxis();
+    int? nearest;
     for (int i = 0; i < _points.length; i++) {
-      if ((scenePos - _points[i]).distance <=
-          _hitRadius * _imageSize!.width / _displaySize.width) {
-        return i;
+      final distance = (scenePos - _points[i]).distance;
+      if (distance <= nearestDistance) {
+        nearest = i;
+        nearestDistance = distance;
       }
     }
-    return null;
+    return nearest;
   }
 
   void _onPointerDown(PointerDownEvent e) {
+    _pointers.add(e.pointer);
+    if (_pointers.length > 1) {
+      // Zoom must not move an endpoint or leave a point on finger release.
+      setState(() {
+        if (_pointsBeforeGesture != null) {
+          _points
+            ..clear()
+            ..addAll(_pointsBeforeGesture!);
+        }
+        _pinching = true;
+        _dragIndex = null;
+        _lockPan = false;
+      });
+      return;
+    }
+    if (_pinching) return;
+    _primaryPointer = e.pointer;
+    _pointsBeforeGesture = List.of(_points);
     final scenePos = _scene(e.localPosition);
     _downScenePos = scenePos;
     _moved = false;
 
-    _dragIndex = _hitPoint(scenePos);
-    _lockPan = _dragIndex != null;
+    setState(() {
+      _dragIndex = _hitPoint(scenePos);
+      _lockPan = _dragIndex != null;
+    });
   }
 
   void _onPointerMove(PointerMoveEvent e) {
-    if (_downScenePos == null) return;
+    if (_downScenePos == null || _pinching || e.pointer != _primaryPointer) {
+      return;
+    }
 
     final scenePos = _scene(e.localPosition);
     final dist = (scenePos - _downScenePos!).distance;
 
-    if (dist > _moveThreshold * _imageSize!.width / _displaySize.width) {
+    if (dist >
+        _moveThreshold *
+            _imageSize!.width /
+            _displaySize.width /
+            _controller.value.getMaxScaleOnAxis()) {
       _moved = true;
     }
 
-    if (_dragIndex != null) {
+    if (_moved && _dragIndex != null) {
       setState(() {
         _points[_dragIndex!] = scenePos;
       });
@@ -109,16 +147,17 @@ class _StickPageState extends State<StickPage> {
   }
 
   void _onPointerUp(PointerUpEvent e) {
+    _pointers.remove(e.pointer);
+    if (_pinching || e.pointer != _primaryPointer) {
+      if (_pointers.isEmpty) _endGesture();
+      return;
+    }
     final scenePos = _scene(e.localPosition);
 
     if (!_moved) {
-      final hit = _hitPoint(scenePos);
-
       setState(() {
-        if (hit != null) {
-          _dragIndex = hit;
-        } else if (_points.length < 2) {
-          _points.add(scenePos);
+        if (_points.length < 2) {
+          if (!_points.contains(scenePos)) _points.add(scenePos);
         } else {
           final d0 = (scenePos - _points[0]).distance;
           final d1 = (scenePos - _points[1]).distance;
@@ -127,9 +166,30 @@ class _StickPageState extends State<StickPage> {
       });
     }
 
-    _dragIndex = null;
-    _downScenePos = null;
-    _lockPan = false;
+    _endGesture();
+  }
+
+  void _onPointerCancel(PointerCancelEvent e) {
+    _pointers.remove(e.pointer);
+    if (!_pinching &&
+        e.pointer == _primaryPointer &&
+        _pointsBeforeGesture != null) {
+      setState(() => _points
+        ..clear()
+        ..addAll(_pointsBeforeGesture!));
+    }
+    if (_pointers.isEmpty) _endGesture();
+  }
+
+  void _endGesture() {
+    setState(() {
+      _dragIndex = null;
+      _downScenePos = null;
+      _lockPan = false;
+      _pinching = false;
+      _primaryPointer = null;
+      _pointsBeforeGesture = null;
+    });
   }
 
   double? _lengthPx() {
@@ -253,6 +313,11 @@ class _StickPageState extends State<StickPage> {
             style: TextStyle(fontSize: 18, letterSpacing: 1.0)),
         actions: [
           IconButton(
+            tooltip: _showHandles ? 'Скрыть точки' : 'Показать точки',
+            icon: Icon(_showHandles ? Icons.adjust : Icons.panorama_fish_eye),
+            onPressed: () => setState(() => _showHandles = !_showHandles),
+          ),
+          IconButton(
             tooltip: 'Сбросить',
             icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
             onPressed: _clear,
@@ -308,6 +373,7 @@ class _StickPageState extends State<StickPage> {
                                   onPointerDown: _onPointerDown,
                                   onPointerMove: _onPointerMove,
                                   onPointerUp: _onPointerUp,
+                                  onPointerCancel: _onPointerCancel,
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
@@ -316,6 +382,8 @@ class _StickPageState extends State<StickPage> {
                                       Positioned.fill(
                                         child: CustomPaint(
                                           painter: _StickPainter(
+                                              controller: _controller,
+                                              showHandles: _showHandles,
                                               points: _points
                                                   .map((p) => Offset(
                                                       p.dx /
@@ -365,21 +433,27 @@ class _StickPageState extends State<StickPage> {
 
 class _StickPainter extends CustomPainter {
   final List<Offset> points;
+  final TransformationController controller;
+  final bool showHandles;
 
-  _StickPainter({required this.points});
+  _StickPainter(
+      {required this.points,
+      required this.controller,
+      required this.showHandles})
+      : super(repaint: controller);
 
   @override
   void paint(Canvas canvas, Size size) {
+    final scale = controller.value.getMaxScaleOnAxis().clamp(1.0, 8.0);
     final linePaint = Paint()
       ..color = AppTheme.primary
-      ..strokeWidth = 3.0
+      ..strokeWidth = photoMarkupLineWidth / scale
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    final dotPaint = Paint()..color = AppTheme.primary2;
     final shadowPaint = Paint()
       ..color = Colors.black.withOpacity(0.5)
-      ..strokeWidth = 5.0
+      ..strokeWidth = 2.5 / scale
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
@@ -388,9 +462,11 @@ class _StickPainter extends CustomPainter {
       canvas.drawLine(points[0], points[1], linePaint);
     }
 
-    for (final pt in points) {
-      canvas.drawCircle(pt, 5, Paint()..color = Colors.black);
-      canvas.drawCircle(pt, 4, dotPaint);
+    if (showHandles) {
+      for (var i = 0; i < points.length; i++) {
+        paintPhotoMarkupHandle(canvas, points[i],
+            scale: scale, color: AppTheme.primary2, first: i == 0);
+      }
     }
   }
 

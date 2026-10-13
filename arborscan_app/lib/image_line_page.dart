@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'corrections_service.dart';
+import 'photo_markup_style.dart';
 
 /// The gesture detector lives INSIDE the transformed, image-sized child.
 /// Flutter maps touches through the inverse transform before normalization.
@@ -27,6 +28,7 @@ class _ImageLinePageState extends State<ImageLinePage> {
   int selected = 0;
   final transform = TransformationController();
   bool invalid = false;
+  bool showHandles = true;
   bool _allowLeave = false;
   bool get _dirty => !listEquals(points, widget.initial);
   Future<void> _confirmLeave(bool didPop, Object? result) async {
@@ -83,12 +85,16 @@ class _ImageLinePageState extends State<ImageLinePage> {
                           title: Text(widget.title),
                           content: const SingleChildScrollView(
                               child: Text(
-                                  'Выберите начало или конец и коснитесь фото. Два пальца — масштаб и перемещение. Координаты сохраняются в исходном изображении.')),
+                                  'Выберите начало или конец и коснитесь фото. Два пальца — масштаб и перемещение. Маленькие кольца не увеличиваются вместе с фото; кнопка «Скрыть точки» убирает их, не меняя отрезок. Координаты сохраняются в исходном изображении.')),
                           actions: [
                             TextButton(
                                 onPressed: () => Navigator.pop(c),
                                 child: const Text('Понятно'))
                           ]))),
+          IconButton(
+              tooltip: showHandles ? 'Скрыть точки' : 'Показать точки',
+              onPressed: () => setState(() => showHandles = !showHandles),
+              icon: Icon(showHandles ? Icons.adjust : Icons.panorama_fish_eye)),
           IconButton(
               tooltip: 'Сброс зума',
               onPressed: () => transform.value = Matrix4.identity(),
@@ -147,7 +153,10 @@ class _ImageLinePageState extends State<ImageLinePage> {
                                     Image.memory(widget.image,
                                         fit: BoxFit.fill),
                                     CustomPaint(
-                                        painter: _LinePainter(List.of(points)))
+                                        painter: _LinePainter(List.of(points),
+                                            controller: transform,
+                                            selected: selected,
+                                            showHandles: showHandles))
                                   ])))));
                 })),
                 SafeArea(
@@ -166,20 +175,38 @@ class _ImageLinePageState extends State<ImageLinePage> {
 
 class _LinePainter extends CustomPainter {
   final List<Offset> points;
-  _LinePainter(this.points);
+  final TransformationController controller;
+  final int selected;
+  final bool showHandles;
+  _LinePainter(this.points,
+      {required this.controller,
+      required this.selected,
+      required this.showHandles})
+      : super(repaint: controller);
   @override
   void paint(Canvas c, Size s) {
     final p =
         points.map((v) => Offset(v.dx * s.width, v.dy * s.height)).toList();
+    final scale = controller.value.getMaxScaleOnAxis().clamp(1.0, 12.0);
     final paint = Paint()
       ..color = Colors.orange
-      ..strokeWidth = 3;
+      ..strokeWidth = photoMarkupLineWidth / scale;
     if (p.length == 2) c.drawLine(p[0], p[1], paint);
-    for (final v in p) {
-      c.drawCircle(v, 5, paint);
+    if (showHandles) {
+      for (var i = 0; i < p.length; i++) {
+        paintPhotoMarkupHandle(c, p[i],
+            scale: scale,
+            color: Colors.orange,
+            first: i == 0,
+            active: i == selected);
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LinePainter old) => true;
+  bool shouldRepaint(covariant _LinePainter old) =>
+      !listEquals(old.points, points) ||
+      old.controller != controller ||
+      old.selected != selected ||
+      old.showHandles != showHandles;
 }

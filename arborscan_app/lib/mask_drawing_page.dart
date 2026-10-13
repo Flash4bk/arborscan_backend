@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'binary_mask_overlay.dart';
 import 'contour_editor_state.dart';
 import 'corrections_service.dart';
+import 'photo_markup_style.dart';
 
 class MaskDrawingPage extends StatefulWidget {
   final String? originalImageBase64;
@@ -139,6 +140,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
 
   // Insert on the nearest edge, including the closing edge.
   void _insertOnEdge(Offset point) {
+    if (_points.any((p) => (p - point).distance < .1 / _scale)) return;
     double bestDistance = 14.0 / _scale;
     int? edge;
     Offset? projected;
@@ -153,6 +155,12 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           .clamp(0.0, 1.0)
           .toDouble();
       final candidate = a + delta * t;
+      // A tap may be close to an existing vertex, but must not duplicate it.
+      if (t == 0 ||
+          t == 1 ||
+          _points.any((p) => (p - candidate).distance < .1 / _scale)) {
+        continue;
+      }
       final distance = (point - candidate).distance;
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -206,14 +214,6 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   }
 
   static const double _tapSlopPx = 8.0;
-  static const double _closeHitSlopPx = 18.0;
-
-  bool _isCloseTapToFirstPoint({required Offset tapLocal}) {
-    if (_points.length < 3) return false;
-    final firstLocal =
-        MatrixUtils.transformPoint(_controller.value, _points.first);
-    return (firstLocal - tapLocal).distance <= _closeHitSlopPx;
-  }
 
   @override
   void initState() {
@@ -571,8 +571,8 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     if (!_closed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'Сначала замкните контур (кнопка "Замкнуть" или касание первой точки).')),
+            content:
+                Text('Сначала замкните контур кнопкой "Замкнуть контур".')),
       );
       return;
     }
@@ -665,7 +665,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                             title: const Text('Работа с контуром'),
                             content: const SingleChildScrollView(
                                 child: Text(
-                                    'Точки можно перетаскивать, касаясь рядом с маленьким кольцом. После замыкания коснитесь линии, чтобы добавить точку. Два пальца — масштаб и перемещение. Кнопка «Скрыть точки» убирает отметки для просмотра фото, не меняя контур. Отмена возвращает предыдущее действие; подтверждение ещё не отправляет контур на проверку.')),
+                                    'Короткое касание добавляет новую точку, даже рядом с прежней. Чтобы переместить точку, коснитесь рядом с кольцом и тяните пальцем. Замкните контур кнопкой «Замкнуть контур»; после замыкания короткое касание линии добавляет точку на ней. Два пальца — масштаб и перемещение. Кнопка «Скрыть точки» убирает отметки для просмотра фото, не меняя контур. Отмена возвращает предыдущее действие; подтверждение ещё не отправляет контур на проверку.')),
                             actions: [
                               TextButton(
                                   onPressed: () => Navigator.pop(c),
@@ -804,23 +804,23 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                             _primaryPointer = null;
                             _resetTapState();
                           });
+                          _notifyDraft();
                           return;
                         }
                         _primaryPointer = e.pointer;
                         final scene = _toScene(e.localPosition);
                         _tapDownLocal = e.localPosition;
                         _tapDownScene = scene;
+                        _tapCandidate = _insideImage(scene);
                         final hit = _hitTest(scene);
                         if (hit != null) {
                           setState(() {
                             _dragIndex = hit;
                             _dragBefore = _snapshot();
                             _dragMoved = false;
-                            _tapCandidate = false;
                           });
                           return;
                         }
-                        _tapCandidate = _insideImage(scene);
                       },
                       onPointerMove: (e) {
                         if (_finishing ||
@@ -849,30 +849,24 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                         if (_primaryPointer == e.pointer &&
                             !wasPinch &&
                             !_finishing) {
-                          if (_dragIndex != null) {
+                          if (_dragMoved) {
                             setState(() {
-                              if (_dragMoved && _dragBefore != null) {
+                              if (_dragBefore != null) {
                                 _remember(_dragBefore!);
-                              } else if (_dragIndex == 0 &&
-                                  !_closed &&
-                                  _points.length >= 3) {
-                                _remember(_snapshot());
-                                _closed = true;
                               }
                             });
                           } else if (_tapCandidate && _tapDownScene != null) {
                             if (_closed) {
                               _insertOnEdge(_tapDownScene!);
                             } else {
-                              setState(() {
-                                _remember(_snapshot());
-                                if (_isCloseTapToFirstPoint(
-                                    tapLocal: e.localPosition)) {
-                                  _closed = true;
-                                } else {
-                                  _points.add(_clampToImage(_tapDownScene!));
-                                }
-                              });
+                              final point = _clampToImage(_tapDownScene!);
+                              if (!_points.any(
+                                  (p) => (p - point).distance < .1 / _scale)) {
+                                setState(() {
+                                  _remember(_snapshot());
+                                  _points.add(point);
+                                });
+                              }
                             }
                           }
                         }
@@ -894,6 +888,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                           _primaryPointer = null;
                           _resetTapState();
                         });
+                        _notifyDraft();
                       },
                       child: InteractiveViewer(
                         transformationController: _controller,
@@ -1048,25 +1043,12 @@ class _ContourSnapshot {
 // All dimensions are logical screen pixels, independent of photo zoom.
 // Hollow handles leave the actual point (and a thin trunk underneath) visible.
 void _paintContourHandle(Canvas canvas, Offset point,
-    {double scale = 1, bool first = false, bool active = false}) {
-  final radius = (active ? 4.5 : (first ? 3.5 : 2.5)) / scale;
-  canvas.drawCircle(
-    point,
-    radius,
-    Paint()
-      ..color = Colors.black.withValues(alpha: .7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5 / scale,
-  );
-  canvas.drawCircle(
-    point,
-    radius,
-    Paint()
-      ..color = first ? Colors.yellowAccent : Colors.cyanAccent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.25 / scale,
-  );
-}
+        {double scale = 1, bool first = false, bool active = false}) =>
+    paintPhotoMarkupHandle(canvas, point,
+        scale: scale,
+        color: first ? Colors.yellowAccent : Colors.cyanAccent,
+        first: first,
+        active: active);
 
 class _EnhancedMaskPainter extends CustomPainter {
   final ui.Image image;
