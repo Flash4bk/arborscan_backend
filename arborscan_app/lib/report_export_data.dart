@@ -101,14 +101,19 @@ class ReportExportData {
   final String _snapshotJson, _recordJson;
   final Uint8List? _photo, _annotation, _mask;
   final bool local;
+
+  /// Presentation only; never part of the immutable measurement snapshot.
+  final Set<String> hiddenLayers;
   ReportExportData(
       {required Map<String, dynamic> snapshot,
       required Map<String, dynamic> record,
       Uint8List? photo,
       Uint8List? annotation,
       Uint8List? mask,
+      Set<String> hiddenLayers = const {},
       required this.local})
       : _snapshotJson = jsonEncode(_finiteJson(snapshot)),
+        hiddenLayers = Set.unmodifiable(hiddenLayers),
         _recordJson = jsonEncode(_finiteJson(record)),
         _photo = photo == null ? null : Uint8List.fromList(photo),
         _annotation =

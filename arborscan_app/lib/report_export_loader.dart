@@ -13,10 +13,15 @@ Future<ReportExportData> loadReportExport(
     required Uint8List? photo,
     required bool local,
     required String token,
+    Set<String> hiddenLayers = const {},
     CorrectionsService? service,
     Future<Directory> Function()? cacheDirectory}) async {
   final frozen = ReportExportData(
-      snapshot: snapshot, record: record, photo: photo, local: local);
+      snapshot: snapshot,
+      record: record,
+      photo: photo,
+      local: local,
+      hiddenLayers: hiddenLayers);
   final id = frozen.snapshot['correction_id'];
   if (id == null) return frozen;
   final auth = service ?? CorrectionsService();
@@ -77,5 +82,6 @@ Future<ReportExportData> loadReportExport(
       record: frozen.record,
       photo: frozen.photo,
       local: local,
+      hiddenLayers: frozen.hiddenLayers,
       mask: mask);
 }

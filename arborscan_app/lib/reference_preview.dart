@@ -70,6 +70,10 @@ class ReferencePreview extends StatefulWidget {
   final Offset? tap;
   final TransformationController? controller;
   final bool showHandles;
+  final bool showLayerControls;
+  final Set<String> hiddenLayers;
+  final ValueChanged<Set<String>>? onHiddenLayersChanged;
+  final double handleSizeFactor;
   const ReferencePreview(
       {super.key,
       required this.image,
@@ -80,7 +84,11 @@ class ReferencePreview extends StatefulWidget {
       this.correctionId,
       this.tap,
       this.controller,
-      this.showHandles = true});
+      this.showHandles = true,
+      this.showLayerControls = true,
+      this.hiddenLayers = const {},
+      this.onHiddenLayersChanged,
+      this.handleSizeFactor = .75});
   @override
   State<ReferencePreview> createState() => _ReferencePreviewState();
 }
@@ -88,6 +96,7 @@ class ReferencePreview extends StatefulWidget {
 class _ReferencePreviewState extends State<ReferencePreview> {
   Uint8List? _mask, _overlay;
   bool _invalidPin = false;
+  late Set<String> _hiddenLayers = Set.of(widget.hiddenLayers);
   @override
   void initState() {
     super.initState();
@@ -97,6 +106,10 @@ class _ReferencePreviewState extends State<ReferencePreview> {
   @override
   void didUpdateWidget(ReferencePreview oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.image != oldWidget.image ||
+        widget.hiddenLayers != oldWidget.hiddenLayers) {
+      _hiddenLayers = Set.of(widget.hiddenLayers);
+    }
     if (oldWidget.report != widget.report ||
         oldWidget.width != widget.width ||
         oldWidget.height != widget.height ||
@@ -104,6 +117,65 @@ class _ReferencePreviewState extends State<ReferencePreview> {
         oldWidget.correctionId != widget.correctionId) {
       _refresh();
     }
+  }
+
+  Map<String, String> get _layers => {
+        if (_overlay != null) 'mask': 'Контур дерева',
+        for (final entry in ReferencePreviewPainter.labels.entries)
+          if (widget.reference?[entry.key] is List &&
+              (widget.reference![entry.key] as List).isNotEmpty)
+            entry.key: entry.value,
+        if (widget.tap != null) 'selection': 'Точка выбора дерева',
+      };
+
+  Future<void> _chooseLayers() async {
+    final epoch = CorrectionsService.authChanges.value;
+    final layers = _layers;
+    await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) => StatefulBuilder(
+            builder: (sheetContext, updateSheet) => SafeArea(
+                    child: SingleChildScrollView(
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('Слои фото',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold))),
+                  for (final entry in layers.entries)
+                    CheckboxListTile(
+                        key: ValueKey('photo-layer-${entry.key}'),
+                        title: Text(entry.value),
+                        value: !_hiddenLayers.contains(entry.key),
+                        onChanged: (visible) {
+                          if (!mounted ||
+                              epoch != CorrectionsService.authChanges.value) {
+                            Navigator.pop(sheetContext);
+                            return;
+                          }
+                          setState(() {
+                            _hiddenLayers = Set.of(_hiddenLayers);
+                            if (visible == true) {
+                              _hiddenLayers.remove(entry.key);
+                            } else {
+                              _hiddenLayers.add(entry.key);
+                            }
+                          });
+                          updateSheet(() {});
+                          widget.onHiddenLayersChanged
+                              ?.call(Set.of(_hiddenLayers));
+                        }),
+                  const Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                          'Выбор действует в этом просмотре и PDF. Разметка и размеры сохраняются полностью.')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      child: const Text('Готово')),
+                ])))));
   }
 
   void _refresh() {
@@ -142,11 +214,25 @@ class _ReferencePreviewState extends State<ReferencePreview> {
       aspectRatio: widget.width / widget.height,
       child: Stack(fit: StackFit.expand, children: [
         Image.memory(widget.image, fit: BoxFit.fill),
-        if (_overlay != null) Image.memory(_overlay!, fit: BoxFit.fill),
+        if (_overlay != null && !_hiddenLayers.contains('mask'))
+          Image.memory(_overlay!, fit: BoxFit.fill),
         CustomPaint(
             painter: ReferencePreviewPainter(widget.reference, widget.tap,
                 controller: widget.controller,
-                showHandles: widget.showHandles)),
+                showHandles: widget.showHandles,
+                hiddenLayers: _hiddenLayers,
+                handleSizeFactor: widget.handleSizeFactor)),
+        if (widget.showLayerControls && _layers.isNotEmpty)
+          Positioned(
+              top: 4,
+              right: 4,
+              child: Material(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  child: IconButton(
+                      tooltip: 'Слои фото',
+                      onPressed: _chooseLayers,
+                      icon: const Icon(Icons.layers_outlined)))),
         if (_invalidPin)
           const Positioned(
               bottom: 0,
@@ -164,9 +250,23 @@ class ReferencePreviewPainter extends CustomPainter {
   final Offset? tap;
   final TransformationController? controller;
   final bool showHandles;
+  final Set<String> hiddenLayers;
+  final double handleSizeFactor;
   ReferencePreviewPainter(this.reference, this.tap,
-      {this.controller, this.showHandles = true})
+      {this.controller,
+      this.showHandles = true,
+      this.hiddenLayers = const {},
+      this.handleSizeFactor = 1})
       : super(repaint: controller);
+  static const labels = <String, String>{
+    'outline': 'Контур эталона',
+    'reference': 'Высота эталона',
+    'tree': 'Высота дерева',
+    'crown': 'Ширина кроны',
+    'crown_height': 'Высота живой кроны',
+    'trunk': 'Края сечения ствола',
+    'trunk_axis': 'Ось участка ствола',
+  };
   static const colors = <String, Color>{
     'outline': Color(0xffffa000),
     'reference': Color(0xffffa000),
@@ -180,6 +280,7 @@ class ReferencePreviewPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final scale = controller?.value.getMaxScaleOnAxis().clamp(1.0, 12.0) ?? 1.0;
     for (final entry in colors.entries) {
+      if (hiddenLayers.contains(entry.key)) continue;
       final points = reference?[entry.key];
       if (points is! List || points.isEmpty) continue;
       final offsets = <Offset>[];
@@ -207,13 +308,17 @@ class ReferencePreviewPainter extends CustomPainter {
       if (showHandles) {
         for (var i = 0; i < offsets.length; i++) {
           paintPhotoMarkupHandle(canvas, offsets[i],
-              scale: scale, color: entry.value, first: i == 0);
+              scale: scale,
+              color: entry.value,
+              first: i == 0,
+              sizeFactor: handleSizeFactor);
         }
       }
     }
-    if (tap != null && showHandles) {
+    if (tap != null && showHandles && !hiddenLayers.contains('selection')) {
       final p = Offset(tap!.dx * size.width, tap!.dy * size.height);
-      paintPhotoMarkupHandle(canvas, p, scale: scale, first: true);
+      paintPhotoMarkupHandle(canvas, p,
+          scale: scale, first: true, sizeFactor: handleSizeFactor);
     }
   }
 
@@ -222,7 +327,9 @@ class ReferencePreviewPainter extends CustomPainter {
       oldDelegate.reference != reference ||
       oldDelegate.tap != tap ||
       oldDelegate.controller != controller ||
-      oldDelegate.showHandles != showHandles;
+      oldDelegate.showHandles != showHandles ||
+      oldDelegate.hiddenLayers != hiddenLayers ||
+      oldDelegate.handleSizeFactor != handleSizeFactor;
 }
 
 /// Selection is expressed in the uncropped, oriented original even after zoom.
@@ -311,6 +418,8 @@ class _SelectTreePointPageState extends State<SelectTreePointPage> {
                                     height: widget.height,
                                     controller: _transform,
                                     showHandles: _showHandles,
+                                    showLayerControls: false,
+                                    handleSizeFactor: 1,
                                     tap: _point)))));
               })),
               SafeArea(

@@ -7,20 +7,21 @@ void paintPhotoMarkupHandle(Canvas canvas, Offset point,
     {double scale = 1,
     Color color = Colors.cyanAccent,
     bool first = false,
-    bool active = false}) {
-  final radius = (active ? 4.5 : (first ? 3.5 : 2.5)) / scale;
+    bool active = false,
+    double sizeFactor = 1}) {
+  final radius = (active ? 4.5 : (first ? 3.5 : 2.5)) * sizeFactor / scale;
   canvas.drawCircle(
       point,
       radius,
       Paint()
         ..color = Colors.black.withValues(alpha: .7)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5 / scale);
+        ..strokeWidth = 2.5 * sizeFactor / scale);
   canvas.drawCircle(
       point,
       radius,
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = photoMarkupLineWidth / scale);
+        ..strokeWidth = photoMarkupLineWidth * sizeFactor / scale);
 }

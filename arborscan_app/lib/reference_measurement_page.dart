@@ -116,6 +116,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   List<Offset> _crownHeight = [], _trunk = [], _trunkAxis = [];
   int _measurementVersion = 2;
   Offset? _treeTap;
+  Set<String> _hiddenPhotoLayers = {};
   @override
   void initState() {
     super.initState();
@@ -354,6 +355,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     _serverSnapshot = null;
     _serverMessage = null;
     _treeTap = null;
+    _hiddenPhotoLayers = {};
     _environment.setPoint(surveyPointFromExif(bytes));
   }
 
@@ -629,6 +631,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
               ReportExportButton(
                   enabled: !_busy,
                   load: () async => ReportExportData(
+                      hiddenLayers: _hiddenPhotoLayers,
                       snapshot: _snapshot(result),
                       record: {'analysis_id': _serverAnalysisId ?? _id},
                       photo: _image,
@@ -669,6 +672,9 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                                   : null,
                               reference: result?.toJson(),
                               correctionId: _serverSnapshot?['correction_id'],
+                              hiddenLayers: _hiddenPhotoLayers,
+                              onHiddenLayersChanged: (hidden) =>
+                                  setState(() => _hiddenPhotoLayers = hidden),
                               tap: _treeTap)))),
               SpeciesAnnotationCard(
                   report: _serverSnapshot?['report'] as Map?,

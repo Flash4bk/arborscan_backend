@@ -97,7 +97,7 @@ ReportImages prepareReportImages(ReportExportData data,
     }
   }
   void drawMask(im.Image target) {
-    if (mask == null) return;
+    if (mask == null || data.hiddenLayers.contains('mask')) return;
     final scaled = im.copyResize(mask,
         width: target.width,
         height: target.height,
@@ -120,7 +120,7 @@ ReportImages prepareReportImages(ReportExportData data,
     }
     overlay = fit(original);
     drawMask(overlay);
-    if (mask != null) {
+    if (mask != null && !data.hiddenLayers.contains('mask')) {
       legend.add(modelMask
           ? 'Зелёная область — сохранённая маска модели всего дерева; это не отдельная маска кроны.'
           : 'Зелёная область — сохранённый исправленный контур.');
@@ -143,6 +143,7 @@ ReportImages prepareReportImages(ReportExportData data,
           throw const FormatException('Точки разметки повреждены.');
         }
       }
+      if (data.hiddenLayers.contains(entry.key)) continue;
       final c =
           im.ColorRgb8((color >> 16) & 255, (color >> 8) & 255, color & 255);
       int x(dynamic p) => ((p['x'] as num) * (overlay!.width - 1)).round();
@@ -155,7 +156,8 @@ ReportImages prepareReportImages(ReportExportData data,
             x1: x(a), y1: y(a), x2: x(b), y2: y(b), color: c, thickness: 4);
       }
       for (final p in points) {
-        im.fillCircle(overlay, x: x(p), y: y(p), radius: 6, color: c);
+        im.drawCircle(overlay,
+            x: x(p), y: y(p), radius: 4, color: c, antialias: true);
       }
       legend.add(
           '${exportColorNames[index - 1]} — ${entry.value}; точки (нормированные, округлены): ${points.map((p) => '(${exportNumber(p['x'])}; ${exportNumber(p['y'])})').join(' → ')}');
@@ -169,9 +171,21 @@ ReportImages prepareReportImages(ReportExportData data,
     }
   }
   im.Image? contour;
-  if (mask != null && original != null) {
+  if (mask != null && original != null && !data.hiddenLayers.contains('mask')) {
     contour = fit(original);
     drawMask(contour);
+  }
+  final hiddenLabels = <String>[
+    if (mask != null && data.hiddenLayers.contains('mask')) 'Контур дерева',
+    for (final entry in exportLineLabels.entries)
+      if (data.hiddenLayers.contains(entry.key) &&
+          ref[entry.key] is List &&
+          (ref[entry.key] as List).isNotEmpty)
+        entry.value,
+  ];
+  if (hiddenLabels.isNotEmpty) {
+    legend.add(
+        'Скрыты на фото: ${hiddenLabels.join(', ')}. Полные измерения сохранены.');
   }
   return ReportImages(
       original == null

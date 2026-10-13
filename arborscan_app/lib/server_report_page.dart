@@ -46,6 +46,7 @@ class _ServerReportPageState extends State<ServerReportPage> {
   Map<String, dynamic>? _data;
   String? _token, _error;
   bool _busy = true, _invalid = false;
+  Set<String> _hiddenPhotoLayers = {};
   @override
   void initState() {
     super.initState();
@@ -177,6 +178,7 @@ class _ServerReportPageState extends State<ServerReportPage> {
                     record: Map<String, dynamic>.from(row!),
                     photo: photo,
                     local: widget.versionId == null && row['saved'] != true,
+                    hiddenLayers: _hiddenPhotoLayers,
                     token: _token!)),
             if (photo != null && ref != null)
               SizedBox(
@@ -190,7 +192,10 @@ class _ServerReportPageState extends State<ServerReportPage> {
                               height: ref['height'],
                               report: Map<String, dynamic>.from(s['report']),
                               reference: Map<String, dynamic>.from(ref),
-                              correctionId: s['correction_id']))))
+                              correctionId: s['correction_id'],
+                              hiddenLayers: _hiddenPhotoLayers,
+                              onHiddenLayersChanged: (hidden) => setState(
+                                  () => _hiddenPhotoLayers = hidden)))))
             else if (photo != null)
               Image.memory(photo, height: 240, fit: BoxFit.contain),
             SpeciesAnnotationCard(
