@@ -113,7 +113,33 @@ class ReportExportData {
         _annotation =
             annotation == null ? null : Uint8List.fromList(annotation),
         _mask = mask == null ? null : Uint8List.fromList(mask);
-  Uint8List? get mask => _mask == null ? null : Uint8List.fromList(_mask!);
+
+  /// A linked correction is a binary original-size PNG. The v4 model instead
+  /// returns a fitted RGBA preview: foreground is encoded by alpha, not RGB.
+  Uint8List? _embeddedCorrectionMask() {
+    final preview = exportMap(report['contour_preview']);
+    if (preview.isEmpty) return null;
+    final original = photo;
+    if (snapshot['correction_id'] == null ||
+        preview['correction_id'] != snapshot['correction_id'] ||
+        original == null ||
+        preview['photo_sha256'] != sha256.convert(original).toString()) {
+      throw const FormatException(
+          'Контур не соответствует этой версии или оригинальному фото.');
+    }
+    final bytes = exportDecode(preview['mask_png_base64']);
+    if (bytes == null) {
+      throw const FormatException('Сохранённая маска контура повреждена.');
+    }
+    return bytes;
+  }
+
+  bool get modelPreviewMask =>
+      _mask == null && _embeddedCorrectionMask() == null;
+  Uint8List? get mask => _mask == null
+      ? _embeddedCorrectionMask() ??
+          exportDecode(exportMap(report['images'])['mask_image_base64'])
+      : Uint8List.fromList(_mask!);
   Map<String, dynamic> get snapshot => jsonDecode(_snapshotJson);
   Map<String, dynamic> get record => jsonDecode(_recordJson);
   Map<String, dynamic> get report => exportMap(snapshot['report']);

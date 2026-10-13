@@ -15,6 +15,8 @@ import 'survey_environment.dart';
 import 'survey_environment_ui.dart';
 import 'environment_revision_page.dart';
 import 'map_page.dart';
+import 'reference_preview.dart';
+import 'combined_reference.dart';
 
 String _lengthLabel(dynamic value) {
   final number = value is num ? value.toDouble() : double.tryParse('$value');
@@ -132,7 +134,20 @@ class _ServerReportPageState extends State<ServerReportPage> {
                     photo: photo,
                     local: widget.versionId == null && row['saved'] != true,
                     token: _token!)),
-            if (photo != null)
+            if (photo != null && ref != null)
+              SizedBox(
+                  height: 280,
+                  child: Center(
+                      child: AspectRatio(
+                          aspectRatio: ref['width'] / ref['height'],
+                          child: ReferencePreview(
+                              image: photo,
+                              width: ref['width'],
+                              height: ref['height'],
+                              report: Map<String, dynamic>.from(s['report']),
+                              reference: Map<String, dynamic>.from(ref),
+                              correctionId: s['correction_id']))))
+            else if (photo != null)
               Image.memory(photo, height: 240, fit: BoxFit.contain),
             Text('Снимок отчёта от ${s['captured_at'] ?? 'дата неизвестна'}'),
             const Text('Повторный анализ и обновление погоды не выполнялись.'),
@@ -204,15 +219,75 @@ class _ServerReportPageState extends State<ServerReportPage> {
                                     'environment_snapshot': s['environment']
                                   }),
                                   fallbackImageBytes: photo,
+                                  referenceParentId: widget.versionId != null ||
+                                          row!['saved'] == true
+                                      ? row!['version_id']
+                                      : null,
+                                  referenceSnapshot:
+                                      Map<String, dynamic>.from(s),
                                   exportLoader: () => loadReportExport(
                                       snapshot: Map<String, dynamic>.from(s),
-                                      record: Map<String, dynamic>.from(row!),
+                                      record: Map<String, dynamic>.from(row),
                                       photo: photo,
                                       local: widget.versionId == null &&
                                           row['saved'] != true,
                                       token: _token!),
                                   allowServerSave: false))),
                   child: const Text('Открыть отчёт анализа')),
+            if (photo != null && ref == null && s['kind'] == 'v4')
+              OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _act(() async {
+                            if (!context.mounted || _invalid) return;
+                            await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => ReferenceMeasurementPage(
+                                        initialImage: photo,
+                                        analysisId: row!['analysis_id'],
+                                        parentId: widget.versionId != null ||
+                                                row['saved'] == true
+                                            ? row['version_id']
+                                            : null,
+                                        initialSnapshot:
+                                            Map<String, dynamic>.from(s))));
+                          }),
+                  child: const Text('Добавить эталон к этому фото')),
+            if (ref != null && s['report']['tree'] is Map) ...[
+              Text(s['correction_id'] != null &&
+                      s['report']['contour_preview'] is Map
+                  ? 'Зелёная маска - закреплённая исправленная ревизия контура. Размеры - отдельно по эталону.'
+                  : s['report']['tree']['detected'] == true
+                      ? 'Зелёная маска - сохранённое выделение дерева моделью. Размеры - отдельно по эталону.'
+                      : 'В этой версии модель не нашла дерево. Размеры получены ручной разметкой по эталону.'),
+              if (s['correction_id'] != null &&
+                  s['report']['contour_preview'] is Map &&
+                  s['report']['tree']['detected'] != true)
+                const Text(
+                    'Модель не нашла дерево; исправленный контур создан вручную.'),
+              OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => UnifiedAnalysisReportPage(
+                                  result: UnifiedAnalysisResult.fromJson({
+                                    ...modelReportForSources(
+                                        Map<String, dynamic>.from(s)),
+                                    'environment_snapshot': s['environment'],
+                                  }),
+                                  fallbackImageBytes: photo,
+                                  referenceParentId: widget.versionId != null ||
+                                          row!['saved'] == true
+                                      ? row!['version_id']
+                                      : null,
+                                  referenceSnapshot:
+                                      Map<String, dynamic>.from(s),
+                                  allowServerSave: false))),
+                  child: const Text('Исходный результат модели / источники')),
+            ],
             if (ref != null)
               OutlinedButton(
                   onPressed: _busy
@@ -251,7 +326,11 @@ class _ServerReportPageState extends State<ServerReportPage> {
                                     'trunk': ref['trunk'] ?? [],
                                     'trunk_axis': ref['trunk_axis'] ?? [],
                                     'server_analysis_id': row['analysis_id'],
-                                    'server_parent_id': row['version_id'],
+                                    'server_parent_id':
+                                        widget.versionId != null ||
+                                                row['saved'] == true
+                                            ? row['version_id']
+                                            : null,
                                     'server_snapshot': s
                                   },
                                   photo!);

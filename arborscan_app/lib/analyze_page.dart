@@ -8,11 +8,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_config.dart';
+import 'api_response.dart';
 import 'app_theme.dart';
 import 'ar_measure_channel.dart';
 import 'unified_analysis_models.dart';
 import 'unified_analysis_report_page.dart';
 import 'reference_measurement_page.dart';
+import 'report_history_service.dart';
 import 'survey_environment.dart';
 import 'survey_environment_ui.dart';
 import 'corrections_service.dart';
@@ -253,14 +255,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
               http.Response.fromStream(await client.send(request)))()
           .timeout(const Duration(seconds: 180));
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(_extractServerMessage(response));
-      }
-
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      if (decoded is! Map) {
-        throw const FormatException('Сервер вернул некорректный JSON');
-      }
+      final decoded = decodeApiObject(response, service: 'Сервис анализа');
       if (ar != null && decoded['measurement_method_version'] != 1) {
         final measures = decoded['measurements'];
         if (measures is Map) {
@@ -324,6 +319,48 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
+  Future<void> _openReference() async {
+    if (_loading || _openingAr || _pickingImage) return;
+    final epoch = CorrectionsService.authChanges.value;
+    try {
+      final original = _original == null
+          ? await _imageFile?.readAsBytes()
+          : Uint8List.fromList(_original!);
+      if (!mounted || epoch != CorrectionsService.authChanges.value) return;
+      final raw = _lastResult?.raw;
+      String? parent;
+      if (_lastResult != null) {
+        final history = ReportHistoryService();
+        final token = await CorrectionsService.currentToken();
+        final owner = await history.auth.owner(token);
+        final existing =
+            await history.journal.load(owner, _lastResult!.analysisId);
+        await history.auth.checkSession(token);
+        if (!mounted || epoch != CorrectionsService.authChanges.value) return;
+        if (existing?['saved'] == true) parent = existing!['version_id'];
+      }
+      await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => ReferenceMeasurementPage(
+                  initialImage: original,
+                  analysisId: _lastResult?.analysisId,
+                  parentId: parent,
+                  initialSnapshot: raw == null
+                      ? null
+                      : {
+                          'report': raw,
+                          'ar': raw['ar_provenance'],
+                          'environment': raw['environment_snapshot'],
+                          'captured_at': raw['captured_at'],
+                        })));
+    } catch (e) {
+      if (mounted && epoch == CorrectionsService.authChanges.value) {
+        setState(() => _error = '$e');
+      }
+    }
+  }
+
   Future<void> _saveHistory(
       UnifiedAnalysisResult result, String? sessionToken) async {
     try {
@@ -382,19 +419,9 @@ class _ArborScanPageState extends State<ArborScanPage> {
     }
   }
 
-  String _extractServerMessage(http.Response response) {
-    var message = 'Ошибка сервера ${response.statusCode}';
-    try {
-      final raw = jsonDecode(utf8.decode(response.bodyBytes));
-      if (raw is Map) {
-        final detail = raw['detail'] ?? raw['message'] ?? raw['error'];
-        if (detail != null) message = detail.toString();
-      }
-    } catch (_) {}
-    return message;
-  }
-
   String _humanizeNetworkError(Object error) {
+    if (error is ApiResponseException) return error.message;
+    if (error is FormatException) return error.message.toString();
     final text = error.toString();
     if (text.contains('Connection refused') ||
         text.contains('Failed host lookup') ||
@@ -559,10 +586,7 @@ class _ArborScanPageState extends State<ArborScanPage> {
                 _MeasurementAction(
                     title: 'По эталону',
                     icon: Icons.straighten,
-                    onPressed: busy
-                        ? null
-                        : () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const ReferenceMeasurementPage()))),
+                    onPressed: busy ? null : _openReference),
               ];
               if (MediaQuery.textScalerOf(context).scale(1) > 1.3 ||
                   constraints.maxWidth < 300) {
@@ -746,8 +770,7 @@ class _PhotoCard extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.check_circle,
-                                        color: AppTheme.surface3,
-                                        size: 20),
+                                        color: AppTheme.surface3, size: 20),
                                     SizedBox(width: 8),
                                     Flexible(
                                         child: Text('Фото добавлено',

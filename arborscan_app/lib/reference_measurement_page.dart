@@ -20,6 +20,10 @@ import 'report_export_data.dart';
 import 'survey_environment.dart';
 import 'survey_environment_ui.dart';
 import 'image_selection_service.dart';
+import 'photo_analysis_service.dart';
+import 'reference_preview.dart';
+import 'combined_reference.dart';
+import 'contour_workspace_page.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -59,8 +63,25 @@ class ReferenceMeasurementPage extends StatefulWidget {
   final CorrectionsService? service;
   final ContourDrafts? drafts;
   final Future<Uint8List?> Function()? pickPhoto;
+  final Uint8List? initialImage;
+  final Map<String, dynamic>? initialSnapshot;
+  final String? analysisId, parentId;
+  final ReportHistoryService? history;
+  final PhotoAnalysisService? analysisService;
+  final ContourDrafts? contourDrafts;
   const ReferenceMeasurementPage(
-      {super.key, this.draftId, this.service, this.drafts, this.pickPhoto});
+      {super.key,
+      this.draftId,
+      this.service,
+      this.drafts,
+      this.pickPhoto,
+      this.initialImage,
+      this.initialSnapshot,
+      this.analysisId,
+      this.parentId,
+      this.history,
+      this.analysisService,
+      this.contourDrafts});
   @override
   State<ReferenceMeasurementPage> createState() =>
       _ReferenceMeasurementPageState();
@@ -69,6 +90,9 @@ class ReferenceMeasurementPage extends StatefulWidget {
 class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   late final _service = widget.service ?? CorrectionsService(),
       _store = widget.drafts ?? referenceStore();
+  late final _history = widget.history ?? ReportHistoryService(auth: _service);
+  late final _analysis =
+      widget.analysisService ?? PhotoAnalysisService(auth: _service);
   final _length = TextEditingController();
   final _environment = SurveyEnvironmentController();
   void _environmentChanged() {
@@ -90,6 +114,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   List<Offset> _reference = [], _tree = [], _crown = [];
   List<Offset> _crownHeight = [], _trunk = [], _trunkAxis = [];
   int _measurementVersion = 2;
+  Offset? _treeTap;
   @override
   void initState() {
     super.initState();
@@ -165,8 +190,74 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         _serverSnapshot = d['server_snapshot'] == null
             ? null
             : Map<String, dynamic>.from(d['server_snapshot']);
+        final tap = d['tree_tap'];
+        if (tap is Map) {
+          final points = ReferenceMeasurement.decode([tap]);
+          _treeTap = points.single;
+        }
+        if (_serverSnapshot?['report'] is Map) {
+          _serverSnapshot!['report'] = boundAnalysisReport(
+              Map<String, dynamic>.from(_serverSnapshot!['report']),
+              _width,
+              _height);
+        }
         _environment.replace(
             surveyMap(d['environment'] ?? _serverSnapshot?['environment']));
+      } else if (widget.initialImage != null) {
+        // Snapshot a selected original immediately; never use the API's resized
+        // JPEG as the original to which reference coordinates belong.
+        final original = Uint8List.fromList(widget.initialImage!);
+        final size = await referenceImageSize(original);
+        await _guard();
+        _image = original;
+        _width = size.width.toInt();
+        _height = size.height.toInt();
+        _serverAnalysisId = widget.analysisId;
+        _serverParentId = widget.parentId;
+        if (widget.initialSnapshot != null) {
+          _serverSnapshot = Map<String, dynamic>.from(
+              jsonDecode(jsonEncode(widget.initialSnapshot)));
+          final binding = _serverSnapshot!['image'];
+          if (binding is Map &&
+              binding['sha256'] != null &&
+              binding['sha256'] != sha256.convert(original).toString()) {
+            throw const FormatException('Отчёт относится к другому фото.');
+          }
+          if (_serverSnapshot!['report'] is Map) {
+            _serverSnapshot!['report'] = boundAnalysisReport(
+                Map<String, dynamic>.from(_serverSnapshot!['report']),
+                _width,
+                _height);
+          }
+          _environment.replace(surveyMap(_serverSnapshot!['environment']));
+          final initialReference = _serverSnapshot!['reference'];
+          if (initialReference is Map) {
+            final measurement = ReferenceMeasurement.fromJson(
+                Map<String, dynamic>.from(initialReference));
+            if (measurement.width != _width || measurement.height != _height) {
+              throw const FormatException('Эталон относится к другому фото.');
+            }
+            _length.text = '${measurement.lengthM}';
+            _unit = 'm';
+            _plane = measurement.samePlane;
+            _measurementVersion = measurement.version;
+            _outline = ContourEditorState(
+                    width: _width,
+                    height: _height,
+                    closed: true,
+                    points: measurement.outline)
+                .toJson();
+            _reference = measurement.reference;
+            _tree = measurement.tree;
+            _crown = measurement.crown;
+            _crownHeight = measurement.crownHeight;
+            _trunk = measurement.trunk;
+            _trunkAxis = measurement.trunkAxis;
+          }
+        } else {
+          _environment.setPoint(surveyPointFromExif(original));
+        }
+        await _save();
       }
     } catch (e) {
       _image = null;
@@ -187,6 +278,9 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           'server_analysis_id': _serverAnalysisId,
           'server_parent_id': _serverParentId,
           'server_snapshot': _serverSnapshot,
+          'tree_tap': _treeTap == null
+              ? null
+              : ReferenceMeasurement.encode([_treeTap!]).single,
           'environment':
               _environment.snapshot.isEmpty ? null : _environment.snapshot,
           'method': 'known_object_segment_v$_measurementVersion',
@@ -258,6 +352,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     _serverParentId = null;
     _serverSnapshot = null;
     _serverMessage = null;
+    _treeTap = null;
     _environment.setPoint(surveyPointFromExif(bytes));
   }
 
@@ -266,30 +361,15 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     if (result == null) return;
     _serverAnalysisId ??= reportUuid();
     await _save();
-    final snapshot = <String, dynamic>{
-      'version': 1,
-      'kind': 'reference',
-      'reference': result.toJson(),
-      'report': {
-        ...?_serverSnapshot?['report'],
-        ...result.report,
-      },
-      'ar': _serverSnapshot?['ar'],
-      'environment':
-          _environment.snapshot.isEmpty ? null : _environment.snapshot,
-      'captured_at': _serverSnapshot?['captured_at'],
-      'change_source': 'reference',
-      if (_serverSnapshot?['correction_id'] != null)
-        'correction_id': _serverSnapshot!['correction_id'],
-    };
     // Capture time belongs to the measurement, not to each network retry.
     _serverSnapshot ??= {
       'captured_at': DateTime.now().toUtc().toIso8601String()
     };
-    snapshot['captured_at'] = _serverSnapshot!['captured_at'];
+    _serverSnapshot!['captured_at'] ??=
+        DateTime.now().toUtc().toIso8601String();
+    final snapshot = _snapshot(result);
     await _save();
-    final history = ReportHistoryService(auth: _service);
-    await history.stage(
+    await _history.stage(
         token: _token!,
         localId: _id!,
         analysisId: _serverAnalysisId!,
@@ -297,10 +377,119 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
         snapshot: snapshot,
         parentId: _serverParentId);
     await _guard();
-    final response = await history.upload(_token!, _id!);
+    final response = await _history.upload(_token!, _id!);
     await _guard();
     _serverParentId = response['record']['version_id'];
+    _serverSnapshot = snapshot;
     _serverMessage = 'Сохранено в аккаунте';
+  }
+
+  Map<String, dynamic> _snapshot(ReferenceMeasurement result) =>
+      combinedReferenceSnapshot(
+          base: _serverSnapshot,
+          reference: result.toJson(),
+          manualReport: result.report,
+          capturedAt: _serverSnapshot?['captured_at'] ??
+              DateTime.now().toUtc().toIso8601String(),
+          environment:
+              _environment.snapshot.isEmpty ? null : _environment.snapshot);
+
+  Future<void> _selectTree() async {
+    final point = await Navigator.push<Offset>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => SelectTreePointPage(
+                image: _image!,
+                width: _width,
+                height: _height,
+                initial: _treeTap,
+                sessionToken: _token!)));
+    await _guard();
+    if (point != null) _treeTap = point;
+  }
+
+  Future<void> _analyzeTree() async {
+    // Durable reference draft before any network request. No model failure can
+    // erase the dimensions, manual lines or known original photo.
+    await _save();
+    final original = Uint8List.fromList(_image!);
+    final digest = sha256.convert(original).toString();
+    final raw =
+        await _analysis.analyze(token: _token!, image: original, tap: _treeTap);
+    await _guard();
+    if (_image == null || sha256.convert(_image!).toString() != digest) {
+      throw const FormatException(
+          'Фото изменилось. Повторите выделение дерева.');
+    }
+    final report = boundAnalysisReport(raw, _width, _height);
+    if (report['geometry'] is Map) {
+      // A fresh inference has fresh model geometry even when the outer record
+      // is already a reference version. Keep it before the next manual merge.
+      report['model_geometry'] = report['geometry'];
+    }
+    final pinned = (_serverSnapshot?['report'] as Map?)?['contour_preview'];
+    if (pinned != null) report['contour_preview'] = pinned;
+    // Keep a saved analysis's identity/parent. Inference does not silently
+    // replace an immutable server version; the next save creates its child.
+    _serverAnalysisId ??= raw['analysis_id'] as String? ?? reportUuid();
+    _serverSnapshot = {
+      ...?_serverSnapshot,
+      'report': report,
+      'captured_at': _serverSnapshot?['captured_at'] ??
+          DateTime.now().toUtc().toIso8601String(),
+    };
+    _serverMessage = raw['tree']['detected'] == true
+        ? 'Выделение дерева добавлено. Размеры ниже определяются отмеченными отрезками и эталоном.'
+        : 'Модель не нашла дерево. Разметка и измерения по эталону сохранены; выберите дерево или исправьте контур вручную.';
+  }
+
+  Future<void> _editTreeContour() async {
+    _serverAnalysisId ??= reportUuid();
+    await _save();
+    final id = _serverSnapshot?['correction_id'];
+    final record = id == null ? null : await _service.record(_token!, id);
+    await _guard();
+    if (!mounted || _invalid) return;
+    final selected = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => ContourWorkspacePage(
+                analysisId: _serverAnalysisId!,
+                image: _image,
+                record: record,
+                aiMask: savedTreeMask(_serverSnapshot?['report'] is Map
+                    ? Map<String, dynamic>.from(_serverSnapshot!['report'])
+                    : null),
+                service: _service,
+                drafts: widget.contourDrafts,
+                returnSelection: true)));
+    await _guard();
+    if (selected == null) return;
+    if (selected['analysis_id'] != _serverAnalysisId ||
+        selected['photo_sha256'] != sha256.convert(_image!).toString() ||
+        selected['mask'] is! Uint8List ||
+        selected['correction_id'] is! String) {
+      throw const FormatException(
+          'Контур не соответствует этому фото и отчёту.');
+    }
+    _serverSnapshot = {
+      ...?_serverSnapshot,
+      'captured_at': _serverSnapshot?['captured_at'] ??
+          DateTime.now().toUtc().toIso8601String(),
+      'correction_id': selected['correction_id'],
+      'report': {
+        ...?(_serverSnapshot?['report'] as Map?),
+        'contour_preview': {
+          'correction_id': selected['correction_id'],
+          'photo_sha256': selected['photo_sha256'],
+          'mask_png_base64': base64Encode(selected['mask']),
+          'width': _width,
+          'height': _height,
+        }
+      }
+    };
+    _serverMessage =
+        'В отчёте закреплена эта сохранённая ревизия контура. Размеры по эталону и решение модерации не изменились.';
   }
 
   Future<void> _line(String kind, String title) async {
@@ -417,18 +606,11 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
             else
               ReportExportButton(
                   enabled: !_busy,
-                  load: () async => ReportExportData(snapshot: {
-                        'kind': 'reference',
-                        'report': result.report,
-                        'reference': result.toJson(),
-                        'captured_at': _serverSnapshot?['captured_at'],
-                        'ar': _serverSnapshot?['ar'],
-                        'environment': _environment.snapshot.isEmpty
-                            ? null
-                            : _environment.snapshot
-                      }, record: {
-                        'analysis_id': _serverAnalysisId ?? _id
-                      }, photo: _image, local: true)),
+                  load: () async => ReportExportData(
+                      snapshot: _snapshot(result),
+                      record: {'analysis_id': _serverAnalysisId ?? _id},
+                      photo: _image,
+                      local: true)),
             const ExpansionTile(
                 title: Text('Как измерять по эталону'),
                 leading: Icon(Icons.info_outline),
@@ -450,7 +632,40 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                             builder: (_) => const ReferenceHistoryPage())),
                 child: const Text('Сохранённые измерения по эталону')),
             if (_image != null) ...[
-              Image.memory(_image!, height: 200, fit: BoxFit.contain),
+              SizedBox(
+                  height: 280,
+                  child: Center(
+                      child: AspectRatio(
+                          aspectRatio: _width / _height,
+                          child: ReferencePreview(
+                              image: _image!,
+                              width: _width,
+                              height: _height,
+                              report: _serverSnapshot?['report'] is Map
+                                  ? Map<String, dynamic>.from(
+                                      _serverSnapshot!['report'])
+                                  : null,
+                              reference: result?.toJson(),
+                              correctionId: _serverSnapshot?['correction_id'],
+                              tap: _treeTap)))),
+              Ui.sectionTitle(context, 'Выделение дерева на этом фото'),
+              Text(_serverSnapshot?['correction_id'] != null
+                  ? 'Зелёным показана закреплённая сохранённая ревизия контура, с вашей правкой. Это не подтверждение распознавания моделью или точности размеров. Метры ниже - отдельно по отрезкам и эталону.'
+                  : 'Маска модели показывает дерево целиком, не отдельные крону и ствол. Проверьте, что выделение совпадает с измеряемым деревом. Метры ниже рассчитываются по вашим отрезкам и известной высоте эталона.'),
+              if ((_serverSnapshot?['report'] as Map?)?['tree'] is Map &&
+                  _serverSnapshot!['report']['tree']['detected'] == false)
+                const Text(
+                    'В сохранённом результате модель не нашла дерево. Ручная разметка остаётся доступна.'),
+              OutlinedButton(
+                  onPressed: _busy ? null : () => _run(_editTreeContour),
+                  child: const Text('Создать / исправить контур дерева')),
+              OutlinedButton(
+                  onPressed: _busy ? null : () => _run(_selectTree),
+                  child: const Text('Выбрать дерево для модели')),
+              OutlinedButton(
+                  onPressed: _busy ? null : () => _run(_analyzeTree),
+                  child: const Text('Выделить дерево на этом фото')),
+              if (_serverMessage != null) Text(_serverMessage!),
               SurveyEnvironmentEditor(
                   controller: _environment, original: _image, enabled: !_busy),
               Ui.sectionTitle(context, '1. Размер эталона'),
@@ -579,7 +794,6 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 FilledButton(
                     onPressed: _busy ? null : () => _run(_uploadReport),
                     child: const Text('Сохранить в аккаунте / новую версию')),
-                if (_serverMessage != null) Text(_serverMessage!),
                 OutlinedButton(
                     onPressed: () => _run(_export),
                     child: const Text('Экспорт результата и разметки')),

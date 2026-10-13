@@ -22,6 +22,15 @@ Future<ReportExportData> loadReportExport(
   final auth = service ?? CorrectionsService();
   final epoch = CorrectionsService.authChanges.value;
   await auth.checkSession(token);
+  // New combined snapshots pin a verified saved revision and its exact PNG.
+  // These complete local data need no network request or "latest" lookup.
+  if (!frozen.modelPreviewMask && frozen.mask != null) {
+    await auth.checkSession(token);
+    if (epoch != CorrectionsService.authChanges.value) {
+      throw const CorrectionException('Аккаунт изменился.');
+    }
+    return frozen;
+  }
   final owner = await auth.owner(token);
   final root = await (cacheDirectory ?? getApplicationSupportDirectory)();
   final key = sha256.convert(utf8.encode('$owner/$id')).toString();
@@ -43,6 +52,10 @@ Future<ReportExportData> loadReportExport(
   await auth.checkSession(token);
   if (epoch != CorrectionsService.authChanges.value) {
     throw const CorrectionException('Аккаунт изменился.');
+  }
+  if (asset['correction_id'] != id) {
+    throw const FormatException(
+        'Сохранённая маска относится к другой ревизии контура.');
   }
   final original = exportDecode(asset['original_image_base64']);
   final mask = exportDecode(asset['mask_png_base64']);

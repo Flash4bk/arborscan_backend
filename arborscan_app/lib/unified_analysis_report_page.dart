@@ -12,6 +12,8 @@ import 'report_export_button.dart';
 import 'report_export_data.dart';
 import 'survey_environment.dart';
 import 'survey_environment_ui.dart';
+import 'reference_measurement_page.dart';
+import 'combined_reference.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
   final UnifiedAnalysisResult result;
@@ -19,6 +21,8 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
   final CorrectionsService? correctionsService;
   final bool allowServerSave;
   final ExportLoader? exportLoader;
+  final String? referenceParentId;
+  final Map<String, dynamic>? referenceSnapshot;
 
   const UnifiedAnalysisReportPage({
     super.key,
@@ -27,6 +31,8 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
     this.correctionsService,
     this.allowServerSave = true,
     this.exportLoader,
+    this.referenceParentId,
+    this.referenceSnapshot,
   });
 
   @override
@@ -64,6 +70,9 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
       _reportToken = await CorrectionsService.currentToken();
       if (_invalidSession) return;
       final raw = result.raw;
+      final size = await referenceImageSize(fallbackImageBytes!);
+      final report =
+          boundAnalysisReport(raw, size.width.toInt(), size.height.toInt());
       await _history.stage(
           token: _reportToken!,
           localId: result.analysisId,
@@ -72,7 +81,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
           snapshot: {
             'version': 1,
             'kind': 'v4',
-            'report': raw,
+            'report': report,
             'reference': null,
             'ar': raw['ar_provenance'],
             'environment': raw['environment_snapshot'],
@@ -117,6 +126,42 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
               image: fallbackImageBytes,
               aiMask: result.maskImageBytes,
               service: widget.correctionsService)));
+    } finally {
+      if (mounted) setState(() => _editing = false);
+    }
+  }
+
+  Future<void> _addReference() async {
+    if (_editing || _invalidSession || fallbackImageBytes == null) return;
+    setState(() => _editing = true);
+    try {
+      final token = await CorrectionsService.currentToken();
+      await _history.auth.checkSession(token);
+      final owner = await _history.auth.owner(token);
+      final existing = await _history.journal.load(owner, result.analysisId);
+      await _history.auth.checkSession(token);
+      if (!mounted || _invalidSession) return;
+      final raw = result.raw;
+      await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => ReferenceMeasurementPage(
+                  initialImage: fallbackImageBytes,
+                  analysisId: result.analysisId,
+                  parentId: widget.referenceParentId ??
+                      (existing?['saved'] == true
+                          ? existing!['version_id']
+                          : null),
+                  initialSnapshot: widget.referenceSnapshot ??
+                      {
+                        'report': raw,
+                        'ar': raw['ar_provenance'],
+                        'environment': raw['environment_snapshot'],
+                        'captured_at': raw['captured_at'] ??
+                            DateTime.now().toUtc().toIso8601String(),
+                      })));
+    } catch (e) {
+      if (mounted && !_invalidSession) setState(() => _saveMessage = '$e');
     } finally {
       if (mounted) setState(() => _editing = false);
     }
@@ -173,6 +218,16 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 ),
                 const SizedBox(height: 14),
               ],
+              OutlinedButton.icon(
+                onPressed: _editing ||
+                        fallbackImageBytes == null ||
+                        fallbackImageBytes!.isEmpty
+                    ? null
+                    : _addReference,
+                icon: const Icon(Icons.straighten),
+                label: const Text('Добавить эталон к этому фото'),
+              ),
+              const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed:
                     fallbackImageBytes == null || fallbackImageBytes!.isEmpty

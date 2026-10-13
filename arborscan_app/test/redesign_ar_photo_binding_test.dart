@@ -69,6 +69,52 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  for (final status in [500, 503]) {
+    testWidgets(
+        'analysis HTTP$status keeps selected photo and allows same authorized retry',
+        (tester) async {
+      final requests = <http.Request>[];
+      await http.runWithClient(() async {
+        await setup(tester);
+        await tapAsync(tester, find.text('Галерея'));
+        await tapAsync(tester, find.byKey(const ValueKey('analyze-photo')));
+        expect(find.textContaining('Сервис анализа временно недоступен'),
+            findsOneWidget);
+        expect(find.textContaining('Contour workflow migration is not ready'),
+            findsNothing);
+        expect(find.textContaining('Internal Server Error'), findsNothing);
+        expect(find.text('Фото добавлено'), findsOneWidget);
+        expect(
+            tester
+                .widget<FilledButton>(
+                    find.byKey(const ValueKey('analyze-photo')))
+                .onPressed,
+            isNotNull);
+        await tapAsync(tester, find.byKey(const ValueKey('analyze-photo')));
+        expect(requests, hasLength(2));
+        for (final request in requests) {
+          expect(
+              request.headers['Authorization'], 'Bearer synthetic-owner-token');
+          expect(utf8.decode(request.bodyBytes, allowMalformed: true),
+              contains('name="file"'));
+        }
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+            prefs.getString('arborscan_auth_token'), 'synthetic-owner-token');
+        expect(prefs.getString('arborscan_user_id'), 'synthetic-owner');
+        expect(tester.takeException(), isNull);
+      },
+          () => MockClient((request) async {
+                requests.add(request);
+                return http.Response(
+                    status == 500
+                        ? 'Internal Server Error'
+                        : '{"detail":"Contour workflow migration is not ready"}',
+                    status);
+              }));
+    });
+  }
+
   for (final arFirst in [true, false]) {
     testWidgets(
         '${arFirst ? 'AR → photo' : 'Photo → AR'} binds only after explicit confirmation',
@@ -204,8 +250,8 @@ void main() {
     expect(find.text('Фото добавлено'), findsNothing);
     expect(find.text('Связано с этим фото'), findsNothing);
     expect(find.text('Добавьте фото измеренного дерева'), findsNothing);
-    final analyze = tester.widget<FilledButton>(
-        find.byKey(const ValueKey('analyze-photo')));
+    final analyze = tester
+        .widget<FilledButton>(find.byKey(const ValueKey('analyze-photo')));
     expect(analyze.onPressed, isNull);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());

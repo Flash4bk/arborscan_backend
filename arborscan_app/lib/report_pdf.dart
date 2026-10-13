@@ -3,10 +3,12 @@ import 'package:image/image.dart' as im;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'report_export_data.dart';
+import 'combined_reference.dart';
 
 // Approved A “Axis and crown”; exact path from assets/icons/forest_atlas.svg.
 // Kept inline for the background isolate: export never needs a network font/logo.
-const _atlasMarkSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+const _atlasMarkSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
     '<g fill="none" stroke="#fffdf7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">'
     '<path d="M20 84V39L50 13l30 26v45M34 84V47l16-15 16 15v37M50 32v52M14 58h72"/></g></svg>';
 
@@ -76,6 +78,38 @@ ReportImages prepareReportImages(ReportExportData data,
       : image.clone();
   final ref = data.reference;
   final legend = <String>[];
+  // Use the exact selected version's mask. A model preview is uniformly fitted
+  // to 1600 px by v4; a correction must match the full oriented original.
+  final mask = decode(data.mask);
+  final modelMask = data.modelPreviewMask;
+  if (mask != null && original != null) {
+    final expected = modelPreviewSize(original.width, original.height);
+    final exact =
+        mask.width == original.width && mask.height == original.height;
+    final fitted =
+        modelMask && mask.width == expected[0] && mask.height == expected[1];
+    if (!exact && !fitted) {
+      throw const FormatException('Размер маски не соответствует оригиналу.');
+    }
+    if (modelMask && mask.numChannels != 4) {
+      throw const FormatException(
+          'Маска модели должна содержать прозрачность.');
+    }
+  }
+  void drawMask(im.Image target) {
+    if (mask == null) return;
+    final scaled = im.copyResize(mask,
+        width: target.width,
+        height: target.height,
+        interpolation: im.Interpolation.nearest);
+    for (final p in target) {
+      final m = scaled.getPixel(p.x, p.y);
+      final foreground =
+          modelMask ? m.a > 0 : (m.r > 127 || m.g > 127 || m.b > 127);
+      if (foreground) p.setRgb(p.r * 0.55, p.g * 0.55 + 110, p.b * 0.55);
+    }
+  }
+
   im.Image? overlay;
   if (original != null && ref.isNotEmpty) {
     if (ref['coordinates'] != 'normalized_oriented_image' ||
@@ -85,6 +119,12 @@ ReportImages prepareReportImages(ReportExportData data,
           'Разметка не соответствует размерам или ориентации исходного фото. PDF не создан.');
     }
     overlay = fit(original);
+    drawMask(overlay);
+    if (mask != null) {
+      legend.add(modelMask
+          ? 'Зелёная область — сохранённая маска модели всего дерева; это не отдельная маска кроны.'
+          : 'Зелёная область — сохранённый исправленный контур.');
+    }
     var index = 0;
     for (final entry in exportLineLabels.entries) {
       final color = exportLineColors[index++];
@@ -129,22 +169,9 @@ ReportImages prepareReportImages(ReportExportData data,
     }
   }
   im.Image? contour;
-  if (data.mask != null && original != null) {
-    final mask = decode(data.mask)!;
-    if (mask.width != original.width || mask.height != original.height) {
-      throw const FormatException('Размер маски не соответствует оригиналу.');
-    }
+  if (mask != null && original != null) {
     contour = fit(original);
-    final scaled = im.copyResize(mask,
-        width: contour.width,
-        height: contour.height,
-        interpolation: im.Interpolation.nearest);
-    for (final p in contour) {
-      final m = scaled.getPixel(p.x, p.y);
-      if (m.r > 127 || m.g > 127 || m.b > 127) {
-        p.setRgb(p.r * 0.55, p.g * 0.55 + 110, p.b * 0.55);
-      }
-    }
+    drawMask(contour);
   }
   return ReportImages(
       original == null
@@ -226,8 +253,9 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
                       pw.Row(children: [
                         pw.SvgImage(svg: _atlasMarkSvg, width: 30, height: 30),
                         pw.SizedBox(width: 10),
-                        pw.Text('ArborScan', style: const pw.TextStyle(
-                            fontSize: 27, color: PdfColors.white)),
+                        pw.Text('ArborScan',
+                            style: const pw.TextStyle(
+                                fontSize: 27, color: PdfColors.white)),
                       ]),
                       pw.SizedBox(height: 5),
                       pw.Text('Отчёт об обследовании дерева',
@@ -283,10 +311,13 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
                   'Разметка отсутствует в доступных данных этой версии; автоматически не восстановлена.'),
             if (images.contour != null) ...[
               pw.NewPage(),
-              heading('Связанная ревизия контура'),
+              heading(data.modelPreviewMask
+                  ? 'Маска модели'
+                  : 'Связанная ревизия контура'),
               image(images.contour!),
-              text(
-                  'Зелёное наложение: PNG-маска ревизии ${exportText(s['correction_id'])}. Текущее решение модерации не подставляется в исторический снимок.')
+              text(data.modelPreviewMask
+                  ? 'Зелёное наложение: сохранённая маска модели всего дерева. Отдельные части дерева модель здесь не размечает; качество выделения требует проверки.'
+                  : 'Зелёное наложение: PNG-маска ревизии ${exportText(s['correction_id'])}. Текущее решение модерации не подставляется в исторический снимок.')
             ],
             if (data.historicalValues.isNotEmpty) ...[
               heading('Исторические вычисления'),
