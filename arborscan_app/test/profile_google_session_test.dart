@@ -116,9 +116,12 @@ Future<void> _google(WidgetTester tester) async {
 
 Future<void> _email(WidgetTester tester) async {
   final mode = find.widgetWithText(ChoiceChip, 'Вход');
-  await tester.ensureVisible(mode);
-  await tester.tap(mode);
-  await tester.pumpAndSettle();
+  if (!tester.widget<ChoiceChip>(mode).selected) {
+    await tester.ensureVisible(mode);
+    await tester.pumpAndSettle();
+    await tester.tap(mode);
+    await tester.pumpAndSettle();
+  }
   final email = find.byWidgetPredicate(
     (w) => w is TextField && w.decoration?.labelText == 'Почта',
   );
@@ -379,6 +382,8 @@ void main() {
     'missing-token',
     'offline',
     'bad-200',
+    'server-500',
+    'server-503',
   ]) {
     testWidgets('Google $mode preserves saved state and permits retry', (
       tester,
@@ -402,6 +407,13 @@ void main() {
           final prefs = await SharedPreferences.getInstance();
           for (final item in before.entries) {
             expect(prefs.get(item.key), item.value, reason: item.key);
+          }
+          if (mode.startsWith('server-')) {
+            expect(
+                find.textContaining('Сервис авторизации временно недоступен'),
+                findsOneWidget);
+            expect(find.textContaining('Internal Server Error'), findsNothing);
+            expect(find.textContaining('private-server-detail'), findsNothing);
           }
           final button = find.widgetWithText(
             OutlinedButton,
@@ -430,11 +442,69 @@ void main() {
             if (exchanges == 1 && mode == 'bad-200') {
               return http.Response('{}', 200);
             }
+            if (exchanges == 1 && mode == 'server-500') {
+              return http.Response('Internal Server Error', 500);
+            }
+            if (exchanges == 1 && mode == 'server-503') {
+              return http.Response('{"detail":"private-server-detail"}', 503);
+            }
             return _session();
           }
           return http.Response('{}', 200);
         }),
       );
+    });
+  }
+
+  for (final status in [500, 503]) {
+    testWidgets('email HTTP$status retains saved state and permits retry',
+        (tester) async {
+      final before = _saved();
+      SharedPreferences.setMockInitialValues(before);
+      var logins = 0;
+      await http.runWithClient(() async {
+        await _open(tester);
+        await _email(tester);
+        await tester.pumpAndSettle();
+        final prefs = await SharedPreferences.getInstance();
+        for (final item in before.entries) {
+          expect(prefs.get(item.key), item.value, reason: item.key);
+        }
+        expect(find.textContaining('Сервис авторизации временно недоступен'),
+            findsOneWidget);
+        expect(find.textContaining('Internal Server Error'), findsNothing);
+        expect(find.textContaining('private-server-detail'), findsNothing);
+        expect(
+            tester
+                .widget<FilledButton>(
+                    find.widgetWithText(FilledButton, 'Войти'))
+                .onPressed,
+            isNotNull);
+        await _email(tester);
+        await tester.pumpAndSettle();
+        expect(logins, 2);
+        expect(prefs.getString('arborscan_auth_token'), 'opaque-new');
+        expect(prefs.getString('arborscan_user_id'), _ownerA);
+        expect(prefs.getString(_draftKey), before[_draftKey]);
+        expect(tester.takeException(), isNull);
+      },
+          () => MockClient((request) async {
+                if (request.url.path.endsWith('/auth/me')) {
+                  return http.Response('Internal Server Error', 500);
+                }
+                if (request.url.path.endsWith('/auth/login')) {
+                  logins++;
+                  if (logins == 1) {
+                    return http.Response(
+                        status == 500
+                            ? 'Internal Server Error'
+                            : '{"detail":"private-server-detail"}',
+                        status);
+                  }
+                  return _session();
+                }
+                return http.Response('{}', 200);
+              }));
     });
   }
 

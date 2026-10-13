@@ -13,6 +13,7 @@ import 'onboarding_page.dart';
 import 'app_theme.dart';
 import 'model_quality_page.dart';
 import 'api_config.dart';
+import 'api_response.dart';
 import 'admin_panel_page.dart';
 import 'saved_corrections_page.dart';
 import 'profile_session_guard.dart';
@@ -132,22 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
         )
         .timeout(const Duration(seconds: 15));
 
-    final decoded = res.bodyBytes.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(utf8.decode(res.bodyBytes));
-    final data = decoded is Map<String, dynamic>
-        ? decoded
-        : (decoded is Map
-            ? decoded.cast<String, dynamic>()
-            : <String, dynamic>{});
-
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception(
-        'HTTP ${res.statusCode}: '
-        '${data['detail']?.toString() ?? 'Ошибка сервера'}',
-      );
-    }
-    return data;
+    return decodeApiObject(res, service: 'Сервис авторизации');
   }
 
   Future<Map<String, dynamic>> _getJson(
@@ -164,22 +150,7 @@ class _ProfilePageState extends State<ProfilePage> {
         )
         .timeout(const Duration(seconds: 15));
 
-    final decoded = res.bodyBytes.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(utf8.decode(res.bodyBytes));
-    final data = decoded is Map<String, dynamic>
-        ? decoded
-        : (decoded is Map
-            ? decoded.cast<String, dynamic>()
-            : <String, dynamic>{});
-
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception(
-        'HTTP ${res.statusCode}: '
-        '${data['detail']?.toString() ?? 'Ошибка сервера'}',
-      );
-    }
-    return data;
+    return decodeApiObject(res, service: 'Сервис профиля');
   }
 
   Future<bool> _clearInvalidSession(
@@ -422,7 +393,7 @@ class _ProfilePageState extends State<ProfilePage> {
             .push(MaterialPageRoute(builder: (_) => const OnboardingPage()));
       }
     } catch (e) {
-      _snack(e.toString().replaceFirst('Exception: ', ''));
+      _snack(_authErrorMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -459,7 +430,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ? 'Вы вошли как администратор.'
           : 'Вы вошли как пользователь.');
     } catch (e) {
-      _snack(e.toString().replaceFirst('Exception: ', ''));
+      _snack(_authErrorMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -538,6 +509,17 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  String _authErrorMessage(Object error) {
+    if (error is ApiResponseException) return error.message;
+    if (error is TimeoutException || error is http.ClientException) {
+      return 'Не удалось связаться с сервером. Проверьте интернет и повторите вход.';
+    }
+    if (error is FormatException) {
+      return 'Сервер вернул некорректный ответ. Вход не изменён; повторите попытку.';
+    }
+    return error.toString().replaceFirst('Exception: ', '');
+  }
+
   String _googleErrorMessage(Object error) {
     if (error is PlatformException) {
       if (error.code == 'sign_in_canceled' || error.code == 'canceled') {
@@ -550,6 +532,9 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     if (error is TimeoutException || error is http.ClientException) {
       return 'Не удалось связаться с сервером. Проверьте интернет и повторите вход.';
+    }
+    if (error is ApiResponseException && error.statusCode >= 500) {
+      return error.message;
     }
     if (error is FormatException) {
       return 'Сервер вернул некорректный ответ. Вход не изменён; повторите попытку.';
