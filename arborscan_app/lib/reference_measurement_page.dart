@@ -450,6 +450,13 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     final record = id == null ? null : await _service.record(_token!, id);
     await _guard();
     if (!mounted || _invalid) return;
+    if (record != null) {
+      validateBoundCorrection(
+          record: record,
+          correctionId: id,
+          analysisId: _serverAnalysisId!,
+          photo: _image!);
+    }
     final selected = await Navigator.push<Map<String, dynamic>>(
         context,
         MaterialPageRoute(

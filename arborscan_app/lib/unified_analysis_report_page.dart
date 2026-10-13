@@ -21,6 +21,8 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
   final CorrectionsService? correctionsService;
   final bool allowServerSave;
   final ExportLoader? exportLoader;
+  // The immutable report lineage differs from a later model execution ID.
+  final String? historyAnalysisId;
   final String? referenceParentId;
   final Map<String, dynamic>? referenceSnapshot;
 
@@ -31,6 +33,7 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
     this.correctionsService,
     this.allowServerSave = true,
     this.exportLoader,
+    this.historyAnalysisId,
     this.referenceParentId,
     this.referenceSnapshot,
   });
@@ -42,6 +45,7 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
 
 class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   UnifiedAnalysisResult get result => widget.result;
+  String get _analysisId => widget.historyAnalysisId ?? result.analysisId;
   Uint8List? get fallbackImageBytes => widget.fallbackImageBytes;
   bool _editing = false;
   final _history = ReportHistoryService();
@@ -75,8 +79,9 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
           boundAnalysisReport(raw, size.width.toInt(), size.height.toInt());
       await _history.stage(
           token: _reportToken!,
-          localId: result.analysisId,
-          analysisId: result.analysisId,
+          localId: _analysisId,
+          analysisId: _analysisId,
+          parentId: widget.referenceParentId,
           image: fallbackImageBytes!,
           snapshot: {
             'version': 1,
@@ -103,7 +108,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
     if (_savingReport || _invalidSession) return;
     setState(() => _savingReport = true);
     try {
-      await _history.upload(_reportToken ?? '', result.analysisId);
+      await _history.upload(_reportToken ?? '', _analysisId);
       if (mounted && !_invalidSession) {
         setState(() => _saveMessage = 'Сохранено в аккаунте');
       }
@@ -120,12 +125,30 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
     }
     setState(() => _editing = true);
     try {
+      final service = widget.correctionsService ?? _history.auth;
+      final token = await CorrectionsService.currentToken();
+      await service.checkSession(token);
+      final pinnedId = widget.referenceSnapshot?['correction_id'] as String?;
+      final record =
+          pinnedId == null ? null : await service.record(token, pinnedId);
+      await service.checkSession(token);
+      if (!mounted || _invalidSession) return;
+      if (record != null) {
+        validateBoundCorrection(
+            record: record,
+            correctionId: pinnedId!,
+            analysisId: _analysisId,
+            photo: fallbackImageBytes!);
+      }
       await Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => ContourWorkspacePage(
-              analysisId: result.analysisId,
+              analysisId: _analysisId,
               image: fallbackImageBytes,
               aiMask: result.maskImageBytes,
-              service: widget.correctionsService)));
+              record: record,
+              service: service)));
+    } catch (e) {
+      if (mounted && !_invalidSession) setState(() => _saveMessage = '$e');
     } finally {
       if (mounted) setState(() => _editing = false);
     }
@@ -138,7 +161,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
       final token = await CorrectionsService.currentToken();
       await _history.auth.checkSession(token);
       final owner = await _history.auth.owner(token);
-      final existing = await _history.journal.load(owner, result.analysisId);
+      final existing = await _history.journal.load(owner, _analysisId);
       await _history.auth.checkSession(token);
       if (!mounted || _invalidSession) return;
       final raw = result.raw;
@@ -147,7 +170,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
           MaterialPageRoute(
               builder: (_) => ReferenceMeasurementPage(
                   initialImage: fallbackImageBytes,
-                  analysisId: result.analysisId,
+                  analysisId: _analysisId,
                   parentId: widget.referenceParentId ??
                       (existing?['saved'] == true
                           ? existing!['version_id']
@@ -194,7 +217,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                             'ar': result.raw['ar_provenance'],
                             'environment': result.raw['environment_snapshot']
                           }, record: {
-                            'analysis_id': result.analysisId
+                            'analysis_id': _analysisId
                           }, photo: fallbackImageBytes, local: true)),
               if (widget.allowServerSave && fallbackImageBytes != null) ...[
                 FilledButton(
@@ -202,8 +225,8 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                     child: Text(_savingReport
                         ? 'Сохранение…'
                         : 'Сохранить отчёт в аккаунте')),
-                if (_saveMessage != null) Text(_saveMessage!),
               ],
+              if (_saveMessage != null) Text(_saveMessage!),
               if (displayImage != null) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(18),
@@ -229,10 +252,11 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
-                onPressed:
-                    fallbackImageBytes == null || fallbackImageBytes!.isEmpty
-                        ? null
-                        : _editContour,
+                onPressed: _editing ||
+                        fallbackImageBytes == null ||
+                        fallbackImageBytes!.isEmpty
+                    ? null
+                    : _editContour,
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Исправить контур'),
               ),

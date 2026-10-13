@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 
 /// Exact visual transform used by v4 encode_visuals, including Python's
 /// round-to-even at half pixels. This is not a crop or a coordinate change.
@@ -104,4 +106,27 @@ Map<String, dynamic> modelReportForSources(Map<String, dynamic> snapshot) {
   copy.remove('model_geometry');
   copy.remove('contour_preview');
   return copy;
+}
+
+void validateBoundCorrection({
+  required Map<String, dynamic> record,
+  required String correctionId,
+  required String analysisId,
+  required Uint8List photo,
+}) {
+  final digest = sha256.convert(photo).toString();
+  if (record['correction_id'] != correctionId ||
+      record['analysis_id'] != analysisId ||
+      (record['image_sha256'] != null && record['image_sha256'] != digest)) {
+    throw const FormatException('Контур относится к другому фото или отчёту.');
+  }
+  try {
+    final original = base64Decode(record['original_image_base64'] as String);
+    if (sha256.convert(original).toString() != digest) {
+      throw const FormatException();
+    }
+  } catch (_) {
+    throw const FormatException(
+        'Оригинал контура не соответствует этому фото.');
+  }
 }

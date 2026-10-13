@@ -291,6 +291,8 @@ void main() {
   testWidgets(
       'save sends combined child, original model measurements and same original',
       (t) async {
+    const executionId = '99999999-9999-4999-8999-999999999999';
+    seed['report']['analysis_id'] = executionId;
     Map<String, dynamic>? sentSnapshot;
     String? sentParent;
     final history = ReportHistoryService(
@@ -304,6 +306,7 @@ void main() {
                 });
               }
               final multi = request as http.MultipartRequest;
+              expect(multi.fields['analysis_id'], analysisId);
               sentSnapshot = jsonDecode(multi.fields['snapshot']!);
               sentParent = multi.fields['parent_id'];
               expect(await multi.files.single.finalize().toBytes(), original);
@@ -325,6 +328,7 @@ void main() {
     await tapText(t, 'Сохранить в аккаунте / новую версию');
     expect(sentParent, parentId);
     expect(sentSnapshot!['kind'], 'reference');
+    expect(sentSnapshot!['report']['analysis_id'], executionId);
     expect(sentSnapshot!['reference'], measurement().toJson());
     expect(sentSnapshot!['report']['measurements'],
         seed['report']['measurements']);

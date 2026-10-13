@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,13 @@ import 'package:arborscan_app/reference_measurement_page.dart';
 import 'package:arborscan_app/reference_preview.dart';
 import 'package:arborscan_app/unified_analysis_models.dart';
 import 'package:arborscan_app/unified_analysis_report_page.dart';
+import 'package:arborscan_app/contour_workspace_page.dart';
+import 'package:arborscan_app/contour_editor_state.dart';
+import 'package:arborscan_app/mask_drawing_page.dart';
+import 'package:arborscan_app/corrections_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as im;
+import 'combined_reference_service_test.dart' show InspectClient, response;
 
 void main() {
   const owner = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -92,8 +100,9 @@ void main() {
       'live analysis report bridges exact photo, model result and parent into reference',
       (t) async {
     const parent = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const executionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
     final raw = <String, dynamic>{
-      'analysis_id': aid,
+      'analysis_id': executionId,
       'analysis_status': 'absolute_scale_required',
       'tree': {'detected': true},
       'species': {'display_name': 'Тестовая сосна'},
@@ -115,6 +124,7 @@ void main() {
             result: UnifiedAnalysisResult.fromJson(raw),
             fallbackImageBytes: original,
             allowServerSave: false,
+            historyAnalysisId: aid,
             referenceParentId: parent,
             referenceSnapshot: snapshot))));
     await settle(t);
@@ -126,6 +136,7 @@ void main() {
         find.byType(ReferenceMeasurementPage));
     expect(sha256.convert(page.initialImage!), sha256.convert(original));
     expect(page.analysisId, aid);
+    expect(page.initialSnapshot!['report']['analysis_id'], executionId);
     expect(page.parentId, parent);
     expect(
         page.initialSnapshot!['report']['measurements'], raw['measurements']);
@@ -133,6 +144,115 @@ void main() {
     expect(page.initialSnapshot!['ar'], snapshot['ar']);
     expect(
         find.textContaining('Отчёт относится к другому фото.'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('model source edits exact pinned revision in outer lineage',
+      (t) async {
+    t.view.physicalSize = const Size(800, 1600);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    addTearDown(t.view.resetDevicePixelRatio);
+    const cid = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    const executionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const child = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    final mask = im.Image(width: 100, height: 200);
+    for (final p in mask) {
+      p.setRgb(p.x > 40 && p.x < 60 ? 255 : 0, p.x > 40 && p.x < 60 ? 255 : 0,
+          p.x > 40 && p.x < 60 ? 255 : 0);
+    }
+    final record = {
+      'correction_id': cid,
+      'analysis_id': aid,
+      'image_sha256': sha256.convert(original).toString(),
+      'original_image_base64': base64Encode(original),
+      'mask_png_base64': base64Encode(im.encodePng(mask)),
+      'editor_state': const ContourEditorState(
+          width: 100,
+          height: 200,
+          closed: true,
+          points: [Offset(.4, .1), Offset(.6, .1), Offset(.6, .9)]).toJson(),
+      'review_status': 'draft'
+    };
+    String? sentParent, sentAnalysis;
+    final service = CorrectionsService(
+        clientFactory: () => InspectClient((req) async {
+              if (req.method == 'GET' && req.url.path.endsWith('/$cid')) {
+                return response(record);
+              }
+              if (req.method == 'GET') return response({'workflow_version': 1});
+              final multi = req as http.MultipartRequest;
+              sentParent = multi.fields['parent_id'];
+              sentAnalysis = multi.fields['analysis_id'];
+              return response({
+                'saved': true,
+                'correction_id': child,
+                'workflow_version': 1,
+                'review_status': 'draft'
+              });
+            }));
+    final raw = <String, dynamic>{
+      'analysis_id': executionId,
+      'tree': {'detected': true},
+      'images': {'width': 100, 'height': 200}
+    };
+    await t.runAsync(() => t.pumpWidget(MaterialApp(
+        theme: AppTheme.light(),
+        home: UnifiedAnalysisReportPage(
+            result: UnifiedAnalysisResult.fromJson(raw),
+            fallbackImageBytes: original,
+            historyAnalysisId: aid,
+            referenceSnapshot: {'correction_id': cid, 'report': raw},
+            correctionsService: service,
+            allowServerSave: false))));
+    await settle(t);
+    await t.scrollUntilVisible(find.text('Исправить контур'), 150,
+        scrollable: find.byType(Scrollable).first);
+    await t.runAsync(() => t.tap(find.text('Исправить контур')));
+    await settle(t);
+    final page =
+        t.widget<ContourWorkspacePage>(find.byType(ContourWorkspacePage));
+    expect(page.analysisId, aid);
+    expect(page.record!['correction_id'], cid);
+    expect(page.record!['original_image_base64'], base64Encode(original));
+    await t.ensureVisible(find.text('Продолжить редактирование'));
+    await t.pumpAndSettle();
+    await t.runAsync(() => t.tap(find.text('Продолжить редактирование')));
+    await settle(t);
+    expect(find.byType(MaskDrawingPage), findsOneWidget);
+    final canvas = t.renderObject<RenderBox>(
+        find.byKey(const ValueKey('mask-image-canvas')));
+    await t.runAsync(() => t.dragFrom(
+        canvas.localToGlobal(
+            Offset(canvas.size.width * .4, canvas.size.height * .1)),
+        const Offset(40, 0)));
+    await t.pump();
+    await t.runAsync(() => t.tap(find.text('Подтвердить')));
+    for (var i = 0;
+        i < 10 && find.byType(MaskPreviewDialog).evaluate().isEmpty;
+        i++) {
+      await settle(t);
+    }
+    expect(find.byType(MaskPreviewDialog), findsOneWidget);
+    await t.runAsync(() => t.tap(find.descendant(
+        of: find.byType(MaskPreviewDialog),
+        matching: find.text('Подтвердить'))));
+    for (var i = 0;
+        i < 10 && find.byType(MaskDrawingPage).evaluate().isNotEmpty;
+        i++) {
+      await settle(t);
+    }
+    expect(find.byType(MaskDrawingPage), findsNothing);
+    await t.ensureVisible(find.text('Сохранить контур'));
+    await t.pumpAndSettle();
+    await t.runAsync(() => t.tap(find.text('Сохранить контур')));
+    for (var i = 0; i < 100 && sentParent == null; i++) {
+      await settle(t);
+    }
+    await settle(t);
+    expect(sentAnalysis, aid);
+    expect(sentParent, cid);
+    expect(raw['analysis_id'], executionId);
     await t.pumpWidget(const SizedBox());
   });
 

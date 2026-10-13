@@ -236,6 +236,30 @@ void main() {
     expect(revised['report'].containsKey('model_geometry'), false);
   });
   test(
+      'pinned correction is validated against outer lineage and exact original',
+      () {
+    final photo = Uint8List.fromList([1, 2, 3]);
+    final record = <String, dynamic>{
+      'correction_id': 'pin',
+      'analysis_id': 'outer',
+      'original_image_base64': base64Encode(photo),
+    };
+    void validate(Map<String, dynamic> value) => validateBoundCorrection(
+        record: value, correctionId: 'pin', analysisId: 'outer', photo: photo);
+    expect(() => validate(record), returnsNormally);
+    for (final invalid in [
+      {...record, 'correction_id': 'another-revision'},
+      {...record, 'analysis_id': 'model-execution'},
+      {...record, 'image_sha256': 'another-photo'},
+      {
+        ...record,
+        'original_image_base64': base64Encode([9])
+      },
+    ]) {
+      expect(() => validate(invalid), throwsFormatException);
+    }
+  });
+  test(
       '1920 preview binds original history dimensions without rewriting model values',
       () {
     final original = {

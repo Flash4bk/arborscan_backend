@@ -28,14 +28,19 @@ String _lengthLabel(dynamic value) {
 class ServerReportPage extends StatefulWidget {
   final String? versionId, localId;
   final String? expectedLocalVersionId;
+  final ReportHistoryService? service;
   const ServerReportPage(
-      {super.key, this.versionId, this.localId, this.expectedLocalVersionId});
+      {super.key,
+      this.versionId,
+      this.localId,
+      this.expectedLocalVersionId,
+      this.service});
   @override
   State<ServerReportPage> createState() => _ServerReportPageState();
 }
 
 class _ServerReportPageState extends State<ServerReportPage> {
-  final _service = ReportHistoryService();
+  late final _service = widget.service ?? ReportHistoryService();
   Map<String, dynamic>? _data;
   String? _token, _error;
   bool _busy = true, _invalid = false;
@@ -196,16 +201,17 @@ class _ServerReportPageState extends State<ServerReportPage> {
                                         ServerReportPage(versionId: version)));
                           }
                         }),
-            OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => ContourWorkspacePage(
-                                analysisId: row!['analysis_id'],
-                                image: photo))),
-                child: const Text('Создать / исправить контур дерева')),
+            if (s['correction_id'] == null)
+              OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ContourWorkspacePage(
+                                  analysisId: row!['analysis_id'],
+                                  image: photo))),
+                  child: const Text('Создать / исправить контур дерева')),
             if (s['kind'] == 'v4')
               OutlinedButton(
                   onPressed: _busy
@@ -219,9 +225,10 @@ class _ServerReportPageState extends State<ServerReportPage> {
                                     'environment_snapshot': s['environment']
                                   }),
                                   fallbackImageBytes: photo,
+                                  historyAnalysisId: row!['analysis_id'],
                                   referenceParentId: widget.versionId != null ||
-                                          row!['saved'] == true
-                                      ? row!['version_id']
+                                          row['saved'] == true
+                                      ? row['version_id']
                                       : null,
                                   referenceSnapshot:
                                       Map<String, dynamic>.from(s),
@@ -279,9 +286,10 @@ class _ServerReportPageState extends State<ServerReportPage> {
                                     'environment_snapshot': s['environment'],
                                   }),
                                   fallbackImageBytes: photo,
+                                  historyAnalysisId: row!['analysis_id'],
                                   referenceParentId: widget.versionId != null ||
-                                          row!['saved'] == true
-                                      ? row!['version_id']
+                                          row['saved'] == true
+                                      ? row['version_id']
                                       : null,
                                   referenceSnapshot:
                                       Map<String, dynamic>.from(s),
@@ -351,12 +359,24 @@ class _ServerReportPageState extends State<ServerReportPage> {
                       : () => _act(() async {
                             final c = await _service.auth
                                 .record(_token!, s['correction_id']);
+                            await _service.auth.checkSession(_token!);
                             if (!context.mounted || _invalid) return;
+                            if (photo == null) {
+                              throw const FormatException(
+                                  'Оригинальное фото недоступно.');
+                            }
+                            validateBoundCorrection(
+                                record: c,
+                                correctionId: s['correction_id'],
+                                analysisId: row!['analysis_id'],
+                                photo: photo);
                             await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => ContourWorkspacePage(
-                                        analysisId: row!['analysis_id'],
+                                        analysisId: row['analysis_id'],
+                                        image: photo,
+                                        service: _service.auth,
                                         record: c)));
                           }),
                   child: const Text('Связанный контур и модерация')),
