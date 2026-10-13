@@ -1,0 +1,27 @@
+{
+  "source_commit": "87b4d781955398e2ffdd92b1a0ec5f0315e27fa4",
+  "environment": "Flutter test fixtures, not S24",
+  "selected_pdf_pages": 4,
+  "rendered_pages": 4,
+  "visually_inspected_pages": 4,
+  "hidden_layers": [
+    "reference",
+    "outline",
+    "trunk_axis"
+  ],
+  "all_layers_default_visible": true,
+  "measurement_snapshot_unchanged": true,
+  "notes": "Selected/all overlays and all four PDF pages reviewed; no new clipping or overlaps. No field accuracy claim.",
+  "selected.pdf": {
+    "sha256": "243b2f0c6912d048b31f6e422dc79e6c04aed772ce0eb0745d24da2d5f73daf7",
+    "bytes": 49587
+  },
+  "selected-overlay.png": {
+    "sha256": "39ed90804d3e0917e857a3bb26e861af2f1bbe344f9b2b30a18e4076915aab47",
+    "bytes": 6442
+  },
+  "all-overlay.png": {
+    "sha256": "36cb968dc508e4457dced7c2427bca161604ed310ff1bec8c07f3236febd3df9",
+    "bytes": 7593
+  }
+}

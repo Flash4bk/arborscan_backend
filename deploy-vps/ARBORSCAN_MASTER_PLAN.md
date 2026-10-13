@@ -1,6 +1,6 @@
 # ArborScan — единый план проекта
 
-Версия: 1.33. Дата фиксации: 17.09.2026. Обновлено: 13.10.2026.
+Версия: 1.34. Дата фиксации: 17.09.2026. Обновлено: 13.10.2026.
 Назначение: постоянный реестр согласованного объёма проекта и основание всех последующих заданий Codex.
 
 ## Правила ведения
@@ -36,6 +36,37 @@
 | AS-14 | Надёжность приложения и эксплуатация сервера | Выбранная backup-схема реализована и проверена агентом: fresh20261008T141824Z/native/all3runtime/isolatedPGindexACLrestore, actualsystemd/WindowsScheduler exit0 и ротация14/14(VPS1/Windows5). Уборка20dirs/12APKs выполнена, Dnet+50.718GB; singlecheckout цель ещё заблокирована4pinnedCodexworktree,2ранее policy-rejectedcache сохранены. Independentreceiver/newhostHTTPS отложены пользователем; копии Windows требуют доступногоПК |
 | AS-15 | Полный редизайн и брендирование | Полный дизайн-пакет43/212 подготовлен и проверен отдельно. Пользователь выбрал A «Лесной атлас» и знак A «Ось и крона», разрешил внедрение и сохранную установку. Новый пакет в codex/forest-atlas-implementation выполняется; результаты новой сборки/установки ещё не подтверждены. AS15_IMPLEMENTATION.md; прежние APP_REDESIGN.md свидетельства сохранены, визуальная приёмка всей сборки отсутствует |
 | AS-16 | Выпуск, обновление и итоговая приёмка | Технический выпуск состоялся и проверен агентом: main/originветка3e0e1e6 и annotatedv1.3.0/peeled3e0e1e6 подтверждены. APK1.3.0+23/sourcebbcd5/SHA71f38189… unchanged; recovery24 реально подписан/проверен,9Androidrerun,нонеустановлен. Последующий cleanup/docmain отделён отfixedtag. Визуальная/научная приёмка не назначены,4pinnedworktree cleanup остаток в TECHNICAL_RELEASE_COMPLETION.md |
+
+## Выбор видимости разметки - 13.10.2026, AS-03 / AS-08 / AS-12
+
+Дополнение **реализовано, проверено агентом автоматическими тестами и
+установлено на S24**. Пользователь положительно оценил версию30 и уточнил,
+что вместо автоматического скрытия эталона нужны отдельные переключатели.
+Новая приёмка всей версии31 и научная валидация не назначены.
+
+Ветка `codex/combined-reference`, исходный код
+`87b4d781955398e2ffdd92b1a0ec5f0315e27fa4`, APK `1.4.1-combined.5+31`,
+SHA256 `902f1daf0baa4eb4b241585b2179eafa019d3d6db9b450151bc7a527ed7bc823`.
+«Слои фото» отдельно переключает маску дерева, контур и высоту эталона,
+все измерительные отрезки и точку выбора дерева. По умолчанию всё показано.
+Временный выбор относится к просмотру/PDF из него, после повторного открытия
+снова видна вся разметка; серверная версия, JSON, PNG, измерения и исходные
+точки не изменяются. PDF фиксирует список скрытых слоёв, проверяет также
+скрытые координаты/маску. Итоговые кольца75%, PDF-кольца4px вместо заполненных6;
+редакторы/захват/формулы/единицы прежние.
+
+39/39 относящихся к изменению Flutter-тестов прошли;5 новых проверяют
+переключатели, реальные пиксели/repaint/zoom, независимое скрытие маски,
+immutable snapshot/экспорт и повреждённые скрытые данные. Анализатор49
+прежних issues/0errors/0новых. Подписанный release без dart-define собран;
+нативный/backend код не менялся, прежние260 тестов не выданы за полный прогон31.
+Контрольный синтетический PDF: Poppler,4/4 страницы и оба наложения просмотрены;
+это не системный экспорт телефона. S24Android16: install-r Success,
+156/156SHA неизменны до запуска/прежнийcert/версия подтверждена; первый возврат
+в оставшийся системный picker не засчитан, новый стек Activity запустил
+MainActivity COLD/ok/282мс/process+resumed. Полный UI31 пользователь проверяет
+сам. Аккаунт не отключался, данные не очищались; main/VPS/БД/модели/обучение
+и остальные ID/история сохранены. [COMBINED_REFERENCE.md](COMBINED_REFERENCE.md).
 
 ## Вся разметка, ручной вид и краткий отчёт - 13.10.2026, AS-03 / AS-06 / AS-07 / AS-08 / AS-12
 
@@ -1114,3 +1145,4 @@ independent receiver/clean VM/test HTTPS — следующие конкретн
 | 13.10.2026 | 1.31 | AS-14/AS-16: после HTTP402 и отсутствия бюджета наPro перенесены собственные DB/Storage на оплаченный VPS. Exact APIimages/модель сохранены, main/облако не переписаны. Источник15tables/221rows/2252файла сверены; fresh local183850 реально восстановлен с сессиями/ACL/файлами/xattrs. Публичный HTTPS/login/inference/save/history/owner цикл прошёл; SSH interruption возобновлён. Dailytoolsddb7cc2 и actualsystemd replay exit0, оба Windows COMPLETE, финальный readere65d836/108tests5subtests и actualScheduler exit0 подтверждены. Original14 защищены, VPS16/Windows19sets, deleted=[]; внешний manifest/data не переписывались, локальные receipts обновлены. D45.12ГБ свободно по последнему срезу, source snapshot freshness19:53UTC сохранена. Future calendar/fullpool14/отдельныйseven-image-load/S24/новыйGoogleUI не заявлены; independentreceiver/newhost отложены. Новая пользовательская/полевая приёмка не назначена, остальные ID сохранены. |
 | 13.10.2026 | 1.32 | AS-03/06/08 и связки AS-02/04/12: codex/combined-reference, sourceb1c8fbf/APK1.4.1-combined.3+29/SHAeb882735…; same-photo AI/manual contour/reference с exact pin/SHA/outer history ID, исходная AI geometry отдельно. Compact hollow handles/hide-show/preview actions проверены S24/28 pinch2x,16–17px. Final Flutter245/245 (после отдельного повтора OOM),29targeted,backend24,analyze49old0new0errors,release/signatures16KiB прошли; S24/29 install-r128/128unchanged/version/launch. UI27/28 actualDEMO save/reopen,1м=100см4.00/.88;5pagePDF27 просмотрен. Остальные29phonechecks пользователь оставил себе, их успех/приёмка не заявлены. Exactactive model10isolated probes подтвердили пропуски двух сосен и contaminated.05; model/VPS/SQL/main/training не менялись. Recoveryuserlogin/inference подтверждён отдельно для25; другие ID, история и научные ограничения сохранены. |
 | 13.10.2026 | 1.33 | AS-03/06/07/08/12: codex/combined-reference, f89d94a+ced09e4, APK1.4.1-combined.4+30/SHA60a4f45d…; компактная разметка всех редакторов и соседние точки, ручной unconfirmed вид с локальным журналом/server child/PDF, краткие значения и раскрываемые подробности. Flutter260/260, markup15, species/revisions2, backend12/один прежний warning, analyze49old/0new/0errors; после полного прогона только lint-скобки. Release30/signatures/lineage/alignment прошли, adb install-r на S24Android16 Success/142из142SHA unchanged/прежнийcert/version/холодный запуск361мс/processrunning. Пользователь одобрил внешность точек дерева ранее, новый UI/PDF30 оставил себе; его приёмка и полевая точность не заявлены. Manual species не заменяет модель/профиль, server list index остаётся модельным. D-checkout сохранён, main/VPS/SQL/модели/training/другиеID неизменны. |
+| 13.10.2026 | 1.34 | AS-03/08/12: по уточнению пользователя вместо автоматического скрытия эталона добавлены отдельные слои итогового фото/выбранного PDF; всё видно по умолчанию, временный выбор не меняет snapshot/JSON/PNG/измерения. Result markers75%, PDF hollow4 вместоfilled6; редакторы прежние. Source87b4d78/APK1.4.1-combined.5+31/SHA902f1daf…;39Flutter/5новых/analyze49old0new0errors/release140.5с/signatures прошли, controlPDF4страницы и all/selectedoverlay просмотрены. S24install-r Success/156SHA unchanged/version31/certsame; первый возврат вpicker не засчитан, MainActivity новый стек COLDok282мс/process+resumed. FullUI/PDF31/новая приёмка не заявлены, пользователь проверяет сам; main/VPS/БД/модели/training/другиеID и исходный D-checkout сохранены. |
