@@ -1,0 +1,31 @@
+00:00 +0: loading C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart
+00:00 +0: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:01 +1: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:02 +2: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: cold history opens exact pinned original only, valid=true
+00:02 +3: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: live analysis report bridges exact photo, model result and parent into reference
+00:02 +4: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: live analysis report bridges exact photo, model result and parent into reference
+00:02 +5: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: history labels pinned correction as user revision, AI=true
+00:02 +6: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: model source edits exact pinned revision in outer lineage
+00:03 +7: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: model source edits exact pinned revision in outer lineage
+00:04 +8: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: model source edits exact pinned revision in outer lineage
+00:05 +9: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: model source edits exact pinned revision in outer lineage
+00:05 +10: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry true
+00:05 +11: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target remains in oriented original coordinates after zoom
+00:06 +12: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +13: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +14: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +15: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +16: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +17: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +18: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +19: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +20: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +21: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:06 +22: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:07 +23: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:10 +24: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:12 +25: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: save sends combined child, original model measurements and same original
+00:14 +26: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: photo binding mismatch never creates a reference draft
+00:14 +27: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:16 +28: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: account switch discards pending inference UI, owner draft stays isolated
+00:18 +29: All tests passed!

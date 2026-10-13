@@ -1,0 +1,135 @@
+{
+  "overlays_verified": [
+    {
+      "photo": "3.0.jpg",
+      "variant": "baseline",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "07b03d2211a11583cca9fa2287e9eac6cb843332170793d0bec417ef97769217",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "3.0.jpg",
+      "variant": "lower_threshold_diagnostic",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "c8117a9176f3b0c36f7fb8a55cac71ec7a5d658af9924f3dbc25acf7fe2dae6f",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "3.0.jpg",
+      "variant": "higher_resolution_diagnostic",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "5f5ce2bdebc5ec93bfa70af7fec1ef36ee0b0dc7a012eca5abcb090051cf8bdb",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "3.0.jpg",
+      "variant": "explicit_tree_crop",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "2dd5cc84b916d834b40d573f864a2a3ad4c23b572550e942dccfc332017d7c79",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "3.0.jpg",
+      "variant": "explicit_tree_crop_low_threshold",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "a1bbb5842afb5dfeaf0e6a97894e884918089821a6d52ed5a148d86fae034738",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "2.0.jpg",
+      "variant": "baseline",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "eb14f09f24e2ecbd0cc45b8ef35da780be5ae929441f691044968a2f9524e426",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "2.0.jpg",
+      "variant": "lower_threshold_diagnostic",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "f2c2fc13f9c40fb96eb061ac93898ad3755a0173528000349109df409bc2043f",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "2.0.jpg",
+      "variant": "higher_resolution_diagnostic",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "a9aa18922abfe87d2e47257f0a2428ca504cc8f0ab40a19300b9eac8fd94840f",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "2.0.jpg",
+      "variant": "explicit_tree_crop",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "83a5df231d2eeaf9f2d3a6651ab0dfa6a654ba9179c5f532ce6d021365c2ebbb",
+      "original_sha_matches": true
+    },
+    {
+      "photo": "2.0.jpg",
+      "variant": "explicit_tree_crop_low_threshold",
+      "overlay_size": [
+        1920,
+        1080
+      ],
+      "overlay_sha256": "3bca273efec8354d9a1b747eac299df74c3175776e8c5cd04e067062a870d6fc",
+      "original_sha_matches": true
+    }
+  ],
+  "png_masks": [
+    {
+      "name": "2.0-lower_threshold_diagnostic-mask0.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "sha256": "2dbfe926fcc2d15d2cc4a04c8323448a76e19a36a40b01d66b711cda04dce5c3"
+    },
+    {
+      "name": "3.0-lower_threshold_diagnostic-mask0.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "sha256": "b809d4c50f8e6578772c3f95fca428e1292ae64eb2135da51907a2c74d9d47d0"
+    },
+    {
+      "name": "3.0-lower_threshold_diagnostic-mask1.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "sha256": "73cb990da9a929dbd418822e62650f5512a9ab2ee9f27d1ca1c2876fdff65af2"
+    }
+  ],
+  "network_none": true,
+  "model_read_only": true,
+  "production_services_unchanged": true,
+  "diagnostic_container_exit_code": 0,
+  "diagnostic_container_removed": true
+}

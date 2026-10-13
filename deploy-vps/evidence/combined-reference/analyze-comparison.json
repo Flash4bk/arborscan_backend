@@ -1,0 +1,10 @@
+{
+  "baseline": 51,
+  "current": 49,
+  "added": [],
+  "removed": [
+    "warning - The value of the local variable 'previewSize' isn't used - lib\\mask_drawing_page.dart - unused_local_variable",
+    "info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\\mask_drawing_page.dart - deprecated_member_use"
+  ],
+  "errors": 0
+}

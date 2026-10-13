@@ -1,0 +1,259 @@
+{
+  "model_sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+  "image_version": "034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+  "ultralytics_version": "8.4.143",
+  "torch_version": "2.14.0+cpu",
+  "task": "segment",
+  "class_names": {
+    "0": "tree"
+  },
+  "checkpoint": {
+    "epoch": 30,
+    "version": "8.4.34",
+    "date": "2026-04-09T07:21:49.362492",
+    "training_parameters": {
+      "task": "segment",
+      "epochs": 100,
+      "imgsz": 1024,
+      "batch": 2,
+      "mask_ratio": 4,
+      "overlap_mask": true
+    },
+    "model_class": "SegmentationModel"
+  },
+  "cases": [
+    {
+      "photo": "3.0.jpg",
+      "photo_sha256": "d7efb17505d9ab31b79e08174fd4d3386bec7507485ab2d3f5bc2520d58959b4",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "baseline",
+      "imgsz": 1024,
+      "confidence_threshold": 0.25,
+      "roi_original_px": null,
+      "seconds": 19.103,
+      "candidates": [],
+      "overlay": "3.0-baseline.jpg",
+      "runtime_selection": {
+        "tap_normalized": [
+          0.42,
+          0.15
+        ],
+        "detected": false,
+        "confidence": null,
+        "bbox": null,
+        "warnings": [
+          "tree_segmentation_returned_no_masks"
+        ]
+      }
+    },
+    {
+      "photo": "3.0.jpg",
+      "photo_sha256": "d7efb17505d9ab31b79e08174fd4d3386bec7507485ab2d3f5bc2520d58959b4",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "lower_threshold_diagnostic",
+      "imgsz": 1024,
+      "confidence_threshold": 0.05,
+      "roi_original_px": null,
+      "seconds": 7.775,
+      "candidates": [
+        {
+          "class_id": 0,
+          "name": "tree",
+          "confidence": 0.13679,
+          "bbox_xyxy_original_px": [
+            248.78,
+            40.86,
+            1670.29,
+            1080.0
+          ],
+          "mask_area_px": 211143
+        },
+        {
+          "class_id": 0,
+          "name": "tree",
+          "confidence": 0.053182,
+          "bbox_xyxy_original_px": [
+            634.5,
+            39.17,
+            1777.29,
+            1080.0
+          ],
+          "mask_area_px": 137199
+        }
+      ],
+      "overlay": "3.0-lower_threshold_diagnostic.jpg"
+    },
+    {
+      "photo": "3.0.jpg",
+      "photo_sha256": "d7efb17505d9ab31b79e08174fd4d3386bec7507485ab2d3f5bc2520d58959b4",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "higher_resolution_diagnostic",
+      "imgsz": 1536,
+      "confidence_threshold": 0.25,
+      "roi_original_px": null,
+      "seconds": 14.222,
+      "candidates": [],
+      "overlay": "3.0-higher_resolution_diagnostic.jpg"
+    },
+    {
+      "photo": "3.0.jpg",
+      "photo_sha256": "d7efb17505d9ab31b79e08174fd4d3386bec7507485ab2d3f5bc2520d58959b4",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "explicit_tree_crop",
+      "imgsz": 1024,
+      "confidence_threshold": 0.25,
+      "roi_original_px": [
+        625,
+        0,
+        1010,
+        940
+      ],
+      "seconds": 7.949,
+      "candidates": [],
+      "overlay": "3.0-explicit_tree_crop.jpg"
+    },
+    {
+      "photo": "3.0.jpg",
+      "photo_sha256": "d7efb17505d9ab31b79e08174fd4d3386bec7507485ab2d3f5bc2520d58959b4",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "explicit_tree_crop_low_threshold",
+      "imgsz": 1024,
+      "confidence_threshold": 0.05,
+      "roi_original_px": [
+        625,
+        0,
+        1010,
+        940
+      ],
+      "seconds": 8.02,
+      "candidates": [],
+      "overlay": "3.0-explicit_tree_crop_low_threshold.jpg"
+    },
+    {
+      "photo": "2.0.jpg",
+      "photo_sha256": "5b257b286e988da2f624cbd6622cbc62ddf47e97b23ca3c8e0c2188952d937e9",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "baseline",
+      "imgsz": 1024,
+      "confidence_threshold": 0.25,
+      "roi_original_px": null,
+      "seconds": 7.176,
+      "candidates": [],
+      "overlay": "2.0-baseline.jpg",
+      "runtime_selection": {
+        "tap_normalized": [
+          0.3,
+          0.15
+        ],
+        "detected": false,
+        "confidence": null,
+        "bbox": null,
+        "warnings": [
+          "tree_segmentation_returned_no_masks"
+        ]
+      }
+    },
+    {
+      "photo": "2.0.jpg",
+      "photo_sha256": "5b257b286e988da2f624cbd6622cbc62ddf47e97b23ca3c8e0c2188952d937e9",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "lower_threshold_diagnostic",
+      "imgsz": 1024,
+      "confidence_threshold": 0.05,
+      "roi_original_px": null,
+      "seconds": 6.866,
+      "candidates": [
+        {
+          "class_id": 0,
+          "name": "tree",
+          "confidence": 0.128845,
+          "bbox_xyxy_original_px": [
+            14.46,
+            4.31,
+            1414.86,
+            1080.0
+          ],
+          "mask_area_px": 287238
+        }
+      ],
+      "overlay": "2.0-lower_threshold_diagnostic.jpg"
+    },
+    {
+      "photo": "2.0.jpg",
+      "photo_sha256": "5b257b286e988da2f624cbd6622cbc62ddf47e97b23ca3c8e0c2188952d937e9",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "higher_resolution_diagnostic",
+      "imgsz": 1536,
+      "confidence_threshold": 0.25,
+      "roi_original_px": null,
+      "seconds": 10.175,
+      "candidates": [],
+      "overlay": "2.0-higher_resolution_diagnostic.jpg"
+    },
+    {
+      "photo": "2.0.jpg",
+      "photo_sha256": "5b257b286e988da2f624cbd6622cbc62ddf47e97b23ca3c8e0c2188952d937e9",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "explicit_tree_crop",
+      "imgsz": 1024,
+      "confidence_threshold": 0.25,
+      "roi_original_px": [
+        410,
+        0,
+        715,
+        960
+      ],
+      "seconds": 6.362,
+      "candidates": [],
+      "overlay": "2.0-explicit_tree_crop.jpg"
+    },
+    {
+      "photo": "2.0.jpg",
+      "photo_sha256": "5b257b286e988da2f624cbd6622cbc62ddf47e97b23ca3c8e0c2188952d937e9",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "variant": "explicit_tree_crop_low_threshold",
+      "imgsz": 1024,
+      "confidence_threshold": 0.05,
+      "roi_original_px": [
+        410,
+        0,
+        715,
+        960
+      ],
+      "seconds": 7.601,
+      "candidates": [],
+      "overlay": "2.0-explicit_tree_crop_low_threshold.jpg"
+    }
+  ],
+  "scope": "diagnostic_only_no_training_no_production_writes_no_assumed_reference_dimensions"
+}

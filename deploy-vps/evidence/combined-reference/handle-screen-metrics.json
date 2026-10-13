@@ -1,0 +1,188 @@
+{
+  "method": "PIL cyan threshold and 8-connected components inside photo-only ROI; no UI text read",
+  "threshold_rgb": {
+    "red_max": 110,
+    "green_min": 205,
+    "blue_min": 205,
+    "green_blue_max_difference": 30
+  },
+  "before": {
+    "screenshot_sha256": "56f62adc4fb03d6271441a710ed716980afa936039a772430e588dbaa9a90bbf",
+    "image_size_px": [
+      1080,
+      2340
+    ],
+    "roi_px": [
+      116,
+      420,
+      964,
+      1990
+    ],
+    "component_count": 7,
+    "median_width_px": 16,
+    "median_height_px": 16,
+    "components": [
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 80,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3125,
+        "center_x_px": 671.5,
+        "center_y_px": 533.5
+      },
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 88,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3438,
+        "center_x_px": 380.5,
+        "center_y_px": 904.5
+      },
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 85,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.332,
+        "center_x_px": 512.5,
+        "center_y_px": 904.5
+      },
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 81,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3164,
+        "center_x_px": 565.5,
+        "center_y_px": 904.5
+      },
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 82,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3203,
+        "center_x_px": 671.5,
+        "center_y_px": 904.5
+      },
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 82,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3203,
+        "center_x_px": 512.5,
+        "center_y_px": 1857.5
+      },
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 80,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3125,
+        "center_x_px": 565.5,
+        "center_y_px": 1857.5
+      }
+    ]
+  },
+  "after": {
+    "screenshot_sha256": "91e9a1b4a4091adb4b6044e38a73745578a5c32cce09c63134346451d36f9ae4",
+    "image_size_px": [
+      1080,
+      2340
+    ],
+    "roi_px": [
+      116,
+      420,
+      964,
+      1990
+    ],
+    "component_count": 4,
+    "median_width_px": 17.0,
+    "median_height_px": 16.0,
+    "components": [
+      {
+        "width_px": 16,
+        "height_px": 16,
+        "cyan_area_px": 82,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3203,
+        "center_x_px": 221.5,
+        "center_y_px": 1082.5
+      },
+      {
+        "width_px": 17,
+        "height_px": 16,
+        "cyan_area_px": 85,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3125,
+        "center_x_px": 488.0,
+        "center_y_px": 1082.5
+      },
+      {
+        "width_px": 17,
+        "height_px": 16,
+        "cyan_area_px": 83,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3051,
+        "center_x_px": 595.0,
+        "center_y_px": 1082.5
+      },
+      {
+        "width_px": 17,
+        "height_px": 16,
+        "cyan_area_px": 83,
+        "centre_cyan_px_within_radius3": 0,
+        "bbox_fill_fraction": 0.3051,
+        "center_x_px": 809.0,
+        "center_y_px": 1082.5
+      }
+    ]
+  },
+  "boundary": "Pixel size evidence of synthetic DEMO handle rendering, not field measurement accuracy or touch target size",
+  "matched_four_handle_row": {
+    "before_dimensions_px": [
+      [
+        16,
+        16
+      ],
+      [
+        16,
+        16
+      ],
+      [
+        16,
+        16
+      ],
+      [
+        16,
+        16
+      ]
+    ],
+    "after_dimensions_px": [
+      [
+        16,
+        16
+      ],
+      [
+        17,
+        16
+      ],
+      [
+        17,
+        16
+      ],
+      [
+        17,
+        16
+      ]
+    ],
+    "maximum_width_difference_px": 1,
+    "maximum_height_difference_px": 0,
+    "median_spacing_scale": 2.018868,
+    "centre_cyan_pixels_radius3_all_zero": true
+  },
+  "interpretation": "Four matching cyan handles retain 16..17px width and 16px height while their spacing expands about2.019x; up to1px rasterisation difference and hollow centres confirmed. No claim of an exact renderer scale from injected factor alone."
+}

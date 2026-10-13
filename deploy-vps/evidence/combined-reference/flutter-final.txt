@@ -1,0 +1,248 @@
+00:00 +0: loading C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_config_test.dart
+00:00 +0: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_config_test.dart: defaults and dart-define overrides are used
+00:00 +1: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_config_test.dart: endpoint paths retain nginx prefixes and intentional repeated v4
+00:00 +2: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_config_test.dart: relative images retain prefix, absolute URLs are preserved
+00:00 +3: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_config_test.dart: tunnel hints appear only for loopback configurations
+00:00 +4: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 500 is a server error regardless of body Internal Server Error
+00:00 +5: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 503 is a server error regardless of body Internal Server Error
+00:00 +6: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 500 is a server error regardless of body <html>private gateway diagnostic</html>
+00:00 +7: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 503 is a server error regardless of body <html>private gateway diagnostic</html>
+00:00 +8: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 500 is a server error regardless of body {"detail":"Contour workflow migration is not ready"}
+00:00 +9: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 503 is a server error regardless of body {"detail":"Contour workflow migration is not ready"}
+00:00 +10: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: invalid HTTP200 private malformed response cannot become a successful object
+00:00 +11: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: invalid HTTP200 [] cannot become a successful object
+00:00 +12: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: invalid HTTP200  cannot become a successful object
+00:00 +13: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/api_response_test.dart: successful JSON object and 401/409 retain their meaning
+00:00 +14: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: AR exports direct measurements without inventing photo or crown scale
+00:00 +15: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: invalid AR distance is rejected instead of replaced with tree height
+00:01 +16: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: opaque black/white PNG reveals original outside and blends blue inside
+00:01 +17: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: green overlay respects mask alpha and keeps original photo visible
+00:01 +18: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +19: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +20: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:04 +21: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: saved AI alpha mask and reference lines appear together on the original
+00:05 +22: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: saved AI alpha mask and reference lines appear together on the original
+00:06 +23: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: model source edits exact pinned revision in outer lineage
+00:07 +24: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: model source edits exact pinned revision in outer lineage
+00:08 +25: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: valid model preview uses the server half-pixel round-to-even transform
+00:08 +26: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: valid model preview uses the server half-pixel round-to-even transform
+00:09 +27: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: tree target cannot return across an unannounced account change
+00:09 +28: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: legacy reference without model has lines and no fabricated mask
+00:10 +29: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: cold history opens exact pinned original only, valid=false
+00:11 +30: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: explicit saved correction wins over AI and remains bound to original/version
+00:12 +31: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: explicit saved correction wins over AI and remains bound to original/version
+00:12 +32: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: history labels pinned correction as user revision, AI=false
+00:12 +33: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: complete pinned local correction exports offline without accessing a server
+00:12 +34: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: complete pinned local correction exports offline without accessing a server
+00:13 +35: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: reference revision parent uses only confirmed server row false
+00:13 +36: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: cache from another revision of the same photo is rejected
+00:13 +37: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: reference revision parent uses only confirmed server row true
+00:14 +38: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +39: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +40: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +41: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +42: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +43: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +44: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +45: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +46: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +47: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:14 +48: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:15 +49: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:15 +50: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:16 +51: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:17 +52: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:17 +53: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:17 +54: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:17 +55: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:17 +56: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +57: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +58: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +59: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +60: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +61: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +62: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +63: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +64: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +65: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +66: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:18 +67: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:19 +68: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/corrections_test.dart: pagination, cold reopening from server and account invalidation
+00:19 +69: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:19 +70: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:21 +71: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/correction_listing_pagination_test.dart: empty filtered page still loads and opens next committed record
+00:21 +72: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: save sends combined child, original model measurements and same original
+00:22 +73: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: save sends combined child, original model measurements and same original
+00:22 +74: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/correction_status_presentation_test.dart: Old personal index does not invent draft; opened decisions remain readable
+00:22 +75: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: photo binding mismatch never creates a reference draft
+00:23 +76: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/correction_status_presentation_test.dart: Decision dates are compact at 200 percent, original timestamps and moderation controls stay accessible
+00:23 +77: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:23 +78: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:23 +79: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:25 +80: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:25 +81: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/data_presentation_test.dart: account switch hides photo response and revision details at 200 percent
+00:25 +82: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: account switch discards pending inference UI, owner draft stays isolated
+00:25 +83: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: account switch discards pending inference UI, owner draft stays isolated
+00:26 +84: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/forest_atlas_layout_test.dart: pinned analyze stays visible with photo, scrolling and keyboard false/1.0
+00:27 +85: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: missing gallery never starts plugin and retry is available
+00:28 +86: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: missing gallery never starts plugin and retry is available
+00:28 +87: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: missing gallery never starts plugin and retry is available
+00:29 +88: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: missing gallery never starts plugin and retry is available
+00:29 +89: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: missing gallery never starts plugin and retry is available
+00:29 +90: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/forest_atlas_layout_test.dart: mask drag and undo survive resized canvas without changing original coordinates
+00:29 +91: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: pending gallery preflight blocks repeat taps
+00:30 +92: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:30 +93: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:31 +94: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:31 +95: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:31 +96: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:31 +97: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/geometry_semantics_integration_test.dart: two EXIF reference versions preserve all geometry and generate PDFs
+00:32 +98: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late gallery error cannot overwrite the next account UI
+00:32 +99: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +100: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +101: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +102: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +103: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +104: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +105: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +106: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +107: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +108: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +109: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +110: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:32 +111: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: late reference gallery error preserves session invalidation
+00:33 +112: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: reference draft retains bytes, coordinates and result on failure
+00:34 +113: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:35 +114: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Late camera failure after map removal does not poison list
+00:35 +115: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: rings remain compact and hollow at every photo zoom
+00:35 +116: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: rings remain compact and hollow at every photo zoom
+00:36 +117: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: active ring stays hollow and hiding marks does not change draft
+00:36 +118: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: active ring stays hollow and hiding marks does not change draft
+00:36 +119: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: active ring stays hollow and hiding marks does not change draft
+00:36 +120: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: active ring stays hollow and hiding marks does not change draft
+00:36 +121: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/model_quality_test.dart: admin screen restores durable jobs and invalidates on account change
+00:36 +122: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/model_quality_test.dart: admin screen restores durable jobs and invalidates on account change
+00:37 +123: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/model_quality_test.dart: admin screen restores durable jobs and invalidates on account change
+00:37 +124: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/model_quality_test.dart: admin screen restores durable jobs and invalidates on account change
+00:37 +125: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: tall-photo preview keeps both actions visible at large font
+00:37 +126: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/model_quality_test.dart: open confirmation is hidden when the account changes
+00:38 +127: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:39 +127: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +128: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +129: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +130: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +131: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +132: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +133: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +134: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:39 +135: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:39 +136: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +137: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +138: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +139: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +140: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +141: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +142: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +143: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +144: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +145: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:40 +146: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:41 +147: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: late auth/me 200 cannot restore or clear another account
+00:41 +148: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: late auth/me 401 cannot restore or clear another account
+00:41 +149: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: legacy owner hydration matching-owner during profile lookup
+00:41 +150: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:41 +151: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:41 +152: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:41 +153: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:42 +154: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:42 +155: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:42 +156: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google native-error preserves saved state and permits retry
+00:42 +157: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models forbidden role remains explicit and cannot train / 200%
+00:43 +158: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google missing-token preserves saved state and permits retry
+00:43 +159: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Feedback keeps unavailable dimensions and validates edits / 200%
+00:43 +160: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Feedback keeps unavailable dimensions and validates edits / 200%
+00:43 +161: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Feedback keeps unavailable dimensions and validates edits / 200%
+00:43 +162: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Feedback keeps unavailable dimensions and validates edits / 200%
+00:43 +163: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google server-503 preserves saved state and permits retry
+00:44 +164: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Onboarding instructions scroll at 200% and finish returns home
+00:44 +165: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Onboarding instructions scroll at 200% and finish returns home
+00:44 +166: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: email HTTP503 retains saved state and permits retry
+00:44 +167: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Actual v4 report keeps missing metric values and original photo
+00:44 +168: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Actual v4 report keeps missing metric values and original photo
+00:45 +169: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: google session restores same owner after screen recreation
+00:45 +170: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: email session restores same owner after screen recreation
+00:45 +171: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: analysis HTTP500 keeps selected photo and allows same authorized retry
+00:47 +172: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:47 +173: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:47 +174: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: AR → photo binds only after explicit confirmation
+00:48 +175: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR unavailable preserves selected photo
+00:48 +176: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: Photo → AR binds only after explicit confirmation
+00:48 +177: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: A different tree explicitly drops AR; canceled photo binding keeps pending AR
+00:49 +178: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_home_composition_test.dart: Home composition exposes help and actions at 100.0% text with reduced motion
+00:50 +179: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: Photo-first cancellation keeps old AR and photo; reset removes binding
+00:50 +180: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_home_composition_test.dart: Home composition exposes help and actions at 200.0% text with reduced motion
+00:50 +181: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_home_composition_test.dart: Home composition exposes help and actions at 200.0% text with reduced motion
+00:50 +182: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: Account change while confirming AR photo discards the old selection and binding
+00:51 +183: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_line_navigation_test.dart: Back warns about unapplied points; continue keeps them, explicit discard exits
+00:52 +184: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:53 +185: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:53 +186: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:53 +187: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:54 +188: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:54 +189: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_test.dart: Home actions fit small display at large system font
+00:54 +190: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_test.dart: Home actions fit small display at large system font
+00:54 +191: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real user profile and navigation at 360px / 1.6 text
+00:55 +192: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real admin profile and navigation at 360px / 1.6 text
+00:55 +193: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/redesign_states_test.dart: real moderation rejects empty reason, preserves long comment and refreshes decision / 1.6
+00:56 +194: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:56 +195: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:57 +196: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:57 +197: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:57 +198: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:58 +199: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:58 +200: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:58 +201: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:59 +202: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: optional geometry rotates with reference and old versions remain old
+00:59 +203: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_measurement_test.dart: reference journal is accessible directly from History toolbar
+01:00 +204: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:01 +205: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:02 +206: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:02 +207: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:02 +208: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:04 +209: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:05 +210: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:05 +211: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:05 +212: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:06 +213: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:07 +214: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:07 +215: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:07 +216: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:07 +217: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:08 +218: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:09 +219: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:09 +220: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:09 +221: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:09 +222: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:10 +223: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:10 +224: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:10 +225: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:10 +226: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:10 +227: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:10 +228: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:11 +229: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:11 +230: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:11 +231: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:11 +232: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:11 +233: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:11 +234: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:11 +235: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:12 +236: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:12 +237: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:12 +238: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:12 +239: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:12 +240: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:12 +241: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:12 +242: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:14 +243: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+01:14 +244: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/widget_test.dart: Launch reaches the home without an artificial delay
+01:15 +245: All tests passed!

@@ -1,0 +1,46 @@
+{
+  "source_commit": "b1c8fbfab0179314be6824b5260d53dffd1a076b",
+  "branch": "codex/combined-reference",
+  "version_name": "1.4.1-combined.3",
+  "version_code": 29,
+  "apk_sha256": "eb882735a49b9184538e78706be07720ab91ad904191e341b1e9cdd3759e6f93",
+  "flutter_passed": 245,
+  "targeted_included": 29,
+  "backend_passed": 24,
+  "analyze": {
+    "exit_code": 1,
+    "existing_issues": 49,
+    "new_issues": 0,
+    "errors": 0
+  },
+  "s24": {
+    "model": "SM_S928B",
+    "android_api": 36,
+    "install_success": true,
+    "file_count": 128,
+    "unchanged_count": 128,
+    "missing_count": 0,
+    "changed_count": 0,
+    "version_confirmed": true,
+    "launch_requested": true,
+    "full_ui_29_verified": false,
+    "user_will_check_remaining": true,
+    "compact_handles_real_pinch_checked_in_version": 28,
+    "combined_workflow_checked_versions": [
+      27,
+      28
+    ]
+  },
+  "pdf": {
+    "version_code": 27,
+    "filename": "DEMO-combined-device27.pdf",
+    "bytes": 81837,
+    "pages": 5,
+    "rendered_and_visually_reviewed_pages": 5,
+    "sha256": "c9b366c7079129b3e4c4c693f9d5be13a502313ac04e473ff49b1d749c05bb30"
+  },
+  "production_changed": false,
+  "model_changed": false,
+  "training_started": false,
+  "user_acceptance_claimed": false
+}
