@@ -1,0 +1,4 @@
+00:00 +0: loading C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/species_revision_test.dart
+00:00 +0: fresh analysis saves and exports a manual species without changing inference
+00:02 +1: species edit makes a durable child and retries the same request after failure
+00:05 +2: All tests passed!

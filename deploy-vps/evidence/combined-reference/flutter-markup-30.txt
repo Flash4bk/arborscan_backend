@@ -1,0 +1,17 @@
+00:00 +0: loading C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/photo_markup_interaction_test.dart
+00:00 +0: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/photo_markup_interaction_test.dart: all reference annotations and tree selector use hollow zoom-safe rings
+00:00 +1: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: nearby taps add vertices without moving or closing at 1.0
+00:03 +2: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: nearby taps add vertices without moving or closing at 1.0
+00:03 +3: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: nearby taps add vertices without moving or closing at 1.0
+00:05 +4: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: nearby taps add vertices without moving or closing at 1.0
+00:05 +5: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: closed edge accepts a nearby vertex and undo at 1.0
+00:05 +6: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: nearby taps add vertices without moving or closing at 5.0
+00:06 +7: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: closed edge accepts a nearby vertex and undo at 5.0
+00:06 +8: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: pinch and cancelled drag leave no extra contour vertices
+00:07 +9: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: rings remain compact and hollow at every photo zoom
+00:07 +10: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: active ring stays hollow and hiding marks does not change draft
+00:07 +11: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: small handles keep 14px touch targets at zoom 1.0
+00:07 +12: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: small handles keep 14px touch targets at zoom 5.0
+00:08 +13: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: overlapping touch regions select the nearest thin-trunk point
+00:08 +14: C:/Users/danik/.codex/worktrees/combined-reference/arborscan_backend/arborscan_app/test/mask_handle_visibility_test.dart: tall-photo preview keeps both actions visible at large font
+00:09 +15: All tests passed!
