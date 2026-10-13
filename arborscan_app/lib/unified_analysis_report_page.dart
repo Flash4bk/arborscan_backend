@@ -14,6 +14,7 @@ import 'survey_environment.dart';
 import 'survey_environment_ui.dart';
 import 'reference_measurement_page.dart';
 import 'combined_reference.dart';
+import 'species_annotation.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
   final UnifiedAnalysisResult result;
@@ -25,6 +26,7 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
   final String? historyAnalysisId;
   final String? referenceParentId;
   final Map<String, dynamic>? referenceSnapshot;
+  final ReportHistoryService? history;
 
   const UnifiedAnalysisReportPage({
     super.key,
@@ -36,6 +38,7 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
     this.historyAnalysisId,
     this.referenceParentId,
     this.referenceSnapshot,
+    this.history,
   });
 
   @override
@@ -45,15 +48,24 @@ class UnifiedAnalysisReportPage extends StatefulWidget {
 
 class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   UnifiedAnalysisResult get result => widget.result;
+  String? _manualSpecies;
+  bool _speciesEdited = false, _reportStaged = false;
+  String? _reportParentId;
+  late final String _capturedAt =
+      result.raw['captured_at'] ?? DateTime.now().toUtc().toIso8601String();
+  Map<String, dynamic> get _report => _speciesEdited
+      ? withSpeciesAnnotation(result.raw, _manualSpecies ?? '')
+      : result.raw;
   String get _analysisId => widget.historyAnalysisId ?? result.analysisId;
   Uint8List? get fallbackImageBytes => widget.fallbackImageBytes;
   bool _editing = false;
-  final _history = ReportHistoryService();
+  late final _history = widget.history ?? ReportHistoryService();
   String? _reportToken, _saveMessage;
   bool _savingReport = false, _invalidSession = false;
   @override
   void initState() {
     super.initState();
+    _reportParentId = widget.referenceParentId;
     CorrectionsService.authChanges.addListener(_invalidateSession);
     if (widget.allowServerSave && fallbackImageBytes != null) _stageReport();
   }
@@ -70,10 +82,11 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
 
   Future<void> _stageReport() async {
     _savingReport = true;
+    _reportStaged = false;
     try {
       _reportToken = await CorrectionsService.currentToken();
       if (_invalidSession) return;
-      final raw = result.raw;
+      final raw = _report;
       final size = await referenceImageSize(fallbackImageBytes!);
       final report =
           boundAnalysisReport(raw, size.width.toInt(), size.height.toInt());
@@ -81,7 +94,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
           token: _reportToken!,
           localId: _analysisId,
           analysisId: _analysisId,
-          parentId: widget.referenceParentId,
+          parentId: _reportParentId,
           image: fallbackImageBytes!,
           snapshot: {
             'version': 1,
@@ -90,10 +103,10 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
             'reference': null,
             'ar': raw['ar_provenance'],
             'environment': raw['environment_snapshot'],
-            'captured_at':
-                raw['captured_at'] ?? DateTime.now().toUtc().toIso8601String(),
-            'change_source': 'analysis'
+            'captured_at': _capturedAt,
+            'change_source': _speciesEdited ? 'manual' : 'analysis'
           });
+      _reportStaged = true;
       if (mounted && !_invalidSession) {
         setState(() => _saveMessage = 'Полный отчёт сохранён на устройстве.');
       }
@@ -105,10 +118,13 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
   }
 
   Future<void> _saveReport() async {
-    if (_savingReport || _invalidSession) return;
+    if (_savingReport || _editing || _invalidSession) return;
+    if (!_reportStaged) await _stageReport();
+    if (!_reportStaged || _invalidSession) return;
     setState(() => _savingReport = true);
     try {
-      await _history.upload(_reportToken ?? '', _analysisId);
+      final response = await _history.upload(_reportToken ?? '', _analysisId);
+      _reportParentId = response['record']['version_id'];
       if (mounted && !_invalidSession) {
         setState(() => _saveMessage = 'Сохранено в аккаунте');
       }
@@ -116,6 +132,28 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
       if (mounted) setState(() => _saveMessage = '$e');
     } finally {
       if (mounted) setState(() => _savingReport = false);
+    }
+  }
+
+  Future<void> _editSpecies() async {
+    if (_editing || _savingReport || _invalidSession) return;
+    setState(() => _editing = true);
+    try {
+      final token = await CorrectionsService.currentToken();
+      await _history.auth.checkSession(token);
+      if (!mounted || _invalidSession) return;
+      final name = await editSpeciesName(context, _report);
+      await _history.auth.checkSession(token);
+      if (name == null || !mounted || _invalidSession) return;
+      setState(() {
+        _speciesEdited = true;
+        _manualSpecies = name;
+      });
+      await _stageReport();
+    } catch (e) {
+      if (mounted && !_invalidSession) setState(() => _saveMessage = '$e');
+    } finally {
+      if (mounted) setState(() => _editing = false);
     }
   }
 
@@ -164,7 +202,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
       final existing = await _history.journal.load(owner, _analysisId);
       await _history.auth.checkSession(token);
       if (!mounted || _invalidSession) return;
-      final raw = result.raw;
+      final raw = _report;
       await Navigator.push(
           context,
           MaterialPageRoute(
@@ -175,14 +213,22 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                       (existing?['saved'] == true
                           ? existing!['version_id']
                           : null),
-                  initialSnapshot: widget.referenceSnapshot ??
-                      {
-                        'report': raw,
-                        'ar': raw['ar_provenance'],
-                        'environment': raw['environment_snapshot'],
-                        'captured_at': raw['captured_at'] ??
-                            DateTime.now().toUtc().toIso8601String(),
-                      })));
+                  initialSnapshot: widget.referenceSnapshot != null
+                      ? {
+                          ...widget.referenceSnapshot!,
+                          'report': _speciesEdited
+                              ? withSpeciesAnnotation(
+                                  widget.referenceSnapshot!['report'] as Map,
+                                  _manualSpecies ?? '')
+                              : widget.referenceSnapshot!['report'],
+                        }
+                      : {
+                          'report': raw,
+                          'ar': raw['ar_provenance'],
+                          'environment': raw['environment_snapshot'],
+                          'captured_at': raw['captured_at'] ??
+                              DateTime.now().toUtc().toIso8601String(),
+                        })));
     } catch (e) {
       if (mounted && !_invalidSession) setState(() => _saveMessage = '$e');
     } finally {
@@ -212,8 +258,8 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                   load: widget.exportLoader ??
                       () async => ReportExportData(snapshot: {
                             'kind': 'v4',
-                            'report': result.raw,
-                            'captured_at': result.raw['captured_at'],
+                            'report': _report,
+                            'captured_at': _capturedAt,
                             'ar': result.raw['ar_provenance'],
                             'environment': result.raw['environment_snapshot']
                           }, record: {
@@ -221,7 +267,7 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                           }, photo: fallbackImageBytes, local: true)),
               if (widget.allowServerSave && fallbackImageBytes != null) ...[
                 FilledButton(
-                    onPressed: _savingReport ? null : _saveReport,
+                    onPressed: _savingReport || _editing ? null : _saveReport,
                     child: Text(_savingReport
                         ? 'Сохранение…'
                         : 'Сохранить отчёт в аккаунте')),
@@ -277,7 +323,14 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 color: status.$4,
               ),
               const SizedBox(height: 14),
-              _SpeciesCard(result: result),
+              SpeciesAnnotationCard(
+                  report: _report,
+                  onEdit: widget.allowServerSave &&
+                          !_editing &&
+                          !_savingReport &&
+                          fallbackImageBytes != null
+                      ? _editSpecies
+                      : null),
               if (result.raw['environment_snapshot'] is Map)
                 Card(
                     child: ExpansionTile(
@@ -311,60 +364,91 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 metric: result.crownWidth,
                 valueDigits: 2,
               ),
-              const SizedBox(height: 10),
-              _MetricCard(
-                title: result.trunkDiameter.standard == 'dbh_1_3m'
-                    ? 'DBH (историческая метка)'
-                    : 'Диаметр ствола',
-                icon: Icons.circle_outlined,
-                metric: result.trunkDiameter,
-                valueDigits: 3,
-                dbh: true,
-              ),
+              if (result.trunkDiameter.valueM != null) ...[
+                const SizedBox(height: 10),
+                _MetricCard(
+                  title: result.trunkDiameter.standard == 'dbh_1_3m'
+                      ? 'DBH (историческая метка)'
+                      : 'Диаметр ствола',
+                  icon: Icons.circle_outlined,
+                  metric: result.trunkDiameter,
+                  valueDigits: 3,
+                  dbh: true,
+                ),
+              ],
               if (result.raw['measurement_method_version'] == 2)
                 GeometryReport(
+                    compact: true,
                     data: result.raw['geometry'] is Map
                         ? result.raw['geometry'] as Map
                         : null),
               const SizedBox(height: 18),
-              const _SectionTitle(
-                title: 'Диагностика исходных данных',
-                subtitle:
-                    'Баллы ниже — инженерные эвристики, не точность и не доверительный интервал измерения.',
+              ExpansionTile(
+                key: const PageStorageKey('analysis-advanced'),
+                title: const Text('Расширенный анализ'),
+                childrenPadding: const EdgeInsets.all(12),
+                children: [
+                  Text('Предсказание вида: ${result.speciesName}'),
+                  if (result.scientificName != null)
+                    Text(result.scientificName!),
+                  if (result.speciesConfidence != null)
+                    Text(
+                        'Оценка Pl@ntNet ${result.speciesConfidence!.toStringAsFixed(3)} - не точность'),
+                  if (userSpeciesName(_report) != null)
+                    const Text(
+                        'Название указано пользователем. Предсказание и механические параметры модели не изменены; подтверждённая метка для обучения не назначена.'),
+                  GeometryReport(
+                      data: result.raw['geometry'] is Map
+                          ? result.raw['geometry'] as Map
+                          : null),
+                  if (result.trunkDiameter.valueM == null)
+                    _MetricCard(
+                        title: 'Диаметр ствола',
+                        icon: Icons.circle_outlined,
+                        metric: result.trunkDiameter,
+                        valueDigits: 3,
+                        dbh: true),
+                  const _SectionTitle(
+                    title: 'Диагностика исходных данных',
+                    subtitle:
+                        'Баллы ниже — инженерные эвристики, не точность и не доверительный интервал измерения.',
+                  ),
+                  const SizedBox(height: 10),
+                  _QualityCard(result: result),
+                  const Card(
+                      child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('β — коэффициент сопротивления, кг/с',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                    'Пока не определён. Фото, маска и AR-размеры не задают β однозначно. Нужны положения элементов дерева во времени, массы, упругость и проверенная динамическая модель.'),
+                              ]))),
+                  const SizedBox(height: 18),
+                  const _SectionTitle(
+                    title: 'Механическая оценка и риск',
+                    subtitle:
+                        'Расчёт выполняется только при наличии валидированных физических данных.',
+                  ),
+                  const SizedBox(height: 10),
+                  _RiskCard(result: result),
+                  if (result.warnings.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    const _SectionTitle(
+                      title: 'Замечания',
+                      subtitle:
+                          'Причины снижения качества или ограничения анализа.',
+                    ),
+                    const SizedBox(height: 10),
+                    _WarningsCard(warnings: result.warnings),
+                  ],
+                  const SizedBox(height: 18),
+                  _TechnicalCard(result: result),
+                ],
               ),
-              const SizedBox(height: 10),
-              _QualityCard(result: result),
-              const Card(
-                  child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('β — коэффициент сопротивления, кг/с',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            Text(
-                                'Пока не определён. Фото, маска и AR-размеры не задают β однозначно. Нужны положения элементов дерева во времени, массы, упругость и проверенная динамическая модель.'),
-                          ]))),
-              const SizedBox(height: 18),
-              const _SectionTitle(
-                title: 'Механическая оценка и риск',
-                subtitle:
-                    'Расчёт выполняется только при наличии валидированных физических данных.',
-              ),
-              const SizedBox(height: 10),
-              _RiskCard(result: result),
-              if (result.warnings.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                const _SectionTitle(
-                  title: 'Замечания',
-                  subtitle:
-                      'Причины снижения качества или ограничения анализа.',
-                ),
-                const SizedBox(height: 10),
-                _WarningsCard(warnings: result.warnings),
-              ],
-              const SizedBox(height: 18),
-              _TechnicalCard(result: result),
             ],
           ),
         ),
@@ -466,68 +550,6 @@ class _StatusCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SpeciesCard extends StatelessWidget {
-  final UnifiedAnalysisResult result;
-
-  const _SpeciesCard({required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    final conf = result.speciesConfidence;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.park_outlined,
-                    color: AppTheme.color(context, AppTheme.primary)),
-                const SizedBox(width: 8),
-                Text(
-                  'Порода',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              result.speciesName,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            if (result.scientificName?.isNotEmpty == true) ...[
-              const SizedBox(height: 3),
-              Text(
-                result.scientificName!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: AppTheme.color(context, AppTheme.muted),
-                    ),
-              ),
-            ],
-            if (conf != null) ...[
-              const SizedBox(height: 10),
-              Ui.badge(
-                text:
-                    'Оценка Pl@ntNet ${conf.toStringAsFixed(3)} — не точность',
-                color: conf >= 0.80
-                    ? AppTheme.color(context, AppTheme.success)
-                    : AppTheme.color(context, AppTheme.warning),
-                icon: Icons.eco_outlined,
-              ),
-            ],
           ],
         ),
       ),
@@ -857,6 +879,7 @@ class _TechnicalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ExpansionTile(
+        key: const PageStorageKey('analysis-technical'),
         title: const Text(
           'Технические данные',
           style: TextStyle(fontWeight: FontWeight.w800),
@@ -905,6 +928,7 @@ class _TechnicalRow extends StatelessWidget {
           Expanded(
             child: SelectableText(
               value,
+              key: PageStorageKey('technical-field-$label'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),

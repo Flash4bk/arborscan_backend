@@ -74,7 +74,9 @@ Future<void> _snapshot(WidgetTester tester, String name) async {
         _capture.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     final image = await boundary.toImage(pixelRatio: 2);
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    final directory = Directory(Platform.environment['ARBORSCAN_UI_TEST_OUTPUT'] ?? '../output/as15/widget-extra');
+    final directory = Directory(
+        Platform.environment['ARBORSCAN_UI_TEST_OUTPUT'] ??
+            '../output/as15/widget-extra');
     await directory.create(recursive: true);
     await File('${directory.path}/$name.png')
         .writeAsBytes(bytes!.buffer.asUint8List());
@@ -310,6 +312,11 @@ void main() {
     expect(find.text('Сохранить отчёт в аккаунте'), findsNothing);
     await _snapshot(tester, 'v4-report-photo-160');
     for (final title in ['Высота дерева', 'Ширина кроны', 'Диаметр ствола']) {
+      if (title == 'Диаметр ствола') {
+        await _reach(tester, find.text('Расширенный анализ'));
+        await tester.tap(find.text('Расширенный анализ'));
+        await tester.pumpAndSettle();
+      }
       await _reach(tester, find.text(title));
       final card =
           find.ancestor(of: find.text(title), matching: find.byType(Card));

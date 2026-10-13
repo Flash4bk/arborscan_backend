@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'geometry_report.dart';
+import 'species_annotation.dart';
 
 Map<String, dynamic> exportMap(dynamic v) =>
     v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
@@ -255,9 +256,14 @@ class ReportExportData {
   }
 
   List<String> get speciesLines {
+    final annotation = userSpeciesName(report);
     final s = report['species'];
     if (s is! Map) {
       return [
+        if (annotation != null) ...[
+          'Название, указанное пользователем: ${exportText(annotation)}',
+          'Источник: пользователь; определение не подтверждено.',
+        ],
         'Название: ${exportText(s)}',
         if (report['species_scientific_name'] != null ||
             exportMap(report['classification'])['scientific_name'] != null)
@@ -266,6 +272,10 @@ class ReportExportData {
       ];
     }
     return [
+      if (annotation != null) ...[
+        'Название, указанное пользователем: ${exportText(annotation)}',
+        'Источник: пользователь; определение не подтверждено.',
+      ],
       'Название: ${exportText(s['display_name'])}',
       'Научное название: ${exportText(s['scientific_name'])}',
       'Источник: ${exportText(s['source'])}',

@@ -24,6 +24,7 @@ import 'photo_analysis_service.dart';
 import 'reference_preview.dart';
 import 'combined_reference.dart';
 import 'contour_workspace_page.dart';
+import 'species_annotation.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -394,6 +395,17 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
           environment:
               _environment.snapshot.isEmpty ? null : _environment.snapshot);
 
+  Future<void> _editSpecies() async {
+    final report = _serverSnapshot?['report'] as Map?;
+    final name = await editSpeciesName(context, report);
+    await _guard();
+    if (name == null) return;
+    _serverSnapshot = {
+      ...?_serverSnapshot,
+      'report': withSpeciesAnnotation(report ?? {}, name),
+    };
+  }
+
   Future<void> _selectTree() async {
     final point = await Navigator.push<Offset>(
         context,
@@ -429,6 +441,9 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     }
     final pinned = (_serverSnapshot?['report'] as Map?)?['contour_preview'];
     if (pinned != null) report['contour_preview'] = pinned;
+    final annotation =
+        (_serverSnapshot?['report'] as Map?)?['species_annotation'];
+    if (annotation != null) report['species_annotation'] = annotation;
     // Keep a saved analysis's identity/parent. Inference does not silently
     // replace an immutable server version; the next save creates its child.
     _serverAnalysisId ??= raw['analysis_id'] as String? ?? reportUuid();
@@ -577,7 +592,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
     final json = const JsonEncoder.withIndent('  ').convert({
       'measurement': result.toJson(),
       'photo_sha256': sha256.convert(_image!).toString(),
-      ...result.report,
+      ...(_snapshot(result)['report'] as Map),
       'crown_width_m': result.crownM,
       'dbh_m': null,
       'beta_kg_s': null,
@@ -655,10 +670,26 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                               reference: result?.toJson(),
                               correctionId: _serverSnapshot?['correction_id'],
                               tap: _treeTap)))),
+              SpeciesAnnotationCard(
+                  report: _serverSnapshot?['report'] as Map?,
+                  onEdit: _busy ? null : () => _run(_editSpecies)),
+              // Keep one list slot so an invalid/partial size does not dispose
+              // the focused height field when the summary disappears.
+              if (result == null)
+                const SizedBox.shrink()
+              else
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Ui.sectionTitle(context, 'Результат измерения'),
+                  Text('Высота: ${result.heightM.toStringAsFixed(2)} м'),
+                  Text('Ширина кроны: ${result.crownM.toStringAsFixed(2)} м'),
+                  if (_measurementVersion == 2)
+                    GeometryReport(data: result.geometry, compact: true),
+                  const Text('Источник: эталон · фотооценка проекции'),
+                ]),
               Ui.sectionTitle(context, 'Выделение дерева на этом фото'),
               Text(_serverSnapshot?['correction_id'] != null
-                  ? 'Зелёным показана закреплённая сохранённая ревизия контура, с вашей правкой. Это не подтверждение распознавания моделью или точности размеров. Метры ниже - отдельно по отрезкам и эталону.'
-                  : 'Маска модели показывает дерево целиком, не отдельные крону и ствол. Проверьте, что выделение совпадает с измеряемым деревом. Метры ниже рассчитываются по вашим отрезкам и известной высоте эталона.'),
+                  ? 'Сохранённый контур · зелёная маска'
+                  : 'Проверьте выделение нужного дерева.'),
               if ((_serverSnapshot?['report'] as Map?)?['tree'] is Map &&
                   _serverSnapshot!['report']['tree']['detected'] == false)
                 const Text(
@@ -756,45 +787,53 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                       : () => _run(() =>
                           _line('crown', 'Левый и правый край именно кроны')),
                   child: const Text('Отметить ширину кроны')),
-              Ui.sectionTitle(context, 'Дополнительные измерения'),
-              const Text(
-                  'Дополнительно: отметьте нижнюю границу живой кроны и её верх; для сечения ствола — края коры и локальную ось рядом с сечением. Не включайте листву. Разметка необязательна.'),
-              for (final entry in {
-                'crown_height': 'Низ живой кроны и верх',
-                'trunk': 'Края ствола в выбранном сечении',
-                'trunk_axis': 'Ось участка ствола у сечения'
-              }.entries)
-                OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(() => _line(entry.key, entry.value)),
-                    child: Text(entry.value)),
-              if (_crownHeight.isNotEmpty ||
-                  _trunk.isNotEmpty ||
-                  _trunkAxis.isNotEmpty)
-                TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(() async {
-                              _crownHeight = [];
-                              _trunk = [];
-                              _trunkAxis = [];
-                            }),
-                    child: const Text('Очистить дополнительную разметку')),
+              ExpansionTile(
+                key: const PageStorageKey('reference-extra-measurements'),
+                title: const Text('Дополнительные измерения'),
+                childrenPadding: const EdgeInsets.all(12),
+                children: [
+                  const Text(
+                      'Дополнительно: отметьте нижнюю границу живой кроны и её верх; для сечения ствола — края коры и локальную ось рядом с сечением. Не включайте листву. Разметка необязательна.'),
+                  for (final entry in {
+                    'crown_height': 'Низ живой кроны и верх',
+                    'trunk': 'Края ствола в выбранном сечении',
+                    'trunk_axis': 'Ось участка ствола у сечения'
+                  }.entries)
+                    OutlinedButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _run(() => _line(entry.key, entry.value)),
+                        child: Text(entry.value)),
+                  if (_crownHeight.isNotEmpty ||
+                      _trunk.isNotEmpty ||
+                      _trunkAxis.isNotEmpty)
+                    TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _run(() async {
+                                  _crownHeight = [];
+                                  _trunk = [];
+                                  _trunkAxis = [];
+                                }),
+                        child: const Text('Очистить дополнительную разметку')),
+                ],
+              ),
               if (result == null)
                 Text(_calculationError ??
                     'Для расчёта введите положительную высоту, обведите эталон, отметьте три отрезка и подтвердите условия съёмки.'),
               if (result != null) ...[
-                Ui.sectionTitle(context, 'Результат измерения'),
-                const Text('Источник: По известному объекту'),
-                Text('Высота: ${result.heightM.toStringAsFixed(2)} м'),
-                Text('Ширина кроны: ${result.crownM.toStringAsFixed(2)} м'),
-                if (_measurementVersion == 2)
-                  GeometryReport(data: result.geometry),
-                const Text(
-                    'Высота и ширина выше — проекции по вертикальному эталону; не длина ствола и не средний диаметр кроны.'),
-                const Text(
-                    'DBH не измерен. β (кг/с) не определяется по одному фото: нужны динамический эксперимент и модель.'),
+                ExpansionTile(
+                  title: const Text('Расширенный анализ'),
+                  childrenPadding: const EdgeInsets.all(12),
+                  children: [
+                    if (_measurementVersion == 2)
+                      GeometryReport(data: result.geometry),
+                    const Text(
+                        'Высота и ширина - проекции по вертикальному эталону. DBH не измерен; β по одному фото не определяется. Нужны отдельные измерения и динамический эксперимент.'),
+                    const Text(
+                        'Ручной вид не меняет предсказание модели и не подтверждает метку для обучения.'),
+                  ],
+                ),
                 FilledButton(
                     onPressed: _busy ? null : () => _run(() async {}),
                     child: const Text('Сохранить отчёт на устройстве')),
@@ -805,8 +844,18 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                     onPressed: () => _run(_export),
                     child: const Text('Экспорт результата и разметки')),
               ],
-              const Text(
-                  'Локальная копия остаётся на этом устройстве. После «Сохранить в аккаунте» отчёт доступен в истории на других устройствах. Неотправленные данные не переживут удаление приложения. AR и исходный отчёт не перезаписываются.'),
+              const ExpansionTile(
+                title: Text('Хранение и ограничения'),
+                childrenPadding: EdgeInsets.all(12),
+                children: [
+                  Text(
+                      'Локальная копия остаётся на этом устройстве. После «Сохранить в аккаунте» отчёт доступен в истории на других устройствах. Неотправленные данные не переживут удаление приложения. AR и исходный отчёт не перезаписываются.'),
+                  Text(
+                      'Эталон и дерево должны быть на одной глубине. Перспектива автоматически не исправляется; полевая точность не подтверждена.'),
+                  Text(
+                      'Маска показывает дерево целиком. Принятие контура не подтверждает точность размеров.'),
+                ],
+              ),
               if (_saved) const Text('Сохранено на этом устройстве'),
             ],
           ],

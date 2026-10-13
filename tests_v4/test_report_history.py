@@ -27,6 +27,20 @@ def test_exif_restore_reference_and_full_snapshot():
     assert r['report']['beta_kg_s'] is None
     assert r['reference']==d['reference']
 
+def test_user_species_annotation_uses_existing_snapshot_contract():
+    d=snapshot()
+    predicted={'display_name':'Model prediction','confidence':0.6}
+    annotation={'version':1,'display_name':'User name','source':'user','confirmed':False}
+    d['report'].update(species=predicted,species_annotation=annotation)
+    d['change_source']='manual'
+    r=h.validate_snapshot(json.dumps(d),IMAGE)
+    assert r['report']['species']==predicted
+    assert r['report']['species_annotation']==annotation
+    assert r['report']['height_m']==pytest.approx(4)
+    assert r['report']['beta_kg_s'] is None
+    assert r['reference']==d['reference']
+    assert r['provenance']=='user_supplied_snapshot_not_independently_verified'
+
 @pytest.mark.parametrize('mutation',[
  lambda d:d['reference'].update(width=200,height=100),
  lambda d:d['reference'].update(length_m=float('nan')),

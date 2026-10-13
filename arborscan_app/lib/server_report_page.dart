@@ -1,5 +1,6 @@
 import 'app_theme.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'corrections_service.dart';
 import 'report_history_service.dart';
@@ -17,6 +18,7 @@ import 'environment_revision_page.dart';
 import 'map_page.dart';
 import 'reference_preview.dart';
 import 'combined_reference.dart';
+import 'species_annotation.dart';
 
 String _lengthLabel(dynamic value) {
   final number = value is num ? value.toDouble() : double.tryParse('$value');
@@ -113,6 +115,43 @@ class _ServerReportPageState extends State<ServerReportPage> {
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _editSpecies(Map snapshot, Map row, Uint8List photo) async {
+    final name = await editSpeciesName(context, snapshot['report'] as Map?);
+    await _service.auth.checkSession(_token!);
+    if (name == null || !mounted || _invalid) return;
+    final localId = 'species-${reportUuid()}';
+    await _service.stage(
+      token: _token!,
+      localId: localId,
+      analysisId: row['analysis_id'],
+      parentId: widget.versionId != null || row['saved'] == true
+          ? row['version_id']
+          : row['parent_id'],
+      image: photo,
+      snapshot: {
+        for (final key in [
+          'version',
+          'kind',
+          'reference',
+          'ar',
+          'environment',
+          'captured_at',
+          'correction_id'
+        ])
+          if (snapshot.containsKey(key)) key: snapshot[key],
+        'report': withSpeciesAnnotation(snapshot['report'] as Map, name),
+        'change_source': 'manual',
+      },
+    );
+    await _service.auth.checkSession(_token!);
+    if (!mounted || _invalid) return;
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                ServerReportPage(localId: localId, service: _service)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = _data?['snapshot'] as Map?;
@@ -154,6 +193,26 @@ class _ServerReportPageState extends State<ServerReportPage> {
                               correctionId: s['correction_id']))))
             else if (photo != null)
               Image.memory(photo, height: 240, fit: BoxFit.contain),
+            SpeciesAnnotationCard(
+                report: s['report'] as Map?,
+                onEdit: photo == null || _busy
+                    ? null
+                    : () => _act(() => _editSpecies(s, row!, photo))),
+            if (ref != null) ...[
+              Text('Высота: ${_lengthLabel(s['report']['height_m'])}'),
+              Text(
+                  'Ширина кроны: ${_lengthLabel(s['report']['crown_width_m'])}'),
+              GeometryReport(data: s['report']['geometry'], compact: true),
+              const Text('Источник: эталон · фотооценка проекции'),
+              ExpansionTile(
+                  title: const Text('Расширенный анализ'),
+                  childrenPadding: const EdgeInsets.all(12),
+                  children: [
+                    GeometryReport(data: s['report']['geometry']),
+                    const Text(
+                        'β не рассчитан. Вид, указанный пользователем, не является подтверждённой меткой для обучения.'),
+                  ]),
+            ],
             Text('Снимок отчёта от ${s['captured_at'] ?? 'дата неизвестна'}'),
             const Text('Повторный анализ и обновление погоды не выполнялись.'),
             if (SurveyPoint.fromJson(surveyMap(s['environment'])['gps']) !=
@@ -473,14 +532,6 @@ class _ServerReportPageState extends State<ServerReportPage> {
                             }
                           }),
                   child: const Text('Сохранить на сервере / повторить')),
-            if (ref != null) ...[
-              Text('Высота: ${_lengthLabel(s['report']['height_m'])}'),
-              Text(
-                  'Ширина кроны: ${_lengthLabel(s['report']['crown_width_m'])}'),
-              const Text(
-                  'Источник: эталон. Проекционные размеры. β не рассчитан.'),
-              GeometryReport(data: s['report']['geometry']),
-            ],
             ExpansionTile(
                 title: const Text('Исходные данные и происхождение'),
                 children: [

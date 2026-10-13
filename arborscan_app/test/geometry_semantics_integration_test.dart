@@ -77,9 +77,9 @@ void main() {
         findsOneWidget);
     expect(find.textContaining('DBH подтверждён'), findsNothing);
     await tester.scrollUntilVisible(
-        find.text('Высота отмеченной живой кроны (проекция): 2.00 m'), 150,
+        find.text('Высота отмеченной живой кроны (проекция): 2.00 м'), 150,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Ширина сечения ствола (фотооценка диаметра): 0.25 m'),
+    expect(find.text('Ширина сечения ствола (фотооценка диаметра): 0.25 м'),
         findsOneWidget);
     expect(find.text('Угол оси ствола к эталону (2D): 0.00 °'), findsOneWidget);
     expect(geometry['dbh']['value'], isNull);

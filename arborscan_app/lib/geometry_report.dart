@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 /// Displays frozen values; never recalculates a historical report.
 class GeometryReport extends StatelessWidget {
   final Map? data;
-  const GeometryReport({super.key, required this.data});
+  final bool compact;
+  const GeometryReport({super.key, required this.data, this.compact = false});
   static const labels = {
     'tree_segment_length': 'Прямой отрезок основание–верх (2D)',
     'crown_height': 'Высота отмеченной живой кроны (проекция)',
@@ -31,13 +32,21 @@ class GeometryReport extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final e in labels.entries)
-            Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text('${e.value}: ${_display(e.key)}')),
-          const Text(
-              'Фотооценки требуют общей глубины и малой перспективы. Наклон относится только к выбранному прямому участку; кривизна и глубина не восстановлены. Полевая точность не подтверждена.'),
+            if (!compact || _hasValue(e.key))
+              Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text('${e.value}: ${_display(e.key)}')),
+          if (!compact)
+            const Text(
+                'Фотооценки требуют общей глубины и малой перспективы. Наклон относится только к выбранному прямому участку; кривизна и глубина не восстановлены. Полевая точность не подтверждена.'),
         ],
       );
+
+  bool _hasValue(String key) {
+    final metric = data?[key];
+    final value = metric is Map ? metric['value'] : null;
+    return value is num && value.isFinite;
+  }
 
   String _display(String key) {
     final metric = data?[key];
@@ -45,6 +54,6 @@ class GeometryReport extends StatelessWidget {
     if (value is! num || !value.isFinite) {
       return 'нет данных — ${reasons[key]}';
     }
-    return '${value.toStringAsFixed(2)} ${metric['unit'] == 'deg' ? '°' : metric['unit']}';
+    return '${value.toStringAsFixed(2)} ${metric['unit'] == 'deg' ? '°' : metric['unit'] == 'm' ? 'м' : metric['unit']}';
   }
 }

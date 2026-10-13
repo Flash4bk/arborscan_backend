@@ -19,6 +19,7 @@ import 'package:arborscan_app/report_history_service.dart';
 import 'package:arborscan_app/contour_editor_state.dart';
 import 'package:arborscan_app/contour_workspace_page.dart';
 import 'package:arborscan_app/combined_reference.dart';
+import 'package:arborscan_app/species_annotation.dart';
 import 'combined_reference_service_test.dart' show InspectClient, response;
 
 const owner = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -145,6 +146,99 @@ void main() {
     await settle(t);
     await waitUntil(t, () => actionFinished(label));
   }
+
+  testWidgets(
+      'manual species survives cold reopen and inference; extras are collapsed',
+      (t) async {
+    final page = ReferenceMeasurementPage(
+        initialImage: original,
+        initialSnapshot: seed,
+        analysisId: analysisId,
+        drafts: store,
+        analysisService: PhotoAnalysisService(
+            clientFactory: () => InspectClient((_) async => response({
+                  'analysis_id': analysisId,
+                  'tree': {'detected': true},
+                  'species': {'display_name': 'Новое предсказание'},
+                }))));
+    await mount(t, page);
+    await tapText(t, 'Указать вид');
+    final input = find.descendant(
+        of: find.byType(AlertDialog), matching: find.byType(TextField));
+    await t.enterText(input, 'Сосна обыкновенная');
+    await t.pump();
+    await t.runAsync(() => t.tap(find.text('Применить')));
+    await settle(t);
+    await waitUntil(
+        t, () => find.byType(LinearProgressIndicator).evaluate().isEmpty);
+    var rows = (await t.runAsync(() => store.list(owner)))!;
+    final id = rows.single['draft_id'] as String;
+    expect(userSpeciesName(rows.single['server_snapshot']['report']),
+        'Сосна обыкновенная');
+    expect(rows.single['server_snapshot']['report']['species'],
+        seed['report']['species']);
+    expect(rows.single['report']['height_m'], closeTo(4, 1e-8));
+    await t.pumpWidget(const SizedBox());
+    await mount(
+        t,
+        ReferenceMeasurementPage(
+            draftId: id, drafts: ContourDrafts(directory: () async => folder)));
+    await t.scrollUntilVisible(find.text('Сосна обыкновенная'), 150,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text('Указано вами'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Высота: 4.00 м'), 100,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('DBH не измерен'), findsNothing);
+    await t.scrollUntilVisible(find.text('Дополнительные измерения'), 150,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text('Низ живой кроны и верх'), findsNothing);
+    await tapText(t, 'Дополнительные измерения');
+    await t.scrollUntilVisible(find.text('Низ живой кроны и верх'), 150,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text('Низ живой кроны и верх'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    await mount(
+        t,
+        ReferenceMeasurementPage(
+            draftId: id, drafts: store, analysisService: page.analysisService));
+    await tapText(t, 'Выделить дерево на этом фото');
+    rows = (await t.runAsync(() => store.list(owner)))!;
+    expect(userSpeciesName(rows.single['server_snapshot']['report']),
+        'Сосна обыкновенная');
+    expect(rows.single['server_snapshot']['report']['species']['display_name'],
+        'Новое предсказание');
+    expect(rows.single['report']['height_m'], closeTo(4, 1e-8));
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+      'account change cancels species entry without saving to either account',
+      (t) async {
+    await mount(
+        t,
+        ReferenceMeasurementPage(
+            initialImage: original,
+            initialSnapshot: seed,
+            analysisId: analysisId,
+            drafts: store));
+    await tapText(t, 'Указать вид');
+    await t.enterText(
+        find.descendant(
+            of: find.byType(AlertDialog), matching: find.byType(TextField)),
+        'Несохранённый вид');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('arborscan_auth_token', 'other');
+    const other = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    await prefs.setString('arborscan_user_id', other);
+    CorrectionsService.authChanges.value++;
+    await settle(t);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(ReferencePreview), findsNothing);
+    final rows = (await t.runAsync(() => store.list(owner)))!;
+    expect(userSpeciesName(rows.single['server_snapshot']['report']), isNull);
+    expect((await t.runAsync(() => store.list(other)))!, isEmpty);
+    await t.pumpWidget(const SizedBox());
+  });
 
   testWidgets(
       'same original + model + reference survive cold reopening and 100cm recalculation',
@@ -438,10 +532,10 @@ void main() {
     await mount(t,
         ReferenceMeasurementPage(draftId: pinned['draft_id'], drafts: store));
     await t.scrollUntilVisible(
-        find.textContaining('Зелёным показана закреплённая'), 150,
+        find.textContaining('Сохранённый контур · зелёная маска'), 150,
         scrollable: find.byType(Scrollable).first);
-    expect(
-        find.textContaining('Зелёным показана закреплённая'), findsOneWidget);
+    expect(find.textContaining('Сохранённый контур · зелёная маска'),
+        findsOneWidget);
     await t.scrollUntilVisible(
         find.textContaining('В сохранённом результате модель не нашла дерево.'),
         150,
