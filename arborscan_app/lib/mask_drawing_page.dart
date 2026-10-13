@@ -48,6 +48,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   Size? _drawSize;
   bool _initialPointsApplied = false;
   bool _sessionInvalid = false;
+  bool _showHandles = true;
 
   void _invalidateSession() {
     if (widget.sessionToken != null && mounted) {
@@ -307,11 +308,18 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   Offset _toScene(Offset viewportLocal) => _controller.toScene(viewportLocal);
 
   int? _hitTest(Offset scenePx) {
+    // Touch targets stay generous even when the visible rings are compact.
     final threshold = 14.0 / _scale;
+    var nearestDistance = threshold;
+    int? nearest;
     for (int i = 0; i < _points.length; i++) {
-      if ((_points[i] - scenePx).distance <= threshold) return i;
+      final distance = (_points[i] - scenePx).distance;
+      if (distance <= nearestDistance) {
+        nearestDistance = distance;
+        nearest = i;
+      }
     }
-    return null;
+    return nearest;
   }
 
   Future<Uint8List?> _createPreviewImage() async {
@@ -323,8 +331,6 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
     const previewWidth = 300.0;
     final previewHeight =
         previewWidth * (_imageSize!.height / _imageSize!.width);
-    final previewSize = Size(previewWidth, previewHeight);
-
     final scaleX = previewWidth / _drawSize!.width;
     final scaleY = previewHeight / _drawSize!.height;
 
@@ -386,19 +392,13 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
           ..strokeWidth = 2,
       );
 
-      for (final p in _points) {
-        canvas.drawCircle(
-          Offset(p.dx * scaleX, p.dy * scaleY),
-          3,
-          Paint()..color = Colors.cyanAccent,
+      for (var i = 0; i < _points.length; i++) {
+        _paintContourHandle(
+          canvas,
+          Offset(_points[i].dx * scaleX, _points[i].dy * scaleY),
+          first: i == 0,
         );
       }
-
-      canvas.drawCircle(
-        Offset(_points.first.dx * scaleX, _points.first.dy * scaleY),
-        5,
-        Paint()..color = Colors.yellowAccent,
-      );
     }
 
     const legendHeight = 40.0;
@@ -466,51 +466,10 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
         context: context,
         barrierDismissible: false,
         builder: (ctx) {
-          return AlertDialog(
-            title: const Text('Превью маски'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Важно: на некоторых устройствах Image.memory может пытаться занять
-                  // «нативную» ширину и вызывать RIGHT OVERFLOWED BY N PIXELS в AlertDialog.
-                  // Принудительно укладываем превью по ширине диалога.
-                  SizedBox(
-                    width: double.infinity,
-                    child: Image.memory(
-                      previewBytes!,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Проверьте выделение дерева.\nЗелёный цвет — маска ИИ, синий — ваша маска.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  // На узких экранах Row может переполняться (жёлто-чёрный индикатор overflow).
-                  // Wrap позволяет кнопкам переноситься на новую строку.
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () => _safePop<bool>(ctx, false),
-                        icon: const Icon(Icons.edit, size: 18),
-                        label: const Text('Исправить'),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () => _safePop<bool>(ctx, true),
-                        icon: const Icon(Icons.check, size: 18),
-                        label: const Text('Подтвердить'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          return MaskPreviewDialog(
+            previewBytes: previewBytes!,
+            onEdit: () => _safePop<bool>(ctx, false),
+            onConfirm: () => _safePop<bool>(ctx, true),
           );
         },
       );
@@ -706,7 +665,7 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                             title: const Text('Работа с контуром'),
                             content: const SingleChildScrollView(
                                 child: Text(
-                                    'Точки можно перетаскивать. После замыкания коснитесь линии, чтобы добавить точку. Два пальца — масштаб и перемещение. Отмена возвращает предыдущее действие; подтверждение ещё не отправляет контур на проверку.')),
+                                    'Точки можно перетаскивать, касаясь рядом с маленьким кольцом. После замыкания коснитесь линии, чтобы добавить точку. Два пальца — масштаб и перемещение. Кнопка «Скрыть точки» убирает отметки для просмотра фото, не меняя контур. Отмена возвращает предыдущее действие; подтверждение ещё не отправляет контур на проверку.')),
                             actions: [
                               TextButton(
                                   onPressed: () => Navigator.pop(c),
@@ -729,7 +688,11 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                               context: context,
                               builder: (ctx) => AlertDialog(
                                 title: const Text('Превью маски'),
-                                content: Image.memory(previewBytes),
+                                content: SizedBox(
+                                    width: double.infinity,
+                                    height: MediaQuery.sizeOf(ctx).height * .4,
+                                    child: Image.memory(previewBytes,
+                                        fit: BoxFit.contain)),
                                 actions: [
                                   TextButton(
                                     onPressed: () => _safePop(ctx),
@@ -768,6 +731,15 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                       tooltip: 'Сброс зума',
                       icon: const Icon(Icons.zoom_out_map),
                       onPressed: () => _controller.value = Matrix4.identity(),
+                    ),
+                    IconButton(
+                      tooltip: _showHandles ? 'Скрыть точки' : 'Показать точки',
+                      icon: Icon(_showHandles
+                          ? Icons.adjust
+                          : Icons.panorama_fish_eye),
+                      onPressed: _finishing || _activePointers.isNotEmpty
+                          ? null
+                          : () => setState(() => _showHandles = !_showHandles),
                     ),
                   ]))),
         ),
@@ -937,6 +909,9 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
                             closed: _closed,
                             aiMaskImage: _aiMaskImage,
                             initialMaskImage: _initialMaskImage,
+                            controller: _controller,
+                            showHandles: _showHandles,
+                            activeIndex: _dragIndex,
                           ),
                         ),
                       ),
@@ -1013,11 +988,84 @@ class _MaskDrawingPageState extends State<MaskDrawingPage> {
   }
 }
 
+class MaskPreviewDialog extends StatelessWidget {
+  final Uint8List previewBytes;
+  final VoidCallback onEdit;
+  final VoidCallback onConfirm;
+
+  const MaskPreviewDialog({
+    super.key,
+    required this.previewBytes,
+    required this.onEdit,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Превью маски'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: MediaQuery.sizeOf(context).height * .3,
+                child: Image.memory(previewBytes, fit: BoxFit.contain),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Проверьте выделение дерева.\nЗелёный цвет — маска ИИ, синий — ваша маска.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+        // Actions stay outside the scrolling photo and wrap at large text sizes.
+        actions: [
+          OutlinedButton.icon(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit, size: 18),
+            label: const Text('Исправить'),
+          ),
+          FilledButton.icon(
+            onPressed: onConfirm,
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text('Подтвердить'),
+          ),
+        ],
+        actionsOverflowAlignment: OverflowBarAlignment.end,
+      );
+}
+
 class _ContourSnapshot {
   final List<Offset> points;
   final bool closed;
   _ContourSnapshot(List<Offset> points, this.closed)
       : points = List<Offset>.unmodifiable(points);
+}
+
+// All dimensions are logical screen pixels, independent of photo zoom.
+// Hollow handles leave the actual point (and a thin trunk underneath) visible.
+void _paintContourHandle(Canvas canvas, Offset point,
+    {double scale = 1, bool first = false, bool active = false}) {
+  final radius = (active ? 4.5 : (first ? 3.5 : 2.5)) / scale;
+  canvas.drawCircle(
+    point,
+    radius,
+    Paint()
+      ..color = Colors.black.withValues(alpha: .7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5 / scale,
+  );
+  canvas.drawCircle(
+    point,
+    radius,
+    Paint()
+      ..color = first ? Colors.yellowAccent : Colors.cyanAccent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.25 / scale,
+  );
 }
 
 class _EnhancedMaskPainter extends CustomPainter {
@@ -1026,6 +1074,9 @@ class _EnhancedMaskPainter extends CustomPainter {
   final bool closed;
   final ui.Image? aiMaskImage;
   final ui.Image? initialMaskImage;
+  final TransformationController controller;
+  final bool showHandles;
+  final int? activeIndex;
 
   _EnhancedMaskPainter({
     required this.image,
@@ -1033,7 +1084,10 @@ class _EnhancedMaskPainter extends CustomPainter {
     required this.closed,
     this.aiMaskImage,
     this.initialMaskImage,
-  });
+    required this.controller,
+    required this.showHandles,
+    this.activeIndex,
+  }) : super(repaint: controller);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1080,6 +1134,7 @@ class _EnhancedMaskPainter extends CustomPainter {
     }
 
     if (points.isEmpty) return;
+    final scale = controller.value.getMaxScaleOnAxis().clamp(1.0, 10.0);
 
     final path = Path()..moveTo(points.first.dx, points.first.dy);
     for (int i = 1; i < points.length; i++) {
@@ -1101,18 +1156,15 @@ class _EnhancedMaskPainter extends CustomPainter {
       Paint()
         ..color = Colors.red
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
+        ..strokeWidth = 1.25 / scale,
     );
 
-    for (final p in points) {
-      canvas.drawCircle(p, 4, Paint()..color = Colors.cyanAccent);
+    for (var i = 0; i < points.length; i++) {
+      if (showHandles || i == activeIndex) {
+        _paintContourHandle(canvas, points[i],
+            scale: scale, first: i == 0, active: i == activeIndex);
+      }
     }
-
-    canvas.drawCircle(
-      points.first,
-      6,
-      Paint()..color = Colors.yellowAccent.withOpacity(0.85),
-    );
   }
 
   @override
@@ -1120,6 +1172,9 @@ class _EnhancedMaskPainter extends CustomPainter {
       oldDelegate.image != image ||
       oldDelegate.points != points ||
       oldDelegate.closed != closed ||
+      oldDelegate.controller != controller ||
+      oldDelegate.showHandles != showHandles ||
+      oldDelegate.activeIndex != activeIndex ||
       oldDelegate.aiMaskImage != aiMaskImage ||
       oldDelegate.initialMaskImage != initialMaskImage;
 }
