@@ -25,27 +25,65 @@ ReferenceMeasurement measure(double length) => ReferenceMeasurement(
     outline: const [Offset(0, .9), Offset(.2, .9), Offset(.1, .6)]);
 
 void main() {
-  test('optional geometry rotates with reference and old versions remain old', () {
+  test('optional geometry rotates with reference and old versions remain old',
+      () {
     final base = measure(2).toJson();
-    final r = ReferenceMeasurement.fromJson({...base, 'version':2, 'method':'known_object_segment_v2',
-      'crown_height':[{'x':.5,'y':.5},{'x':.5,'y':.1}],
-      'trunk':[{'x':.45,'y':.7},{'x':.55,'y':.7}],
-      'trunk_axis':[{'x':.5,'y':.8},{'x':.5,'y':.6}]});
-    expect(r.crownHeightM, closeTo(8,1e-8));
-    expect(r.trunkM, closeTo(1,1e-8));
+    final r = ReferenceMeasurement.fromJson({
+      ...base,
+      'version': 2,
+      'method': 'known_object_segment_v2',
+      'crown_height': [
+        {'x': .5, 'y': .5},
+        {'x': .5, 'y': .1}
+      ],
+      'trunk': [
+        {'x': .45, 'y': .7},
+        {'x': .55, 'y': .7}
+      ],
+      'trunk_axis': [
+        {'x': .5, 'y': .8},
+        {'x': .5, 'y': .6}
+      ]
+    });
+    expect(r.crownHeightM, closeTo(8, 1e-8));
+    expect(r.trunkM, closeTo(1, 1e-8));
     expect(r.leanDeg, 0);
-    expect(() => ReferenceMeasurement.fromJson({...r.toJson(), 'trunk':[{'x':.45,'y':.95},{'x':.55,'y':.95}]}),throwsFormatException);
-    expect(r.geometry['dbh']['value'],isNull);
-    expect(r.geometry['crown_porosity']['value'],isNull);
+    expect(
+        () => ReferenceMeasurement.fromJson({
+              ...r.toJson(),
+              'trunk': [
+                {'x': .45, 'y': .95},
+                {'x': .55, 'y': .95}
+              ]
+            }),
+        throwsFormatException);
+    expect(r.geometry['dbh']['value'], isNull);
+    expect(r.geometry['crown_porosity']['value'], isNull);
     expect(ReferenceMeasurement.fromJson(r.toJson()).geometry, r.geometry);
-    expect(ReferenceMeasurement.fromJson(base).report.containsKey('geometry'),false);
-    final leaning = ReferenceMeasurement.fromJson({...r.toJson(), 'trunk_axis':[{'x':.2,'y':.8},{'x':.8,'y':.5}]});
-    expect(leaning.leanDeg,closeTo(45,1e-8));
-    expect(() => ReferenceMeasurement.fromJson({...r.toJson(), 'trunk_axis':[{'x':.5,'y':.5},{'x':.5,'y':.5}]}),throwsFormatException);
+    expect(ReferenceMeasurement.fromJson(base).report.containsKey('geometry'),
+        false);
+    final leaning = ReferenceMeasurement.fromJson({
+      ...r.toJson(),
+      'trunk_axis': [
+        {'x': .2, 'y': .8},
+        {'x': .8, 'y': .5}
+      ]
+    });
+    expect(leaning.leanDeg, closeTo(45, 1e-8));
+    expect(
+        () => ReferenceMeasurement.fromJson({
+              ...r.toJson(),
+              'trunk_axis': [
+                {'x': .5, 'y': .5},
+                {'x': .5, 'y': .5}
+              ]
+            }),
+        throwsFormatException);
   });
 
   TestWidgetsFlutterBinding.ensureInitialized();
-  testWidgets('reference journal is accessible directly from History toolbar', (tester) async {
+  testWidgets('reference journal is accessible directly from History toolbar',
+      (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const MaterialApp(home: HistoryTabPage()));
     await tester.pumpAndSettle();
@@ -53,21 +91,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ReferenceHistoryPage), findsOneWidget);
   });
-  testWidgets('legacy ruler returns scale per original pixel, preserving its controls', (tester) async {
+  testWidgets(
+      'legacy ruler returns scale per original pixel, preserving its controls',
+      (tester) async {
     double? scale;
-    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => TextButton(
-      onPressed: () async {scale = await Navigator.push<double>(context, MaterialPageRoute(builder: (_) =>
-        StickPage(originalImageBase64: base64Encode(photo), currentScalePxToM: 0)));}, child: const Text('Open')))));
-    await tester.tap(find.text('Open'));await tester.pump();
-    await tester.runAsync(() async => Future<void>.delayed(const Duration(milliseconds:100)));
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => TextButton(
+                onPressed: () async {
+                  scale = await Navigator.push<double>(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => StickPage(
+                              originalImageBase64: base64Encode(photo),
+                              currentScalePxToM: 0)));
+                },
+                child: const Text('Open')))));
+    await tester.tap(find.text('Open'));
+    await tester.pump();
+    await tester.runAsync(
+        () async => Future<void>.delayed(const Duration(milliseconds: 100)));
     await tester.pumpAndSettle();
-    final rect = tester.getRect(find.byKey(const ValueKey('legacy-reference-canvas')));
-    await tester.tapAt(rect.topLeft + Offset(rect.width*.25, rect.height*.5));await tester.pump();
-    await tester.tapAt(rect.topLeft + Offset(rect.width*.75, rect.height*.5));await tester.pump();
-    await tester.tap(find.byTooltip('Применить'));await tester.pumpAndSettle();
+    final rect =
+        tester.getRect(find.byKey(const ValueKey('legacy-reference-canvas')));
+    await tester
+        .tapAt(rect.topLeft + Offset(rect.width * .25, rect.height * .5));
+    await tester.pump();
+    await tester
+        .tapAt(rect.topLeft + Offset(rect.width * .75, rect.height * .5));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Применить'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '2');
-    await tester.tap(find.text('ГОТОВО'));await tester.pumpAndSettle();
-    expect(scale, closeTo(4, 1e-8)); // 2 metres / half of the original 1px image.
+    await tester.tap(find.text('ГОТОВО'));
+    await tester.pumpAndSettle();
+    expect(
+        scale, closeTo(4, 1e-8)); // 2 metres / half of the original 1px image.
   });
   test(
       'anisotropic normalized coordinates use original pixels, units and rescaling',
@@ -183,8 +242,10 @@ void main() {
     final folder = (await tester
         .runAsync(() => Directory.systemTemp.createTemp('reference-test-')))!;
     final store = ContourDrafts(directory: () async => folder);
-    final r = ReferenceMeasurement.fromJson({...measure(2).toJson(),'width':100,'height':200});
-    final original = (await tester.runAsync(() => File('test/fixtures/reference_exif6.jpg').readAsBytes()))!;
+    final r = ReferenceMeasurement.fromJson(
+        {...measure(2).toJson(), 'width': 100, 'height': 200});
+    final original = (await tester.runAsync(
+        () => File('test/fixtures/reference_exif6.jpg').readAsBytes()))!;
     final data = {
       'version': 1,
       'width': r.width,
@@ -204,7 +265,8 @@ void main() {
       'tree': ReferenceMeasurement.encode(r.tree),
       'crown': ReferenceMeasurement.encode(r.crown)
     };
-    await tester.runAsync(() async => store.save(owner, 'sample', data, original));
+    await tester
+        .runAsync(() async => store.save(owner, 'sample', data, original));
     Future<void> open() async {
       await tester.pumpWidget(MaterialApp(
           home: ReferenceMeasurementPage(
@@ -219,24 +281,46 @@ void main() {
     }
 
     await open();
-    await tester.scrollUntilVisible(find.text('Высота: 16.00 м'), 300,
+    await tester.scrollUntilVisible(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('16,00 м')),
+        300,
         scrollable: find.byType(Scrollable).first);
-    await tester.scrollUntilVisible(find.text('Ширина кроны: 6.00 м'), 100,
+    await tester.scrollUntilVisible(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-crown')),
+            matching: find.text('6,00 м')),
+        100,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Ширина кроны: 6.00 м'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-crown')),
+            matching: find.text('6,00 м')),
+        findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await open();
-    await tester.scrollUntilVisible(find.text('Высота: 16.00 м'), 300,
+    await tester.scrollUntilVisible(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('16,00 м')),
+        300,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Высота: 16.00 м'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('16,00 м')),
+        findsOneWidget);
     await tester.runAsync(() async {
       expect(await store.load(other, 'sample'), isNull);
     });
     await tester.pumpWidget(const SizedBox());
-    await tester.runAsync(() => store.save(owner,'sample',{...data,'width':999},original));
+    await tester.runAsync(
+        () => store.save(owner, 'sample', {...data, 'width': 999}, original));
     await open();
-    expect(find.textContaining('Размеры фото не соответствуют разметке'),findsOneWidget);
-    expect(find.text('Сохранить отчёт на устройстве'),findsNothing);
+    expect(find.textContaining('Размеры фото не соответствуют разметке'),
+        findsOneWidget);
+    expect(find.text('Сохранить отчёт на устройстве'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(() async => folder.delete(recursive: true));
   });

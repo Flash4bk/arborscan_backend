@@ -31,6 +31,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  Future<Finder> openAdvanced(WidgetTester tester) async {
+    final advanced = find.byKey(const PageStorageKey('analysis-advanced'));
+    final title = find.descendant(
+        of: advanced, matching: find.text('Расширенный анализ'));
+    await tester.scrollUntilVisible(title, 150,
+        scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(title);
+    await tester.pumpAndSettle();
+    await tester.tap(title);
+    await tester.pumpAndSettle();
+    return advanced;
+  }
+
   test('nonfinite legacy metric values remain unavailable in UI and PDF', () {
     for (final input in ['NaN', 'Infinity', '-Infinity', double.nan]) {
       final metric = UnifiedMetric.fromJson({
@@ -69,6 +82,7 @@ void main() {
               }
             }))));
     await tester.pumpAndSettle();
+    await openAdvanced(tester);
     await tester.scrollUntilVisible(find.text('DBH (историческая метка)'), 200,
         scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('Историческая метка DBH из сохранённого отчёта'),
@@ -103,9 +117,16 @@ void main() {
               }
             }))));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Диаметр ствола'), 200,
+    final advanced = await openAdvanced(tester);
+    final diameter =
+        find.descendant(of: advanced, matching: find.text('Диаметр ствола'));
+    await tester.scrollUntilVisible(diameter, 150,
         scrollable: find.byType(Scrollable).first);
-    expect(find.textContaining('уровень 1,30 м сам по себе недостаточен'),
+    expect(
+        find.descendant(
+            of: advanced,
+            matching:
+                find.textContaining('уровень 1,30 м сам по себе недостаточен')),
         findsOneWidget);
     expect(find.textContaining('DBH подтверждён'), findsNothing);
     expect(tester.takeException(), isNull);

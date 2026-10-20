@@ -311,15 +311,17 @@ void main() {
     expect((preview.image as MemoryImage).bytes, image);
     expect(find.text('Сохранить отчёт в аккаунте'), findsNothing);
     await _snapshot(tester, 'v4-report-photo-160');
+    final advanced = find.byKey(const PageStorageKey('analysis-advanced'));
+    final advancedTitle = find.descendant(
+        of: advanced, matching: find.text('Расширенный анализ'));
+    await _reach(tester, advancedTitle);
+    await tester.tap(advancedTitle);
+    await tester.pumpAndSettle();
     for (final title in ['Высота дерева', 'Ширина кроны', 'Диаметр ствола']) {
-      if (title == 'Диаметр ствола') {
-        await _reach(tester, find.text('Расширенный анализ'));
-        await tester.tap(find.text('Расширенный анализ'));
-        await tester.pumpAndSettle();
-      }
-      await _reach(tester, find.text(title));
-      final card =
-          find.ancestor(of: find.text(title), matching: find.byType(Card));
+      final metricTitle =
+          find.descendant(of: advanced, matching: find.text(title));
+      await _reach(tester, metricTitle);
+      final card = find.ancestor(of: metricTitle, matching: find.byType(Card));
       expect(
           find.descendant(of: card, matching: find.text('—')), findsOneWidget);
       expect(find.descendant(of: card, matching: find.text('Недоступно')),

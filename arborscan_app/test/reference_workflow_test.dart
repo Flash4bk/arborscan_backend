@@ -95,9 +95,14 @@ void main() {
     await tapText(
         'Эталон и дерево примерно на одной глубине; перспектива мала');
     await tapText('Сохранить отчёт на устройстве');
-    await t.scrollUntilVisible(find.textContaining('Высота:'), -200,
+    await t.scrollUntilVisible(
+        find.byKey(const ValueKey('measurement-summary-height')), -200,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Высота: 4.00 м'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('4,00 м')),
+        findsOneWidget);
     final rows = (await t.runAsync(() => store.list(owner)))!;
     final id = rows.single['draft_id'] as String;
     expect(rows.single['width'], 100);
@@ -123,17 +128,27 @@ void main() {
     await t.runAsync(() => t.tap(find.text('Сантиметры').last));
     await settle();
     await tapText('Сохранить отчёт на устройстве');
-    await t.scrollUntilVisible(find.textContaining('Высота:'), -200,
+    await t.scrollUntilVisible(
+        find.byKey(const ValueKey('measurement-summary-height')), -200,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Высота: 4.00 м'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('4,00 м')),
+        findsOneWidget);
     await t.scrollUntilVisible(find.byType(TextField), 200,
         scrollable: find.byType(Scrollable).first);
     await t.runAsync(() => t.enterText(find.byType(TextField), '200'));
     await settle();
     await tapText('Сохранить отчёт на устройстве');
-    await t.scrollUntilVisible(find.textContaining('Высота:'), -200,
+    await t.scrollUntilVisible(
+        find.byKey(const ValueKey('measurement-summary-height')), -200,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Высота: 8.00 м'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('8,00 м')),
+        findsOneWidget);
     final restored = (await t.runAsync(() => store.load(owner, id)))!;
     expect(restored['report']['height_m'], closeTo(8, 1e-8));
     expect(restored['report']['geometry']['trunk_diameter']['value'],

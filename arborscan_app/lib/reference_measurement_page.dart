@@ -25,6 +25,7 @@ import 'reference_preview.dart';
 import 'combined_reference.dart';
 import 'contour_workspace_page.dart';
 import 'species_annotation.dart';
+import 'measurement_results_summary.dart';
 
 ContourDrafts referenceStore() => ContourDrafts(
     directory: () async => Directory(
@@ -684,14 +685,7 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
               if (result == null)
                 const SizedBox.shrink()
               else
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Ui.sectionTitle(context, 'Результат измерения'),
-                  Text('Высота: ${result.heightM.toStringAsFixed(2)} м'),
-                  Text('Ширина кроны: ${result.crownM.toStringAsFixed(2)} м'),
-                  if (_measurementVersion == 2)
-                    GeometryReport(data: result.geometry, compact: true),
-                  const Text('Источник: эталон · фотооценка проекции'),
-                ]),
+                MeasurementResultsSummary(snapshot: _snapshot(result)),
               Ui.sectionTitle(context, 'Выделение дерева на этом фото'),
               Text(_serverSnapshot?['correction_id'] != null
                   ? 'Сохранённый контур · зелёная маска'

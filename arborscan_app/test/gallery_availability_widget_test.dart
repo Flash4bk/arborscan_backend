@@ -305,9 +305,17 @@ void main() {
     await tester.scrollUntilVisible(find.textContaining(_unavailable), -250,
         scrollable: find.byType(Scrollable).first);
     expect(find.textContaining(_unavailable), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Высота: 4.00 м'), 250,
+    await tester.scrollUntilVisible(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('4,00 м')),
+        250,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('Высота: 4.00 м'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('4,00 м')),
+        findsOneWidget);
     final restored = (await tester.runAsync(() => store.load(owner, id)))!;
     expect(restored['image'], image);
     for (final field in data.keys) {

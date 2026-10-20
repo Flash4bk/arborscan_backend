@@ -186,7 +186,11 @@ void main() {
     await t.scrollUntilVisible(find.text('Сосна обыкновенная'), 150,
         scrollable: find.byType(Scrollable).first);
     expect(find.text('Указано вами'), findsOneWidget);
-    await t.scrollUntilVisible(find.text('Высота: 4.00 м'), 100,
+    await t.scrollUntilVisible(
+        find.descendant(
+            of: find.byKey(const ValueKey('measurement-summary-height')),
+            matching: find.text('4,00 м')),
+        100,
         scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('DBH не измерен'), findsNothing);
     await t.scrollUntilVisible(find.text('Дополнительные измерения'), 150,
@@ -568,8 +572,12 @@ void main() {
             analysisService: model));
     await t.scrollUntilVisible(find.text('Выделить дерево на этом фото'), 150,
         scrollable: find.byType(Scrollable).first);
+    await t.ensureVisible(find.text('Выделить дерево на этом фото'));
+    await t.pumpAndSettle();
     await t.runAsync(() => t.tap(find.text('Выделить дерево на этом фото')));
     await settle(t);
+    expect(sent.isCompleted, isTrue,
+        reason: 'The inference button must have received the tap.');
     await sent.future;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('arborscan_auth_token', 'other');

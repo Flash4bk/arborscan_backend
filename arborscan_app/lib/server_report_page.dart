@@ -19,13 +19,7 @@ import 'map_page.dart';
 import 'reference_preview.dart';
 import 'combined_reference.dart';
 import 'species_annotation.dart';
-
-String _lengthLabel(dynamic value) {
-  final number = value is num ? value.toDouble() : double.tryParse('$value');
-  return number != null && number.isFinite
-      ? '${number.toStringAsFixed(2)} м'
-      : 'нет данных';
-}
+import 'measurement_results_summary.dart';
 
 class ServerReportPage extends StatefulWidget {
   final String? versionId, localId;
@@ -203,12 +197,8 @@ class _ServerReportPageState extends State<ServerReportPage> {
                 onEdit: photo == null || _busy
                     ? null
                     : () => _act(() => _editSpecies(s, row!, photo))),
+            MeasurementResultsSummary(snapshot: Map<String, dynamic>.from(s)),
             if (ref != null) ...[
-              Text('Высота: ${_lengthLabel(s['report']['height_m'])}'),
-              Text(
-                  'Ширина кроны: ${_lengthLabel(s['report']['crown_width_m'])}'),
-              GeometryReport(data: s['report']['geometry'], compact: true),
-              const Text('Источник: эталон · фотооценка проекции'),
               ExpansionTile(
                   title: const Text('Расширенный анализ'),
                   childrenPadding: const EdgeInsets.all(12),

@@ -15,6 +15,7 @@ import 'survey_environment_ui.dart';
 import 'reference_measurement_page.dart';
 import 'combined_reference.dart';
 import 'species_annotation.dart';
+import 'measurement_results_summary.dart';
 
 class UnifiedAnalysisReportPage extends StatefulWidget {
   final UnifiedAnalysisResult result;
@@ -287,6 +288,19 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 ),
                 const SizedBox(height: 14),
               ],
+              SpeciesAnnotationCard(
+                  report: _report,
+                  onEdit: widget.allowServerSave &&
+                          !_editing &&
+                          !_savingReport &&
+                          fallbackImageBytes != null
+                      ? _editSpecies
+                      : null),
+              MeasurementResultsSummary(snapshot: {
+                'kind': 'v4',
+                'report': _report,
+                'ar': result.raw['ar_provenance'],
+              }),
               OutlinedButton.icon(
                 onPressed: _editing ||
                         fallbackImageBytes == null ||
@@ -323,14 +337,6 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                 color: status.$4,
               ),
               const SizedBox(height: 14),
-              SpeciesAnnotationCard(
-                  report: _report,
-                  onEdit: widget.allowServerSave &&
-                          !_editing &&
-                          !_savingReport &&
-                          fallbackImageBytes != null
-                      ? _editSpecies
-                      : null),
               if (result.raw['environment_snapshot'] is Map)
                 Card(
                     child: ExpansionTile(
@@ -342,52 +348,40 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                               surveyMap(result.raw['environment_snapshot']))
                     ])),
               const SizedBox(height: 18),
-              const _SectionTitle(
-                title: 'Основные измерения',
-                subtitle:
-                    'Размеры сохраняют свой источник. DBH требует отдельного подтверждения места измерения.',
-              ),
-              const SizedBox(height: 10),
-              _MetricCard(
-                title: result.raw['measurement_method_version'] == 2 &&
-                        result.height.source != 'ar'
-                    ? 'Вертикальный размер маски на фото'
-                    : 'Высота дерева',
-                icon: Icons.height,
-                metric: result.height,
-                valueDigits: 2,
-              ),
-              const SizedBox(height: 10),
-              _MetricCard(
-                title: 'Ширина кроны',
-                icon: Icons.nature,
-                metric: result.crownWidth,
-                valueDigits: 2,
-              ),
-              if (result.trunkDiameter.valueM != null) ...[
-                const SizedBox(height: 10),
-                _MetricCard(
-                  title: result.trunkDiameter.standard == 'dbh_1_3m'
-                      ? 'DBH (историческая метка)'
-                      : 'Диаметр ствола',
-                  icon: Icons.circle_outlined,
-                  metric: result.trunkDiameter,
-                  valueDigits: 3,
-                  dbh: true,
-                ),
-              ],
-              if (result.raw['measurement_method_version'] == 2)
-                GeometryReport(
-                    compact: true,
-                    data: result.raw['geometry'] is Map
-                        ? result.raw['geometry'] as Map
-                        : null),
-              const SizedBox(height: 18),
               ExpansionTile(
                 key: const PageStorageKey('analysis-advanced'),
                 title: const Text('Расширенный анализ'),
                 childrenPadding: const EdgeInsets.all(12),
                 children: [
+                  const _SectionTitle(
+                    title: 'Исходные измерения',
+                    subtitle:
+                        'Источник и ограничения сохранённых значений. DBH требует отдельного полевого протокола.',
+                  ),
+                  _MetricCard(
+                    title: result.raw['measurement_method_version'] == 2 &&
+                            result.height.source != 'ar'
+                        ? 'Вертикальный размер маски на фото'
+                        : 'Высота дерева',
+                    icon: Icons.height,
+                    metric: result.height,
+                    valueDigits: 2,
+                  ),
+                  _MetricCard(
+                    title: 'Ширина кроны',
+                    icon: Icons.nature,
+                    metric: result.crownWidth,
+                    valueDigits: 2,
+                  ),
+                  _MetricCard(
+                    title: result.trunkDiameter.standard == 'dbh_1_3m'
+                        ? 'DBH (историческая метка)'
+                        : 'Диаметр ствола',
+                    icon: Icons.circle_outlined,
+                    metric: result.trunkDiameter,
+                    valueDigits: 3,
+                    dbh: true,
+                  ),
                   Text('Предсказание вида: ${result.speciesName}'),
                   if (result.scientificName != null)
                     Text(result.scientificName!),
@@ -401,13 +395,6 @@ class _UnifiedAnalysisReportPageState extends State<UnifiedAnalysisReportPage> {
                       data: result.raw['geometry'] is Map
                           ? result.raw['geometry'] as Map
                           : null),
-                  if (result.trunkDiameter.valueM == null)
-                    _MetricCard(
-                        title: 'Диаметр ствола',
-                        icon: Icons.circle_outlined,
-                        metric: result.trunkDiameter,
-                        valueDigits: 3,
-                        dbh: true),
                   const _SectionTitle(
                     title: 'Диагностика исходных данных',
                     subtitle:

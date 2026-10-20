@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'package:image/image.dart' as im;
 import 'package:arborscan_app/app_theme.dart';
+import 'package:arborscan_app/geometry_report.dart';
 import 'package:arborscan_app/reference_measurement_page.dart';
 import 'package:arborscan_app/report_history_service.dart';
 import 'package:arborscan_app/server_report_page.dart';
@@ -207,6 +208,8 @@ void main() {
       await t.scrollUntilVisible(
           find.text('Исходный результат модели / источники'), 150,
           scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(find.text('Исходный результат модели / источники'));
+      await t.pumpAndSettle();
       await t.runAsync(
           () => t.tap(find.text('Исходный результат модели / источники')));
       await idle(t);
@@ -218,6 +221,27 @@ void main() {
       expect(page.result.raw.containsKey('height_m'), false);
       expect(page.result.raw.containsKey('method'), false);
       expect(page.result.raw.containsKey('contour_preview'), false);
+      final advanced = find.byKey(const PageStorageKey('analysis-advanced'));
+      final title = find.descendant(
+          of: advanced, matching: find.text('Расширенный анализ'));
+      await t.scrollUntilVisible(title, 150,
+          scrollable: find.byType(Scrollable).first);
+      await t.ensureVisible(title);
+      await t.pumpAndSettle();
+      await t.tap(title);
+      await t.pumpAndSettle();
+      final shownGeometry = t.widget<GeometryReport>(
+          find.descendant(of: advanced, matching: find.byType(GeometryReport)));
+      expect(shownGeometry.data, hasOriginal ? geometry : null);
+      expect(shownGeometry.compact, false);
+      expect(
+          find.descendant(
+              of: advanced,
+              matching: find.textContaining(
+                  'Высота отмеченной живой кроны (проекция): нет данных')),
+          findsOneWidget);
+      expect(find.text('Высота отмеченной живой кроны (проекция): 2.00 м'),
+          findsNothing);
       await t.pumpWidget(const SizedBox());
     });
   }
