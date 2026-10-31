@@ -1,0 +1,48 @@
+{
+  "kept": [
+    {
+      "name": "20261022T033459Z",
+      "manifest_sha256": "b8d32ca4da49e429cf182e3ed015aad58577de0db0eea5f0e760cf15044efbba"
+    },
+    {
+      "name": "20261025T033213Z",
+      "manifest_sha256": "15d0987d0493e96150f8496a04d9c229c935f4019525d2f67b8fefa0644c3e2a"
+    }
+  ],
+  "shared_runtime_archive_count": 8,
+  "retention": 2,
+  "native_runtime_sha_recheck_passed": true,
+  "private_env_preserved_sha_rechecked": true,
+  "free_bytes_final": 64226885632,
+  "old_restore_fixtures_removed": 5,
+  "our_qa_restore_clones_removed": 2,
+  "actual_26_free_delta": 33771872256,
+  "extra_fixture_free_delta": 7560445952,
+  "cumulative_observed_free_delta": 41332318208,
+  "tests_passed": 42,
+  "sql_restore_performed": false,
+  "live_next_pull_executed": false,
+  "installed_tool_sha256": {
+    "ops_local_retention.py": "96d0365895448f3462c75cf9fb0245ae8f66d33316f6a1494c0201b71ca5db02",
+    "ops_pull_backups.py": "ff5a16e26f41e5940627af17b296507a29940f5046dc691ac7099c64fb16709b",
+    "ops_verify_restore.py": "bd64482f6cd6801908f8db52baaa054a2b3c925a2f6488f4b90ff851e69b35f4"
+  },
+  "date": "2026-10-31",
+  "task": "AS-14",
+  "full_backup_sets_before": 28,
+  "full_backup_sets_deleted": 26,
+  "logical_bytes_deleted_full_sets": 33889554061,
+  "logical_bytes_deleted_old_fixtures": 9648761711,
+  "logical_bytes_deleted_our_qa_clones": 1678783322,
+  "legacy_default14_and_vps_unchanged": true,
+  "scheduler_definition_unchanged": true,
+  "historical_inventory_replay_excludes_deleted_sets": true,
+  "actual_file_restore_each_kept": {
+    "files": 2285,
+    "bytes": 839391661,
+    "linked_reports": 25
+  },
+  "private_configuration_preserved_without_values_or_hash_in_public_receipt": true,
+  "source": "Existing installed Windows reader patched only in main; non-main AST unchanged",
+  "remaining_scope": "Two full local sets, shared runtime, tools and signing/release artifacts. No fresh SQL restore or live next scheduled pull claimed."
+}

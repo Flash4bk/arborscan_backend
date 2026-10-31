@@ -304,6 +304,9 @@ def main():
             hidden={'creationflags':subprocess.CREATE_NO_WINDOW}
             records=read_inventory([str(system/'ssh.exe'),*options,'-p',str(args.port),
                                     args.host,'python3 -'],hidden=hidden,log=log)
+            from ops_local_retention import load_policy, select_records, plan as compact_plan, apply as compact_apply, write_plan as compact_write_plan
+            compact_policy = load_policy(root)
+            records = select_records(records, compact_policy)
             def delta(record,filename,target):
                 import gzip
                 from ops_delta_copy import reconstruct
@@ -358,6 +361,15 @@ def main():
             # Rotation is available only after an all-three-service native
             # replacement and SHA-addressed runtime readback. Old unadopted
             # manual/historical sets and live Compose dependencies remain pinned.
+            if compact_policy is not None:
+                proposal = compact_plan(root, compact_policy, selected=[r['name'] for r in records])
+                compact_write_plan(root,proposal)
+                if args.retention_dry_run:
+                    log('retention_dry_run',before=proposal['before'],candidates=len(proposal['delete']),retain=2)
+                else:
+                    log('retention_complete',**compact_apply(root,proposal,lock_held=True))
+                log('success',complete_sets=len(records),retain=2)
+                return 0
             latest = records[-1]
             if set(latest.get('runtime',{}).get('services',[])) == {
                     '/arborscan-api','/arborscan-api-v4','/arborscan-quality-worker'}:
