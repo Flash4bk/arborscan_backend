@@ -618,37 +618,28 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
   @override
   Widget build(BuildContext context) {
     final result = _result;
+    final choosePhoto = OutlinedButton(
+        onPressed: _busy ? null : () => _run(_pick),
+        child: const Text('Выбрать фото'));
+    const measurementHelp = ExpansionTile(
+        title: Text('Как измерять по эталону'),
+        leading: Icon(Icons.info_outline),
+        children: [
+          Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                  'Вертикальный эталон должен стоять рядом с деревом примерно на той же глубине. Снимайте целиком, без сильного наклона камеры. Его высота задаёт вертикальную ось; ширина кроны считается поперёк неё. Перспектива ограничивает метод: один отрезок её не исправляет. Результат — оценка проекции, не подтверждённая точность.'))
+        ]);
     return Scaffold(
         appBar: AppBar(title: const Text('По известному объекту')),
         body: AppContentList(padding: const EdgeInsets.all(16), children: [
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) Text(_error!),
           if (!_invalid) ...[
-            // Keep this list slot when an incomplete size hides the export.
-            // Removing it shifts the lazy list and disposes the focused input.
-            if (result == null)
-              const SizedBox.shrink()
-            else
-              ReportExportButton(
-                  enabled: !_busy,
-                  load: () async => ReportExportData(
-                      hiddenLayers: _hiddenPhotoLayers,
-                      snapshot: _snapshot(result),
-                      record: {'analysis_id': _serverAnalysisId ?? _id},
-                      photo: _image,
-                      local: true)),
-            const ExpansionTile(
-                title: Text('Как измерять по эталону'),
-                leading: Icon(Icons.info_outline),
-                children: [
-                  Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text(
-                          'Вертикальный эталон должен стоять рядом с деревом примерно на той же глубине. Снимайте целиком, без сильного наклона камеры. Его высота задаёт вертикальную ось; ширина кроны считается поперёк неё. Перспектива ограничивает метод: один отрезок её не исправляет. Результат — оценка проекции, не подтверждённая точность.'))
-                ]),
-            OutlinedButton(
-                onPressed: _busy ? null : () => _run(_pick),
-                child: const Text('Выбрать фото')),
+            // Retain list slots when a size becomes incomplete so the lazy
+            // list does not dispose the focused length field.
+            if (result == null) measurementHelp else const SizedBox.shrink(),
+            if (result == null) choosePhoto else const SizedBox.shrink(),
             OutlinedButton(
                 onPressed: _busy
                     ? null
@@ -686,6 +677,26 @@ class _ReferenceMeasurementPageState extends State<ReferenceMeasurementPage> {
                 const SizedBox.shrink()
               else
                 MeasurementResultsSummary(snapshot: _snapshot(result)),
+              if (result == null)
+                const SizedBox.shrink()
+              else
+                ExpansionTile(
+                  key: const PageStorageKey('reference-photo-actions'),
+                  title: const Text('Фото и экспорт'),
+                  childrenPadding: const EdgeInsets.all(12),
+                  children: [
+                    choosePhoto,
+                    ReportExportButton(
+                        enabled: !_busy,
+                        load: () async => ReportExportData(
+                            hiddenLayers: _hiddenPhotoLayers,
+                            snapshot: _snapshot(result),
+                            record: {'analysis_id': _serverAnalysisId ?? _id},
+                            photo: _image,
+                            local: true)),
+                    measurementHelp,
+                  ],
+                ),
               Ui.sectionTitle(context, 'Выделение дерева на этом фото'),
               Text(_serverSnapshot?['correction_id'] != null
                   ? 'Сохранённый контур · зелёная маска'

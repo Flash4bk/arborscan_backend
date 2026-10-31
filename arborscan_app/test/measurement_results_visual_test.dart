@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 import 'package:arborscan_app/app_theme.dart';
 import 'package:arborscan_app/contour_drafts.dart';
 import 'package:arborscan_app/reference_measurement_page.dart';
+import 'package:arborscan_app/reference_preview.dart';
+import 'package:arborscan_app/species_annotation.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -109,8 +111,12 @@ void main() {
               .where((widget) => widget.image != null)
               .length,
           greaterThanOrEqualTo(2));
-      await screenshot('reference-top32');
-      final summary = find.text('Результат измерения и расчётов');
+      expect(find.text('Экспорт PDF'), findsNothing);
+      expect(find.text('Выбрать фото'), findsNothing);
+      expect(tester.getRect(find.byType(SpeciesAnnotationCard)).top,
+          greaterThan(tester.getRect(find.byType(ReferencePreview)).bottom));
+      await screenshot('reference-top33');
+      final summary = find.text('Результат измерений и расчётов');
       await tester.scrollUntilVisible(summary, 150,
           scrollable: find.byType(Scrollable).first);
       await tester.ensureVisible(summary);
@@ -118,12 +124,21 @@ void main() {
       expect(
           find.descendant(
               of: find.byKey(const ValueKey('measurement-summary-trunk')),
-              matching: find.text('0,200 м')),
+              matching: find.textContaining('0,200 м')),
           findsOneWidget);
-      expect(find.text('не рассчитан'), findsOneWidget);
-      expect(find.text('не рассчитана'), findsNWidgets(2));
+      expect(find.textContaining('Коэффициент β (кг/с): не рассчитан'),
+          findsOneWidget);
+      expect(find.textContaining('не рассчитана'), findsNWidgets(2));
       expect(find.textContaining('44,4'), findsNothing);
-      await screenshot('reference-summary32');
+      await screenshot('reference-summary33');
+      await tester.scrollUntilVisible(find.text('Фото и экспорт'), 100,
+          scrollable: find.byType(Scrollable).first);
+      await tester.ensureVisible(find.text('Фото и экспорт'));
+      await tester.tap(find.text('Фото и экспорт'));
+      await tester.pumpAndSettle();
+      expect(find.text('Выбрать фото'), findsOneWidget);
+      expect(find.text('Экспорт PDF'), findsOneWidget);
+      expect(find.text('Как измерять по эталону'), findsOneWidget);
       expect(tester.takeException(), isNull);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());

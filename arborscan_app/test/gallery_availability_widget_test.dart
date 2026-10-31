@@ -294,6 +294,10 @@ void main() {
         theme: AppTheme.light(),
         home: ReferenceMeasurementPage(draftId: id, drafts: store))));
     await settle(tester);
+    await tester.scrollUntilVisible(find.text('Фото и экспорт'), 150,
+        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Фото и экспорт'));
+    await tester.pumpAndSettle();
     expect(
         tester
             .widget<OutlinedButton>(
@@ -308,13 +312,13 @@ void main() {
     await tester.scrollUntilVisible(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('4,00 м')),
+            matching: find.textContaining('4,00 м')),
         250,
         scrollable: find.byType(Scrollable).first);
     expect(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('4,00 м')),
+            matching: find.textContaining('4,00 м')),
         findsOneWidget);
     final restored = (await tester.runAsync(() => store.load(owner, id)))!;
     expect(restored['image'], image);

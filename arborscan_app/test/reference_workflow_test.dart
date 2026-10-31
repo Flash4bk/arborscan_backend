@@ -101,7 +101,7 @@ void main() {
     expect(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('4,00 м')),
+            matching: find.textContaining('4,00 м')),
         findsOneWidget);
     final rows = (await t.runAsync(() => store.list(owner)))!;
     final id = rows.single['draft_id'] as String;
@@ -134,7 +134,7 @@ void main() {
     expect(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('4,00 м')),
+            matching: find.textContaining('4,00 м')),
         findsOneWidget);
     await t.scrollUntilVisible(find.byType(TextField), 200,
         scrollable: find.byType(Scrollable).first);
@@ -147,7 +147,7 @@ void main() {
     expect(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('8,00 м')),
+            matching: find.textContaining('8,00 м')),
         findsOneWidget);
     final restored = (await t.runAsync(() => store.load(owner, id)))!;
     expect(restored['report']['height_m'], closeTo(8, 1e-8));

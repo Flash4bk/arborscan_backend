@@ -2,6 +2,14 @@ import 'package:arborscan_app/measurement_results_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+Finder summaryValue(String value) => find.byWidgetPredicate((widget) {
+      final span = widget is Text ? widget.textSpan : null;
+      return span is TextSpan &&
+          (span.children
+                  ?.any((child) => child is TextSpan && child.text == value) ??
+              false);
+    });
+
 Map<String, dynamic> referenceSnapshot() => {
       'kind': 'reference',
       'reference': {'method': 'known_object_segment_v2'},
@@ -54,8 +62,8 @@ void main() {
     snapshot['image'] = {'original_base64': Object()};
     await pumpSummary(tester, snapshot);
     expect(tester.takeException(), isNull);
-    expect(find.text('21,70 м'), findsOneWidget);
-    expect(find.text('0,172 м'), findsOneWidget);
+    expect(summaryValue('21,70 м'), findsOneWidget);
+    expect(summaryValue('0,172 м'), findsOneWidget);
   });
 
   testWidgets(
@@ -64,19 +72,22 @@ void main() {
       final snapshot = referenceSnapshot();
       await pumpSummary(tester, snapshot);
 
-      expect(find.text('Результат измерения и расчётов'), findsOneWidget);
+      expect(find.text('Результат измерений и расчётов'), findsOneWidget);
       expect(find.text('Эталон · фотооценка проекции'), findsOneWidget);
-      expect(find.text('21,70 м'), findsOneWidget);
-      expect(find.text('5,07 м'), findsOneWidget);
-      expect(find.text('0,172 м'), findsOneWidget);
-      expect(find.text('0,00 °'), findsNothing);
+      expect(summaryValue('21,70 м'), findsOneWidget);
+      expect(find.text('Высота дерева (проекция): 21,70 м'), findsOneWidget);
+      expect(find.text('Ширина кроны: 5,07 м'), findsOneWidget);
+      expect(summaryValue('5,07 м'), findsOneWidget);
+      expect(summaryValue('0,172 м'), findsOneWidget);
+      expect(summaryValue('0,00 °'), findsNothing);
       await tester.ensureVisible(find.text('Другие измеренные параметры'));
       await tester.tap(find.text('Другие измеренные параметры'));
       await tester.pumpAndSettle();
-      expect(find.text('0,00 °'), findsOneWidget);
+      expect(summaryValue('0,00 °'), findsOneWidget);
       expect(find.textContaining('99,00'), findsNothing);
       expect(find.text('AR-измерение'), findsNothing);
-      expect(find.text('Диаметр отмеченного сечения ствола'), findsOneWidget);
+      expect(find.textContaining('Диаметр отмеченного сечения ствола'),
+          findsOneWidget);
       expect(
         find.text('Ширина сечения ствола (фотооценка диаметра)'),
         findsNothing,
@@ -110,12 +121,12 @@ void main() {
         },
       });
 
-      expect(find.text('Высота дерева'), findsOneWidget);
-      expect(find.text('23,46 м'), findsOneWidget);
-      expect(find.text('4,57 м'), findsOneWidget);
-      expect(find.text('0,172 м'), findsOneWidget);
+      expect(find.textContaining('Высота дерева'), findsOneWidget);
+      expect(summaryValue('23,46 м'), findsOneWidget);
+      expect(summaryValue('4,57 м'), findsOneWidget);
+      expect(summaryValue('0,172 м'), findsOneWidget);
       expect(find.text('AR-измерение'), findsNWidgets(3));
-      expect(find.text('0,999 м'), findsNothing);
+      expect(summaryValue('0,999 м'), findsNothing);
       expect(find.textContaining('88,00'), findsNothing);
       expect(find.text('Эталон · фотооценка проекции'), findsNothing);
     },
@@ -135,11 +146,12 @@ void main() {
       },
     });
 
-    expect(find.text('Вертикальный размер маски на фото'), findsOneWidget);
-    expect(find.text('12,30 м'), findsOneWidget);
+    expect(find.textContaining('Вертикальный размер маски на фото'),
+        findsOneWidget);
+    expect(summaryValue('12,30 м'), findsOneWidget);
     expect(find.text('Фото с масштабом эталона'), findsOneWidget);
-    expect(find.text('нет данных · нужна разметка'), findsNWidgets(2));
-    expect(find.text('100,00 м'), findsNothing);
+    expect(summaryValue('нет данных · нужна разметка'), findsNWidgets(2));
+    expect(summaryValue('100,00 м'), findsNothing);
   });
 
   testWidgets(
@@ -163,15 +175,15 @@ void main() {
       });
 
       expect(
-        find.text('нет данных · нужен масштаб и измерение'),
+        summaryValue('нет данных · нужен масштаб и измерение'),
         findsOneWidget,
       );
-      expect(find.text('нет данных · нужна разметка'), findsNWidgets(2));
-      expect(find.text('88,00 м'), findsNothing);
-      expect(find.text('87,00 м'), findsNothing);
-      expect(find.text('0,860 м'), findsNothing);
-      expect(find.text('0,172 м'), findsNothing);
-      expect(find.text('5,00 °'), findsNothing);
+      expect(summaryValue('нет данных · нужна разметка'), findsNWidgets(2));
+      expect(summaryValue('88,00 м'), findsNothing);
+      expect(summaryValue('87,00 м'), findsNothing);
+      expect(summaryValue('0,860 м'), findsNothing);
+      expect(summaryValue('0,172 м'), findsNothing);
+      expect(summaryValue('5,00 °'), findsNothing);
     },
   );
 
@@ -193,9 +205,9 @@ void main() {
     });
 
     expect(find.text('Сохранённые размеры прежнего формата'), findsOneWidget);
-    expect(find.text('12,30 м'), findsOneWidget);
-    expect(find.text('4,56 м'), findsOneWidget);
-    expect(find.text('0,172 м'), findsOneWidget);
+    expect(summaryValue('12,30 м'), findsOneWidget);
+    expect(summaryValue('4,56 м'), findsOneWidget);
+    expect(summaryValue('0,172 м'), findsOneWidget);
     expect(find.text('Сохранённое значение · AR-измерение'), findsNWidgets(2));
     expect(find.text('Сохранённое значение · Введено вручную'), findsOneWidget);
   });
@@ -206,15 +218,16 @@ void main() {
       await pumpSummary(tester, {'kind': 'v4', 'report': <String, dynamic>{}});
 
       expect(
-        find.text('нет данных · нужен масштаб и измерение'),
+        summaryValue('нет данных · нужен масштаб и измерение'),
         findsOneWidget,
       );
-      expect(find.text('нет данных · нужна разметка'), findsNWidgets(2));
-      expect(find.text('Коэффициент β (кг/с)'), findsOneWidget);
-      expect(find.text('Критическая скорость ветра (м/с)'), findsOneWidget);
-      expect(find.text('Вероятность повреждения'), findsOneWidget);
-      expect(find.text('не рассчитан'), findsOneWidget);
-      expect(find.text('не рассчитана'), findsNWidgets(2));
+      expect(summaryValue('нет данных · нужна разметка'), findsNWidgets(2));
+      expect(find.textContaining('Коэффициент β (кг/с)'), findsOneWidget);
+      expect(find.textContaining('Критическая скорость ветра (м/с)'),
+          findsOneWidget);
+      expect(find.textContaining('Вероятность повреждения'), findsOneWidget);
+      expect(summaryValue('не рассчитан'), findsOneWidget);
+      expect(summaryValue('не рассчитана'), findsNWidgets(2));
       expect(find.textContaining('измеренные траектории'), findsNothing);
 
       await tester.ensureVisible(find.text('Что нужно для расчётов'));
@@ -246,15 +259,15 @@ void main() {
       });
 
       expect(
-        find.text('нет данных · нужен масштаб и измерение'),
+        summaryValue('нет данных · нужен масштаб и измерение'),
         findsOneWidget,
       );
-      expect(find.text('нет данных · нужна разметка'), findsNWidgets(2));
+      expect(summaryValue('нет данных · нужна разметка'), findsNWidgets(2));
       expect(find.textContaining('NaN'), findsNothing);
       expect(find.textContaining('Infinity'), findsNothing);
       expect(find.textContaining('-1,00'), findsNothing);
-      expect(find.text('0,00 м'), findsNothing);
-      expect(find.text('1,20 1'), findsNothing);
+      expect(summaryValue('0,00 м'), findsNothing);
+      expect(summaryValue('1,20 1'), findsNothing);
     },
   );
 
@@ -276,12 +289,12 @@ void main() {
       },
     });
 
-    expect(find.text('100,00 м'), findsNothing);
-    expect(find.text('80,00 м'), findsNothing);
-    expect(find.text('17,200 м'), findsNothing);
-    expect(find.text('90,00 м'), findsNothing);
-    expect(find.text('0,50 °'), findsNothing);
-    expect(find.text('нет данных · нужна разметка'), findsNWidgets(2));
+    expect(summaryValue('100,00 м'), findsNothing);
+    expect(summaryValue('80,00 м'), findsNothing);
+    expect(summaryValue('17,200 м'), findsNothing);
+    expect(summaryValue('90,00 м'), findsNothing);
+    expect(summaryValue('0,50 °'), findsNothing);
+    expect(summaryValue('нет данных · нужна разметка'), findsNWidgets(2));
   });
 
   testWidgets(
@@ -302,8 +315,8 @@ void main() {
         },
       });
 
-      expect(find.text('не рассчитан'), findsOneWidget);
-      expect(find.text('не рассчитана'), findsNWidgets(2));
+      expect(summaryValue('не рассчитан'), findsOneWidget);
+      expect(summaryValue('не рассчитана'), findsNWidgets(2));
       expect(find.textContaining('44,4'), findsNothing);
       expect(find.textContaining('27,3'), findsNothing);
       expect(find.textContaining('низкий'), findsNothing);
@@ -316,7 +329,7 @@ void main() {
   ) async {
     await pumpSummary(tester, referenceSnapshot(), width: 280, scale: 3);
     expect(tester.takeException(), isNull);
-    expect(find.text('0,172 м'), findsOneWidget);
+    expect(summaryValue('0,172 м'), findsOneWidget);
     await tester.ensureVisible(find.text('Что нужно для расчётов'));
     await tester.tap(find.text('Что нужно для расчётов'));
     await tester.pumpAndSettle();

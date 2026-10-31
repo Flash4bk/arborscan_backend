@@ -284,32 +284,53 @@ void main() {
     await tester.scrollUntilVisible(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('16,00 м')),
+            matching: find.textContaining('16,00 м')),
         300,
         scrollable: find.byType(Scrollable).first);
     await tester.scrollUntilVisible(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-crown')),
-            matching: find.text('6,00 м')),
+            matching: find.textContaining('6,00 м')),
         100,
         scrollable: find.byType(Scrollable).first);
     expect(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-crown')),
-            matching: find.text('6,00 м')),
+            matching: find.textContaining('6,00 м')),
         findsOneWidget);
+    // A completed result moves photo actions below the summary. Making the
+    // length temporarily empty must not rebuild the input or dismiss typing.
+    final length = find.byKey(const ValueKey('reference-length-input'));
+    await tester.scrollUntilVisible(length, 150,
+        scrollable: find.byType(Scrollable).first);
+    await tester.showKeyboard(length);
+    final inputState =
+        tester.state<EditableTextState>(find.byType(EditableText));
+    await tester.runAsync(() => tester.enterText(length, ''));
+    await tester.pump();
+    expect(tester.state<EditableTextState>(find.byType(EditableText)),
+        same(inputState));
+    expect(inputState.widget.focusNode.hasFocus, isTrue);
+    await tester.runAsync(() => tester.enterText(length, '200'));
+    await tester.runAsync(() => store.load(owner, 'sample'));
+    await tester.pumpAndSettle();
+    expect(tester.state<EditableTextState>(find.byType(EditableText)),
+        same(inputState));
+    expect(inputState.widget.focusNode.hasFocus, isTrue);
+    inputState.widget.focusNode.unfocus();
+    await tester.pump();
     await tester.pumpWidget(const SizedBox());
     await open();
     await tester.scrollUntilVisible(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('16,00 м')),
+            matching: find.textContaining('16,00 м')),
         300,
         scrollable: find.byType(Scrollable).first);
     expect(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('16,00 м')),
+            matching: find.textContaining('16,00 м')),
         findsOneWidget);
     await tester.runAsync(() async {
       expect(await store.load(other, 'sample'), isNull);

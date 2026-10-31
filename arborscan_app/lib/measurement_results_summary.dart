@@ -118,106 +118,102 @@ class MeasurementResultsSummary extends StatelessWidget {
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Результат измерения и расчётов',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              reference
-                  ? 'Эталон · фотооценка проекции'
-                  : legacy
-                      ? 'Сохранённые размеры прежнего формата'
-                      : 'Фото / AR · источник указан у каждого размера',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 10),
-            _SummaryRow(
-              key: const ValueKey('measurement-summary-height'),
-              label: height.label,
-              value: _positive(height.value)
-                  ? _number(height.value!, 2, 'м')
-                  : 'нет данных · нужен масштаб и измерение',
-              source:
-                  !reference && _positive(height.value) ? height.source : null,
-            ),
-            _SummaryRow(
-              key: const ValueKey('measurement-summary-crown'),
-              label: 'Ширина кроны',
-              value: _positive(crown.value)
-                  ? _number(crown.value!, 2, 'м')
-                  : 'нет данных · нужна разметка',
-              source:
-                  !reference && _positive(crown.value) ? crown.source : null,
-            ),
-            _SummaryRow(
-              key: const ValueKey('measurement-summary-trunk'),
-              label: 'Диаметр отмеченного сечения ствола',
-              value: _positive(trunk.value) &&
-                      trunkUnit == 'm' &&
-                      (!reference ||
-                          (exportMap(geometry['trunk_diameter'])['source'] !=
-                                  'unavailable' &&
-                              exportMap(geometry['trunk_diameter'])[
-                                      'available'] !=
-                                  false))
-                  ? _number(trunk.value!, 3, 'м')
-                  : 'нет данных · нужна разметка',
-              source:
-                  !reference && _positive(trunk.value) ? trunk.source : null,
-            ),
-            const Divider(height: 24),
-            const _SummaryRow(
-              key: ValueKey('measurement-summary-beta'),
-              label: 'Коэффициент β (кг/с)',
-              value: 'не рассчитан',
-            ),
-            const _SummaryRow(
-              key: ValueKey('measurement-summary-critical-wind'),
-              label: 'Критическая скорость ветра (м/с)',
-              value: 'не рассчитана',
-            ),
-            const _SummaryRow(
-              key: ValueKey('measurement-summary-damage-probability'),
-              label: 'Вероятность повреждения',
-              value: 'не рассчитана',
-            ),
-            if (additional.isNotEmpty)
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: const Text('Другие измеренные параметры'),
-                children: additional,
-              ),
-            const ExpansionTile(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Результат измерений и расчётов',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            reference
+                ? 'Эталон · фотооценка проекции'
+                : legacy
+                    ? 'Сохранённые размеры прежнего формата'
+                    : 'Фото / AR · источник указан у каждого размера',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          _SummaryRow(
+            key: const ValueKey('measurement-summary-height'),
+            label: height.label,
+            value: _positive(height.value)
+                ? _number(height.value!, 2, 'м')
+                : 'нет данных · нужен масштаб и измерение',
+            source:
+                !reference && _positive(height.value) ? height.source : null,
+          ),
+          _SummaryRow(
+            key: const ValueKey('measurement-summary-crown'),
+            label: 'Ширина кроны',
+            value: _positive(crown.value)
+                ? _number(crown.value!, 2, 'м')
+                : 'нет данных · нужна разметка',
+            source: !reference && _positive(crown.value) ? crown.source : null,
+          ),
+          _SummaryRow(
+            key: const ValueKey('measurement-summary-trunk'),
+            label: 'Диаметр отмеченного сечения ствола',
+            value: _positive(trunk.value) &&
+                    trunkUnit == 'm' &&
+                    (!reference ||
+                        (exportMap(geometry['trunk_diameter'])['source'] !=
+                                'unavailable' &&
+                            exportMap(
+                                    geometry['trunk_diameter'])['available'] !=
+                                false))
+                ? _number(trunk.value!, 3, 'м')
+                : 'нет данных · нужна разметка',
+            source: !reference && _positive(trunk.value) ? trunk.source : null,
+          ),
+          const SizedBox(height: 6),
+          const _SummaryRow(
+            key: ValueKey('measurement-summary-beta'),
+            label: 'Коэффициент β (кг/с)',
+            value: 'не рассчитан',
+          ),
+          const _SummaryRow(
+            key: ValueKey('measurement-summary-critical-wind'),
+            label: 'Критическая скорость ветра (м/с)',
+            value: 'не рассчитана',
+          ),
+          const _SummaryRow(
+            key: ValueKey('measurement-summary-damage-probability'),
+            label: 'Вероятность повреждения',
+            value: 'не рассчитана',
+          ),
+          if (additional.isNotEmpty)
+            ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              childrenPadding: EdgeInsets.only(bottom: 8),
-              title: Text('Что нужно для расчётов'),
-              children: [
-                Text(
-                  'Для β нужны измеренные траектории движения во времени, массы, упругость и начальные условия дерева, а также проверенная динамическая модель.',
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Для критического ветра нужны параметры материала, корней и основания, ветровая нагрузка и проверенная модель разрушения или опрокидывания.',
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Для вероятности повреждения нужны реальные наблюдения, заданные условия и период оценки, экспериментальная валидация вероятностной модели.',
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Фото даёт проекции. Диаметр отмеченного сечения не подтверждает DBH; нужен полевой протокол. Полевая точность не подтверждена. Сохранённые показатели прежних методов не используются как новые расчёты.',
-                ),
-              ],
+              title: const Text('Другие измеренные параметры'),
+              children: additional,
             ),
-          ],
-        ),
+          const ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.only(bottom: 8),
+            title: Text('Что нужно для расчётов'),
+            children: [
+              Text(
+                'Для β нужны измеренные траектории движения во времени, массы, упругость и начальные условия дерева, а также проверенная динамическая модель.',
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Для критического ветра нужны параметры материала, корней и основания, ветровая нагрузка и проверенная модель разрушения или опрокидывания.',
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Для вероятности повреждения нужны реальные наблюдения, заданные условия и период оценки, экспериментальная валидация вероятностной модели.',
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Фото даёт проекции. Диаметр отмеченного сечения не подтверждает DBH; нужен полевой протокол. Полевая точность не подтверждена. Сохранённые показатели прежних методов не используются как новые расчёты.',
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -238,40 +234,24 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final vertical = constraints.maxWidth < 300 ||
-                MediaQuery.textScalerOf(context).scale(14) > 21;
-            final description = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label),
-                if (source != null)
-                  Text(source!, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            );
-            final result = Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-              textAlign: vertical ? TextAlign.start : TextAlign.end,
-            );
-            return vertical
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [description, const SizedBox(height: 3), result],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: description),
-                      const SizedBox(width: 12),
-                      Expanded(flex: 2, child: result),
-                    ],
-                  );
-          },
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // One flowing paragraph keeps a value beside its name. It wraps
+            // naturally at larger text scales instead of splitting the pair
+            // into distant columns or clipping a long source label.
+            Text.rich(
+              TextSpan(text: '$label: ', children: [
+                TextSpan(
+                    text: value,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ]),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            if (source != null)
+              Text(source!, style: Theme.of(context).textTheme.bodySmall),
+          ],
         ),
       );
 }

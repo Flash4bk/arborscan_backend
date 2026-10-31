@@ -189,7 +189,7 @@ void main() {
     await t.scrollUntilVisible(
         find.descendant(
             of: find.byKey(const ValueKey('measurement-summary-height')),
-            matching: find.text('4,00 м')),
+            matching: find.textContaining('4,00 м')),
         100,
         scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('DBH не измерен'), findsNothing);
