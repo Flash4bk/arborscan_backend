@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-31",
+  "tasks": [
+    "AS-03",
+    "AS-08",
+    "AS-12"
+  ],
+  "environment": "Flutter widget test engine,411x891logicalpx,Atlas/Literatafonts,syntheticisolatedrecord",
+  "phone_tested": false,
+  "parent_apk_and_analyzer_check_pending": true,
+  "passed_tests": 42,
+  "test_log": "output/recognition-results/flutter-ui33-targeted-final.txt",
+  "test_files": [
+    "measurement_results_summary_test.dart",
+    "measurement_results_visual_test.dart",
+    "reference_measurement_test.dart",
+    "reference_workflow_test.dart",
+    "combined_reference_workflow_test.dart",
+    "gallery_availability_widget_test.dart",
+    "combined_reference_server_page_test.dart"
+  ],
+  "checks": [
+    "Referenceprojection/AR/legacyselectedsnapshotsemantics,explicitmissing/nonfinite/conflictingunitvalues",
+    "Persistedmanualspeciesandphoto/contourlayers",
+    "Collapsedhelpandphoto/exportactionsremainreachable",
+    "TemporaryemptylengthpreservesEditableTextstateandkeyboardfocus,restoredjournalcoldreopens",
+    "EXIFcoordinates,1m100cm,recalculationandownerisolationthroughworkflow",
+    "Noβ,criticalwind,damageprobabilityfromlegacyheuristicorillustration",
+    "Largefont3x/narrowscreenwithoutoverflow",
+    "TopandsummaryPNGvisuallyinspected"
+  ],
+  "source_sha256": {
+    "arborscan_app/lib/measurement_results_summary.dart": "8705ac9599170bf25863bfd430e3acb495f91edb6546628cdbcf527f9eb758af",
+    "arborscan_app/lib/reference_measurement_page.dart": "7a10bda6a5929e073c9637389ccd0ad8c3a82e0e97a65771405af65f1f51f206",
+    "arborscan_app/test/measurement_results_summary_test.dart": "2b163b604dca94950222915982230a2216ecff73bbad32478f86d05fd14d3dfa",
+    "arborscan_app/test/measurement_results_visual_test.dart": "24d3296968670b6375fb89bb6c3e0af8e904899038ef8cda386b90c5de077670",
+    "arborscan_app/test/reference_measurement_test.dart": "de15aaea95b3f1c14ca35740d4c2e55899f19e8196070a4104c315f2756a4bfb",
+    "arborscan_app/test/reference_workflow_test.dart": "e76cfefe058ef6f7336b3a82291f4e2d1999ae12d9c33bb9690ff1d7a695db16",
+    "arborscan_app/test/combined_reference_workflow_test.dart": "b5c4b0bfef4152a50a22857da93852053a87b172f7507db83204c041ecf6809c",
+    "arborscan_app/test/gallery_availability_widget_test.dart": "84921e011dec4e5690404ae8879d433b6778f9e070bea8770b4857f284f162bb"
+  },
+  "screenshots_sha256": {
+    "output/recognition-results/ui/reference-top33.png": "66dc36a6f0d6a00b9c57137eb6fbbee1847e271e07f37143ae55faa7125f0a0b",
+    "output/recognition-results/ui/reference-summary33.png": "8846b0c2579a978c10e4c894bc0d625998de671738a270cda8c568c78dbafa16"
+  },
+  "unchanged": [
+    "measurementformulas",
+    "editorgeometry",
+    "snapshotformat",
+    "APIs",
+    "backend",
+    "production",
+    "trainingmodels"
+  ],
+  "remaining": [
+    "Parentfullsuite/analyze/APKandoptionalactualS24checks",
+    "Fieldaccuracyandscientificβ/criticalwind/damageprobabilitynotvalidated"
+  ]
+}
