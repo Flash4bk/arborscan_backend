@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-31",
+  "task": "AS-06",
+  "purpose": "diagnostic",
+  "inference_performed": true,
+  "training_performed": false,
+  "production_changed": false,
+  "model_weights_changed": false,
+  "os": "Windows 11",
+  "python": "3.14.6",
+  "dependencies": {
+    "torch": "2.14.0+cpu",
+    "torchvision": "0.29.0+cpu",
+    "ultralytics": "8.4.143",
+    "numpy": "2.5.3",
+    "Pillow": "13.0.0"
+  },
+  "settings": {
+    "confidence": 0.25,
+    "device": "cpu",
+    "imgsz": 1024,
+    "max_seconds": 600,
+    "preprocessing": "exif_rgb_to_bgr_v1",
+    "selection": "existing_TreeVisionRuntime.infer",
+    "threads": 1
+  },
+  "baseline_weights_sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+  "source_manifest_sha256": "66da4b01af9079e24fb5ff23de5f0b17dc71967ee4e19c84f4c44f45461ed7f9",
+  "frozen_sha256": "a8fd85dc583ad5171a7ab16511c644807f71f6cf142f86ac06850ccb7a6835de",
+  "report_sha256": "7fbbaf61ea8ae7e5509503b939b2e80a584c3adc1887f9f77d0838d35472ae0e",
+  "receipt_sha256": "a6c9fbe53071b6541be0e8d593a3dbfeaab65635cd94031ca24ede9274a41fca",
+  "receipt_integrity_verified": true,
+  "cases": [
+    {
+      "id": "known-pine-1",
+      "source_image_sha256": "d7efb17505d9ab31b79e08174fd4d3386bec7507485ab2d3f5bc2520d58959b4",
+      "oriented_image_sha256": "44d3b57f22b956c87eb39bab604714b52820b0a351f22ee7eea4260f2752a9ea",
+      "detected": false,
+      "warnings": [
+        "tree_segmentation_returned_no_masks"
+      ],
+      "mask_sha256": "ba066b09aee8ba319e67e36883944ba5285b1a48941baa79ecd144182737c41d",
+      "nonzero_mask_pixels": 0,
+      "mask_size": [
+        1920,
+        1080
+      ],
+      "seconds": 1.8746825999987777,
+      "preview_sha256": "0c1d99e69e2a26cad9bfd8a301c32d0822132ddc9ed069d1441988c4750a4718"
+    },
+    {
+      "id": "known-pine-2",
+      "source_image_sha256": "5b257b286e988da2f624cbd6622cbc62ddf47e97b23ca3c8e0c2188952d937e9",
+      "oriented_image_sha256": "f7ee5be889d5e689323d3137c1a4fa763a62432a6d846d5729f6b988b4b4ed60",
+      "detected": false,
+      "warnings": [
+        "tree_segmentation_returned_no_masks"
+      ],
+      "mask_sha256": "ba066b09aee8ba319e67e36883944ba5285b1a48941baa79ecd144182737c41d",
+      "nonzero_mask_pixels": 0,
+      "mask_size": [
+        1920,
+        1080
+      ],
+      "seconds": 0.15733990000444464,
+      "preview_sha256": "ed62933ad4c2357b7fad8b009d38bee9e211483b8c74fa0a5ecc55c745efeeff"
+    }
+  ],
+  "overall": {
+    "cases": 2,
+    "correct_negative_cases": 0,
+    "detections": 0,
+    "false_positive_negative_cases": 0,
+    "false_positive_pixels": 0,
+    "labelled_cases": 0,
+    "mean_dice": null,
+    "mean_iou": null,
+    "misses": 0,
+    "review_attested_cases": 0,
+    "scene_count": 1,
+    "scene_weighted_mean_iou": null,
+    "selection_warnings": 0,
+    "target_unresolved": 0,
+    "unlabelled_diagnostics": 2,
+    "usable_detections": 0,
+    "zero_overlap_detections": 0
+  },
+  "limitations": [
+    "Two photographs belong to one known series, not an independent validation set.",
+    "No accepted ground-truth masks supplied; IoU/Dice remain null.",
+    "No candidate model or new independent training data supplied; no improvement established.",
+    "Earlier high-resolution/ROI/low-confidence diagnostic failures were not rerun.",
+    "CPU Windows environment reproduces pinned weight inference, not an exact Linux production container."
+  ],
+  "runtime_settings_inside_output": true,
+  "benchmark_contract_tests": {
+    "passed": 57,
+    "seconds": 1.84,
+    "scope": "Fake-inference contract tests, separate from actual model result."
+  },
+  "modified_source_files": [
+    "tools/benchmark_tree_recognition.py",
+    "tests_v4/test_recognition_benchmark.py"
+  ]
+}

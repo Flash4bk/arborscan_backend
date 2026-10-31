@@ -402,6 +402,17 @@ def test_changed_frozen_manifest_is_rejected_before_ml_dependencies_are_imported
         benchmark.run_worker(output, "0" * 64)
 
 
+def test_snapshot_creates_runtime_directories_before_ml_imports(tmp_path):
+    manifest, models, _ = make_bundle(tmp_path)
+    output, _ = snapshot(tmp_path, manifest, models)
+    # The real library checks YOLO_CONFIG_DIR's parent. An existing parent keeps
+    # its settings inside this run rather than silently falling back to CWD.
+    assert (output / "runtime-config").is_dir()
+    assert (output / "runtime-cache").is_dir()
+    assert not list((output / "runtime-config").iterdir())
+    assert not (tmp_path / "Ultralytics").exists()
+
+
 @pytest.mark.parametrize("path", [r"\\private-host\share\photo.png", "//private-host/share/photo.png", "https://private-host/photo.png"])
 def test_remote_asset_paths_fail_before_filesystem_resolution(tmp_path, path, monkeypatch):
     with monkeypatch.context() as patch:

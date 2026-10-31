@@ -315,7 +315,10 @@ def prepare_snapshot(output, validated, settings):
     if output.exists() or not output.parent.is_dir() or any(output == p or output in p.parents for p in sources):
         fail("output_must_be_new_non_source_directory")
     output.mkdir(exist_ok=False)
-    for name in ("images", "masks", "originals", "weights"):
+    # Ultralytics checks the parent of its settings directory before creating it.
+    # Missing runtime-config would make it fall back to the current working
+    # directory instead of keeping this run's settings beside its frozen inputs.
+    for name in ("images", "masks", "originals", "weights", "runtime-config", "runtime-cache"):
         (output / name).mkdir()
     write_new(output / "source-manifest.json", raw)
     cases = []
