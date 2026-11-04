@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import statistics
 import subprocess
 import sys
 import time
@@ -48,6 +49,11 @@ case. Review/training provenance are local attestations, not server verification
 Training provenance is optional per pinned model; absence/incompleteness is explicit
 in the report. Known image/pixel/scene/tree/series leakage always fails preflight.
 No independent-quality or activation decision follows from this tool's completion.
+Whole-tree classes are resolved by one exact tree/trees/дерево/деревья name;
+other class IDs (such as stick) are excluded, never collapsed into tree. Pure CPU
+inference latency uses decoded BGR input, untimed warmup and repeated calls.
+Legacy case seconds includes workflow IO and is not the warmed latency. This
+selected-mask benchmark does not calculate instance AP/mAP.
 """
 HASH = re.compile(r"[0-9a-f]{64}\Z")
 TOKEN = re.compile(r"[A-Za-z0-9_-]{1,120}\Z")
@@ -57,6 +63,7 @@ MAX_PIXELS = 25_000_000
 MAX_ASSET_BYTES = 15 * 1024**2
 MAX_TOTAL_BYTES = 512 * 1024**2
 MAX_WEIGHT_BYTES = 512 * 1024**2
+TREE_NAMES = {"tree", "trees", "дерево", "деревья"}
 
 
 class BenchmarkError(ValueError):
@@ -354,6 +361,114 @@ def prepare_snapshot(output, validated, settings):
     return output, frozen
 
 
+def configure_benchmark_tree_class(runtime):
+    """Map an explicitly named tree class; never collapse stick/COCO classes."""
+    names = runtime.model_names
+    if (not isinstance(names, dict) or not names or any(
+            isinstance(key, bool) or not isinstance(key, int) or key < 0
+            or not isinstance(value, str) for key, value in names.items())):
+        fail("invalid_model_class_schema")
+    selected = [key for key, value in names.items() if value.strip().casefold() in TREE_NAMES]
+    if len(selected) != 1:
+        fail("tree_class_name_required" if not selected else "ambiguous_tree_class_schema")
+    tree_id = selected[0]
+    # The application runtime accepts broad substring names. This offline
+    # comparison instead permits only the one explicitly mapped whole-tree ID.
+    runtime._tree_class_ids = lambda: {tree_id}
+    runtime.benchmark_class_mapping = {
+        "logical_class": "tree", "tree_class_id": tree_id,
+        "model_classes": {str(key): value for key, value in sorted(names.items())},
+        "ignored_class_ids": sorted(set(names) - {tree_id}),
+        "resolution": "one_exact_tree_class_name",
+    }
+    return runtime.benchmark_class_mapping
+
+
+def validate_prediction(prediction, image):
+    if prediction.detected:
+        import numpy as np
+        mask = prediction.mask
+        if mask is None or mask.shape != image.shape[:2] or not np.isfinite(mask).all():
+            fail("runtime_mask_contract")
+
+
+def configure_runtime_threads(threads, torch_module, cv2_module, yolo_utils, torch_utils):
+    """Pin and observe native thread counts in this disposable worker only.
+
+    Ultralytics' first CPU prediction calls select_device(), which resets Torch
+    to its imported NUM_THREADS constant. Pin both copies before prediction,
+    rather than merely labelling a requested count as an observed count.
+    """
+    if isinstance(threads, bool) or not isinstance(threads, int) or not 1 <= threads <= 4:
+        fail("invalid_runtime_threads")
+    yolo_utils.NUM_THREADS = torch_utils.NUM_THREADS = threads
+    torch_module.set_num_threads(threads)
+    torch_module.set_num_interop_threads(threads)
+    cv2_module.setNumThreads(threads)
+
+    def check():
+        counts = {"torch_threads": torch_module.get_num_threads(),
+                  "torch_interop_threads": torch_module.get_num_interop_threads(),
+                  "opencv_threads": cv2_module.getNumThreads(),
+                  "ultralytics_threads": yolo_utils.NUM_THREADS,
+                  "ultralytics_select_device_threads": torch_utils.NUM_THREADS}
+        if any(value != threads for value in counts.values()):
+            fail("runtime_thread_policy_changed")
+        return {"requested_threads": threads, "observed": counts,
+                "enforcement": "worker_local_verified_after_every_infer"}
+    check()
+    return check
+
+
+def check_runtime_threads(runtime):
+    check = getattr(runtime, "benchmark_thread_policy_check", None)
+    return check() if check is not None else None
+
+
+def timing_protocol(settings):
+    # Earlier frozen v1 runs and library callers lacked these fields. Do not
+    # silently change their inference count or relabel their legacy seconds.
+    repeats = settings.get("timing_repeats", 0)
+    warmup = settings.get("warmup_runs", 1 if repeats else 0)
+    if (isinstance(repeats, bool) or not isinstance(repeats, int) or not 0 <= repeats <= 10
+            or isinstance(warmup, bool) or not isinstance(warmup, int) or not 0 <= warmup <= 5
+            or (not repeats and warmup)):
+        fail("invalid_timing_bounds")
+    return {"enabled": bool(repeats), "warmup_runs_per_case": warmup,
+            "timing_repeats_per_case": repeats,
+            "scope": "resident_CPU_runtime.infer_on_decoded_BGR_including_selection",
+            "excluded": ["model_load", "warmup", "image_decode", "metric_evaluation",
+                         "prediction_contract_checks", "file_IO"],
+            "thread_policy": "requested_in_settings_actual_in_each_model_thread_policy",
+            "legacy_seconds_scope": "one_shot_case_workflow_including_decode_or_evaluator_IO"}
+
+
+def summarize_timing(samples):
+    return {"sample_count": len(samples), "samples_seconds": samples,
+            "mean_seconds": statistics.fmean(samples),
+            "median_seconds": statistics.median(samples),
+            "min_seconds": min(samples), "max_seconds": max(samples)}
+
+
+def measure_inference(runtime, image, tap, protocol):
+    """Time the existing inference call only, with all validation outside it."""
+    for _ in range(protocol["warmup_runs_per_case"]):
+        prediction = runtime.infer(image, *(tap or (None, None)))
+        check_runtime_threads(runtime)
+        validate_prediction(prediction, image)
+    samples = []
+    for _ in range(protocol["timing_repeats_per_case"]):
+        started = time.perf_counter()
+        prediction = runtime.infer(image, *(tap or (None, None)))
+        seconds = time.perf_counter() - started
+        if not math.isfinite(seconds) or seconds < 0:
+            fail("invalid_runtime_timing")
+        check_runtime_threads(runtime)
+        validate_prediction(prediction, image)
+        samples.append(seconds)
+    return summarize_timing(samples)
+
+
 class RecordingRuntime:
     """Pass the supplied target through the existing selection implementation."""
     def __init__(self, runtime, tap):
@@ -361,11 +476,8 @@ class RecordingRuntime:
 
     def infer(self, image):
         self.prediction = self.runtime.infer(image, *(self.tap or (None, None)))
-        if self.prediction.detected:
-            import numpy as np
-            mask = self.prediction.mask
-            if mask is None or mask.shape != image.shape[:2] or not np.isfinite(mask).all():
-                fail("runtime_mask_contract")
+        check_runtime_threads(self.runtime)
+        validate_prediction(self.prediction, image)
         return self.prediction
 
 
@@ -399,6 +511,13 @@ def evaluate(frozen, output, runtime_factory, evaluator):
     result.update(activation_eligible=False, independent_validation_established=False,
                   evidence_level="reviewed_holdout_benchmark" if frozen["purpose"] == "quality_validation" else "diagnostic_only",
                   models={})
+    protocol = timing_protocol(frozen["settings"])
+    result["timing_protocol"] = protocol
+    result["limitations"] = list(result["limitations"]) + [
+        "Legacy case seconds is not warmed inference latency; use inference_timing when measured.",
+        "Settings threads is requested; actual native counts are verified only when model.thread_policy is present.",
+        "Single selected-mask metrics do not compute instance AP or mAP.",
+    ]
     for name, model in frozen["models"].items():
         weight_path = output / model["file"]
         if file_hash(weight_path) != model["sha256"]:
@@ -447,6 +566,14 @@ def evaluate(frozen, output, runtime_factory, evaluator):
                     fail("evaluator_overlay_missing")
                 row["overlay_file"] = (folder / "0.png").relative_to(output).as_posix()
             row["prediction_mask_file"] = mask_output.relative_to(output).as_posix()
+            row["inference_timing"] = None
+            if protocol["enabled"]:
+                # Decode and metrics/PNG operations have already completed.
+                # This fresh array is reused unchanged for every timed repeat.
+                timing_image = cv2.imread(str(image_path))
+                if timing_image is None or timing_image.shape[:2] != (case["height"], case["width"]):
+                    fail("timing_image_decode_failed")
+                row["inference_timing"] = measure_inference(runtime, timing_image, case.get("tap"), protocol)
             rows.append(row)
         scenes = sorted({r["scene_id"] for r in rows})
         conditions = sorted({c for r in rows for c in r["conditions"]})
@@ -455,6 +582,12 @@ def evaluate(frozen, output, runtime_factory, evaluator):
         aggregate = summarize(rows)
         aggregate["scene_weighted_mean_iou"] = sum(scene_iou) / len(scene_iou) if scene_iou else None
         result["models"][name] = {"weights_sha256": model["sha256"], "overall": aggregate,
+                                 "thread_policy": check_runtime_threads(runtime),
+                                 "class_mapping": getattr(runtime, "benchmark_class_mapping", None),
+                                 "inference_timing": summarize_timing([
+                                     seconds for row in rows
+                                     for seconds in (row["inference_timing"] or {}).get("samples_seconds", [])
+                                 ]) if protocol["enabled"] else None,
                                  "by_scene": by_scene,
                                  "by_condition": {condition: summarize([r for r in rows if condition in r["conditions"]]) for condition in conditions},
                                  "cases": rows}
@@ -463,6 +596,11 @@ def evaluate(frozen, output, runtime_factory, evaluator):
         after = result["models"]["candidate"]["overall"]
         result["candidate_minus_baseline"] = {key: after[key] - before[key] if after[key] is not None and before[key] is not None else None
                                                for key in ("mean_iou", "mean_dice", "misses", "false_positive_pixels", "scene_weighted_mean_iou")}
+        for key in ("mean_seconds", "median_seconds"):
+            baseline_time = result["models"]["baseline"]["inference_timing"]
+            candidate_time = result["models"]["candidate"]["inference_timing"]
+            result["candidate_minus_baseline"]["inference_" + key] = (
+                candidate_time[key] - baseline_time[key] if baseline_time and candidate_time else None)
     return result
 
 
@@ -473,7 +611,8 @@ def run_worker(output, expected_frozen_sha256):
     frozen = parse_json(frozen_raw)
     settings = frozen["settings"]
     os.environ.update({"MODEL_DIR": str(output / "weights"), "MODEL_CACHE_DIR": str(output / "runtime-cache"),
-                       "YOLO_CONFIG_DIR": str(output / "runtime-config"), "YOLO_AUTOINSTALL": "false",
+                       "YOLO_CONFIG_DIR": str(output / "runtime-config"),
+                       "YOLO_CACHE_DIR": str(output / "runtime-cache"), "YOLO_AUTOINSTALL": "false",
                        "MODEL_QUALITY_ENABLED": "0"})
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     # This subprocess performs local inference only, including during dependency
@@ -486,19 +625,20 @@ def run_worker(output, expected_frozen_sha256):
     import cv2
     import torch
     from ultralytics import settings as yolo_settings
+    from ultralytics import utils as yolo_utils
+    from ultralytics.utils import torch_utils
     from arborscan_v4.quality_train import segmentation_metrics
     from arborscan_v4.vision_engine import TreeVisionRuntime
-    torch.set_num_threads(settings["threads"])
-    torch.set_num_interop_threads(settings["threads"])
-    cv2.setNumThreads(settings["threads"])
+    check_threads = configure_runtime_threads(settings["threads"], torch, cv2, yolo_utils, torch_utils)
     yolo_settings.update({key: False for key in ("sync", "hub", "wandb", "mlflow", "clearml", "comet", "neptune", "dvc", "raytune") if key in yolo_settings})
     def factory(weights, options):
         runtime = TreeVisionRuntime()
         runtime._select_model_path = lambda: (weights, 4)
         runtime.conf, runtime.imgsz = options["confidence"], options["imgsz"]
         runtime.load()
-        if runtime.model_names != {0: "tree"}:
-            fail("tree_only_model_required")
+        runtime.benchmark_thread_policy_check = check_threads
+        check_runtime_threads(runtime)
+        configure_benchmark_tree_class(runtime)
         return runtime
     report = evaluate(frozen, output, factory, segmentation_metrics)
     report_raw = json_bytes(report)
@@ -552,6 +692,10 @@ def main(argv=None):
     parser.add_argument("--max-seconds", type=int, default=600)
     parser.add_argument("--imgsz", type=int, default=1024)
     parser.add_argument("--confidence", type=float, default=.25)
+    parser.add_argument("--warmup-runs", type=int, default=1,
+                        help="Untimed warmup calls per image/model before latency sampling (0..5)")
+    parser.add_argument("--timing-repeats", type=int, default=3,
+                        help="Runtime-only latency samples per image/model after warmup (1..10)")
     parser.add_argument("--check-only", action="store_true")
     output = None
     try:
@@ -559,6 +703,7 @@ def main(argv=None):
         if (not 1 <= options.threads <= 4 or not 1 <= options.max_seconds <= 1800
                 or not 320 <= options.imgsz <= 1536 or not math.isfinite(options.confidence)
                 or not .05 <= options.confidence <= .95
+                or not 0 <= options.warmup_runs <= 5 or not 1 <= options.timing_repeats <= 10
                 or bool(options.candidate) != bool(options.candidate_sha256)):
             fail("invalid_runtime_bounds_or_candidate_pair")
         models = {"baseline": {"path": options.baseline, "sha256": options.baseline_sha256}}
@@ -567,6 +712,7 @@ def main(argv=None):
         validated = validate_inputs(options.manifest, options.manifest_sha256, models)
         settings = {"device": "cpu", "threads": options.threads, "imgsz": options.imgsz,
                     "confidence": options.confidence, "max_seconds": options.max_seconds,
+                    "warmup_runs": options.warmup_runs, "timing_repeats": options.timing_repeats,
                     "preprocessing": "exif_rgb_to_bgr_v1", "selection": "existing_TreeVisionRuntime.infer"}
         output, frozen = prepare_snapshot(options.output, validated, settings)
         if options.check_only:

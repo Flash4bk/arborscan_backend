@@ -1,9 +1,12 @@
 """Offline benchmark contracts; fake inference is not model-quality evidence."""
 import copy
 import io
+import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
+import sys
 from types import SimpleNamespace
 
 import numpy as np
@@ -97,6 +100,8 @@ def test_check_only_freezes_original_oriented_mask_and_weights_without_model_imp
     assert (output / "originals/0.bin").read_bytes() == before
     assert benchmark.file_hash(output / "weights/baseline.pt") == models["baseline"]["sha256"]
     assert frozen["training_independence"] == {"baseline": "not_supplied"}
+    assert frozen["settings"]["warmup_runs"] == 1
+    assert frozen["settings"]["timing_repeats"] == 3
     assert frozen["cases"][0]["review_attested"]
     assert not (output / "COMPLETE").exists()
     assert (tmp_path / "private-photo.png").read_bytes() == before
@@ -371,7 +376,9 @@ def test_child_time_limit_kills_inference_process_and_keeps_logs_local(tmp_path,
 
 @pytest.mark.parametrize("arguments", [["--device", "cuda"], ["--threads", "0"], ["--threads", "5"],
                                       ["--max-seconds", "1801"], ["--imgsz", "1537"],
-                                      ["--confidence", "nan"], ["--candidate", "private-no-hash.pt"]])
+                                      ["--confidence", "nan"], ["--candidate", "private-no-hash.pt"],
+                                      ["--warmup-runs", "-1"], ["--warmup-runs", "6"],
+                                      ["--timing-repeats", "0"], ["--timing-repeats", "11"]])
 def test_cli_enforces_explicit_cpu_resource_bounds(tmp_path, arguments, capsys):
     manifest, models, _ = make_bundle(tmp_path)
     assert benchmark.main(cli_args(tmp_path, manifest, models) + arguments + ["--check-only"]) == 2
@@ -419,3 +426,218 @@ def test_remote_asset_paths_fail_before_filesystem_resolution(tmp_path, path, mo
         patch.setattr(Path, "resolve", lambda *args, **kwargs: pytest.fail("remote resolution must not occur"))
         with pytest.raises(benchmark.BenchmarkError, match="invalid_local_file"):
             benchmark.resolve_file(path, tmp_path, benchmark.MAX_ASSET_BYTES)
+
+
+@pytest.mark.parametrize("names,tree_id", [
+    ({0: "tree"}, 0),
+    ({0: "tree", 1: "stick"}, 0),
+    ({0: "stick", 1: "tree"}, 1),
+    ({0: "street", 7: " TREE "}, 7),
+    ({4: "дерево", 8: "эталон"}, 4),
+])
+def test_named_tree_mapping_preserves_class_id_and_excludes_non_tree(names, tree_id):
+    runtime = SimpleNamespace(model_names=names, _tree_class_ids=lambda: set(names))
+    mapping = benchmark.configure_benchmark_tree_class(runtime)
+    assert runtime._tree_class_ids() == {tree_id}
+    assert mapping["tree_class_id"] == tree_id
+    assert mapping["model_classes"] == {str(key): value for key, value in sorted(names.items())}
+    assert mapping["ignored_class_ids"] == sorted(set(names) - {tree_id})
+    assert mapping["logical_class"] == "tree"
+
+
+@pytest.mark.parametrize("names,error", [
+    ({0: "person", 1: "potted plant"}, "tree_class_name_required"),
+    ({0: "street"}, "tree_class_name_required"),
+    ({0: "tree", 1: "дерево"}, "ambiguous_tree_class_schema"),
+    ({0: "tree", 1: "Trees"}, "ambiguous_tree_class_schema"),
+    ({"1": "tree"}, "invalid_model_class_schema"),
+    ({True: "tree"}, "invalid_model_class_schema"),
+    ({-1: "tree"}, "invalid_model_class_schema"),
+    ({0: 42}, "invalid_model_class_schema"),
+    ({}, "invalid_model_class_schema"),
+])
+def test_unknown_or_ambiguous_model_classes_are_not_renamed_to_tree(names, error):
+    runtime = SimpleNamespace(model_names=names)
+    with pytest.raises(benchmark.BenchmarkError, match=error):
+        benchmark.configure_benchmark_tree_class(runtime)
+    assert not hasattr(runtime, "benchmark_class_mapping")
+
+
+@pytest.mark.parametrize("labelled", [False, True])
+def test_warmed_timing_excludes_decode_validation_metrics_and_overlay_io(
+        tmp_path, monkeypatch, existing_evaluator, labelled):
+    manifest, models, truth = make_bundle(tmp_path, labelled=labelled, candidate=True)
+    output, frozen = snapshot(tmp_path, manifest, models)
+    frozen["settings"].update(warmup_runs=1, timing_repeats=3)
+    import cv2
+    clock = SimpleNamespace(now=0.0)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: clock.now)
+    read = cv2.imread
+    write = cv2.imwrite
+    validate = benchmark.validate_prediction
+    def expensive_read(*args, **kwargs):
+        clock.now += 20
+        return read(*args, **kwargs)
+    def expensive_write(*args, **kwargs):
+        clock.now += 100
+        return write(*args, **kwargs)
+    def expensive_validation(*args):
+        clock.now += 7
+        return validate(*args)
+    def expensive_thread_check():
+        clock.now += 13
+        return {"observed": {"torch_threads": 1}}
+    monkeypatch.setattr(cv2, "imread", expensive_read)
+    monkeypatch.setattr(cv2, "imwrite", expensive_write)
+    monkeypatch.setattr(benchmark, "validate_prediction", expensive_validation)
+    class ClockRuntime(FakeRuntime):
+        def __init__(self, duration):
+            super().__init__(truth)
+            self.duration, self.images = duration, []
+            self.benchmark_thread_policy_check = expensive_thread_check
+        def infer(self, image, tap_x=None, tap_y=None):
+            clock.now += self.duration
+            self.images.append(image)
+            return super().infer(image, tap_x, tap_y)
+    runtimes = {"baseline": ClockRuntime(2), "candidate": ClockRuntime(5)}
+    report = benchmark.evaluate(frozen, output, lambda path, _: runtimes[path.stem], existing_evaluator)
+    for name, duration in [("baseline", 2), ("candidate", 5)]:
+        runtime = runtimes[name]
+        row = report["models"][name]["cases"][0]
+        assert len(runtime.taps) == 5  # one quality pass + one warmup + three timed runs
+        assert runtime.taps == [(.3, .25)] * 5
+        assert all(image is runtime.images[-1] for image in runtime.images[-4:])
+        assert row["seconds"] > duration
+        assert row["inference_timing"]["samples_seconds"] == [duration] * 3
+        assert row["inference_timing"]["mean_seconds"] == duration
+        assert row["inference_timing"]["median_seconds"] == duration
+        assert report["models"][name]["inference_timing"]["mean_seconds"] == duration
+        assert report["models"][name]["inference_timing"]["sample_count"] == 3
+        assert report["models"][name]["thread_policy"] == {"observed": {"torch_threads": 1}}
+        assert (row["metrics"] is None) == (not labelled)
+    assert report["candidate_minus_baseline"]["inference_mean_seconds"] == 3
+    assert report["candidate_minus_baseline"]["inference_median_seconds"] == 3
+    assert report["timing_protocol"]["excluded"] == [
+        "model_load", "warmup", "image_decode", "metric_evaluation",
+        "prediction_contract_checks", "file_IO"]
+
+
+def test_old_frozen_settings_keep_single_inference_and_unmeasured_latency(tmp_path, existing_evaluator):
+    manifest, models, truth = make_bundle(tmp_path)
+    output, frozen = snapshot(tmp_path, manifest, models)
+    runtime = FakeRuntime(truth)
+    report = benchmark.evaluate(frozen, output, lambda *_: runtime, existing_evaluator)
+    assert runtime.taps == [(.3, .25)]
+    assert report["timing_protocol"]["enabled"] is False
+    assert report["models"]["baseline"]["inference_timing"] is None
+    assert report["models"]["baseline"]["cases"][0]["inference_timing"] is None
+    assert report["models"]["baseline"]["thread_policy"] is None
+
+
+@pytest.mark.parametrize("settings", [{"timing_repeats": True}, {"timing_repeats": 11},
+                                     {"timing_repeats": 1, "warmup_runs": 6},
+                                     {"timing_repeats": 0, "warmup_runs": 1}])
+def test_timing_protocol_rejects_invalid_or_unbounded_repetition(settings):
+    with pytest.raises(benchmark.BenchmarkError, match="invalid_timing_bounds"):
+        benchmark.timing_protocol(settings)
+
+
+@pytest.mark.parametrize("duration", [-1, float("nan"), float("inf")])
+def test_nonfinite_or_negative_latency_is_not_reported(monkeypatch, duration):
+    ticks = iter([0.0, duration])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(ticks))
+    protocol = benchmark.timing_protocol({"warmup_runs": 0, "timing_repeats": 1})
+    with pytest.raises(benchmark.BenchmarkError, match="invalid_runtime_timing"):
+        benchmark.measure_inference(FakeRuntime(), np.zeros((2, 2, 3), np.uint8), None, protocol)
+
+
+def fake_thread_libraries():
+    state = SimpleNamespace(torch_threads=8, interop=8, cv=0)
+    torch = SimpleNamespace(
+        set_num_threads=lambda value: setattr(state, "torch_threads", value),
+        set_num_interop_threads=lambda value: setattr(state, "interop", value),
+        get_num_threads=lambda: state.torch_threads,
+        get_num_interop_threads=lambda: state.interop)
+    cv = SimpleNamespace(setNumThreads=lambda value: setattr(state, "cv", value),
+                         getNumThreads=lambda: state.cv)
+    return state, torch, cv, SimpleNamespace(NUM_THREADS=8), SimpleNamespace(NUM_THREADS=8)
+
+
+@pytest.mark.parametrize("threads", [1, 2, 4])
+def test_worker_pins_both_ultralytics_constants_and_observes_native_counts(threads):
+    state, torch, cv, utils, torch_utils = fake_thread_libraries()
+    check = benchmark.configure_runtime_threads(threads, torch, cv, utils, torch_utils)
+    # Simulate the real select_device CPU reset after the initial setting.
+    torch.set_num_threads(torch_utils.NUM_THREADS)
+    assert check()["observed"] == {
+        "torch_threads": threads, "torch_interop_threads": threads,
+        "opencv_threads": threads, "ultralytics_threads": threads,
+        "ultralytics_select_device_threads": threads}
+    assert check()["requested_threads"] == threads
+    state.torch_threads = 8
+    with pytest.raises(benchmark.BenchmarkError, match="runtime_thread_policy_changed"):
+        check()
+
+
+@pytest.mark.parametrize("threads", [0, 5, True, 1.5])
+def test_worker_rejects_invalid_thread_policy_before_changing_libraries(threads):
+    state, torch, cv, utils, torch_utils = fake_thread_libraries()
+    with pytest.raises(benchmark.BenchmarkError, match="invalid_runtime_threads"):
+        benchmark.configure_runtime_threads(threads, torch, cv, utils, torch_utils)
+    assert state.torch_threads == 8 and utils.NUM_THREADS == 8 and state.cv == 0
+
+
+@pytest.mark.parametrize("warmup,repeats", [(1, 0), (0, 1)])
+def test_native_thread_drift_fails_after_warmup_or_measured_inference(warmup, repeats):
+    state, torch, cv, utils, torch_utils = fake_thread_libraries()
+    check = benchmark.configure_runtime_threads(1, torch, cv, utils, torch_utils)
+    class DriftingRuntime(FakeRuntime):
+        benchmark_thread_policy_check = staticmethod(check)
+        def infer(self, *args):
+            state.torch_threads = 8
+            return super().infer(*args)
+    with pytest.raises(benchmark.BenchmarkError, match="runtime_thread_policy_changed"):
+        benchmark.measure_inference(DriftingRuntime(), np.zeros((2, 2, 3), np.uint8), None,
+                                    {"warmup_runs_per_case": warmup,
+                                     "timing_repeats_per_case": repeats})
+
+
+@pytest.mark.skipif(importlib.util.find_spec("torch") is None, reason="requires actual CPU ML environment")
+def test_actual_ultralytics_select_device_keeps_enforced_thread_counts_in_private_child(tmp_path):
+    # Import ML libraries only in a fresh, offline process. Both library
+    # directories exist first; no user-wide Ultralytics settings are touched.
+    config, cache = tmp_path / "config", tmp_path / "cache"
+    config.mkdir()
+    cache.mkdir()
+    env = dict(os.environ)
+    env.update(YOLO_CONFIG_DIR=str(config), YOLO_CACHE_DIR=str(cache),
+               MODEL_CACHE_DIR=str(cache), MPLCONFIGDIR=str(cache),
+               YOLO_AUTOINSTALL="false", CUDA_VISIBLE_DEVICES="-1",
+               OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1",
+               NUMEXPR_NUM_THREADS="1", TEMP=str(tmp_path), TMP=str(tmp_path))
+    script = '''
+import json, socket
+def offline(*args, **kwargs):
+    raise OSError("offline thread-policy test")
+socket.create_connection = socket.getaddrinfo = offline
+socket.socket.connect = socket.socket.connect_ex = socket.socket.sendto = offline
+import cv2, torch
+from ultralytics import utils
+from ultralytics.utils import torch_utils
+from tools.benchmark_tree_recognition import configure_runtime_threads
+utils.NUM_THREADS = torch_utils.NUM_THREADS = 8
+torch.set_num_threads(1)
+torch_utils.select_device("cpu", verbose=False)
+assert torch.get_num_threads() == 8, "regression prerequisite: actual select_device reset"
+check = configure_runtime_threads(1, torch, cv2, utils, torch_utils)
+torch_utils.select_device("cpu", verbose=False)
+torch.mm(torch.ones((16, 16)), torch.ones((16, 16)))
+print(json.dumps(check(), sort_keys=True))
+'''
+    child = subprocess.run([sys.executable, "-c", script], cwd=Path(__file__).resolve().parents[1],
+                           env=env, capture_output=True, text=True, timeout=60)
+    assert child.returncode == 0, child.stdout + child.stderr
+    observed = json.loads(child.stdout.splitlines()[-1])
+    assert observed["requested_threads"] == 1
+    assert set(observed["observed"].values()) == {1}
+    assert observed["enforcement"] == "worker_local_verified_after_every_infer"
