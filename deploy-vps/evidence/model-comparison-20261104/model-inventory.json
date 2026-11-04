@@ -1,0 +1,139 @@
+{
+  "recorded_at_utc": "2026-11-04T19:46:06.186783+00:00",
+  "task": [
+    "AS-05",
+    "AS-06"
+  ],
+  "read_only": true,
+  "training_or_activation_performed": false,
+  "local_models": [
+    {
+      "date": "2025-12-28T23:54:54.142203",
+      "version": "8.3.223",
+      "epoch": -1,
+      "epochs": 30,
+      "imgsz": 1024,
+      "pretrained": true,
+      "class_names": {
+        "0": "tree",
+        "1": "stick"
+      },
+      "architecture": "yolov8s-seg.yaml",
+      "name": "model_v1.pt",
+      "bytes": 23873901,
+      "sha256": "535e5295095325db3add8167f8f7bacc24643581bb15d15ff0c8ac809c03788f",
+      "metadata_method": "static zip + pickletools opcodes; checkpoint code was not executed",
+      "training_provenance_complete": false
+    },
+    {
+      "date": "2025-09-18T20:32:23.565511",
+      "version": "8.2.103",
+      "epoch": -1,
+      "epochs": 250,
+      "imgsz": 640,
+      "pretrained": true,
+      "class_names": {
+        "0": "stick",
+        "1": "tree"
+      },
+      "architecture": "yolov8s-seg.yaml",
+      "name": "model_v2.pt",
+      "bytes": 23888685,
+      "sha256": "c1fed324ff1621eaf3df3bb465f79d917fae09127ccabbced245badeea80375f",
+      "metadata_method": "static zip + pickletools opcodes; checkpoint code was not executed",
+      "training_provenance_complete": false
+    },
+    {
+      "date": "2026-04-09T07:21:49.362492",
+      "version": "8.4.34",
+      "epoch": 30,
+      "epochs": 100,
+      "imgsz": 1024,
+      "pretrained": true,
+      "class_names": {
+        "0": "tree"
+      },
+      "architecture": "yolov8n-seg.yaml",
+      "name": "model_v4.pt",
+      "bytes": 26626466,
+      "sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+      "metadata_method": "static zip + pickletools opcodes; checkpoint code was not executed",
+      "training_provenance_complete": false
+    }
+  ],
+  "pretrained_generic_model": {
+    "name": "tools/yolov8n-seg.pt",
+    "sha256": "a7cd8f929e1903d78a12a48efecab430209f18dc46cb96c3599a5980c63c423c",
+    "class_count": 80,
+    "tree_class_ids": [],
+    "comparison_limit": "Generic COCO checkpoint has no tree class; do not relabel potted plant as tree"
+  },
+  "git_provenance": {
+    "earliest_backend_commit": "c4c2fe8a42ac9866161b23c3a3a782a6c03c9c09",
+    "earliest_tree_model_blob": "cfe57c0902b6534ec6f2573d958428002815dcf4",
+    "earliest_tree_model_path": "models/tree_model.pt",
+    "same_blob_at_later_base": "01c60033798e3941d1d5e34393a7bd4d019ba200:models/base.pt",
+    "current_matching_file": "models/model_v2.pt",
+    "v1_checkpoint_matches": "tools/runs/segment/train_v1/weights/best.pt"
+  },
+  "production_observation": {
+    "runtime": {
+      "quality_enabled": true,
+      "weights_sha256": {
+        "model_v2.pt": "c1fed324ff1621eaf3df3bb465f79d917fae09127ccabbced245badeea80375f",
+        "model_v1.pt": "535e5295095325db3add8167f8f7bacc24643581bb15d15ff0c8ac809c03788f",
+        "model_v4.pt": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb"
+      },
+      "quality_directory_exists": true,
+      "candidate_files": 0,
+      "heartbeat_age_seconds": 2150372
+    },
+    "registry": {
+      "read_ok": true,
+      "active": [
+        {
+          "model_type": "segmentation",
+          "model_id": null,
+          "generation": 0
+        },
+        {
+          "model_type": "classification",
+          "model_id": null,
+          "generation": 0
+        }
+      ],
+      "models": [],
+      "jobs_by_state": {},
+      "snapshots_count": 1
+    }
+  },
+  "current_public_health": {
+    "v3_status": "ok",
+    "v3_legacy_active_version": 4,
+    "v4_status": "ok",
+    "v4_health_default_version": 4,
+    "v4_default_classes": {
+      "0": "tree"
+    },
+    "local_versions_with_actual_weights": [
+      1,
+      2,
+      4
+    ],
+    "version3_remote_advertised_only": true
+  },
+  "recommended_pair_description": "Earliest preserved project checkpoint (current file model_v2) versus current deployed legacy model_v4; both are trained models and architectures differ",
+  "do_not_claim": [
+    "model_v1 is an untrained checkpoint",
+    "file version numbers establish chronological order",
+    "a new quality-registry model has been trained or activated",
+    "model v4 in PDF proves a new training run",
+    "historical CSV values form a common independent benchmark"
+  ],
+  "comparison_requirements": [
+    "map tree by class name; old v2 tree is class1, old v1 tree is class0",
+    "same input photographs, settings and timing method",
+    "reviewed independent tree masks for quality metrics",
+    "full instance predictions are required for mask mAP; current selected-mask comparison alone cannot provide standard mAP"
+  ]
+}

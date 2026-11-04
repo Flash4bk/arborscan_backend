@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-04",
+  "task": [
+    "AS-05",
+    "AS-06"
+  ],
+  "flutter_ui_source_commit": "326d69b7245a1e16dc69ceb55497c8560157707f",
+  "version_name": "1.4.3-models.1",
+  "version_code": 34,
+  "apk_sha256": "13d7e776b4196347f0a6262f8ac625a97fd732826994febd0d91c34c47d08031",
+  "apk_bytes": 116245934,
+  "apk_path": "D:\\arborscan_backend\\output\\recognition-results\\ArborScan-1.4.3-models.1-34.apk",
+  "build": {
+    "mode": "release",
+    "dart_defines": false,
+    "passed": true,
+    "log": "flutter-build34.txt"
+  },
+  "flutter_tests": {
+    "passed": 303,
+    "failed": 0,
+    "log": "flutter-full.txt"
+  },
+  "flutter_analyze": {
+    "total_issues": 49,
+    "errors": 0,
+    "new_findings": 0,
+    "baseline": "output/recognition-results/20261031/flutter-analyze33.txt",
+    "log": "flutter-analyze.txt"
+  },
+  "s24_installation": {
+    "performed": false,
+    "adb_devices": [],
+    "user_last_installation_preference": "later"
+  },
+  "production_deployment_performed": true,
+  "trained_or_activated": false,
+  "production_backend_source_commit": "ba7d2fb8f48da9e26ac585a23762a473b2570e45",
+  "production_image": "sha256:2abb56ed5d84e4ddbe4465da851c842861498101f030fab016f66630c4ee1762"
+}

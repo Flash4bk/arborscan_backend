@@ -1,0 +1,389 @@
+Resolving dependencies...
+Downloading packages...
+  animations 2.1.1 (3.0.0 available)
+  archive 3.6.1 (4.6.0 available)
+  async 2.13.0 (2.13.1 available)
+  cli_util 0.4.2 (0.6.0 available)
+  clock 1.1.2 (1.1.3 available)
+  code_assets 1.2.1 (2.1.0 available)
+  cross_file 0.3.5+1 (0.4.0 available)
+  crypto 3.0.7 (3.0.8 available)
+  ffi 2.1.4 (2.2.0 available)
+  file_selector_linux 0.9.3+3 (0.9.4+1 available)
+  file_selector_macos 0.9.4+6 (0.9.5+2 available)
+  file_selector_windows 0.9.3+5 (0.9.3+6 available)
+  flutter_launcher_icons 0.13.1 (0.14.4 available)
+  flutter_lints 3.0.2 (6.0.0 available)
+  flutter_native_splash 2.4.4 (2.4.8 available)
+  flutter_plugin_android_lifecycle 2.0.32 (2.0.35 available)
+  geolocator 12.0.0 (14.1.2 available)
+  geolocator_android 4.6.2 (5.2.1 available)
+  geolocator_apple 2.3.13 (2.4.3 available)
+  geolocator_platform_interface 4.2.6 (4.4.1 available)
+  geolocator_web 4.1.3 (4.1.4 available)
+  google_maps 8.2.0 (8.3.0 available)
+  google_maps_flutter 2.14.0 (2.19.0 available)
+  google_maps_flutter_android 2.18.5 (2.21.0 available)
+  google_maps_flutter_ios 2.15.7 (2.18.7 available)
+  google_maps_flutter_platform_interface 2.14.1 (2.17.0 available)
+  google_maps_flutter_web 0.5.14+3 (0.6.5 available)
+  google_sign_in 6.3.0 (7.2.0 available)
+  google_sign_in_android 6.2.1 (7.2.18 available)
+  google_sign_in_ios 5.9.0 (6.3.8 available)
+  google_sign_in_platform_interface 2.5.0 (3.1.0 available)
+  google_sign_in_web 0.12.4+4 (1.1.3 available)
+  hooks 2.0.2 (2.2.0 available)
+  html 0.15.6 (0.15.7 available)
+  image 4.3.0 (4.12.0 available)
+  image_picker 1.2.1 (1.2.4 available)
+  image_picker_android 0.8.13+9 (0.8.13+25 available)
+  image_picker_ios 0.8.13+2 (0.8.13+14 available)
+  image_picker_platform_interface 2.11.1 (2.11.2 available)
+  json_annotation 4.9.0 (4.12.0 available)
+  lints 3.0.0 (6.1.0 available)
+  lottie 2.7.0 (3.8.2 available)
+  matcher 0.12.18 (0.12.20 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.17.0 (1.19.0 available)
+  mime 2.0.0 (2.1.0 available)
+  objective_c 9.5.0 (9.6.3 available)
+  path_provider_android 2.2.23 (2.3.1 available)
+  path_provider_linux 2.2.1 (2.2.2 available)
+  path_provider_platform_interface 2.1.2 (2.1.3 available)
+  pdf 3.12.0 (3.13.1 available)
+  petitparser 7.0.1 (7.1.0 available)
+  platform 3.1.6 (3.2.0 available)
+  printing 5.14.3 (5.15.1 available)
+  qr 3.0.2 (4.0.1 available)
+  record_use 0.6.0 (1.1.1 available)
+  sanitize_html 2.1.0 (2.2.0 available)
+  shared_preferences 2.5.3 (2.5.6 available)
+  shared_preferences_android 2.4.16 (2.5.4 available)
+  shared_preferences_foundation 2.5.6 (2.6.1 available)
+  shared_preferences_platform_interface 2.4.1 (2.4.2 available)
+  source_span 1.10.1 (1.10.2 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  stream_transform 2.1.1 (2.1.2 available)
+  test_api 0.7.9 (0.7.15 available)
+  url_launcher 6.3.2 (6.3.3 available)
+  url_launcher_android 6.3.26 (6.3.33 available)
+  url_launcher_ios 6.3.6 (6.4.2 available)
+  url_launcher_linux 3.2.2 (3.2.3 available)
+  url_launcher_macos 3.2.5 (3.2.6 available)
+  url_launcher_web 2.4.1 (2.4.3 available)
+  url_launcher_windows 3.1.5 (3.1.6 available)
+  uuid 4.5.2 (4.6.0 available)
+  vector_math 2.2.0 (2.4.4 available)
+  vm_service 15.0.2 (15.4.0 available)
+  web 1.1.1 (1.1.2 available)
+  xml 6.6.1 (7.1.0 available)
+  yaml 3.1.3 (3.1.4 available)
+Got dependencies!
+78 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_config_test.dart
+00:00 +0: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_config_test.dart: defaults and dart-define overrides are used
+00:00 +1: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_config_test.dart: endpoint paths retain nginx prefixes and intentional repeated v4
+00:00 +2: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_config_test.dart: relative images retain prefix, absolute URLs are preserved
+00:00 +3: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_config_test.dart: tunnel hints appear only for loopback configurations
+00:00 +4: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 500 is a server error regardless of body Internal Server Error
+00:00 +5: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 503 is a server error regardless of body Internal Server Error
+00:00 +6: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 500 is a server error regardless of body <html>private gateway diagnostic</html>
+00:00 +7: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 503 is a server error regardless of body <html>private gateway diagnostic</html>
+00:00 +8: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 500 is a server error regardless of body {"detail":"Contour workflow migration is not ready"}
+00:00 +9: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: HTTP 503 is a server error regardless of body {"detail":"Contour workflow migration is not ready"}
+00:00 +10: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: invalid HTTP200 private malformed response cannot become a successful object
+00:00 +11: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: invalid HTTP200 [] cannot become a successful object
+00:00 +12: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: invalid HTTP200  cannot become a successful object
+00:00 +13: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/api_response_test.dart: successful JSON object and 401/409 retain their meaning
+00:00 +14: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: AR exports direct measurements without inventing photo or crown scale
+00:00 +15: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/ar_measure_channel_test.dart: invalid AR distance is rejected instead of replaced with tree height
+00:00 +16: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: opaque black/white PNG reveals original outside and blends blue inside
+00:00 +17: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: green overlay respects mask alpha and keeps original photo visible
+00:00 +18: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +19: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +20: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +21: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +22: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +23: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +24: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +25: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +26: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +27: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +28: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/binary_mask_overlay_test.dart: editor and its PNG preview show photo through mask background
+00:02 +29: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:02 +30: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +31: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +32: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +33: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +34: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +35: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +36: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +37: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +38: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +39: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +40: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +41: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +42: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +43: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +44: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:03 +45: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_bridge_test.dart: main selected photo enters reference without another picker call
+00:04 +46: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: saved AI alpha mask and reference lines appear together on the original
+00:04 +47: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: saved AI alpha mask and reference lines appear together on the original
+00:04 +48: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: cold history opens exact pinned original only, valid=false
+00:04 +49: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: cold history opens exact pinned original only, valid=false
+00:04 +50: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:05 +51: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:05 +52: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:05 +53: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:05 +54: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:05 +55: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:05 +56: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:06 +57: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:06 +58: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:06 +59: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:06 +60: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:06 +61: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:06 +62: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:06 +63: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:07 +64: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:07 +65: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:08 +66: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:08 +67: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:08 +68: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:08 +69: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:08 +70: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:08 +71: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:08 +72: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:09 +73: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:09 +74: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:09 +75: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:09 +76: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:09 +77: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual species survives cold reopen and inference; extras are collapsed
+00:09 +78: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/geometry_semantics_integration_test.dart: saved geometry is shown instead of a forced missing snapshot
+00:09 +79: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/geometry_semantics_integration_test.dart: saved geometry is shown instead of a forced missing snapshot
+00:09 +80: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: explicit saved correction wins over AI and remains bound to original/version
+00:09 +81: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: explicit saved correction wins over AI and remains bound to original/version
+00:09 +82: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: explicit saved correction wins over AI and remains bound to original/version
+00:10 +83: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_export_test.dart: explicit saved correction wins over AI and remains bound to original/version
+00:10 +84: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +85: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +86: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +87: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +88: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +89: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +90: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +91: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +92: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +93: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +94: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +95: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +96: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +97: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_server_page_test.dart: model source UI shows only original geometry false
+00:10 +98: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: account change cancels species entry without saving to either account
+00:10 +99: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: account change cancels species entry without saving to either account
+00:10 +100: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: account change cancels species entry without saving to either account
+00:11 +101: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: account change cancels species entry without saving to either account
+00:11 +102: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:11 +103: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:11 +104: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:11 +105: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/gallery_availability_widget_test.dart: unavailable replacement preserves existing photo and AR binding
+00:12 +106: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:12 +107: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:12 +108: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:12 +109: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:12 +110: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:13 +111: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:13 +112: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:13 +113: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/map_controller_lifecycle_test.dart: Map -> list -> card avoids disposed controller; recreation uses current map and disposes once
+00:13 +114: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +115: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +116: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +117: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +118: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +119: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +120: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +121: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +122: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +123: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +124: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +125: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +126: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +127: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +128: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +129: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +130: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +131: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +132: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +133: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +134: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +135: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +136: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +137: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:13 +138: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:14 +139: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: same original + model + reference survive cold reopening and 100cm recalculation
+00:14 +140: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:14 +141: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:14 +142: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:14 +143: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:15 +144: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:15 +145: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:15 +146: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:15 +147: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:15 +148: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/measurement_results_visual_test.dart: real reference screen renders compact frozen results and layers
+00:15 +149: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:15 +150: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:15 +151: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:15 +152: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:15 +153: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:15 +154: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:16 +155: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:16 +156: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:16 +157: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:16 +158: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:16 +159: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: network failure keeps manual draft and prior valid model response; repeat works
+00:16 +160: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: each layer can be toggled without changing saved coordinates
+00:16 +161: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: each layer can be toggled without changing saved coordinates
+00:16 +162: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: each layer can be toggled without changing saved coordinates
+00:17 +163: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: each layer can be toggled without changing saved coordinates
+00:17 +164: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/model_comparison_test.dart: comparison previews and table render with the real theme and large text
+00:17 +165: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/model_comparison_test.dart: comparison previews and table render with the real theme and large text
+00:17 +166: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/model_comparison_test.dart: comparison previews and table render with the real theme and large text
+00:17 +167: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/model_comparison_test.dart: comparison previews and table render with the real theme and large text
+00:17 +168: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:17 +169: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:17 +170: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:17 +171: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:18 +172: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/platform_tls_trust_test.dart: (setUpAll)
+00:18 +172: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +173: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +174: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +175: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +176: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +177: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +178: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +179: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +180: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +181: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +182: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +183: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +184: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +185: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +186: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +187: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +188: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +189: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +190: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +191: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +192: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +193: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_admin_navigation_test.dart: profile admin exposes only appropriate moderation navigation
+00:18 +194: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:18 +195: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:18 +196: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/profile_google_session_test.dart: Google cancellation preserves real owner-isolated disk drafts
+00:19 +197: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: hiding a mask removes both PDF overlays but does not bypass mask binding
+00:19 +198: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: hiding a mask removes both PDF overlays but does not bypass mask binding
+00:19 +199: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: hiding a mask removes both PDF overlays but does not bypass mask binding
+00:19 +200: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: hiding a mask removes both PDF overlays but does not bypass mask binding
+00:19 +201: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/photo_layer_visibility_test.dart: hiding a mask removes both PDF overlays but does not bypass mask binding
+00:19 +202: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:20 +203: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:20 +204: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:20 +205: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/combined_reference_workflow_test.dart: manual tree draft saves exact revision then pins it with reference, no moderation
+00:20 +206: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:20 +207: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:21 +208: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Models loading, empty data and account guard at 160% font
+00:21 +209: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: analysis HTTP500 keeps selected photo and allows same authorized retry
+00:21 +210: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: analysis HTTP500 keeps selected photo and allows same authorized retry
+00:21 +211: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: analysis HTTP500 keeps selected photo and allows same authorized retry
+00:21 +212: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:21 +213: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:22 +214: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:22 +215: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:22 +216: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:22 +217: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:22 +218: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR cancel preserves selected photo
+00:22 +219: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:22 +220: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:22 +221: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:22 +222: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:22 +223: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:23 +224: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:23 +225: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_navigation_test.dart: Retained history refreshes on activation and preserves filters
+00:23 +226: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR unavailable preserves selected photo
+00:23 +227: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR unavailable preserves selected photo
+00:23 +228: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_return_test.dart: AR unavailable preserves selected photo
+00:23 +229: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Onboarding instructions scroll at 200% and finish returns home
+00:23 +230: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_additional_screens_test.dart: Onboarding instructions scroll at 200% and finish returns home
+00:23 +231: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_ar_photo_binding_test.dart: Photo → AR binds only after explicit confirmation
+00:23 +232: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +233: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +234: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +235: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +236: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +237: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +238: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +239: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:24 +240: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:25 +241: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/redesign_states_test.dart: guest login supports 200% font and validates password without a request
+00:25 +242: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:25 +243: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +244: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +245: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +246: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +247: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +248: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +249: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +250: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +251: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +252: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +253: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +254: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +255: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +256: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +257: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +258: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +259: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:26 +260: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:27 +261: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:27 +262: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:27 +263: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:27 +264: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:27 +265: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:27 +266: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:28 +267: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:28 +268: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_input_focus_test.dart: clearing a valid reference keeps focus while export disappears
+00:28 +269: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:28 +270: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:28 +271: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:28 +272: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:28 +273: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:28 +274: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:28 +275: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:28 +276: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +277: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +278: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +279: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +280: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +281: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +282: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +283: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +284: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +285: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +286: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +287: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +288: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +289: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +290: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +291: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +292: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:29 +293: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:30 +294: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:30 +295: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:30 +296: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:30 +297: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:30 +298: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:31 +299: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:31 +300: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:32 +301: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:36 +302: C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/reference_workflow_test.dart: EXIF photo through markup, report, save, cold reopen and recalculation
+00:39 +303: All tests passed!

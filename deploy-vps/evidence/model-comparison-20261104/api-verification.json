@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-04",
+  "scope": "API code and real local disposable worker, no deployment or activation",
+  "new_api_tests": 34,
+  "existing_model_quality_tests": 6,
+  "passed": 40,
+  "seconds": 4.13,
+  "api_integration": "always mounted, current_admin on both endpoints",
+  "server_mutations_performed": false,
+  "quality_metrics_computed": false,
+  "processing_max_side": 2048,
+  "max_detections": 16,
+  "cpu_threads": 1,
+  "opencv_threads_observed": 1,
+  "wall_timeout_seconds": 120,
+  "cpu_hard_limit_windows": false,
+  "source_sha256": {
+    "arborscan_v4/model_comparison_api.py": "ee5b37656482432e079b4aa347516bdd46a9f2df66bcfb742d6c65c7bde87338",
+    "arborscan_v4/model_comparison_worker.py": "afbb72a37138c0c242c4df793be91eca3922b8c6fae3845031e72910c32cac7a",
+    "tests_v4/test_model_comparison_api.py": "7848c4ad27f1c1c4c84de3bbe6f1db8c66bac796361e6d5a0f32c0a9bec61f8c"
+  },
+  "real_worker_smoke_sha256": "2ecabf680e385d5c38ee3dc8cfd2797d5cc6e2a0eb4f479741703ec1f189690b",
+  "visual_review": "v2 mask covers central pine silhouette with filled gaps; v4 mask is empty; no quantitative GT claim",
+  "observed_native_threads": {
+    "torch_threads": 1,
+    "torch_interop_threads": 1,
+    "opencv_threads": 1
+  },
+  "real_worker_smoke": "api-http-smoke.json",
+  "http_cross_stack": "isolated TestClient multipart → real disposable child → Flutter parser passed; API admin override only inside test harness"
+}

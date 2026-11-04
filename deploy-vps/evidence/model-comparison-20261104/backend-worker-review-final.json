@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-04",
+  "scope": "Independent read-only final source/receipt review of comparison API/worker; reviewer ran benchmark tests only, no API test rerun or production operation",
+  "ids": [
+    "AS-05",
+    "AS-06"
+  ],
+  "source_sha256": {
+    "arborscan_v4/model_comparison_api.py": "ee5b37656482432e079b4aa347516bdd46a9f2df66bcfb742d6c65c7bde87338",
+    "arborscan_v4/model_comparison_worker.py": "afbb72a37138c0c242c4df793be91eca3922b8c6fae3845031e72910c32cac7a",
+    "tests_v4/test_model_comparison_api.py": "7848c4ad27f1c1c4c84de3bbe6f1db8c66bac796361e6d5a0f32c0a9bec61f8c",
+    "tools/benchmark_tree_recognition.py": "0b91fe17b9cd0682185bb5283329294f0fa106ea3b6190828153bf5f265a382c",
+    "tests_v4/test_recognition_benchmark.py": "b9a59fe78dd43eed2ae9dc153728fde237867726da14f1a565e07666fc974a62"
+  },
+  "backend_receipt_matches_current_sources": true,
+  "read_only_review_passed": [
+    "current_admin dependencies on both routes before inventory or model IO",
+    "Only curated versions1/2/4 with fixed filenames, source/staged SHA checks, regular-file/no-link containment and bounded sizes",
+    "Comparison child never activates weights and comparison body does not write DB/reports/contours",
+    "Child env whitelist excludes API/provider secrets; private existing runtime config/cache and cwd before model imports",
+    "Linux CPU90s and cross-platform wall120s; kill+wait before slot/temp cleanup; concurrent request slot held until child completion",
+    "EXIF-oriented <=25MP decode, comparison-only max side2048, min1 rounding, original-to-preview transform and max_det16",
+    "Exact tree class mapping preserves v2 treeID1; final PNG binary L aligned with processing dimensions",
+    "Warmed runtime-only timing excludes decode/load/evaluation/PNG/checks; Torch/OpenCV actual counts verified after every real infer",
+    "Quality metrics remain null without reference masks; confidence is not relabelled quality"
+  ],
+  "resolved_findings": [
+    {
+      "finding": "OpenCV count was not explicitly pinned although requested threads1",
+      "resolution": "Child sets before decode; after Ultralytics load pin is reapplied and actual count is checked"
+    },
+    {
+      "finding": "Ultralytics select_device resets Torch count on first CPU inference",
+      "resolution": "Both child-local NUM_THREADS constants pinned; native counts checked after every infer; real worker receipt reports1/1/1"
+    },
+    {
+      "finding": "Client long thin photo could round dimension0 unlike server min1",
+      "resolution": "Client min1 clamp and dimensions tests added by Flutter owner"
+    }
+  ],
+  "pending_concrete_blockers": [],
+  "benchmarks_run_by_reviewer": {
+    "C314": "94 passed,1 skipped; Torch integration unavailable in this environment",
+    "actual_CPU_venv": "95 passed, including real offline child select_device reset regression",
+    "log": "benchmark-thread-policy/tests-cpu.txt",
+    "actual_latency_rerun": "Root must rerun actual pairs in new output directories; this review does not amend old timing JSON"
+  },
+  "reported_backend_checks_not_rerun_by_reviewer": {
+    "tests": "40 passed;34 comparison plus6 existing model-quality; api-tests-final.txt",
+    "actual_local_http_worker": "api-http-smoke.json; multipart TestClient admin override, real CPU child, source SHA verified",
+    "actual_child_native_counts": {
+      "torch_threads": 1,
+      "torch_interop_threads": 1,
+      "opencv_threads": 1
+    },
+    "client_cross_stack": "api-http-flutter-parser.txt; real child response parsed by Flutter"
+  },
+  "limits": [
+    "Client cancellation/disconnect does not immediately terminate worker; bounded supervisor completes or wall-kills while retaining its slot/temp files",
+    "One slot is per API process; current deployment is one process, not an interprocess lock for a future multi-worker rollout",
+    "Socket denial is in-process Python protection, not an OS network sandbox or RSS hard limit",
+    "2048/max_det16 comparison preview is distinct from normal analysis, especially above2048",
+    "No independent accuracy/instance mAP established by unlabelled local previews",
+    "Earlier benchmark timing settings threads1 was requested only; actual native count was unverified and those times require rerun"
+  ]
+}

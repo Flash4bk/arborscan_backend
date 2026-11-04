@@ -1,0 +1,3 @@
+00:00 +0: loading C:/Users/danik/.codex/worktrees/recognition-results/arborscan_backend/arborscan_app/test/model_comparison_test.dart
+00:00 +0: actual local CPU child response matches the Flutter upload and masks
+00:02 +1: All tests passed!

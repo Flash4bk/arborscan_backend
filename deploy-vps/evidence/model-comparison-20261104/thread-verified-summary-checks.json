@@ -1,0 +1,120 @@
+{
+  "date": "2026-11-04",
+  "summary_sha256": "422cbb400a66f9616d829e61308083ef100e4bd798fcee55f4a0f145b0a21f47",
+  "old_summary_archive_sha256": "a4c665f79b4d4b973e41917333c5f7b1d548c7ef54170ef3453537c9782bd311",
+  "old_summary_preserved_byte_for_byte": true,
+  "source_code_modified": false,
+  "checks": [
+    {
+      "run": "v1-versus-v4-thread-verified",
+      "role": "baseline",
+      "version": 1,
+      "weight_sha256_verified": true,
+      "original_oriented_pixels_verified": true,
+      "complete_report_frozen_checksums_verified": true,
+      "binary_mask_dimensions_verified": true,
+      "masks_equal_prior_preview": 3,
+      "actual_threads": {
+        "opencv_threads": 1,
+        "torch_interop_threads": 1,
+        "torch_threads": 1,
+        "ultralytics_select_device_threads": 1,
+        "ultralytics_threads": 1
+      }
+    },
+    {
+      "run": "v1-versus-v4-thread-verified",
+      "role": "candidate",
+      "version": 4,
+      "weight_sha256_verified": true,
+      "original_oriented_pixels_verified": true,
+      "complete_report_frozen_checksums_verified": true,
+      "binary_mask_dimensions_verified": true,
+      "masks_equal_prior_preview": 3,
+      "actual_threads": {
+        "opencv_threads": 1,
+        "torch_interop_threads": 1,
+        "torch_threads": 1,
+        "ultralytics_select_device_threads": 1,
+        "ultralytics_threads": 1
+      }
+    },
+    {
+      "run": "v2-versus-v4-thread-verified",
+      "role": "baseline",
+      "version": 2,
+      "weight_sha256_verified": true,
+      "original_oriented_pixels_verified": true,
+      "complete_report_frozen_checksums_verified": true,
+      "binary_mask_dimensions_verified": true,
+      "masks_equal_prior_preview": 2,
+      "actual_threads": {
+        "opencv_threads": 1,
+        "torch_interop_threads": 1,
+        "torch_threads": 1,
+        "ultralytics_select_device_threads": 1,
+        "ultralytics_threads": 1
+      }
+    },
+    {
+      "run": "v2-versus-v4-thread-verified",
+      "role": "candidate",
+      "version": 4,
+      "weight_sha256_verified": true,
+      "original_oriented_pixels_verified": true,
+      "complete_report_frozen_checksums_verified": true,
+      "binary_mask_dimensions_verified": true,
+      "masks_equal_prior_preview": 3,
+      "actual_threads": {
+        "opencv_threads": 1,
+        "torch_interop_threads": 1,
+        "torch_threads": 1,
+        "ultralytics_select_device_threads": 1,
+        "ultralytics_threads": 1
+      }
+    }
+  ],
+  "model_case_masks_equal_prior_summary": 11,
+  "model_case_masks_checked": 12,
+  "differences": [
+    {
+      "run": "v2-versus-v4-thread-verified",
+      "version": 2,
+      "case": "pdf-birch",
+      "old_mask_sha256": "8221bc089194e8e5640dc31a404d63af7f15cbda2d9b45a5cde5ad26188bf6b8",
+      "new_mask_sha256": "7bfa962ee932e7f76007f077ffe3d22287db11ec281a2a5f14504c58f77f7d8f",
+      "old_foreground_pixels": 274954,
+      "new_foreground_pixels": 274953,
+      "changed_pixels": 1,
+      "cause": "not_established"
+    }
+  ],
+  "old_figures_preserved": true,
+  "new_contact_sheets": "preview-thread-verified",
+  "exports": [
+    {
+      "file": "comparison-table-thread-verified.csv",
+      "sha256": "6a6bc5067827cbdfd7921d19f8f6c7b24985d40479755534b4b814b7b27d67ea",
+      "rows": 8,
+      "excel_formula_prefixes_absent": true
+    },
+    {
+      "file": "comparison-pairs-thread-verified.csv",
+      "sha256": "e6f4b4378183e0abc057b11fab36aea3e1468291de5c7227b0a56251e75ff2ab",
+      "rows": 4,
+      "excel_formula_prefixes_absent": true
+    },
+    {
+      "file": "comparison-cases-thread-verified.csv",
+      "sha256": "0ed0efd2dc92c6ce6d607ef6cb084aa0ed87f21620d9f81a7a67e8485262a0b7",
+      "rows": 12,
+      "excel_formula_prefixes_absent": true
+    }
+  ],
+  "visual_review": {
+    "figures_opened": 3,
+    "result": "All three regenerated contact sheets visually reviewed; full images, correct v1/v2/v4 columns, final mask overlays and final thread-verified per-case time captions readable, no clipping."
+  },
+  "csv_roundtrip_verified": true,
+  "benchmark_source_sha256": "0b91fe17b9cd0682185bb5283329294f0fa106ea3b6190828153bf5f265a382c"
+}

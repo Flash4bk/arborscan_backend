@@ -1,0 +1,44 @@
+{
+  "recorded_at_utc": "2026-11-04T21:02:26.948481+00:00",
+  "task": [
+    "AS-05",
+    "AS-06"
+  ],
+  "scope": "post-deploy read-only model registry and curated weights; no user rows read",
+  "passed": true,
+  "read_only": true,
+  "database_writes": false,
+  "training_or_activation_performed": false,
+  "running_api_v4_image": "sha256:2abb56ed5d84e4ddbe4465da851c842861498101f030fab016f66630c4ee1762",
+  "registry": {
+    "active": [
+      {
+        "model_type": "classification",
+        "model_id": null,
+        "generation": 0
+      },
+      {
+        "model_type": "segmentation",
+        "model_id": null,
+        "generation": 0
+      }
+    ],
+    "models_count": 0,
+    "jobs_by_state": {},
+    "snapshots_count": 1,
+    "read_only_transaction": true
+  },
+  "runtime": {
+    "weights_sha256": {
+      "model_v1.pt": "535e5295095325db3add8167f8f7bacc24643581bb15d15ff0c8ac809c03788f",
+      "model_v2.pt": "c1fed324ff1621eaf3df3bb465f79d917fae09127ccabbced245badeea80375f",
+      "model_v4.pt": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb"
+    },
+    "candidate_files": 0,
+    "quality_directory_exists": true
+  },
+  "matches_pre_deploy_model_state": true,
+  "limits": [
+    "Aggregate registry/weight-file state is confirmed; no evaluation accuracy or completed new training implied"
+  ]
+}

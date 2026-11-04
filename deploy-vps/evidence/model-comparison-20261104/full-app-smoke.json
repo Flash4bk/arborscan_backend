@@ -1,0 +1,140 @@
+{
+  "passed": true,
+  "scope": "isolated candidate full production app lifespan plus real comparison child; no network/DB/live changes",
+  "app_lifespan_loaded": true,
+  "post_status": 200,
+  "inventory_status": 200,
+  "parent_baseline_unchanged": true,
+  "baseline_version": 4,
+  "baseline_sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+  "post_wall_seconds": 40.36128430813551,
+  "total_wall_seconds": 42.96452142810449,
+  "settings": {
+    "imgsz": 1024,
+    "confidence": 0.25,
+    "device": "cpu",
+    "threads": 1,
+    "torch_threads": 1,
+    "torch_interop_threads": 1,
+    "opencv_threads": 1,
+    "warmup_runs": 1,
+    "timing_repeats": 3,
+    "processing_max_side": 2048,
+    "max_detections": 16,
+    "wall_timeout_seconds": 120,
+    "cpu_budget_seconds": 90,
+    "cpu_limit_enforced": true,
+    "timing_scope": "warmed_runtime_infer_including_mask_selection_and_resize"
+  },
+  "models": [
+    {
+      "version": 2,
+      "weights_sha256": "c1fed324ff1621eaf3df3bb465f79d917fae09127ccabbced245badeea80375f",
+      "tree_class_id": 1,
+      "detected": true,
+      "confidence": 0.8831731081008911,
+      "inference_timing": {
+        "mean_seconds": 4.23695085508128,
+        "median_seconds": 4.161222005262971,
+        "samples_seconds": [
+          4.5181731707416475,
+          4.161222005262971,
+          4.031457389239222
+        ]
+      },
+      "warnings": [],
+      "mask_sha256": "7125bab539161b6e12f4771b7db02bcd427b81d89a1e1e1e102e3550cedbaeba",
+      "mask_foreground_pixels": 42153
+    },
+    {
+      "version": 4,
+      "weights_sha256": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb",
+      "tree_class_id": 0,
+      "detected": false,
+      "confidence": null,
+      "inference_timing": {
+        "mean_seconds": 1.4389897825506826,
+        "median_seconds": 1.4156078030355275,
+        "samples_seconds": [
+          1.4156078030355275,
+          1.5836969427764416,
+          1.3176646018400788
+        ]
+      },
+      "warnings": [
+        "tree_segmentation_returned_no_masks"
+      ],
+      "mask_sha256": "06da5431a575e89e972435a0219b390d3dbb32e73ad342de409a935744365f76",
+      "mask_foreground_pixels": 0
+    }
+  ],
+  "quality_metrics": {
+    "precision": null,
+    "recall": null,
+    "map50": null,
+    "map50_95": null,
+    "mean_iou": null,
+    "reason": "verified_reference_masks_required"
+  },
+  "memory_before_request": {
+    "memory.current": "241819648",
+    "memory.peak": "268369920",
+    "memory.max": "2147483648",
+    "memory.swap.max": "0",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+    "cpu.max": "200000 100000",
+    "pids.max": "256"
+  },
+  "memory_after_request": {
+    "memory.current": "256258048",
+    "memory.peak": "874065920",
+    "memory.max": "2147483648",
+    "memory.swap.max": "0",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+    "cpu.max": "200000 100000",
+    "pids.max": "256"
+  },
+  "auth_override_scope": "only isolated app dependency in this non-networked candidate container",
+  "candidate_image_id": "sha256:2abb56ed5d84e4ddbe4465da851c842861498101f030fab016f66630c4ee1762",
+  "container_state": {
+    "Status": "exited",
+    "Running": false,
+    "OOMKilled": false,
+    "ExitCode": 0,
+    "Error": ""
+  },
+  "container_limits": {
+    "NanoCpus": 2000000000,
+    "Memory": 2147483648,
+    "MemorySwap": 2147483648,
+    "PidsLimit": 256,
+    "ReadonlyRootfs": true,
+    "NetworkMode": "none"
+  },
+  "outer_wall_seconds": 54.677733880933374,
+  "smoke_script_sha256": "60e159b16d3847aee83dbc0544546a8245555c96a21f7c740caa41798b72e812",
+  "oom_killed": false,
+  "readonly_rootfs": true,
+  "no_production_requests_or_config_changes": true,
+  "effective_isolation_flags": [
+    "--network none",
+    "--read-only",
+    "--cap-drop ALL",
+    "--security-opt no-new-privileges",
+    "--pids-limit 256",
+    "--cpus 2",
+    "--memory 2g",
+    "--memory-swap 2g",
+    "--tmpfs /tmp:rw,nosuid,nodev,size=768m,mode=1777",
+    "read-only /app/models mount",
+    "read-only /smoke mount",
+    "no env-file",
+    "no published ports"
+  ],
+  "memory_headroom_bytes": 1273417728,
+  "limits_of_check": [
+    "one 1920x1080 historical diagnostic photo; not a max25MP load test",
+    "one comparison child while parent baseline is loaded; not concurrent ordinary analysis load",
+    "test dependency override only within isolated app; real public authentication still requires independent checks"
+  ]
+}

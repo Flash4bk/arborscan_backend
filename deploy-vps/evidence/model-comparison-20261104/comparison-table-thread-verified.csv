@@ -1,0 +1,9 @@
+﻿metric,model_v1,model_v2,model_v4,availability_or_scope,unit
+Precision,,,,unavailable_no_verified_ground_truth,
+Recall,,,,unavailable_no_verified_ground_truth,
+mAP50_mask,,,,unavailable_no_verified_ground_truth,
+mAP50_95_mask,,,,unavailable_no_verified_ground_truth,
+mean_IoU_selected_mask,,,,unavailable_no_verified_ground_truth,
+warmed_CPU_infer_mean,0.810263822,0.873827622,0.250823367,observed_local_CPU_threads1,seconds
+warmed_CPU_infer_median,0.801013000,0.842789700,0.257267400,observed_local_CPU_threads1,seconds
+measured_samples,9,9,9,3_photos_x3_repeats,count

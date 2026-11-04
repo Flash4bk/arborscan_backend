@@ -1,0 +1,101 @@
+{
+  "schema": "arborscan.model-comparison-ui.v1",
+  "date": "2026-11-04",
+  "tasks": [
+    "AS-05",
+    "AS-06"
+  ],
+  "sources": [
+    {
+      "path": "arborscan_app/lib/admin_panel_page.dart",
+      "sha256": "dbf6102bbbfe442b1ffabbfae58595ea506cf1198b3a916150841cdb79a1aac7"
+    },
+    {
+      "path": "arborscan_app/lib/model_quality_page.dart",
+      "sha256": "d5797e002e54a9884013c99c13978171240e29ee5988813463bd57ac022eb76c"
+    },
+    {
+      "path": "arborscan_app/lib/model_comparison_page.dart",
+      "sha256": "122638e09821a17010ec9990bb68dc4af9c711ffd64987bd76faf2341a7e0230"
+    },
+    {
+      "path": "arborscan_app/lib/model_comparison_service.dart",
+      "sha256": "8472f15b899212363252e273367d4d3317c2150c758321086ed9b6bee40e69ab"
+    },
+    {
+      "path": "arborscan_app/test/model_registry_navigation_test.dart",
+      "sha256": "6b4afcc0c783457cb949d0a3bea10daf988b4c7672f165d7d719e71a7f7f26f6"
+    },
+    {
+      "path": "arborscan_app/test/model_comparison_test.dart",
+      "sha256": "040414a8c0ce5566a062f9ec02e34a5e3f2f1a0545ce005fd85d72fd0463b2a9"
+    }
+  ],
+  "test_result": {
+    "passed": 43,
+    "failed": 0,
+    "log": "output/model-comparison-20261104/comparison-final-target-tests.txt",
+    "includes_actual_local_child_response_parse": true,
+    "includes_synthetic_widget_mask_pixels": true,
+    "large_text_width": 280,
+    "large_text_scale": 2
+  },
+  "analyze": {
+    "new_findings": 0,
+    "existing_findings": 1,
+    "existing": "admin_panel_page.dart:359 deprecated withOpacity, already present in HEAD",
+    "log": "output/model-comparison-20261104/comparison-final-analyze.txt"
+  },
+  "contract": {
+    "processing_max_side": 2048,
+    "max_detections": 16,
+    "client_timeout_seconds": 150,
+    "raw_upload_sha_bound": true,
+    "versions_and_weight_sha_bound": true,
+    "exif_and_resize_bound": true,
+    "binary_png_converted_to_transparent_rgba": true
+  },
+  "screenshots": [
+    {
+      "path": "output/model-comparison-20261104/ui/model-registry-baseline.png",
+      "sha256": "7bc8531021b0895fd5e14dd8f74cc3eb0902bcccac787f41564b0ed27b541f43",
+      "environment": "Flutter widget test, real AppTheme, synthetic fixture only"
+    },
+    {
+      "path": "output/model-comparison-20261104/ui/comparison-masks.png",
+      "sha256": "28cd3c5f5484d6d3d91ecb49bdc8c96c7841c4128d7e711993e8ac0fc1a2107a",
+      "environment": "Flutter widget test, real AppTheme, synthetic fixture only"
+    },
+    {
+      "path": "output/model-comparison-20261104/ui/comparison-table.png",
+      "sha256": "16f68c044fde4bce9134bfadb007c6fc64caa71575b661b86fb8c481fe200e72",
+      "environment": "Flutter widget test, real AppTheme, synthetic fixture only"
+    }
+  ],
+  "boundaries": {
+    "s24_tested": false,
+    "production_requests": false,
+    "activation_requests": false,
+    "quality_ground_truth_present": false,
+    "metrics_quality": "Not evaluated; verified reference masks required",
+    "fixture_timing_not_real_quality": true
+  },
+  "final_http_cross_stack": {
+    "status": 200,
+    "api_aggregate": "output/model-comparison-20261104/api-http-smoke.json",
+    "response_sha256": "8481206a70cd45b7e5e6db3232837388971b9a46cdf40846f95ebd515565af76",
+    "upload_sha256": "d7efb17505d9ab31b79e08174fd4d3386bec7507485ab2d3f5bc2520d58959b4",
+    "actual_http_multipart_real_worker": true,
+    "dependency_override": "current_admin only in a newly constructed isolated FastAPI app",
+    "production_app_imported": false,
+    "activation_routes_mounted": false,
+    "production_requests": false,
+    "weight_files_unchanged": true,
+    "torch_threads": 1,
+    "torch_interop_threads": 1,
+    "opencv_threads": 1,
+    "flutter_parser_test_passed": 1,
+    "flutter_parser_log": "output/model-comparison-20261104/api-http-flutter-parser.txt",
+    "masks_visually_inspected": true
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-04",
+  "tls_verification": "default enabled",
+  "public_checks": {
+    "v3_health": {
+      "http_status": 200,
+      "status": "ok"
+    },
+    "v4_health": {
+      "http_status": 200,
+      "status": "ok",
+      "model_version": 4,
+      "api_version": "4.0.0-alpha.1"
+    },
+    "inventory_without_auth": {
+      "http_status": 401
+    },
+    "inventory_invalid_session": {
+      "http_status": 401
+    },
+    "post_without_auth": {
+      "http_status": 401
+    },
+    "new_routes_in_schema": true
+  },
+  "authenticated_public_comparison_tested": false,
+  "reason": "No active authorized test admin session used; actual positive HTTP tested in isolated full candidate; S24 not connected",
+  "regular_user_403": "backend integration tests only",
+  "quality_ground_truth_present": false
+}

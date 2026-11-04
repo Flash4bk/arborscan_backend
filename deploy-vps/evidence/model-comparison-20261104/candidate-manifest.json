@@ -1,0 +1,11 @@
+{
+  "source_commit": "ba7d2fb8f48da9e26ac585a23762a473b2570e45",
+  "base_image": "sha256:034a9d67b49adb5565a1af9454706a104721e21160d725db32a31f796ff20193",
+  "source_files": {
+    "arborscan_v4/api.py": "fc3e4bab3955b425f69e4f9ecfb27d791ac90e1bc7aad57b12b8015c84e44e98",
+    "arborscan_v4/model_comparison_api.py": "ee5b37656482432e079b4aa347516bdd46a9f2df66bcfb742d6c65c7bde87338",
+    "arborscan_v4/model_comparison_worker.py": "afbb72a37138c0c242c4df793be91eca3922b8c6fae3845031e72910c32cac7a",
+    "Dockerfile": "b1c445d230604fba79e7fd6e923e13e35cc7cc60d95ee06676fa5f1dafe95f15"
+  },
+  "build_base_tag": "arborscan-v4:before-model-comparison-20261104"
+}
