@@ -28,7 +28,6 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
   TrainingStatus? _status;
   List<TrainingEvent> _events = const [];
   List<int> _models = const [];
-  int? _selectedVersion;
 
   bool get _accessDenied => _errorStatusCode == 401 || _errorStatusCode == 403;
 
@@ -88,14 +87,6 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
       final modelsResponse = results[2] as ModelsResponse;
 
       final models = modelsResponse.models;
-      int? selection = _selectedVersion;
-      if (selection == null || !models.contains(selection)) {
-        selection = modelsResponse.activeModelVersion;
-      }
-      if (selection == null || !models.contains(selection)) {
-        selection = models.isNotEmpty ? models.first : null;
-      }
-
       if (!mounted ||
           _invalid ||
           generation != CorrectionsService.authChanges.value) {
@@ -106,7 +97,6 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
         _status = status;
         _events = events;
         _models = models;
-        _selectedVersion = selection;
         _loading = false;
       });
     } on AdminApiException catch (error) {
@@ -191,16 +181,17 @@ class _AdminPanelPageState extends State<AdminPanelPage> {
                       if (_models.isNotEmpty)
                         _Card(
                             title: 'Прежние версии моделей',
-                            child: DropdownButtonFormField<int>(
-                              initialValue: _selectedVersion,
-                              isExpanded: true,
-                              items: _models
-                                  .map((v) => DropdownMenuItem(
-                                      value: v, child: Text('Версия $v')))
-                                  .toList(),
-                              onChanged: (v) =>
-                                  setState(() => _selectedVersion = v),
-                            )),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                      'Архив v3. Эти версии не выбирают модель для текущего анализа v4.'),
+                                  const SizedBox(height: 8),
+                                  Wrap(spacing: 8, runSpacing: 4, children: [
+                                    for (final version in _models)
+                                      Chip(label: Text('Версия $version')),
+                                  ]),
+                                ])),
                       ListTile(
                           leading: const Icon(Icons.inventory_2_outlined),
                           title: const Text('Архив примеров'),
@@ -253,7 +244,8 @@ class _AdminIdentityBlock extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 'Права подтверждены сервером',
-                style: TextStyle(color: AppTheme.color(context, AppTheme.success)),
+                style:
+                    TextStyle(color: AppTheme.color(context, AppTheme.success)),
               ),
             ],
           ),

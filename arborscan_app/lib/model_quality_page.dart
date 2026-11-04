@@ -10,6 +10,7 @@ import 'api_config.dart';
 import 'corrections_service.dart';
 import 'report_history_service.dart';
 import 'model_quality_service.dart';
+import 'model_comparison_page.dart';
 import 'saved_corrections_page.dart';
 
 class ModelQualityPage extends StatefulWidget {
@@ -23,8 +24,8 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
   late final _service = widget.service ?? ModelQualityService();
   String _kind = 'segmentation';
   String _tab = 'data', _filter = 'all';
-  String? _token, _owner, _error;
-  bool _busy = true, _invalid = false;
+  String? _token, _owner, _error, _statusError, _dataError;
+  bool _busy = true, _invalid = false, _accessDenied = false;
   Map<String, dynamic>? _status, _data;
   Timer? _poll;
   bool _polling = false;
@@ -37,15 +38,12 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
   }
 
   Future<void> _refreshStatus() async {
-    if (_busy || _invalid || _polling || _token == null) return;
+    if (_busy || _invalid || _accessDenied || _polling || _token == null) {
+      return;
+    }
     _polling = true;
     try {
-      final status = await _request('/status');
-      if (mounted && !_invalid) setState(() => _status = status);
-    } catch (e) {
-      if (mounted && !_invalid) {
-        setState(() => _error = 'Обновление статуса: $e');
-      }
+      await _loadStatus();
     } finally {
       _polling = false;
     }
@@ -55,8 +53,13 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
     if (mounted) {
       setState(() {
         _invalid = true;
+        _busy = false;
         _status = null;
         _data = null;
+        _token = null;
+        _owner = null;
+        _statusError = null;
+        _dataError = null;
         _error = 'Аккаунт изменился.';
       });
     }
@@ -80,18 +83,64 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
     return _service.request(_token!, r);
   }
 
-  Future<void> _load() async {
+  void _loadError(Object error, {required bool status}) {
+    if (!mounted || _invalid) return;
+    setState(() {
+      if (error is CorrectionException &&
+          (error.statusCode == 401 || error.statusCode == 403)) {
+        _accessDenied = true;
+        _status = null;
+        _data = null;
+        _error = '$error';
+        _statusError = null;
+        _dataError = null;
+      } else if (!_accessDenied) {
+        if (status) {
+          _status = null;
+          _statusError = 'Модели: $error';
+        } else {
+          _data = null;
+          _dataError = 'Данные: $error';
+        }
+      }
+    });
+  }
+
+  Future<void> _loadStatus() async {
+    try {
+      final status = await _request('/status');
+      if (mounted && !_invalid && !_accessDenied) {
+        setState(() {
+          _status = status;
+          _statusError = null;
+        });
+      }
+    } catch (e) {
+      _loadError(e, status: true);
+    }
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final data = await _request('/data?model_type=$_kind');
+      if (mounted && !_invalid && !_accessDenied) {
+        setState(() {
+          _data = data;
+          _dataError = null;
+        });
+      }
+    } catch (e) {
+      _loadError(e, status: false);
+    }
+  }
+
+  Future<void> _load({bool status = true, bool data = true}) async {
     try {
       _token ??= await CorrectionsService.currentToken();
       _owner ??= await _service.auth.owner(_token!);
-      final s = await _request('/status');
-      final d = await _request('/data?model_type=$_kind');
-      if (mounted && !_invalid) {
-        setState(() {
-          _status = s;
-          _data = d;
-        });
-      }
+      if (!mounted || _invalid) return;
+      if (status) await _loadStatus();
+      if (data && !_invalid && !_accessDenied) await _loadData();
     } catch (e) {
       if (mounted && !_invalid) setState(() => _error = 'Сервис моделей: $e');
     }
@@ -103,15 +152,61 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
     setState(() {
       _busy = true;
       _error = null;
+      _accessDenied = false;
     });
     try {
       await _service.auth.checkSession(_token!);
       await action();
       if (!_invalid) await _load();
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (e is CorrectionException &&
+          (e.statusCode == 401 || e.statusCode == 403)) {
+        _loadError(e, status: true);
+      } else if (mounted && !_invalid) {
+        setState(() => _error = '$e');
+      }
     }
     if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _retry({required bool status}) async {
+    if (_busy || _invalid) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _accessDenied = false;
+    });
+    await _load(status: status, data: !status);
+  }
+
+  String get _baselineLabel {
+    final baseline = _status?['baseline'];
+    final version = baseline is Map ? baseline['version'] : null;
+    return version == null ? 'Исходная модель' : 'Исходная модель v$version';
+  }
+
+  Widget _baselineCard() {
+    final baseline = _status?['baseline'];
+    final sha = baseline is Map ? baseline['weights_sha256'] : null;
+    return Card(
+        key: const ValueKey('model-baseline'),
+        child: Padding(
+            padding: const EdgeInsets.all(16),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_baselineLabel,
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              SelectableText(
+                sha is String && sha.isNotEmpty
+                    ? 'SHA-256 весов: $sha'
+                    : 'SHA-256 весов не указан сервером.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                  'Это базовые веса сервера. Номер версии сам по себе не подтверждает новое обучение.'),
+            ])));
   }
 
   Future<String> _operation(String name) async {
@@ -380,7 +475,11 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
       body: AppContentList(padding: const EdgeInsets.all(16), children: [
         if (_busy) const LinearProgressIndicator(),
         if (_error != null) Text(_error!),
-        if (!_invalid) ...[
+        if (_accessDenied && !_invalid)
+          TextButton(
+              onPressed: _busy ? null : () => _run(() async {}),
+              child: const Text('Повторить проверку доступа')),
+        if (!_invalid && !_accessDenied) ...[
           SegmentedButton<String>(
             segments: const [
               ButtonSegment(value: 'data', label: Text('Данные')),
@@ -390,6 +489,20 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
             onSelectionChanged: (value) => setState(() => _tab = value.first),
           ),
           if (_tab == 'models') ...[
+            if (_statusError != null) ...[
+              Text(_statusError!),
+              TextButton(
+                  onPressed: _busy ? null : () => _retry(status: true),
+                  child: const Text('Повторить загрузку моделей')),
+            ],
+            if (_status != null) _baselineCard(),
+            OutlinedButton.icon(
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ModelComparisonPage())),
+                icon: const Icon(Icons.compare),
+                label: const Text('Сравнить модели на фото')),
             const ExpansionTile(
                 title: Text('Как устроено обучение'),
                 children: [
@@ -405,7 +518,7 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
             for (final a in (_status?['active'] as List? ?? []))
               if (a['model_type'] == 'segmentation') ...[
                 Text(
-                    'Активная сегментация: ${a['model_id'] ?? 'исходная модель'}. Версия реестра: ${a['generation']}'),
+                    'Активная сегментация: ${a['model_id'] ?? _baselineLabel}. Версия реестра: ${a['generation']}'),
                 if (a['model_id'] != null)
                   OutlinedButton(
                       onPressed: _busy
@@ -439,6 +552,12 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
               ],
           ],
           if (_tab == 'data') ...[
+            if (_dataError != null) ...[
+              Text(_dataError!),
+              TextButton(
+                  onPressed: _busy ? null : () => _retry(status: false),
+                  child: const Text('Повторить загрузку данных')),
+            ],
             DropdownButton<String>(
                 isExpanded: true,
                 itemHeight: null,
@@ -586,7 +705,8 @@ class _ModelQualityPageState extends State<ModelQualityPage> {
                 ]),
           ],
           if (_tab == 'models') ...[
-            if ((_status?['jobs'] as List? ?? []).isEmpty &&
+            if (_status != null &&
+                (_status?['jobs'] as List? ?? []).isEmpty &&
                 (_status?['models'] as List? ?? []).isEmpty)
               const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
