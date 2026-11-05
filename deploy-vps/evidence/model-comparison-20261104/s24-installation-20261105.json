@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-05",
+  "tasks": [
+    "AS-05",
+    "AS-06"
+  ],
+  "apk_sha256": "13d7e776b4196347f0a6262f8ac625a97fd732826994febd0d91c34c47d08031",
+  "package": "com.example.arborscan_app",
+  "version_code": 34,
+  "version_name": "1.4.3-models.1",
+  "device_model": "SM-S928B",
+  "device_serial_sha256": "00944fd05a3b7ba3f5afac2a8e5e813d92e53d781aaa69691febf4d459abe62e",
+  "installation_command": "adb -s <selected-device> install -r <verified APK34>",
+  "install_success": true,
+  "same_uid": null,
+  "same_first_install_time": true,
+  "uninstall_performed": false,
+  "data_clear_performed": false,
+  "launch_status": "ok",
+  "process_present": true,
+  "before_version": "1.4.1-combined.5",
+  "before_version_code": 31,
+  "after_version": "1.4.3-models.1",
+  "device_account_or_file_bytes_inspected": false,
+  "ui_comparison_tested": false,
+  "account_login_revalidated": false,
+  "uid_before_observed": false,
+  "uid_after_observed": false,
+  "android_sdk": 37,
+  "android_release": "17",
+  "data_preservation_evidence": "in-place install-r; unchanged firstInstallTime; no uninstall/clear; no before/after private file hashes collected",
+  "target_app_resumed": true
+}

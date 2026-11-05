@@ -29,9 +29,21 @@
     "log": "flutter-analyze.txt"
   },
   "s24_installation": {
-    "performed": false,
-    "adb_devices": [],
-    "user_last_installation_preference": "later"
+    "performed": true,
+    "date": "2026-11-05",
+    "device_model": "SM-S928B",
+    "android_release": "17",
+    "android_sdk": 37,
+    "install_success": true,
+    "installed_version_code": 34,
+    "launch_status": "ok",
+    "app_resumed": true,
+    "in_place_update": true,
+    "same_first_install_time": true,
+    "private_file_hash_comparison_performed": false,
+    "account_login_revalidated": false,
+    "new_comparison_ui_tested": false,
+    "receipt": "s24-installation-20261105.json"
   },
   "production_deployment_performed": true,
   "trained_or_activated": false,
