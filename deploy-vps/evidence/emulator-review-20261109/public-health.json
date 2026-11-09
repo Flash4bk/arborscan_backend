@@ -1,0 +1,12 @@
+{
+  "v3": {
+    "http_status": 200,
+    "status": "ok",
+    "model_version": null
+  },
+  "v4": {
+    "http_status": 200,
+    "status": "ok",
+    "model_version": 4
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-09",
+  "tasks": [
+    "AS-15",
+    "AS-16"
+  ],
+  "avd": "Codex_ArborScan_Review_20261109",
+  "avd_path": "D:/ArborScanAvds/Codex_ArborScan_Review_20261109.avd",
+  "adb_device": "emulator-5556",
+  "android_sdk": 36,
+  "android_release": "16",
+  "window_title": "Android Emulator - Codex_ArborScan_Review_20261109:5556",
+  "visible_window_created": true,
+  "version_name": "1.4.3-models.1",
+  "version_code": 34,
+  "apk_sha256": "13d7e776b4196347f0a6262f8ac625a97fd732826994febd0d91c34c47d08031",
+  "installed": true,
+  "cold_launch": "ok",
+  "resumed_activity": true,
+  "process_present": true,
+  "fresh_pid_crash_buffer_has_fatal": false,
+  "tested_ui": [
+    "home empty state",
+    "guest registration form",
+    "switch to login form",
+    "guest history empty/account-login state",
+    "map empty state",
+    "known-object measurement entry",
+    "cold restart to home"
+  ],
+  "screenshots": {
+    "history.png": "7d2cb3ab331334908f06a803965066718b3a4f80b93dbf854d4e148080f4ca1c",
+    "home-current.png": "c42e000041775ef15dfbf4d01e2c6dd89982bf531cc0d6955737f647bc45c78d",
+    "home.png": "2834e1b149ea907c811726e39335f6eef2a3267290101b0b3456186228a2c88d",
+    "login.png": "91f211711df86336ead8b193bfc2d38c7f76475fe4e101dbd7eb97650ce0f62e",
+    "map.png": "cb6545d21bb30ba5b7d77563d18078befafa4d5dec6a50dc9b8455cdeafe8966",
+    "profile.png": "9702c1701ce952d0cd433538ddbf72ffe15d792da74c997b9200fe26e35153cc",
+    "reference.png": "912eb5c13315c9fba5b92a7ed03c7857516f2ea031b3889b9c256d081084ee30"
+  },
+  "account_signed_in": false,
+  "existing_accounts_or_production_records_modified": false,
+  "new_server_analysis_tested": false,
+  "authenticated_history_and_moderation_tested_today": false,
+  "ar_tracking_or_measurement_accuracy_tested": false,
+  "ui_automation": "Android SDK adb + uiautomator + actual screenshots",
+  "windows_sky_helper_initialization": "unavailable: failed to write kernel assets (path not found); Android UI checks used SDK tools",
+  "emulator_left_running": true
+}
