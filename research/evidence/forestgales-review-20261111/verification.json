@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-11",
+  "tasks": [
+    "AS-11",
+    "AS-10"
+  ],
+  "source_file_count": 1235,
+  "source_bytes": 26350875,
+  "mid_to_final_content_checksums_unchanged": true,
+  "core_initial_hashes_unchanged": true,
+  "full_manifest_sha256": "c21d93d1e68a24c4c1da91deacd8b1e31e32c086f6626db59f3f1cc8300d6035",
+  "pdf_text_pages_extracted": 116,
+  "pdf_key_chapters_studied": true,
+  "pdf_complete_pages_visually_reviewed": 11,
+  "binary_execution_performed": false,
+  "binary_algorithm_extraction_performed": false,
+  "new_forestgales_calculation_performed": false,
+  "new_program_or_training_implemented": false,
+  "production_changed": false,
+  "scope": "static folder/manual/data study with saved-output arithmetic consistency checks",
+  "source_inconsistencies_recorded": true,
+  "independent_review": "manual and parameter reviewers; corrected rooting page22, mass context SoilB/shallow and beta vector/magnitude wording",
+  "main_report": "research/FORESTGALES_REVIEW.md"
+}

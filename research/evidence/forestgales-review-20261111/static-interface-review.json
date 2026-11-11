@@ -1,0 +1,124 @@
+{
+  "date": "2026-11-11",
+  "task": [
+    "AS-11",
+    "AS-10"
+  ],
+  "scope": "read-only static metadata and provided documentation inspection",
+  "source_root": "C:\\Users\\danik\\OneDrive\\Desktop\\ForestGALES_2.5",
+  "executable_or_dll_executed": false,
+  "algorithm_reverse_engineering_or_decompilation_performed": false,
+  "method": [
+    "Windows FileVersionInfo",
+    "Get-AuthenticodeSignature",
+    "DOS/PE architecture headers",
+    "provided copyright and extracted manuals",
+    "ArborScan source read only"
+  ],
+  "binaries": [
+    {
+      "path": "Bin/ForestGALES.exe",
+      "bytes": 10034210,
+      "sha256": "4762f8edc6ea54bcea1912de32212222fe728e348094b9dad01d12a521b721e6",
+      "format": "PE32",
+      "architecture": "32-bit I386 x86",
+      "authenticode_status_observed": "NotSigned",
+      "normal_windows_version_metadata": {
+        "company": "Forest Research",
+        "product": "ForestGALES 2.5",
+        "file_version": "2.5.5.5",
+        "product_version": "2.5.5"
+      }
+    },
+    {
+      "path": "libraries/frCtrlFrk32.dll",
+      "bytes": 314368,
+      "sha256": "83070ce0e5ad202870a5cce1ea437de81e61528973044d2f32226c3a62a8eebb",
+      "format": "PE32",
+      "architecture": "32-bit I386 x86",
+      "authenticode_status_observed": "NotSigned",
+      "normal_windows_version_metadata": null
+    },
+    {
+      "path": "libraries/frDAMS.dll",
+      "bytes": 62976,
+      "sha256": "4c314b0fbb90cb6dd01172b691eea7d56aea91b66f6e65ad851062e29bc84a58",
+      "format": "PE32",
+      "architecture": "32-bit I386 x86",
+      "authenticode_status_observed": "NotSigned",
+      "normal_windows_version_metadata": null
+    },
+    {
+      "path": "libraries/frTrees.dll",
+      "bytes": 60928,
+      "sha256": "f5584080bad94c860cdaee32fc41fde6a19da694e332b1cd3dba30ce7a1597d0",
+      "format": "PE32",
+      "architecture": "32-bit I386 x86",
+      "authenticode_status_observed": "NotSigned",
+      "normal_windows_version_metadata": null
+    }
+  ],
+  "copyright_file_sha256": "0893334f6f0ecf54ea3e9c9d57103540f7b051c60f23261c5cac52c86d50b9c9",
+  "license_summary": {
+    "document_identifies_version": "2.5",
+    "copyright_year": 2014,
+    "owner_as_written": "Forest Research / Forestry Commission Crown Copyright",
+    "requires_registration_as_written": true,
+    "alter_modify_reverse_engineer_prohibited_as_written": true,
+    "distribution_with_other_products_requires_prior_written_permission_as_written": true,
+    "predictions_described_as_indicative_in_license": true,
+    "legacy_2_1_mentions_inside_2_5_text": true,
+    "legal_interpretation_not_provided": true
+  },
+  "source_files_in_folder": [],
+  "installer_files_in_folder": [],
+  "database_file_names": [
+    "Help_Files/ForestGALES25_Help_Manual_files/Thumbs.db"
+  ],
+  "documented_interchange": {
+    "inputs": [
+      "tab-delimited .bmf field measurements",
+      ".bmy yield-model batch",
+      ".bmt through-time batch"
+    ],
+    "outputs": [
+      "ASCII text",
+      "Excel",
+      "Word/RTF"
+    ],
+    "batch_is_gui_workflow": true,
+    "documented_command_line_or_programmatic_api_found": false,
+    "source_pages": {
+      "manual/ForestGALES_2.5_User_Manual.pdf": {
+        "system_requirements_and_ASCII_export_pdf": 11,
+        "system_requirements_printed": 5,
+        "batch_GUI_pdf": [
+          37,
+          38
+        ],
+        "batch_GUI_printed": [
+          31,
+          32
+        ]
+      },
+      "Help_Files/FORESTGALES25_HELP_MANUAL.pdf": {
+        "batch_Excel_import_pdf": [
+          3,
+          4
+        ],
+        "system_requirements_and_DAMS_pdf": [
+          5,
+          6
+        ]
+      }
+    }
+  },
+  "runtime_compatibility_tested": false,
+  "compatibility_notes": [
+    "Provided manual mentions Windows3..8; current Windows11 run has not been tested",
+    "Native PE32 Windows DLLs have different platform/architecture from Android and current LinuxVPS",
+    "No documented ABI/function signatures or headless process contract found in supplied materials",
+    "Missing setup.exe is consistent with documented portable extracted distribution; not proof program cannot run",
+    "Separate DAMS grid bundle described in manuals is not represented by Thumbs.db or frDAMS.dll"
+  ]
+}

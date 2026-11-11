@@ -1,0 +1,358 @@
+{
+  "date": "2026-11-11",
+  "tasks": [
+    "AS-11",
+    "AS-10"
+  ],
+  "scope": "read-only file and parameter audit; no program execution, application changes or recalculation",
+  "source_folder": "C:\\Users\\danik\\OneDrive\\Desktop\\ForestGALES_2.5",
+  "profile_count": 17,
+  "profiles": [
+    {
+      "file": "SpeciesParamFiles/BEParameters.txt",
+      "header": "# ForestGALES 2.5Res  Birch in Leaf parameter file",
+      "code": "BE",
+      "sha256": "010ca2221bf359dbda8a61307da868381636773654a952caabc68a8d84b06f1b"
+    },
+    {
+      "file": "SpeciesParamFiles/BNParameters.txt",
+      "header": "# ForestGALES 2.5Res  Birch out of Leaf parameter file",
+      "code": "BN",
+      "sha256": "86e94caa17cda8f727968c1e8c58fd908acfd43e1998c57c81357cd186af9022"
+    },
+    {
+      "file": "SpeciesParamFiles/CPParameters.txt",
+      "header": "# ForestGALES 2.5Res  Corsican pine parameter file",
+      "code": "CP",
+      "sha256": "8acb97f6897aca2dd0b43afb594882b7818dde8308c1cb643d8fac18516f0ca3"
+    },
+    {
+      "file": "SpeciesParamFiles/DFParameters.txt",
+      "header": "# ForestGALES 2.5Res  Douglas fir parameter file",
+      "code": "DF",
+      "sha256": "ab353b7c1c024b9020501c511bf3a70ec8af173bcf49d12d4e69a696dd94231b"
+    },
+    {
+      "file": "SpeciesParamFiles/ELParameters.txt",
+      "header": "# ForestGALES 2.5Res  European Larch parameter file",
+      "code": "EL",
+      "sha256": "19a15588e99fb494e1d9c98ac0f275ae5db773818e54f6c9239e1f23940c058b"
+    },
+    {
+      "file": "SpeciesParamFiles/GFParameters.txt",
+      "header": "# ForestGALES 2.5Res  Grand fir parameter file",
+      "code": "GF",
+      "sha256": "5fba84ff1298007aac6e4eaff4fe3d1fed98eb7f622856d8521b7726c8065235"
+    },
+    {
+      "file": "SpeciesParamFiles/HLParameters.txt",
+      "header": "# ForestGALES 2.5Res  Hybrid Larch parameter file",
+      "code": "HL",
+      "sha256": "52d03f570da49b0271cd359759b3392fb127d15f2634dd916dfb8f1e9b14847f"
+    },
+    {
+      "file": "SpeciesParamFiles/JLParameters.txt",
+      "header": "# ForestGALES 2.5Res  Japanese Larch parameter file",
+      "code": "JL",
+      "sha256": "ad68adffaa2848acac9f4b69c54b966adf07c2e881b491a3f6520d66f4658d33"
+    },
+    {
+      "file": "SpeciesParamFiles/LPParameters.txt",
+      "header": "# ForestGALES 2.5Res  Lodgepole pine parameter file",
+      "code": "LP",
+      "sha256": "473735908f9bfc1a7c38d3409c4d8619bc03033ce62548e636329912c7bde6ad"
+    },
+    {
+      "file": "SpeciesParamFiles/NFParameters.txt",
+      "header": "# ForestGALES 2.5Res  Noble fir parameter file",
+      "code": "NF",
+      "sha256": "939dd234fffaa637680f78d7b36743a3fba23ac08dcc235aa82c1fc4dcfb27c6"
+    },
+    {
+      "file": "SpeciesParamFiles/NSParameters.txt",
+      "header": "# ForestGALES 2.5Res  Norway spruce parameter file",
+      "code": "NS",
+      "sha256": "cc6c1ce7932db68f6b5c9a13497c0f103367d0353a9c0f4085e6778437264bfd"
+    },
+    {
+      "file": "SpeciesParamFiles/SPParameters.txt",
+      "header": "# ForestGALES 2.5Res  Scots pine parameter file",
+      "code": "SP",
+      "sha256": "be60f8b8cec31061ea2589cd20be768db84bdffb9b01683c0f55d3931943817b"
+    },
+    {
+      "file": "SpeciesParamFiles/SSParameters.txt",
+      "header": "# ForestGALES 2.5Res  Sitka spruce parameter file",
+      "code": "SS",
+      "sha256": "58393524813e1a2f756a8f9a0a80b220e90dbc4774c336d6540ba24df638915f"
+    },
+    {
+      "file": "SpeciesParamFiles/U1Parameters.txt",
+      "header": "# ForestGALES 2.5Res  Maritime pine parameter file (mainly from Cucchi et al. 2005)",
+      "code": "U1",
+      "sha256": "df82875397c86468cf0eccb8442a1c05de2a885e88850663c100b2dd0e16fb4b"
+    },
+    {
+      "file": "SpeciesParamFiles/U2Parameters.txt",
+      "header": "# ForestGALES 2.5Res  Radiata pine parameter file (from John Moore and Alejandro Cantero)",
+      "code": "U2",
+      "sha256": "8e6f87a55d8d6b56139d716d2e865f7ced69203344e4adb8540b43ec5b21d048"
+    },
+    {
+      "file": "SpeciesParamFiles/U3Parameters.txt",
+      "header": "# ForestGALES 2.5Res  User-defined species 3 parameter file Eucalyptus Globulus",
+      "code": "U3",
+      "sha256": "e6f881d51d9333844feb601b52de4b07d194610313d5e379d99de523ffc7ec95"
+    },
+    {
+      "file": "SpeciesParamFiles/WHParameters.txt",
+      "header": "# ForestGALES 2.5Res  Western hemlock parameter file",
+      "code": "WH",
+      "sha256": "a24ff1a53fa2658b2dadc5ba46c0ee230dbfe43d0a5ae4ac3837366f8b123c0d"
+    }
+  ],
+  "backup_comparison": [
+    {
+      "folder": "BackUpParameterFiles",
+      "files": 19,
+      "identical_active_files": 18,
+      "different_active_files": 1,
+      "additional_backup_files": 0,
+      "nonmatching": [
+        {
+          "backup_file": "BackUpParameterFiles/FGDefaults.txt",
+          "active_file": "FGDefaults.txt",
+          "active_exists": true,
+          "identical_bytes": false
+        }
+      ]
+    },
+    {
+      "folder": "UserSpeciesParamFilesBackUp",
+      "files": 20,
+      "identical_active_files": 18,
+      "different_active_files": 1,
+      "additional_backup_files": 1,
+      "nonmatching": [
+        {
+          "backup_file": "UserSpeciesParamFilesBackUp/FGDefaults.txt",
+          "active_file": "FGDefaults.txt",
+          "active_exists": true,
+          "identical_bytes": false
+        },
+        {
+          "backup_file": "UserSpeciesParamFilesBackUp/SpeciesParamFiles/ExampleSpeciesParameters.txt",
+          "active_file": "SpeciesParamFiles/ExampleSpeciesParameters.txt",
+          "active_exists": false,
+          "identical_bytes": false
+        }
+      ]
+    }
+  ],
+  "current_defaults": {
+    "tree_age_years": 44,
+    "current_spacing_stored": 28,
+    "current_spacing_m": 2.8,
+    "mean_dbh_stored_mm": 200,
+    "mean_dbh_cm": 20,
+    "top_height_stored_tenths_m": 200,
+    "top_height_m": 20,
+    "DAMS_score": 15,
+    "rootdepth_UI_index": 0,
+    "rootdepth_interpretation": "shallow, UI index; batch/manual code1",
+    "soil_UI_index": 1,
+    "soil_interpretation": "B according to file comments",
+    "species_UI_index": 8,
+    "species_index_to_code_mapping": "not established from files alone",
+    "wind_speed_unit_index": 0,
+    "wind_speed_unit": "m/s",
+    "normal_or_research_mode_index": 0,
+    "upwind_gap_m": 0
+  },
+  "SP_parameters": {
+    "stem_density_kg_m3": 850,
+    "canopy_density_kg_m3": 2.5,
+    "modulus_of_rupture_Pa": 46000000.0,
+    "knot_factor": 0.85,
+    "modulus_of_elasticity_Pa": 7300000000.0,
+    "streamlining_C": 3.07,
+    "streamlining_exponent_n": 0.75,
+    "root_bending_term": 0.0,
+    "OTM_soil_A_shallow_deep_user": [
+      140.1,
+      162.9,
+      142.9
+    ],
+    "OTM_soil_B_shallow_deep_user": [
+      124.2,
+      144.4,
+      126.7
+    ],
+    "OTM_soil_C_shallow_deep_user": [
+      135.6,
+      157.7,
+      138.3
+    ],
+    "OTM_soil_D_shallow_deep_user": [
+      154.3,
+      179.4,
+      157.3
+    ],
+    "OTM_scaling": 100,
+    "maximum_stem_weight_kg_soil_A_shallow_deep_user": [
+      469,
+      576,
+      469
+    ],
+    "other_soil_maximum_stem_weight_entries": "all zero in SP file; do not interpret as universal experimental validation"
+  },
+  "units_crosscheck": "manual agent inspected main manual printed43/PDF49: density kg/m3, MOR/MOE Pa; rooting codes printed16/PDF22 and19/PDF25",
+  "saved_outputs": {
+    "FGFieldOut": {
+      "rows": 320,
+      "species_counts": {
+        "U3": 320
+      },
+      "DAMS_column_present": false,
+      "observed_A_Weibull": [
+        "5.58"
+      ],
+      "observed_K_Weibull": [
+        "1.55",
+        "1.61"
+      ]
+    },
+    "FGYieldOut": {
+      "rows": 2,
+      "identical_rows": true,
+      "species": "SS",
+      "DAMS": 15,
+      "A_Weibull_saved_rounded": 5.5,
+      "stem_mass_kg_saved": 464.5,
+      "stem_volume_m3_saved": 0.546,
+      "overturning_moment_Nm_saved": 63076.3,
+      "critical_wind_overturn_saved": 25.0,
+      "critical_wind_break_saved": 25.0,
+      "return_period_saved": 200,
+      "WDRS_saved": 1
+    },
+    "FGRotationOut": {
+      "stand_summary_rows": 1,
+      "age_dependent_rows": 13,
+      "ages": [
+        17,
+        22,
+        27,
+        32,
+        37,
+        42,
+        47,
+        52,
+        57,
+        62,
+        67,
+        72,
+        77
+      ]
+    },
+    "provenance": "Existing saved calculation files; execution date/source measurements/independent experiment provenance not established; no fresh run claimed"
+  },
+  "Weibull_sign_check": {
+    "parameter_file_equation": "A = -0.9626 + 0.4279 * DAMS",
+    "DAMS": 15,
+    "arithmetic_A": 5.4559,
+    "saved_A_one_decimal": 5.5,
+    "annex_literal_alternative_with_b_negative": 7.3811,
+    "interpretation": "Saved rounded result agrees with additive intercept in parameter file and main manual; annex Eq17 sign is inconsistent; executable not rerun"
+  },
+  "OTM_mass_check": {
+    "saved_SS_soilB_root1_Creg": 135.8,
+    "saved_M_Nm": 63076.3,
+    "saved_mass_kg": 464.5,
+    "M_div_Creg_kg": 464.47938144329896,
+    "mass_rounding_consistent": true,
+    "stem_volume_times_density_kg": 464.1,
+    "interpretation": "Saved rounded values support a mass term with Creg Nm/kg; numerical consistency is not executable validation"
+  },
+  "yield_tables": {
+    "file_count": 1034,
+    "ordinary_numeric_files": 1033,
+    "seven_numeric_field_rows": 13618,
+    "numeric_row_issues": [],
+    "header_groups": {
+      "Age TopHt N dbh G VolHa": 518,
+      "Age TopHt N dbh G MeanVol VolHa": 453,
+      "Age TopHt N dbh G meanVol Vol/ha": 50,
+      "TABLE": 1,
+      "Age TopHt N dbh G Vol VolHa": 2,
+      "Age MeanHt N dbh G Vol VolHa": 4,
+      "Age topHeight sph dbh G MeanVolume VolHa": 6
+    },
+    "special_files": [
+      {
+        "file": "yldmodls/ns/NS12LZ20.yld",
+        "bytes": 1426,
+        "sha256": "a31aec021bbb8b13338cd574d9d913f1450443bc6970b153468d6bbc0ddadcb1",
+        "format": "TABLE/EXCEL/VECTORS/TUPLES serialization, not plain numeric yield rows"
+      }
+    ],
+    "legacy_readme": "Initial.prn describes a different six-column historic example; do not use as schema for all supplied files",
+    "hybrid_larch_readme": "hl/ReadMe explicitly states Japanese larch tables reused with changed filename prefix in2014"
+  },
+  "XLS_template": {
+    "file": "yldmodls/userdefined/yieldmodel.xls",
+    "format": "CFB/OLE binary XLS",
+    "method": "read-only CFB/BIFF record extraction, no Excel/macro/external code execution",
+    "sheet": "yield model template",
+    "header_cells_A1_G1": [
+      "Age",
+      "TopHt",
+      "N",
+      "dbh",
+      "G",
+      "MeanVol",
+      "VolHa"
+    ],
+    "formulas_recalculated": false,
+    "numeric_cells_not_used_for_any_claim": true
+  },
+  "ArborScan_input_mapping": {
+    "available_or_measurable": [
+      "species candidate/manual species label",
+      "photo/AR tree height estimate",
+      "projected crown width",
+      "marked local stem section diameter; DBH protocol separately required",
+      "optional crown depth/base and location"
+    ],
+    "separate_inputs_required": [
+      "stand top-height/mean-height interpretation and inventory",
+      "verified DBH",
+      "average spacing/stocking and upwind gap/edge",
+      "soil class A-D and rooting depth/support",
+      "wood/root strength or justified calibrated species parameter set",
+      "long-term site wind distribution A/k or independently calibrated DAMS route"
+    ],
+    "important_limits": [
+      "SoilGrids cannot automatically establish ForestGALES soil/rooting category",
+      "current weather is not the required long-term wind distribution",
+      "whole-tree silhouette does not provide material/root strength",
+      "drag coefficient C*u^-n is not beta kg/s",
+      "species profiles themselves do not validate transfer to Belarus or individual urban trees"
+    ]
+  },
+  "source_sha256": {
+    "FGDefaults.txt": "cd7d5da30d4532f4ccd16ed2f0e49efabca3ae5e30ef60424f71dfaf59488245",
+    "FGParameters.txt": "326a0b50397bc9b227e614e4cacd562fca3cb0ca13609ebb809a58a6a6aece5e",
+    "FGFieldOut.txt": "daddceed3c23da0354907acbe4ba59cbcab3d6e102f70edce128eeba792b17ae",
+    "FGYieldOut.txt": "f95683d2db9092df2a65a22aa67ea363fe926b284680b7ddc1e23e54bd4f849a",
+    "FGRotationOut.txt": "5477f503e33ec57e2e82af14964c93ec8f73964e49076d8f2272cc255db66472",
+    "yldmodls/Initial.prn": "4582034321f9f3b077a96871c616cfede214dd4249e507a4c3c071660a04fb98",
+    "yldmodls/hl/ReadMe.txt": "908e8c2b7c9fe7244365568206bfbbee6df321a248d1ff9e64248a19a58f845f",
+    "yldmodls/userdefined/yieldmodel.xls": "1f3dbdeb5488789a920dc57e332a2f61d7ebc5b9338f040d0d1d7cd7cb1f68ff"
+  },
+  "backup_default_differences": {
+    "BackUpParameterFiles": "Only DAMS Path differs; no absolute developer path copied into this receipt",
+    "UserSpeciesParamFilesBackUp": "SelectModeUnits research-mode1 in backup versus normal-mode0 in current FGDefaults; all other defaults same",
+    "physical_parameters_and_species": "FGParameters and all17 species profiles byte-identical across both backup folders"
+  }
+}

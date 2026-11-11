@@ -1,0 +1,35 @@
+{
+  "risk_schema": {
+    "path": "arborscan_v4/schema.py",
+    "class": "RiskInfo",
+    "fields": [
+      "available",
+      "reason"
+    ],
+    "default_available": false
+  },
+  "api_risk": {
+    "path": "arborscan_v4/api.py",
+    "health_risk_enabled": false,
+    "analysis_risk_available": false
+  },
+  "mechanical_profiles": {
+    "path": "arborscan_v4/species_profiles.py",
+    "validated_profiles_table_empty": true
+  },
+  "beta": {
+    "path": "arborscan_v4/schema.py",
+    "available": false,
+    "value_kg_s": null,
+    "reason": "dynamic_experiment_and_validated_forward_model_required"
+  },
+  "integration_work_if_separately_authorized": [
+    "Establish lawful interface/distribution scope for supplied software",
+    "Specify individual-tree versus stand-model inputs and source/units explicitly",
+    "Validate DBH and height provenance, rooting/soil/support, species coefficients and wind-reference height",
+    "For probability, obtain/calibrate site wind distribution instead of using a single current weather snapshot",
+    "Prototype versioned file exchange and compare outputs to reference examples via licensed desktop program",
+    "Extend server/client/report schema with method/version/inputs/units/uncertainty and explicit unavailable reasons",
+    "Validate windbreak/uproot results on appropriate independent field data before risk labels"
+  ]
+}

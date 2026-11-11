@@ -1,0 +1,88 @@
+{
+  "date": "2026-11-11",
+  "scope": "user-provided folder static study",
+  "task_ids": [
+    "AS-11",
+    "AS-10"
+  ],
+  "file_count": 1235,
+  "bytes": 26350875,
+  "extensions": {
+    ".txt": 63,
+    ".log": 1,
+    ".exe": 1,
+    ".rtf": 6,
+    ".pdf": 3,
+    ".chm": 1,
+    ".chw": 1,
+    ".cnt": 1,
+    ".hlp": 1,
+    ".htm": 1,
+    ".dll": 3,
+    ".lnk": 1,
+    ".bmf": 1,
+    ".bmt": 1,
+    ".bmw": 1,
+    ".bmy": 1,
+    ".prn": 1,
+    ".png": 111,
+    ".db": 1,
+    ".yld": 1034,
+    ".xls": 1
+  },
+  "core_files": [
+    {
+      "path": "Bin/copyright.txt",
+      "bytes": 2328,
+      "sha256": "0893334f6f0ecf54ea3e9c9d57103540f7b051c60f23261c5cac52c86d50b9c9"
+    },
+    {
+      "path": "Bin/ForestGALES.exe",
+      "bytes": 10034210,
+      "sha256": "4762f8edc6ea54bcea1912de32212222fe728e348094b9dad01d12a521b721e6"
+    },
+    {
+      "path": "FGDefaults.txt",
+      "bytes": 1584,
+      "sha256": "cd7d5da30d4532f4ccd16ed2f0e49efabca3ae5e30ef60424f71dfaf59488245"
+    },
+    {
+      "path": "FGParameters.txt",
+      "bytes": 1216,
+      "sha256": "326a0b50397bc9b227e614e4cacd562fca3cb0ca13609ebb809a58a6a6aece5e"
+    },
+    {
+      "path": "FGFieldOut.txt",
+      "bytes": 75976,
+      "sha256": "daddceed3c23da0354907acbe4ba59cbcab3d6e102f70edce128eeba792b17ae"
+    },
+    {
+      "path": "FGRotationOut.txt",
+      "bytes": 3864,
+      "sha256": "5477f503e33ec57e2e82af14964c93ec8f73964e49076d8f2272cc255db66472"
+    },
+    {
+      "path": "FGYieldOut.txt",
+      "bytes": 1061,
+      "sha256": "f95683d2db9092df2a65a22aa67ea363fe926b284680b7ddc1e23e54bd4f849a"
+    },
+    {
+      "path": "Help_Files/FG25HelpTechnicalAnnex.pdf",
+      "bytes": 73564,
+      "sha256": "b6c057257406d6fa22a69d8baf3fef4692470e1dd1f609ccd215d12ff95f6c5f"
+    },
+    {
+      "path": "Help_Files/FORESTGALES25_HELP_MANUAL.pdf",
+      "bytes": 1931718,
+      "sha256": "a34256ceb1c98b65e8f2ad2d8818982dd9c0757d8e1c1d8833ef68ae32bcd648"
+    },
+    {
+      "path": "manual/ForestGALES_2.5_User_Manual.pdf",
+      "bytes": 1089604,
+      "sha256": "9af464192c5b2bbbadc8e1a318249e4f7e74473413496f18c4a48a623bc8d386"
+    }
+  ],
+  "source_code_extensions_found": [],
+  "external_source_files_modified": false,
+  "program_executed": false
+}

@@ -1,0 +1,141 @@
+{
+  "task": [
+    "AS-11",
+    "AS-10 boundary"
+  ],
+  "date": "2026-11-11",
+  "scope": "Read-only PDF manual/annex study; no executable run, no application or production changes",
+  "source_files": [
+    {
+      "file": "manual/ForestGALES_2.5_User_Manual.pdf",
+      "pages": 66,
+      "sha256": "9af464192c5b2bbbadc8e1a318249e4f7e74473413496f18c4a48a623bc8d386",
+      "text": "output\\forestgales-review\\manual\\ForestGALES_2.5_User_Manual.txt",
+      "metadata": "{'/Author': 'Forestry Commission', '/CreationDate': \"D:20150923095358+01'00'\", '/Creator': 'Adobe InDesign CS6 (Macintosh)', '/Keywords': 'ForestGALES; Version 2.5; decision support system; wind damage; written; FCSW001; climate; forestry; forest management; gales; storm damage; wind; windthrow.', '/ModDate': \"D:20150923110801+01'00'\", '/Producer': 'Adobe PDF Library 10.0.1', '/Subject': 'Forest\\u2009GALES is a computer-based decision support system that assesses the risk of wind damage to conifer forests in Britain and compares the impacts of different silvicultural practices. ', '/Title': 'ForestGALES', '/Trapped': '/Unknown'}"
+    },
+    {
+      "file": "Help_Files/FG25HelpTechnicalAnnex.pdf",
+      "pages": 5,
+      "sha256": "b6c057257406d6fa22a69d8baf3fef4692470e1dd1f609ccd215d12ff95f6c5f",
+      "text": "output\\forestgales-review\\manual\\FG25HelpTechnicalAnnex.txt",
+      "metadata": "{'/Author': 'sophie', '/Company': 'Microsoft', '/CreationDate': \"D:20150129134955+01'00'\", '/Creator': 'Acrobat PDFMaker 10.1 for Word', '/ModDate': \"D:20150129134957+01'00'\", '/Producer': 'Adobe PDF Library 10.0', '/SourceModified': 'D:20150129124854', '/Title': 'ForestGALES 2'}"
+    },
+    {
+      "file": "Help_Files/FORESTGALES25_HELP_MANUAL.pdf",
+      "pages": 45,
+      "sha256": "a34256ceb1c98b65e8f2ad2d8818982dd9c0757d8e1c1d8833ef68ae32bcd648",
+      "text": "output\\forestgales-review\\manual\\FORESTGALES25_HELP_MANUAL.txt",
+      "metadata": "{'/CreationDate': \"D:20141127134448+01'00'\", '/Creator': 'Firefox 33.1 (x86 en-US)', '/ModDate': \"D:20141127134453+01'00'\", '/Producer': 'Acrobat Web Capture 10.0', '/Title': 'ForestGALES2.5 Help'}"
+    }
+  ],
+  "visual_review": [
+    "annex PDF pages1-5 complete",
+    "user PDF7/printed1",
+    "user PDF23/printed17",
+    "user PDF47/printed41",
+    "user PDF48/printed42",
+    "user PDF55/printed49",
+    "user PDF56/printed50"
+  ],
+  "stand_scope": {
+    "user_printed_pages": [
+      1,
+      2,
+      11
+    ],
+    "user_pdf_pages": [
+      7,
+      8,
+      17
+    ],
+    "description": "Uniform-age uniform-species stands, representative average tree; recommendation forest-scale due inherent prediction variability; individual-tree model is described as prototype development in this version"
+  },
+  "inputs": {
+    "user_printed_pages": [
+      15,
+      16,
+      17,
+      20,
+      21
+    ],
+    "soil_groups": "A/B/C/D, British Forestry Commission grouping",
+    "rooting": "1 shallow<80cm;2 deep>=80cm; user defined in Research",
+    "spacing_m": [
+      0.6,
+      10
+    ],
+    "top_height_m": [
+      5,
+      75
+    ],
+    "mean_dbh_cm_main_manual": [
+      5,
+      50
+    ],
+    "mean_dbh_cm_help_pdf": [
+      5,
+      75
+    ],
+    "DAMS": [
+      5,
+      32
+    ],
+    "normal_species_count": 12,
+    "normal_species_scope": "conifers; extra birch in/out leaf files present per parameter audit, not listed in main manual normal list"
+  },
+  "output_reference": {
+    "user_printed_page": 49,
+    "user_pdf_page": 55,
+    "CWS": "m/s at10m ABOVE ZERO PLANE DISPLACEMENT d, u(d+10)_crit",
+    "uh": "m/s at canopy top=MEAN TREE HEIGHT, u(h)_crit",
+    "averaging": "threshold HOURLY wind; user glossary printed50/PDF56",
+    "G": "ratio maximum/mean turning moment over hour; short gust response encoded in factor; TechnicalAnnex2",
+    "FIELD_ZO": "surroundingland roughness explicitly not used in this version; userprinted41/PDF47"
+  },
+  "equations": {
+    "source": "TechnicalAnnex PDF pages1-4",
+    "critical_uproot_moment": "Mcrit_over=Creg*SW, Creg Nm/kg, SW mass kg",
+    "critical_break_moment": "Mcrit_break=(pi/32)*fknot*MOR*diam^3, MOR Pa, diam m",
+    "mean_moment": "Mmean(z)=(d-z)*rho*(D*u(h)*k/log((h-d)/z0))^2",
+    "maximum_moment": "Mmax(z)=fCW*G*Mmean(z)",
+    "wind_dependent_drag": "CD=C*u^(-n), no beta kg/s identification",
+    "Scots_pine_example": "C3.07,n0.75, CD clamped byu10and25 m/s in documentation",
+    "critical_speeds": "iterative eq13/14 because drag,roughness,zero-plane displacement depend on wind",
+    "probability": "annual criticalspeed exceedance from Weibull/ESDU extreme-value transform, returnperiod=1/AEP"
+  },
+  "integration_inferences": [
+    "Singlephotoheight is not stand topheight (average100largest-diameter trees/ha) and is not automatically meanheight",
+    "Currentweather/gust cannot be directly compared without matching averaging,height/exposure conventions",
+    "SoilGrids texture alone does not establish British soilgroup or rootabledepth",
+    "Standalone forest model needs spacing/density and edge context",
+    "No supplied identification of ArborScan dynamic beta kg/s from image, species or CD alone"
+  ],
+  "source_inconsistencies": [
+    {
+      "source": "TechnicalAnnexp4Eq17/userprinted55Eq17 vs userprinted42 parameterfile",
+      "detail": "Eq17 A=aDAMS-b and b=-.9626 conflicts with additiveintercept -.9626+.4279DAMS in file-format description; binaryformula not established by text alone"
+    },
+    {
+      "source": "TechnicalAnnexp1/userprinted53",
+      "detail": "SW prose callsweightkg multipliedbydensitykg/m3, incompatible with required masskg in Creg*SW; check referenced formulation before implementation"
+    },
+    {
+      "source": "userprinted53 vs standaloneAnnexp1",
+      "detail": "mainmanual labels frictionvelocityu* m2s^-2; standaloneannex says m/s"
+    },
+    {
+      "source": "userprinted49Table8",
+      "detail": "stem/branchvolume printedkg/m3, while weightkg and volumephysicalunits need independent verification"
+    },
+    {
+      "source": "mainmanualprinted17/PDF23 vs HelpPDF29",
+      "detail": "MeanDBHupper50cm vs75cm; parameterfile/runtime bounds must govern exactapplicationversion"
+    }
+  ],
+  "remaining_submodels": [
+    "fCW requires Neild&Wood1999Eq7 plus massdistribution/beamgeometry; explicit subformula not given in20eqannex",
+    "Fieldmode stemvolume/taper and full edge/gust implementation not fully established by supplied20eqs",
+    "Native .exe behavior and numerical equivalence have not been tested by this manual study"
+  ],
+  "source_pdf_hashes_unchanged_after_review": true
+}
