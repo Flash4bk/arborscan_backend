@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-11",
+  "sources": [
+    {
+      "id": "merlin2026",
+      "doi": "10.5194/nhess-26-2461-2026",
+      "url": "https://nhess.copernicus.org/articles/26/2461/2026/",
+      "read": "full publisher HTML methods/results/discussion/appendices/data statement",
+      "validation_unit": "individual forest-edge trees",
+      "dataset_access": "proprietary; study code on request; neither received"
+    },
+    {
+      "id": "gardiner2024",
+      "doi": "10.1016/j.foreco.2023.121614",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0378112723008484",
+      "read": "abstract/introduction/section preview only; full text403",
+      "validation_unit": "500m railway sections"
+    },
+    {
+      "id": "locatelli2017",
+      "doi": "10.1016/j.envsoft.2016.10.010",
+      "url": "https://www.pure.ed.ac.uk/ws/portalfiles/portal/77232817/47530049._Patenaude._AAM..pdf",
+      "read": "selected sections in accessible51page author accepted manuscript; no numeric reproduction",
+      "validation_unit": "sensitivity study, not prediction accuracy"
+    },
+    {
+      "id": "merlin2025",
+      "doi": "10.1016/j.fecs.2025.100361",
+      "url": "https://www.sciopen.com/article/10.1016/j.fecs.2025.100361",
+      "read": "publisher abstract/bibliography only; no full text read",
+      "validation_unit": "mapped forest storm damage"
+    },
+    {
+      "id": "krisans2020",
+      "doi": "10.3390/f11040416",
+      "url": "https://www.mdpi.com/1999-4907/11/4/416",
+      "read": "full publisher HTML methods/results/discussion/conclusion and tables",
+      "validation_unit": "77static tree-pulling tests in Latvia; not ForestGALES accuracy test"
+    },
+    {
+      "id": "lorenz2025",
+      "doi": "10.5194/nhess-25-2179-2025",
+      "url": "https://nhess.copernicus.org/articles/25/2179/2025/",
+      "read": "abstract and opening introduction only",
+      "validation_unit": "31km cells, not individual biomechanics"
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "date": "2026-11-11",
+  "scope": "live official pages and public documented source/licence research, no signup/payment/remote calculation or code execution",
+  "desktop_2_5": {
+    "official_url": "https://www.forestresearch.gov.uk/tools-and-resources/fthr/forestgales/",
+    "http_status": 200,
+    "observed_download_state": "temporarily unavailable during website maintenance",
+    "old_paid_purchase_terms_unknown": true,
+    "download_attempt_or_purchase": false
+  },
+  "online_2_5": {
+    "official_link": "http://www.forestdss.org.uk/geoforestdss",
+    "landing_http_status": 200,
+    "selector_label": "ForestGALES 2.5(Testing)",
+    "official_scope": "single stand; Britain; free web version",
+    "portal_landing_climate_label": "1961-1990",
+    "numeric_model_or_authorization_tested": false,
+    "public_api_contract_found": false,
+    "official_access": {
+      "http://www.forestdss.org.uk/geoforestdss": {
+        "http_status": 200,
+        "final_url": "http://www.forestdss.org.uk/geoforestdss/",
+        "bytes": 95652,
+        "sha256": "554bea4e088542ee3038fae614b6c590edc68b6e61cfc2b897f413a9afb8ba46"
+      }
+    }
+  },
+  "official_3_0_fgr": {
+    "model_family_name": "ForestGALES 3.0/fgr",
+    "delivery": "owner contact/terms form; email Windows binary zip, PDFmanual, PDFlicence, installinstructions",
+    "form_url": "https://forms.office.com/e/CvXGsAcJ1m",
+    "form_submitted": false,
+    "current_official_package_received": false,
+    "source_or_linux_binary_in_official_delivery_verified": false
+  },
+  "public_development_source": {
+    "url": "https://github.com/tom-locatelli/fgr",
+    "commit": "0636e245d766eb81fd8d453dd61daad64584b660",
+    "last_pushed_utc": "2020-09-30T16:41:15Z",
+    "github_archived_flag": false,
+    "package_version": "0.0.0.9009.1.2",
+    "DESCRIPTION_date": "2020-01-10",
+    "readme_warning": "UNDERGOING BETA-TESTING. PLEASE DO NOT USE",
+    "is_current_official_3_0_delivery": false,
+    "files_downloaded_for_readonly_study": 34,
+    "download_failed_count": 0,
+    "download_bytes": 797530,
+    "R_source_count": 29,
+    "native_src_files_found": false,
+    "R_runtime_installed_or_executed": false,
+    "source_public_access_does_not_remove_licence_conditions": true
+  },
+  "licences": {
+    "public_dev_declared": "GPLv3 + LICENCE.txt",
+    "public_dev_additional_condition": "Commons Clause v1.0",
+    "public_dev_license_url": "https://github.com/tom-locatelli/fgr/blob/0636e245d766eb81fd8d453dd61daad64584b660/LICENCE.txt",
+    "current_team_license_url": "https://github.com/ForestGALES-fgr/fgr_LICENSE",
+    "current_team_license_self_description": "LICENCE file of the current fgr release (v1.0)",
+    "current_team_license_last_pushed_utc": "2022-02-19T19:52:01Z",
+    "current_team_license_terms": "GPLv3 + Commons Clause; personal/academic/noncommercial allowed; express consent required to support commercial product; paid hosting/support can fall within Sell definition",
+    "publication_text_character": "would like opportunity to comment and offer of coauthorship; request wording should not be recast as mandatory authorship",
+    "official_2_5_license_url": "https://cdn.forestresearch.gov.uk/2022/02/fr_forestgales2_5_software_licence.pdf",
+    "official_2_5_relevant_clauses": [
+      "1.2 personal/internal use with CPU/user limits",
+      "2(c) incorporation into other programs restricted",
+      "2(i) communications-network/remote-access use restricted"
+    ],
+    "historic_user_licence_or_exceptions_not_established": true,
+    "website_footer_OGL_not_used_as_software_permission": true,
+    "no_legal_determination_or_permission_obtained": true
+  },
+  "documented_R_interface": {
+    "functions": [
+      "fg_rou",
+      "fg_tmc"
+    ],
+    "export_pattern": "alphabetic names in NAMESPACE",
+    "stand_wrapper_essential": "stand identifier, species, mean/top height, mean dbh cm, spacing m",
+    "tree_wrapper_essential": "stand/tree identifiers, species, tree height/dbh, current spacing and stand mean height/dbh/top height",
+    "additional_inputs": "soil/rooting; crown dimensions; edges/gaps/thinning; mechanical and aerodynamic parameters; optional Weibull",
+    "wind_probability_if_no_Weibull_A": "NA in pinned code",
+    "MOR_MOE_units_status": "wrapper@param comments sayMPa; data/criticalmoment implementation contradict; unresolved per version; no automaticPa/MPa conversion approved",
+    "source_is_not_validated_runtime_contract": true
+  },
+  "architecture_assessment": [
+    "After version/licence resolution, an isolated R process/service is a technical candidate behind ArborScan HTTP boundary; Linux portability remains untested.",
+    "Independent Python implementation from openly described science requires explicit source and coefficient provenance, supported applicability domains, unit/reference cases and independent validation; translation of licensed R code is not automatically a separate unrestricted implementation.",
+    "Legacy Windows32 desktop file exchange is documented, but old purchased licence and network/public-service rights must be checked before deploying as backend.",
+    "Online portal is not a verified API and should not be assumed a stable computational dependency."
+  ],
+  "sources": [
+    {
+      "url": "https://www.forestresearch.gov.uk/tools-and-resources/fthr/forestgales/",
+      "access": "HTTP200 official description/download notice/forms read only"
+    },
+    {
+      "url": "http://www.forestdss.org.uk/geoforestdss/",
+      "access": "HTTP200 public landing only"
+    },
+    {
+      "url": "https://github.com/tom-locatelli/fgr/tree/0636e245d766eb81fd8d453dd61daad64584b660",
+      "access": "public pinned source snapshot; no code execution"
+    },
+    {
+      "url": "https://github.com/ForestGALES-fgr/fgr_LICENSE",
+      "access": "public current-v1.0 licence README read"
+    },
+    {
+      "url": "https://cdn.forestresearch.gov.uk/2022/02/fr_forestgales2_5_software_licence.pdf",
+      "access": "public official PDF text viaweb; clauses read"
+    }
+  ]
+}

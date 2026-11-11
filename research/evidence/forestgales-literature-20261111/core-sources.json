@@ -1,0 +1,111 @@
+{
+  "checked": "2026-11-11",
+  "scope": "AS11 literature research, boundaryAS10, no implementation or production changes",
+  "sources": [
+    {
+      "id": "gardiner2000",
+      "doi": "10.1016/S0304-3800(00)00220-9",
+      "year": 2000,
+      "url": "https://www.researchgate.net/publication/223426918_Comparison_of_two_models_for_predicting_the_critical_wind_speeds_required_to_damage_coniferous_trees",
+      "access": "public author full text HTML; selected mechanics/validation sections read",
+      "local_pdf": null,
+      "equation_pages": "printed 3-9",
+      "validation_pages": "printed 12,17-20"
+    },
+    {
+      "id": "hale2012",
+      "doi": "10.1007/s10342-010-0448-2",
+      "year": 2012,
+      "url": "https://www.researchgate.net/publication/51997268_Wind_loading_of_trees_Influence_of_tree_size_and_competition",
+      "access": "public author full text HTML; methods/sample/relationships read",
+      "local_pdf": null,
+      "equation_pages": "printed 208-210; corrected coefficient from Hale2015",
+      "validation_sample": 45,
+      "size_fit_sample": 34
+    },
+    {
+      "id": "hale2015",
+      "doi": "10.1016/j.envsoft.2015.01.016",
+      "year": 2015,
+      "url": "https://nora.nerc.ac.uk/id/eprint/510459/",
+      "download_url": "https://s3.eu-central-1.amazonaws.com/ng-submission-additional-files/IUFRO2019/5d5fdb2cea7c83e515cbfab5/files/Hale-et-al.---2015---Comparison-and-validation-of-three-versions-of-a-forest-wind-risk-model.pdf",
+      "access": "full published PDF read, formulas+ROC/table pages visually inspected",
+      "local_pdf": "Hale_2015_model_validation.pdf",
+      "pdf_pages": 15,
+      "equation_pages": "PDF6 / printed32",
+      "visual_qa_pages": [
+        "PDF6 / printed32",
+        "PDF10 / printed36"
+      ],
+      "validation_sample": 6996,
+      "damaged_subcompartments": 134,
+      "supplement_access": "record only; no full text obtained"
+    },
+    {
+      "id": "neild1999",
+      "doi": "10.1093/treephys/19.3.141",
+      "year": 1999,
+      "url": "https://www.researchgate.net/publication/10842457_Estimating_stem_and_root-anchorage_flexibility_in_trees",
+      "access": "public author full text HTML; mechanics/validation sections read",
+      "local_pdf": null,
+      "pdf_access_error": "publisher download HTTP403, not bypassed",
+      "equation_pages": "printed144-146, Eq7-9",
+      "validation_sample": 4
+    },
+    {
+      "id": "nicoll2006",
+      "doi": "10.1139/X06-072",
+      "year": 2006,
+      "url": "https://www.researchgate.net/publication/237866473_Anchorage_of_coniferous_trees_in_relation_to_species_soil_type_and_rooting_depth",
+      "access": "public author full text HTML; methods/results/tables/discussion read",
+      "local_pdf": null,
+      "parameter_pages": "printed1878-1880, Tables4-5",
+      "validation_sample": "almost2000 measured tree-pulling records across34UKsites; analytic tables exclude rootrot and stem breakage"
+    },
+    {
+      "id": "achim2009",
+      "doi": "10.1093/forestry/cpp004",
+      "year": 2009,
+      "url": "https://www.researchgate.net/publication/236234897_Modelling_the_anchorage_of_shallow-rooted_trees",
+      "access": "public author full text HTML; methods/equations/tables/discussion read",
+      "local_pdf": null,
+      "equation_pages": "printed276-280 Eq1-7 Tables1-4",
+      "validation_sample": 148,
+      "site_count": 8
+    }
+  ],
+  "local_files": [
+    {
+      "path": "CORE_FINDINGS.md",
+      "bytes": 16827,
+      "sha256": "ef3374f8bb122ff488f5c4a0a3c41b5838802c0fa8ca5d2e263228f934b279a6"
+    },
+    {
+      "path": "Hale_2015_model_validation.pdf",
+      "bytes": 689278,
+      "sha256": "be30914c913502dc63781dbf85b046d2a4fc8b2df35795fb87a474a686d11abc"
+    },
+    {
+      "path": "Hale_2015_model_validation.txt",
+      "bytes": 108664,
+      "sha256": "bb04b4ccccc39ecc84c0913a19df3abde70ce49f22ab92a1449bf52b208d5bcd"
+    },
+    {
+      "path": "Hale_2015_p10-10.png",
+      "bytes": 429532,
+      "sha256": "0b70f4538c571eee14bbae8ee21134bf13c8e4e0ca3f82bd8b3ff15fb4d5594e"
+    },
+    {
+      "path": "Hale_2015_p6-06.png",
+      "bytes": 634713,
+      "sha256": "235a2a80050e676eade8dd9e67a994987cb2ed0446fbe2bb44204b098cc4afa3"
+    }
+  ],
+  "not_claimed": [
+    "exhaustive literature",
+    "all source PDFs visually checked",
+    "equivalence to ForestGALES2.5",
+    "field validation for ArborScan",
+    "code execution of fgr"
+  ]
+}

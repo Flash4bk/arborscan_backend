@@ -1,0 +1,245 @@
+{
+  "sha": "0636e245d766eb81fd8d453dd61daad64584b660",
+  "files": [
+    {
+      "path": "DESCRIPTION",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/DESCRIPTION",
+      "bytes": 2929,
+      "sha256": "5565e6d5cf49c137a9e433889425a017f42bf40621e501edeb39475d846618df",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "ForestGALES and fgr manual 16092020.pdf",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/ForestGALES%20and%20fgr%20manual%2016092020.pdf",
+      "bytes": 661914,
+      "sha256": "76aae2e3444b9f48ba6635d6287972f04097b651fefd30dde52aa74e5bae1671",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "LICENCE.txt",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/LICENCE.txt",
+      "bytes": 2084,
+      "sha256": "59287d98cfb9edb704a4446112b31df4470dbefb2e53b904c6239e2536704b29",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "NAMESPACE",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/NAMESPACE",
+      "bytes": 31,
+      "sha256": "736cb2c31c983b3a07d06d09b8ef93d89972f312c1db584ff253a0281d082bac",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/Deflection_Loading Factor.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/Deflection_Loading%20Factor.R",
+      "bytes": 4520,
+      "sha256": "65ec3149684a97894bbfd2c830f44ea5dbc14e58b272d91243d8cf161ee132c2",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/Turning_Coefficient_Functions.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/Turning_Coefficient_Functions.R",
+      "bytes": 2940,
+      "sha256": "e719ff5b665ccc8682851251fd9c0da46d93ed490799acc47ce83c0bf58738d3",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/Turning_Moment_Ratios.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/Turning_Moment_Ratios.R",
+      "bytes": 4060,
+      "sha256": "65ef7674d41f8aad59463d96d6e61957bb442b536a9db813688fe2842873e565",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/annual_exceedance_prob.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/annual_exceedance_prob.R",
+      "bytes": 1157,
+      "sha256": "eeea5fb8ec0c541fa4844f38a738a725a32db5aec008991e899500afc6be72b8",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/bending_moment_rou.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/bending_moment_rou.R",
+      "bytes": 1844,
+      "sha256": "3203362cb5a67e021f8a07de0737e7ae57122d4be73fb2046ec2569cc9cfba85",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/canopy_breadth_fun.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/canopy_breadth_fun.R",
+      "bytes": 826,
+      "sha256": "02c0de06d8e67d23641710d2e0baf30e3b7f7ce6dc775b0702e013d5e5deac86",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/critical_moments.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/critical_moments.R",
+      "bytes": 1578,
+      "sha256": "9bc4a382de0921e2a9d685c5e4d928bdd19bc771a9e0d51d56dad4668ccc95b3",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/cws_rou_breakage.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/cws_rou_breakage.R",
+      "bytes": 3541,
+      "sha256": "e7e71ed8f6a7e4ed797c7dfcc483fcde32a3bab51cf0a383e77f803e9aa12546",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/cws_rou_overturning.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/cws_rou_overturning.R",
+      "bytes": 3543,
+      "sha256": "d71df492016fa42ca933438c03e34de2253b29ca87114a37e4e8b554d0c50743",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/cws_tmc_breakage.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/cws_tmc_breakage.R",
+      "bytes": 5728,
+      "sha256": "c526cbd3c2a499aa3198ee1ce56a695869707035dadffce0ad3ac6bf5c0326b7",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/cws_tmc_overturning.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/cws_tmc_overturning.R",
+      "bytes": 5769,
+      "sha256": "2be7576ab072b3523cb44bf2d8c339578f612ca70bf620b44afece1bb964d51a",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/df_rou.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/df_rou.R",
+      "bytes": 5604,
+      "sha256": "648b5f9593e69c5344ba664cf201cfd6917cd5bfb64ac134fa29a5b4176fc514",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/df_rou_mechanical.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/df_rou_mechanical.R",
+      "bytes": 5878,
+      "sha256": "f39c524ba83de2c5536434e61f19969e612a0ae3627349a11ff9452bd7b909d3",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/df_tmc.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/df_tmc.R",
+      "bytes": 6922,
+      "sha256": "de3cbb008d081df7b12faec1e9928b4a02923a9c06480bfdd93a99e98dd02816",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/df_tmc_2.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/df_tmc_2.R",
+      "bytes": 7958,
+      "sha256": "65a69cf82b342edf39881299bdfbd3359d1f3f79fb56dda70e36fd7e148c5ed0",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/drag_fun.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/drag_fun.R",
+      "bytes": 767,
+      "sha256": "4bc76123cb2eaf797aa5a57972570f21385b5a82772a176298325fe182700133",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/edge_gap_factor.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/edge_gap_factor.R",
+      "bytes": 1608,
+      "sha256": "87a9fe4f1167f2c6edb2c58d542ddbd50c7a564beb2a7f3742dbcb9e494a1918",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/edge_gap_gust_factor.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/edge_gap_gust_factor.R",
+      "bytes": 1458,
+      "sha256": "826b69245fd9b612740d627d851d87edc02bdcbc993acdad2910d19f64b2586b",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/elevate.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/elevate.R",
+      "bytes": 777,
+      "sha256": "4197a9b121720000bf1a35bdef848192d946a0f55262c26ac5c20b412a5ad681",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/fg_rou.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/fg_rou.R",
+      "bytes": 18370,
+      "sha256": "13dfdc0cfc5e5a001702a75f231d41a5fcce43d5caef8688a04b65e8ee25610a",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/fg_tmc.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/fg_tmc.R",
+      "bytes": 25306,
+      "sha256": "8e6babf85df7fb9da69d91097a015d8e3312418a0c355eecaa5352f17032392c",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/gammasolved_fun.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/gammasolved_fun.R",
+      "bytes": 1342,
+      "sha256": "e7ebfe46c42b0ca5e21e03f1e3fde36b5bf0774eb35af4718ecc807674423868",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/lambdacapital_fun.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/lambdacapital_fun.R",
+      "bytes": 1187,
+      "sha256": "9444805c037c4db5ffb0b6318a3c9bcd7e961c81d3732644e10e619bea33e74b",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/max_gap_factor.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/max_gap_factor.R",
+      "bytes": 587,
+      "sha256": "5d2f78deac466e76c18d2b949510861cd55cdbfcb95d18949f6b3c600719dc56",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/stem_vol_functions.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/stem_vol_functions.R",
+      "bytes": 3249,
+      "sha256": "f6f6e9b7393e24236e503d45033209f416aa59432fc9650a09cf1abf05079384",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/stem_vol_switch.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/stem_vol_switch.R",
+      "bytes": 1742,
+      "sha256": "04a8cc575503dc504ca802d96d2d5a21b3c284b733627d3f21b2a9ceceddb600",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/tree_dimensions.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/tree_dimensions.R",
+      "bytes": 3314,
+      "sha256": "9f687614b3f1f1975401a8c4332e7cf23f2ed2346a2775418829839eaad16a22",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/z0_fun.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/z0_fun.R",
+      "bytes": 1572,
+      "sha256": "21fb4e9ee1a2036b57c93be207ecb99a11f46f757a7402aa72da226e610c9cb1",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "R/zpd_fun.R",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/R/zpd_fun.R",
+      "bytes": 1548,
+      "sha256": "6932938dac4e9d7abbcf72b79898e36332160a381ee8e3535347612be8998edd",
+      "status": "downloaded_for_readonly_research"
+    },
+    {
+      "path": "README.Rmd",
+      "url": "https://raw.githubusercontent.com/tom-locatelli/fgr/0636e245d766eb81fd8d453dd61daad64584b660/README.Rmd",
+      "bytes": 5877,
+      "sha256": "ea663755e1139955d98c8db2f22c0c4a5f26ad1ff326eade0d0dca921467f12c",
+      "status": "downloaded_for_readonly_research"
+    }
+  ],
+  "code_executed": false,
+  "installed": false
+}

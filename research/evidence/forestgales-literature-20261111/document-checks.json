@@ -1,0 +1,12 @@
+{
+  "bibliography_items": 13,
+  "journal_sources": 12,
+  "abstract_preview_only": 3,
+  "new_report_no_long_dashes": true,
+  "registry_ids": 16,
+  "canonical_plan_equal": true,
+  "new_model_or_app_tests": false,
+  "reason": "Documentation-only research; no solver/application change",
+  "reviewed_readonly_source_files_sha": 40,
+  "git_diff_check": "passed before explicit staging"
+}

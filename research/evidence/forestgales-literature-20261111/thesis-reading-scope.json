@@ -1,0 +1,92 @@
+{
+  "source": "Tommaso Locatelli2016, Developing and testing a model of wind damage risk for forest plantations in South-West Europe",
+  "repository": "https://era.ed.ac.uk/items/d9f907ab-6c9c-4ed7-9112-7b988084b3ca",
+  "fulltext_url": "https://era.ed.ac.uk/server/api/core/bitstreams/351dc5eb-af60-4b86-8985-d60f6d058cab/content",
+  "pdf_sha256": "dcbef80965c2da4a895d3d5aed17bc412330b274aeb8570f978cfcc20e03c657",
+  "actual_read_scope": "Selected methods/results/limitations sections studied; not a cover-to-cover reading",
+  "target_pages": [
+    16,
+    17,
+    18,
+    164,
+    166,
+    167,
+    168,
+    170,
+    202,
+    203,
+    212,
+    222,
+    223,
+    224,
+    225,
+    226
+  ],
+  "visual_pages": [
+    168,
+    212,
+    224
+  ],
+  "findings": [
+    {
+      "pages": [
+        167,
+        168,
+        170
+      ],
+      "printed_pages": [
+        140,
+        141,
+        143
+      ],
+      "fact": "Sensitivity inputs include joint distributions/correlation; independent marginal draws inadequate for correlated input uncertainties."
+    },
+    {
+      "pages": [
+        212,
+        223
+      ],
+      "printed_pages": [
+        185,
+        196
+      ],
+      "fact": "Height, DBH, stocking and gap enter interacting components, with species/sample-range dependence; reserve time for reliable measurement."
+    },
+    {
+      "pages": [
+        224
+      ],
+      "printed_pages": [
+        197
+      ],
+      "fact": "Rooting/soil low variance contributions (<6% fixing error in selected scope) also reveal limited empirical anchorage formulation; not physical proof roots irrelevant."
+    },
+    {
+      "pages": [
+        168,
+        225
+      ],
+      "printed_pages": [
+        141,
+        198
+      ],
+      "fact": "Study partly combines maritime pine with Scots pine data; Eucalyptus anchorage site-specific, distributions/correlation matrix may not represent other species."
+    },
+    {
+      "pages": [
+        224,
+        225,
+        226
+      ],
+      "printed_pages": [
+        197,
+        198,
+        199
+      ],
+      "fact": "Windiness is strong driver of annual probability; tail/target climatology and exposed-edge classification need scope-specific validation."
+    }
+  ],
+  "render_warning": "Poppler reported missing Symbol display font; three inspected text/table pages were legible; no copied implementation of the unrendered copula equation",
+  "new_model_implemented": false,
+  "field_validation_performed": false
+}

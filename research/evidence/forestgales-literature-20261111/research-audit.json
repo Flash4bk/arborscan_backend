@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-11",
+  "task_ids": [
+    "AS-11",
+    "AS-10 boundary",
+    "AS-13 boundary"
+  ],
+  "journal_sources": 12,
+  "thesis_sources": 1,
+  "journal_abstract_or_preview_only": 3,
+  "visual_pdf_pages": {
+    "Hale2015": [
+      6,
+      10
+    ],
+    "Locatelli2016": [
+      168,
+      212,
+      224
+    ]
+  },
+  "R_snapshot_commit": "0636e245d766eb81fd8d453dd61daad64584b660",
+  "R_files_readonly_downloaded": 34,
+  "own_local_notes": [
+    {
+      "path": "output/forestgales-literature/core/CORE_FINDINGS.md",
+      "bytes": 16827,
+      "sha256": "ef3374f8bb122ff488f5c4a0a3c41b5838802c0fa8ca5d2e263228f934b279a6"
+    },
+    {
+      "path": "output/forestgales-literature/applications/READING_NOTES.md",
+      "bytes": 10098,
+      "sha256": "a8587c048835b138ef15f6a864f245f8607aac0da2f68cdd97c809724b9725b6"
+    },
+    {
+      "path": "output/forestgales-literature/software/software-findings.json",
+      "bytes": 6030,
+      "sha256": "74a147204b8c5404a4b0741fa103d422532dfbb4542a58ed9fea7f8b69937372"
+    },
+    {
+      "path": "output/forestgales-literature/sensitivity/findings.json",
+      "bytes": 2468,
+      "sha256": "ab968f70a78e2be76a609c45a05bee2084fbafa746ed6204c66a91555081730f"
+    }
+  ],
+  "independent_review": {
+    "core_physics_and_beta": "reviewed; no material defect; empirical coefficient units clarified",
+    "software_and_licences": "reviewed; no material defect; official delivery remains unreceived"
+  },
+  "not_performed": [
+    "ForestGALES EXE/DLL execution",
+    "R installation/execution",
+    "source integration",
+    "new mechanical calculations",
+    "field measurements",
+    "ArborScan phone tests",
+    "production access or changes",
+    "licence form submission or author contact"
+  ],
+  "source_material_policy": "Full copyrighted papers, proprietary package and public R snapshot remain local output; only own synthesis, metadata and hashes in Git."
+}

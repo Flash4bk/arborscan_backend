@@ -1,0 +1,9 @@
+{
+  "canonical_before_sha256": "6683b6dfbf4f28c359ff19c97afba64db6742efb0a44d3f36ceef70668124564",
+  "parallel_version_preserved": "1.52",
+  "new_version": "1.53",
+  "canonical_and_HEAD_prior_lines_preserved": true,
+  "registry_ids": 16,
+  "canonical_plan_equal": true,
+  "parallel_results_retested": false
+}
