@@ -1,0 +1,18 @@
+{
+  "scope": "AST exact legacy handler; synthetic artifacts/transports; no server import/network/filesystem deletion",
+  "server_sha256": "3deaa6fa754d7a990bb4ac16dbaae9971c46a536829e1105327504a41c2485bf",
+  "function_lines": [
+    2714,
+    3115
+  ],
+  "no_authorization": true,
+  "owner_lookup_performed": false,
+  "writes": 6,
+  "verified_bucket_written": true,
+  "verified_response": true,
+  "unauthenticated_role_recorded_as": "user",
+  "unauthenticated_actor_id_is_null": true,
+  "returned_corrected_height_m": 17.0,
+  "actual_production_route_config": "not checked",
+  "training_started": false
+}

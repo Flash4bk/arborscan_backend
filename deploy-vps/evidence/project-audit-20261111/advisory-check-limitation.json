@@ -1,0 +1,6 @@
+{
+  "source": "https://api.osv.dev/v1/querybatch",
+  "status": "unavailable",
+  "error_type": "ConnectionError",
+  "scope": "no dependency safety conclusion; no TLS bypass"
+}

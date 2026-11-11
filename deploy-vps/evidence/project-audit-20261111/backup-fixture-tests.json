@@ -1,0 +1,21 @@
+{
+  "command": [
+    "C:\\Users\\danik\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "-m",
+    "unittest",
+    "tests_v4.test_ops_backup_policy",
+    "tests_v4.test_windows_retention_two",
+    "-v"
+  ],
+  "returncode": 0,
+  "seconds": 41.746,
+  "scope": "Windows only; tiny tempfile fixtures; no D:/ArborScanBackups or VPS touched",
+  "tail": [
+    "test_windows_drive_paths_and_ads_are_refused (tests_v4.test_windows_retention_two.RestoreUtf8Test.test_windows_drive_paths_and_ads_are_refused) ... ok",
+    "",
+    "----------------------------------------------------------------------",
+    "Ran 48 tests in 41.212s",
+    "",
+    "OK"
+  ]
+}

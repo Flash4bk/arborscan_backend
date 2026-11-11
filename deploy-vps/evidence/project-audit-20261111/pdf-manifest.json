@@ -1,0 +1,206 @@
+{
+  "date": "2026-11-11",
+  "scope": "read-only QA of freshly regenerated synthetic widget/service PDF artifacts; no Android/system-dialog test",
+  "files": [
+    {
+      "source": "output/pdf/as12/ArborScan_DEMO-AS12_full-v1.pdf",
+      "bytes": 50898,
+      "sha256": "90061710a96227b30afff7304f85d13a3a9b5626a5df693fa92f5cef5473e6c5",
+      "pages": [
+        {
+          "number": 1,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 429
+        },
+        {
+          "number": 2,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1551
+        },
+        {
+          "number": 3,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1221
+        },
+        {
+          "number": 4,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 707
+        }
+      ],
+      "rendered_pngs": [
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v1/page-1.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v1/page-2.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v1/page-3.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v1/page-4.png"
+      ],
+      "contact": "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v1/contact.png",
+      "render_warning": "",
+      "source_unmodified": true
+    },
+    {
+      "source": "output/pdf/as12/ArborScan_DEMO-AS12_full-v2.pdf",
+      "bytes": 50886,
+      "sha256": "b1228252a6aa015caf4b654856bf547c477e57ddc8ca8db950d22cdaa268f5b1",
+      "pages": [
+        {
+          "number": 1,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 429
+        },
+        {
+          "number": 2,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1551
+        },
+        {
+          "number": 3,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1221
+        },
+        {
+          "number": 4,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 707
+        }
+      ],
+      "rendered_pngs": [
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v2/page-1.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v2/page-2.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v2/page-3.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v2/page-4.png"
+      ],
+      "contact": "output/audit-20261111/pdf/ArborScan_DEMO-AS12_full-v2/contact.png",
+      "render_warning": "",
+      "source_unmodified": true
+    },
+    {
+      "source": "output/pdf/as12/ArborScan_DEMO-AS12_long.pdf",
+      "bytes": 54495,
+      "sha256": "b233a347aba59a61774913bd8297391567edae06df0f24846cbb06e8dbb29631",
+      "pages": [
+        {
+          "number": 1,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 354
+        },
+        {
+          "number": 2,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1973
+        },
+        {
+          "number": 3,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 3216
+        },
+        {
+          "number": 4,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 858
+        },
+        {
+          "number": 5,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1221
+        },
+        {
+          "number": 6,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 707
+        }
+      ],
+      "rendered_pngs": [
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_long/page-1.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_long/page-2.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_long/page-3.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_long/page-4.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_long/page-5.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_long/page-6.png"
+      ],
+      "contact": "output/audit-20261111/pdf/ArborScan_DEMO-AS12_long/contact.png",
+      "render_warning": "",
+      "source_unmodified": true
+    },
+    {
+      "source": "output/pdf/as12/ArborScan_DEMO-AS12_missing.pdf",
+      "bytes": 19826,
+      "sha256": "1835a2b658c3fef66f029d06c0f4784bf0e9b1b4c7e4f3fec1b573c15c649a82",
+      "pages": [
+        {
+          "number": 1,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 492
+        },
+        {
+          "number": 2,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1588
+        },
+        {
+          "number": 3,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 894
+        }
+      ],
+      "rendered_pngs": [
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_missing/page-1.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_missing/page-2.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_missing/page-3.png"
+      ],
+      "contact": "output/audit-20261111/pdf/ArborScan_DEMO-AS12_missing/contact.png",
+      "render_warning": "",
+      "source_unmodified": true
+    },
+    {
+      "source": "output/pdf/as12/ArborScan_DEMO-AS12_old.pdf",
+      "bytes": 40309,
+      "sha256": "f3a590cf9ec2f450a2dd4e0255b98cc8eff181173f1ce3f567e7b2bc9b34e73e",
+      "pages": [
+        {
+          "number": 1,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 417
+        },
+        {
+          "number": 2,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 1742
+        },
+        {
+          "number": 3,
+          "width_pt": 595.27559,
+          "height_pt": 841.88976,
+          "characters": 926
+        }
+      ],
+      "rendered_pngs": [
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_old/page-1.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_old/page-2.png",
+        "output/audit-20261111/pdf/ArborScan_DEMO-AS12_old/page-3.png"
+      ],
+      "contact": "output/audit-20261111/pdf/ArborScan_DEMO-AS12_old/contact.png",
+      "render_warning": "",
+      "source_unmodified": true
+    }
+  ]
+}

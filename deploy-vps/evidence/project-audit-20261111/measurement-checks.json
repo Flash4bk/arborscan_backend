@@ -1,0 +1,60 @@
+{
+  "scope": "static AST extraction of three trusted repository definitions; no server import or live API execution",
+  "measurement_unit_test_returncode": 0,
+  "command": [
+    "C:\\Users\\danik\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "-m",
+    "unittest",
+    "tests_v4.test_measurement_engine",
+    "tests_v4.test_species_profiles",
+    "-v"
+  ],
+  "legacy_beta_cases": [
+    {
+      "species": "Сосна",
+      "crown_area_m2": 0,
+      "returned": {
+        "beta_kg_s": 5.0,
+        "beta_max_scenario": 7.5,
+        "method": "pixel_area_integration",
+        "source": "Вычислено по попиксельной маске (Computer Vision)",
+        "input": {
+          "species": "Сосна",
+          "crown_area_m2": 0,
+          "c_aero": 4.5
+        }
+      }
+    },
+    {
+      "species": "Сосна",
+      "crown_area_m2": 10,
+      "returned": {
+        "beta_kg_s": 45.0,
+        "beta_max_scenario": 67.5,
+        "method": "pixel_area_integration",
+        "source": "Вычислено по попиксельной маске (Computer Vision)",
+        "input": {
+          "species": "Сосна",
+          "crown_area_m2": 10,
+          "c_aero": 4.5
+        }
+      }
+    },
+    {
+      "species": "Unknown species",
+      "crown_area_m2": 10,
+      "returned": {
+        "beta_kg_s": 45.0,
+        "beta_max_scenario": 67.5,
+        "method": "pixel_area_integration",
+        "source": "Вычислено по попиксельной маске (Computer Vision)",
+        "input": {
+          "species": "Unknown species",
+          "crown_area_m2": 10,
+          "c_aero": 4.5
+        }
+      }
+    }
+  ],
+  "physical_validation": false
+}

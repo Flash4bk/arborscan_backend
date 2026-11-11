@@ -1,0 +1,122 @@
+{
+  "started_local_date": "2026-11-11",
+  "completed_local_date": "2026-11-12",
+  "recorded_at_utc": "2026-11-11T21:01:44.218365+00:00",
+  "task_ids": [
+    "AS-01",
+    "AS-02",
+    "AS-03",
+    "AS-04",
+    "AS-05",
+    "AS-06",
+    "AS-07",
+    "AS-08",
+    "AS-09",
+    "AS-10",
+    "AS-11",
+    "AS-12",
+    "AS-13",
+    "AS-14",
+    "AS-15",
+    "AS-16"
+  ],
+  "source_head": "dda9aa1d8b25b2a1bd5fab5f064bac4ff6630079",
+  "mode": "findings first; no implementation or deployment",
+  "source_branch": "codex/recognition-results",
+  "flutter_tests": {
+    "passed": 303,
+    "failed": 0
+  },
+  "backend_tests": {
+    "passed": 140,
+    "skipped": 1,
+    "failed": 0,
+    "warnings": 6
+  },
+  "measurement_profile_tests": {
+    "passed": 7
+  },
+  "windows_backup_fixture_tests": {
+    "passed": 48
+  },
+  "additional_defect_reproduction_probes": {
+    "map": 3,
+    "legacy_verdict": 2,
+    "meaning": "passed asserts current bad behaviour, not correctness"
+  },
+  "flutter_analyze": {
+    "current": {
+      "info": 46,
+      "warning": 3
+    },
+    "same_problem_set_as_recorded_apk34": true,
+    "current_count": 49,
+    "old_count": 49,
+    "errors": 0
+  },
+  "native_android_unit_tests": {
+    "executed": false,
+    "passed_claimed": false,
+    "final_offline_exit": 1,
+    "reason": "six uncached build dependencies; online Gradle artifact resolution stalled in SSL/HTTP",
+    "JDK21_process_only": true
+  },
+  "pdf": {
+    "files": 5,
+    "pages": 20,
+    "all_local_synthetic_fixtures": true,
+    "all_pages_rendered_and_visually_reviewed": true,
+    "phone_or_server_export_verified": false
+  },
+  "android_guest": {
+    "apk_version": "1.4.3-models.1",
+    "version_code": 34,
+    "sha256": "13d7e776b4196347f0a6262f8ac625a97fd732826994febd0d91c34c47d08031",
+    "read_only_emulator": true,
+    "physical_S24_checked": false,
+    "saved_states": 10,
+    "font_scale_restored": true
+  },
+  "findings": {
+    "P1": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "SCI-01",
+      "OPS-01"
+    ],
+    "P2": [
+      "DATA-01",
+      "DATA-02",
+      "HIST-01",
+      "PERF-01",
+      "SEC-04",
+      "SCI-02",
+      "OPS-02",
+      "REL-01"
+    ],
+    "P3": [
+      "PDF-01"
+    ]
+  },
+  "independent_reviews": {
+    "backend_security": "no material defects; deployed full analyze_tree not independently source-hashed",
+    "science_ops": "no material defects; worker history/backup coverage wording clarified"
+  },
+  "not_performed": [
+    "production writes",
+    "real-user record reads or modifications",
+    "real secrets in output",
+    "SQL migration/real DB concurrency test",
+    "new full SQL restore",
+    "backup creation/deletion/service start",
+    "model training/activation",
+    "S24 install/auth/UI",
+    "new APK build",
+    "main merge/push"
+  ],
+  "local_test_runtime_not_production_equivalent": true,
+  "raw_logs_local_directory": "output/audit-20261111",
+  "public_certificate_verified": true,
+  "certbot_timer_active": true
+}

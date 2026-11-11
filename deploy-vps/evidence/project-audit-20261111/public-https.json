@@ -1,0 +1,34 @@
+[
+  {
+    "path": "/api/v3/health",
+    "http_status": 200,
+    "safe_body": {
+      "status": "ok"
+    },
+    "tls_verification": "default_system_ssl_context"
+  },
+  {
+    "path": "/api/v4/health",
+    "http_status": 200,
+    "safe_body": {
+      "status": "ok"
+    },
+    "tls_verification": "default_system_ssl_context"
+  },
+  {
+    "path": "/api/v4/v4/corrections",
+    "http_status": 401,
+    "safe_body": {
+      "detail": "Sign in before saving a correction"
+    },
+    "tls_verification": "default_system_ssl_context"
+  },
+  {
+    "path": "/api/v4/v4/reports",
+    "http_status": 401,
+    "safe_body": {
+      "detail": "Sign in before saving a correction"
+    },
+    "tls_verification": "default_system_ssl_context"
+  }
+]

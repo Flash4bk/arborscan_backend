@@ -1,0 +1,30 @@
+{
+  "serial": "emulator-5562",
+  "environment": "existing isolated review AVD, read-only boot; not S24",
+  "installed_apk_sha256": "13d7e776b4196347f0a6262f8ac625a97fd732826994febd0d91c34c47d08031",
+  "physical_phone_connected": false,
+  "versioned_apk_sha256": "13d7e776b4196347f0a6262f8ac625a97fd732826994febd0d91c34c47d08031",
+  "visible_packages": [
+    "com.example.arborscan_app"
+  ],
+  "home_labels": [
+    "ArborScan — ось и крона\nArborScan",
+    "Профиль",
+    "Новое исследование",
+    "Фото дерева",
+    "ArborScan",
+    "Камера",
+    "Галерея",
+    "Измерения",
+    "Как выбрать способ измерения",
+    "AR",
+    "По эталону",
+    "Добавьте фото для анализа.",
+    "Диагностика",
+    "Анализировать",
+    "Анализ\nTab 1 of 4",
+    "История\nTab 2 of 4",
+    "Карта\nTab 3 of 4",
+    "Профиль\nTab 4 of 4"
+  ]
+}

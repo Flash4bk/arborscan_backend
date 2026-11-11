@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-11",
+  "source_generation": "Root fresh Flutter suite; PDF source mtimes2026-11-11 23:16:43+03:00",
+  "scope": "read-only PDF artifact inspection; synthetic fixtures; no phone/SAF/share/open test",
+  "files": 5,
+  "pages": 20,
+  "paper": "A4 portrait on all20pages",
+  "poppler_render_failures": 0,
+  "poppler_warnings": 0,
+  "visual_review": {
+    "contact_sheets_reviewed": 5,
+    "pages_reviewed": 20,
+    "additional_full_page_views": [
+      "full-v1 p2",
+      "long p3",
+      "long p4"
+    ],
+    "major_layout_failures": 0,
+    "cyrillic_missing_glyphs_observed": false,
+    "overlaps_or_clipping_observed": false
+  },
+  "content_checks": {
+    "v1_height_m": 4.8,
+    "v2_height_m": 5.4,
+    "full_crown_width_m": 2.1,
+    "full_crown_height_m": 2.1,
+    "selected_versions_distinct": true,
+    "photos_and_markup_identical_between_frozen_versions": true,
+    "partial_report_explicitly_labelled": true,
+    "partial_has_no_embedded_images": true,
+    "old_unknowns_explicit": true,
+    "beta_unavailable_text_kg_s": true,
+    "all_input_pdf_sha_unchanged": true
+  },
+  "limitations": [
+    "v2 intentionally changes the frozen height field but reuses the same synthetic reference points; this proves version separation, not geometric recomputation consistency",
+    "fixtures contain some line coordinates without corresponding stored metric values; exporter correctly leaves those metrics unavailable rather than recomputing",
+    "synthetic image and data only; no real user report or phone/system dialog tested",
+    "All five artifacts are local:true synthetic fixtures; this QA is not a live-server retrieval/export test"
+  ],
+  "finding": {
+    "severity": "P3",
+    "title": "Metric label/value can be separated from its method/reason across pages",
+    "artifact": "ArborScan_DEMO-AS12_long.pdf",
+    "pages": [
+      3,
+      4
+    ],
+    "observed": "Trunk-section metric heading and unavailable value at bottom of p3; source and missing-input reason at top of p4. No text loss.",
+    "recommendation": "Keep a metric label/value with at least its first explanation line, or repeat label on continuation.",
+    "source": "arborscan_app/lib/report_pdf.dart:296-316"
+  }
+}

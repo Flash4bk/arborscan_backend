@@ -1,0 +1,262 @@
+{
+  "date": "2026-11-11",
+  "scope": [
+    "AS-01",
+    "AS-02",
+    "AS-04",
+    "AS-05",
+    "AS-14",
+    "AS-16"
+  ],
+  "mode": "read-only audit; output files and isolated auditvenv only",
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "P1",
+      "title": "Legacy feedback permits unauthenticated cross-owner writes and self-verification",
+      "locations": [
+        {
+          "file": "server.py",
+          "line": 2847
+        },
+        {
+          "file": "server.py",
+          "line": 2853
+        },
+        {
+          "file": "server.py",
+          "line": 2856
+        },
+        {
+          "file": "server.py",
+          "line": 2946
+        },
+        {
+          "file": "server.py",
+          "line": 3020
+        }
+      ],
+      "trigger": "POST /api/v3/feedback or /api/v3/api/feedback with a known legacy analysis_id; token absent, invalid or belonging to another owner",
+      "impact": "Source artifacts are loaded without owner check, corrected values and masks can overwrite raw/input/meta/verified artifacts; reply can return analysis parameters. Unauthenticated actor is relabelled user with null actor ID; default quality flags yield verified:true.",
+      "evidence": [
+        "legacy-feedback-probe.json",
+        "../root/live-source-segment-check.json",
+        "../root/live-route-source-check.json"
+      ],
+      "verified": "Exact handler AST with synthetic storage performs6writes and returns verified:true; root confirms current live function source and public Nginx/OpenAPI route. No live mutation sent.",
+      "limits": "No evidence an attacker exploited it. New v4 correction workflow remains separate. Legacy retrain worker main is disabled at tools/retrain_worker.py854; do not claim automatic model training.",
+      "next_action": "Require real current user plus analysis ownership before loading/writing; user feedback must remain unverified until admin decision; preserve old records, add deny/owner/replay regression tests."
+    },
+    {
+      "id": "B2",
+      "severity": "P1",
+      "title": "Public legacy PlantNet health can echo provider API key from transport errors",
+      "locations": [
+        {
+          "file": "server.py",
+          "line": 2192
+        },
+        {
+          "file": "server.py",
+          "line": 2209
+        },
+        {
+          "file": "server.py",
+          "line": 1931
+        }
+      ],
+      "trigger": "GET /api/v3/health/plantnet or /api/v3/health?deep=true when provider transport exception contains prepared URL with api-key query parameter",
+      "impact": "Raw exception text is returned publicly; requests transport errors may include credential-bearing URL.",
+      "evidence": [
+        "plantnet-health-error-probe.json",
+        "../root/live-source-segment-check.json"
+      ],
+      "verified": "Exact health AST with synthetic transporterror echoes a fake credential; root confirms current live function source matches. No real key read or leak induced.",
+      "limits": "Actual key exposure not observed. V4 PlantNetClient.health already sanitizes its errors.",
+      "next_action": "Return fixed safe error category, redact log exceptions/URLs, regression-test synthetic credential. If historical exposure confirmed, owner-managed provider-key rotation."
+    },
+    {
+      "id": "B3",
+      "severity": "P1",
+      "title": "Legacy report opening puts reusable session token in request URL",
+      "locations": [
+        {
+          "file": "arborscan_app/lib/history_tab_page.dart",
+          "line": 280
+        },
+        {
+          "file": "server.py",
+          "line": 1726
+        },
+        {
+          "file": "deploy-vps/Dockerfile",
+          "line": 62
+        }
+      ],
+      "trigger": "Open a legacy v3 history report; client builds token query parameter rather than Authorization header",
+      "impact": "URL-bearing access logs can retain a session credential. Backend already accepts Authorization header.",
+      "evidence": [
+        "Flutter agent read-only caller review",
+        "server route and Docker default Uvicorn logging reviewed"
+      ],
+      "verified": "Caller and server source confirm token query; Docker starts Uvicorn without --no-access-log. Root checked live Nginx route.",
+      "limits": "Real logs/tokens not read; actual production access-log redaction not established.",
+      "next_action": "Use Authorization header for this existing caller, remove or deprecate query-token transport compatibly, redact credential-bearing access-log fields."
+    },
+    {
+      "id": "B4",
+      "severity": "P2",
+      "title": "Legacy analysis decodes uploads before any application byte or pixel cap",
+      "locations": [
+        {
+          "file": "server.py",
+          "line": 2234
+        },
+        {
+          "file": "server.py",
+          "line": 2235
+        }
+      ],
+      "trigger": "Anonymous legacy analysis receives a highly compressed large-resolution image",
+      "impact": "Unbounded file.read and cv2.imdecode can allocate excess memory in v3 container, affecting analysis and login. Nginx40MiB cap bounds compressed upload, not decoded pixels.",
+      "verified": "Source review; root confirms live route and Nginx40m. V4 bounds15MiB/25MP and has RequestLimits.",
+      "limits": "No large allocation/OOM or denial-of-service induced.",
+      "next_action": "Apply byte cap and header/pixel checks before decode; test oversized headers/images and ordinary old client uploads."
+    },
+    {
+      "id": "B5",
+      "severity": "P2",
+      "title": "Backend runtime cannot be reconstructed from commit alone",
+      "locations": [
+        {
+          "file": "deploy-vps/requirements.v4.txt",
+          "line": 1
+        },
+        {
+          "file": "requirements.txt",
+          "line": 1
+        },
+        {
+          "file": "deploy-vps/Dockerfile.v4",
+          "line": 23
+        }
+      ],
+      "trigger": "Rebuild Docker image from same Git commit after dependencies change upstream",
+      "impact": "Most Python packages and Torch base are unpinned; resulting framework/ML versions can differ from verified runtime.",
+      "verified": "Dependency manifests/Docker instructions inspected; audit runtime explicitly recorded as local and different from historical production-compatible evidence.",
+      "limits": "No assertion of a specific currently vulnerable package; no dependency upgrades performed.",
+      "next_action": "Capture tested runtime constraints/lock with hashes, pin base images where practicable; review/test dependency updates separately."
+    }
+  ],
+  "tests": {
+    "counts": {
+      "collected": 141,
+      "passed": 140,
+      "skipped": 1,
+      "failed": 0
+    },
+    "skips": [
+      {
+        "name": "test_ultralytics_cpu_device_selection_keeps_thread_limit",
+        "reason": "could not import 'torch': No module named 'torch'"
+      }
+    ],
+    "reported_duration_s": 8.08,
+    "warnings": 6,
+    "warning_kind": "existing datetime.utcnow deprecation",
+    "runtime": {
+      "numpy": "1.26.4",
+      "opencv-python-headless": "4.10.0.84",
+      "fastapi": "0.115.14",
+      "requests": "2.32.5",
+      "pytest": "8.4.2",
+      "httpx": "0.28.1",
+      "pillow": "13.0.0",
+      "pydantic": "2.14.2",
+      "starlette": "0.46.2",
+      "python-multipart": "0.0.20"
+    },
+    "python": "3.12.14",
+    "stdlib_25_tests_overlap_in_140_do_not_add": true,
+    "cloud_env_stripped": true
+  },
+  "working_code_evidence": [
+    "v4 correction auth/private owner paths, immutable blob readback, revision conflicts and old PNG fallback covered in scoped tests",
+    "v4 ordinary users cannot moderate; admin dependency and SQL role recheck reviewed",
+    "report snapshots/private owner index/EXIF reference recomputation covered",
+    "Google verified-subject linking/spoof/races/server role assignment covered",
+    "ML admin routes, immutable snapshot export, accepted revision decisions, class labels, exact-image and known-series split grouping covered",
+    "comparison limits/pinned weights/disposable worker policy covered except real Torch thread test"
+  ],
+  "limits": [
+    "No real PostgreSQL migration/SQL execution in this audit; mocks and SQL inspection do not prove it",
+    "No actual model inference/training, live protected writes or activation",
+    "No phoneUI or measurements checked by this backend subtask",
+    "No exhaustive dependency CVE scan/history secret audit",
+    "No real user records, env values or tokens read/output",
+    "Selected live package metadata read via docker exec importlib.metadata only; OSV API unreachable (ConnectionError), so no current advisory/CVE clearance. Native cv2 provider cannot be identified from duplicate installed metadata alone."
+  ],
+  "secret_pattern_scan": {
+    "files": 681,
+    "strong_pattern_matches": 0,
+    "scope": "selected tracked text only; historical/private files excluded",
+    "tracked_pem": "public ISRG root certificate, not private key"
+  },
+  "source_sha256": {
+    "server.py": "3deaa6fa754d7a990bb4ac16dbaae9971c46a536829e1105327504a41c2485bf",
+    "auth_google_identity.py": "7add233c22c45524afe597102e2a47bf451bc18bd1f15ddcebe11b142a0dd239",
+    "arborscan_v4/corrections_api.py": "97549c5ad70781f101ed9622f9afdf6db1cae80e3771a408ba9b1ba6d30bdbcb",
+    "arborscan_v4/correction_workflow.py": "6c0d6ac51e36718743b3f3e4631c51e89aeb41eaa262f13ae99dcd0a0dfe5f4f",
+    "arborscan_v4/report_history.py": "a51900941fd3b6cb85da414e506944c1638b38a62c96b967fdf759b06a34d67a",
+    "arborscan_v4/model_quality_api.py": "45c23e96cd2a1fea2afa3eb736e76311cd32ece8bfaa7dbe9e8b57a2dd8e1402",
+    "arborscan_v4/quality_dataset.py": "70ed337f8619289843fd091441a24e6775b35aa510aed6469990d62c11fe001f"
+  },
+  "actual_live_dependency_metadata": {
+    "arborscan-api": {
+      "exit_code": 0,
+      "packages": {
+        "fastapi": "0.141.1",
+        "starlette": "1.6.0",
+        "uvicorn": "0.52.4",
+        "pillow": "12.3.0",
+        "requests": "2.34.2",
+        "urllib3": "2.7.0",
+        "python-multipart": "0.0.32",
+        "numpy": "2.4.6",
+        "opencv-python": "5.0.0.93",
+        "opencv-python-headless": "4.10.0.84",
+        "torch": "2.14.0+cpu",
+        "torchvision": "0.29.0+cpu",
+        "ultralytics": "8.4.142",
+        "google-auth": "2.57.1"
+      },
+      "error_class": null
+    },
+    "arborscan-api-v4": {
+      "exit_code": 0,
+      "packages": {
+        "fastapi": "0.141.1",
+        "starlette": "1.6.0",
+        "uvicorn": "0.52.4",
+        "pillow": "12.3.0",
+        "requests": "2.34.2",
+        "urllib3": "2.7.0",
+        "python-multipart": "0.0.32",
+        "numpy": "2.4.6",
+        "opencv-python": "5.0.0.93",
+        "opencv-python-headless": "4.10.0.84",
+        "torch": "2.14.0+cpu",
+        "torchvision": "0.29.0+cpu",
+        "ultralytics": "8.4.143",
+        "google-auth": null
+      },
+      "error_class": null
+    }
+  },
+  "dependency_advisory_audit": {
+    "source": "https://api.osv.dev/v1/querybatch",
+    "status": "unavailable",
+    "error_type": "ConnectionError",
+    "scope": "no dependency safety conclusion; no TLS bypass"
+  }
+}

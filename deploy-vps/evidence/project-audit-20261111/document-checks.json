@@ -1,0 +1,10 @@
+{
+  "previous_plan_lines_preserved_except_5_updated_registry_rows_and_version": 1782,
+  "registry_ids": 16,
+  "canonical_plan_equal": true,
+  "master_plan_version": "1.54",
+  "git_diff_check": "passed",
+  "report_findings": 14,
+  "implementation_unchanged": true,
+  "new_report_uses_ascii_hyphens": true
+}

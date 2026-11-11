@@ -1,0 +1,42 @@
+{
+  "arborscan-api": {
+    "exit_code": 0,
+    "packages": {
+      "fastapi": "0.141.1",
+      "starlette": "1.6.0",
+      "uvicorn": "0.52.4",
+      "pillow": "12.3.0",
+      "requests": "2.34.2",
+      "urllib3": "2.7.0",
+      "python-multipart": "0.0.32",
+      "numpy": "2.4.6",
+      "opencv-python": "5.0.0.93",
+      "opencv-python-headless": "4.10.0.84",
+      "torch": "2.14.0+cpu",
+      "torchvision": "0.29.0+cpu",
+      "ultralytics": "8.4.142",
+      "google-auth": "2.57.1"
+    },
+    "error_class": null
+  },
+  "arborscan-api-v4": {
+    "exit_code": 0,
+    "packages": {
+      "fastapi": "0.141.1",
+      "starlette": "1.6.0",
+      "uvicorn": "0.52.4",
+      "pillow": "12.3.0",
+      "requests": "2.34.2",
+      "urllib3": "2.7.0",
+      "python-multipart": "0.0.32",
+      "numpy": "2.4.6",
+      "opencv-python": "5.0.0.93",
+      "opencv-python-headless": "4.10.0.84",
+      "torch": "2.14.0+cpu",
+      "torchvision": "0.29.0+cpu",
+      "ultralytics": "8.4.143",
+      "google-auth": null
+    },
+    "error_class": null
+  }
+}

@@ -1,0 +1,149 @@
+[
+  {
+    "pdf": "ArborScan_DEMO-AS12_full-v1.pdf",
+    "text_term_counts": {
+      "4.8 м": 1,
+      "5.4 м": 0,
+      "2.1 м": 2,
+      "нет данных": 7,
+      "Неполный": 0,
+      "НЕПОЛНЫЙ": 0,
+      "β": 1,
+      "кг/с": 1,
+      "DEMO-AS12": 1
+    },
+    "images": [
+      {
+        "page": 1,
+        "name": "I17.jpg",
+        "size": [
+          400,
+          600
+        ],
+        "rgb_sha256": "b6fba9a6201673dcca2abec964a0c5accaee8b261681f30c396aed2a2ec9ca9b"
+      },
+      {
+        "page": 3,
+        "name": "I18.png",
+        "size": [
+          400,
+          600
+        ],
+        "rgb_sha256": "13e6aad7214cbb4bc898006709c2a4e2a840aae579eb9a0c8d7825c84b067a31"
+      }
+    ],
+    "text_characters": 3911
+  },
+  {
+    "pdf": "ArborScan_DEMO-AS12_full-v2.pdf",
+    "text_term_counts": {
+      "4.8 м": 0,
+      "5.4 м": 1,
+      "2.1 м": 2,
+      "нет данных": 7,
+      "Неполный": 0,
+      "НЕПОЛНЫЙ": 0,
+      "β": 1,
+      "кг/с": 1,
+      "DEMO-AS12": 1
+    },
+    "images": [
+      {
+        "page": 1,
+        "name": "I17.jpg",
+        "size": [
+          400,
+          600
+        ],
+        "rgb_sha256": "b6fba9a6201673dcca2abec964a0c5accaee8b261681f30c396aed2a2ec9ca9b"
+      },
+      {
+        "page": 3,
+        "name": "I18.png",
+        "size": [
+          400,
+          600
+        ],
+        "rgb_sha256": "13e6aad7214cbb4bc898006709c2a4e2a840aae579eb9a0c8d7825c84b067a31"
+      }
+    ],
+    "text_characters": 3911
+  },
+  {
+    "pdf": "ArborScan_DEMO-AS12_long.pdf",
+    "text_term_counts": {
+      "4.8 м": 1,
+      "5.4 м": 0,
+      "2.1 м": 2,
+      "нет данных": 7,
+      "Неполный": 0,
+      "НЕПОЛНЫЙ": 0,
+      "β": 1,
+      "кг/с": 1,
+      "DEMO-AS12": 1
+    },
+    "images": [
+      {
+        "page": 1,
+        "name": "I21.jpg",
+        "size": [
+          400,
+          600
+        ],
+        "rgb_sha256": "b6fba9a6201673dcca2abec964a0c5accaee8b261681f30c396aed2a2ec9ca9b"
+      },
+      {
+        "page": 5,
+        "name": "I22.png",
+        "size": [
+          400,
+          600
+        ],
+        "rgb_sha256": "13e6aad7214cbb4bc898006709c2a4e2a840aae579eb9a0c8d7825c84b067a31"
+      }
+    ],
+    "text_characters": 8334
+  },
+  {
+    "pdf": "ArborScan_DEMO-AS12_missing.pdf",
+    "text_term_counts": {
+      "4.8 м": 0,
+      "5.4 м": 0,
+      "2.1 м": 0,
+      "нет данных": 11,
+      "Неполный": 0,
+      "НЕПОЛНЫЙ": 1,
+      "β": 1,
+      "кг/с": 1,
+      "DEMO-AS12": 1
+    },
+    "images": [],
+    "text_characters": 2976
+  },
+  {
+    "pdf": "ArborScan_DEMO-AS12_old.pdf",
+    "text_term_counts": {
+      "4.8 м": 0,
+      "5.4 м": 0,
+      "2.1 м": 1,
+      "нет данных": 10,
+      "Неполный": 0,
+      "НЕПОЛНЫЙ": 0,
+      "β": 1,
+      "кг/с": 1,
+      "DEMO-AS12": 1
+    },
+    "images": [
+      {
+        "page": 1,
+        "name": "I15.jpg",
+        "size": [
+          400,
+          600
+        ],
+        "rgb_sha256": "b6fba9a6201673dcca2abec964a0c5accaee8b261681f30c396aed2a2ec9ca9b"
+      }
+    ],
+    "text_characters": 3087
+  }
+]

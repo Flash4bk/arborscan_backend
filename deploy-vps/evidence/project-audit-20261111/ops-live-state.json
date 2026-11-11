@@ -1,0 +1,100 @@
+{
+  "timer": {
+    "exit_code": 0,
+    "properties": {
+      "NextElapseUSecRealtime": "Thu 2026-11-12 03:18:07 UTC",
+      "LastTriggerUSec": "Wed 2026-11-11 03:21:36 UTC",
+      "Result": "success",
+      "ActiveState": "active",
+      "SubState": "waiting"
+    }
+  },
+  "service": {
+    "exit_code": 0,
+    "properties": {
+      "Result": "exit-code",
+      "ExecMainStatus": "1",
+      "ActiveState": "failed",
+      "SubState": "failed"
+    }
+  },
+  "service_timestamps": {
+    "ExecMainStartTimestamp": "Wed 2026-11-11 03:21:36 UTC",
+    "ExecMainExitTimestamp": "Wed 2026-11-11 03:39:51 UTC"
+  },
+  "safe_journal_reason_categories": [
+    {
+      "timestamp_us": "1794281711788301",
+      "reason": "private_validation_or_runtime_error"
+    },
+    {
+      "timestamp_us": "1794368391202468",
+      "reason": "private_validation_or_runtime_error"
+    }
+  ],
+  "vps_disk": [
+    "   1B-blocks         Used      Avail Use%",
+    "167933390848 153665294336 7295393792  96%"
+  ],
+  "arborscan_containers_only": [
+    {
+      "name": "arborscan-api-v4",
+      "state": "running",
+      "image": "2abb56ed5d84"
+    },
+    {
+      "name": "arborscan-api",
+      "state": "running",
+      "image": "60c6cf1fc185"
+    },
+    {
+      "name": "selfhost-20261012t140855z-worker-1",
+      "state": "created",
+      "image": "3fe28a5b7eb5"
+    },
+    {
+      "name": "selfhost-20261012t140855z-gateway-1",
+      "state": "running",
+      "image": "a8b39bd9cf0f"
+    },
+    {
+      "name": "selfhost-20261012t140855z-storage-1",
+      "state": "running",
+      "image": "b393ac5759a4"
+    },
+    {
+      "name": "selfhost-20261012t140855z-rest-1",
+      "state": "running",
+      "image": "c9dc201e555f"
+    },
+    {
+      "name": "selfhost-20261012t140855z-db-1",
+      "state": "running",
+      "image": "178f0976b54a"
+    }
+  ],
+  "worker": {
+    "status": "created",
+    "error": "",
+    "created": "2026-10-12T18:35:21.357680355Z",
+    "started_at": "0001-01-01T00:00:00Z",
+    "exit_code": 0,
+    "compose_service": "worker"
+  },
+  "windows_dated_backup_directories": [
+    {
+      "directory": "20261022T033459Z",
+      "top_level_file_count": 15,
+      "is_reparse_point": false
+    },
+    {
+      "directory": "20261025T033213Z",
+      "top_level_file_count": 15,
+      "is_reparse_point": false
+    }
+  ],
+  "windows_shared_runtime_files": 8,
+  "backup_integrity_restore_or_service_run_performed": false,
+  "failure_cause_established": false,
+  "unrelated_host_project_inventory_included": false
+}

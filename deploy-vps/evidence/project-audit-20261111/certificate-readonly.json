@@ -1,0 +1,24 @@
+{
+  "public_certificate": {
+    "notBefore": "Nov 11 09:24:14 2026 GMT",
+    "notAfter": "Nov 18 01:24:13 2026 GMT",
+    "subjectAltName": [
+      [
+        "IP Address",
+        "31.57.170.88"
+      ]
+    ]
+  },
+  "tls_verification": "default_system_context",
+  "certbot_timer": {
+    "exit_code": 0,
+    "properties": {
+      "NextElapseUSecRealtime": "Thu 2026-11-12 10:17:00 UTC",
+      "LastTriggerUSec": "Wed 2026-11-11 12:04:11 UTC",
+      "Result": "success",
+      "ActiveState": "active",
+      "SubState": "waiting"
+    }
+  },
+  "dry_run_or_renewal_executed": false
+}

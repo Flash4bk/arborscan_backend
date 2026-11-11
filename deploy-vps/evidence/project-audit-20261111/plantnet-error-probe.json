@@ -1,0 +1,11 @@
+{
+  "scope": "exact AST health function; synthetic failing transport, no network or real provider key",
+  "server_sha256": "3deaa6fa754d7a990bb4ac16dbaae9971c46a536829e1105327504a41c2485bf",
+  "function_lines": [
+    2176,
+    2210
+  ],
+  "credential_text_echoed_in_public_error": true,
+  "real_secret_read_or_printed": false,
+  "real_endpoint_failure_triggered": false
+}

@@ -1,0 +1,15 @@
+{
+  "python": "3.11.16",
+  "source_sha256": {
+    "send_feedback": "3ef0968ddd9f4a4a0ef586f0a7b8cf6e347f06e2c6ef22b89ec2874e293e880f",
+    "_load_feedback_artifacts": "e999d435793c096b7899e692c9fa6401de2ab14a6d52b9ec7e09a7d45b9689c0",
+    "estimate_beta_kg_s_exact": "c43f3a0f5c4b420692be453f00f7426bf7e5b6c650fb79f083841eb8c0841033",
+    "_plantnet_health_sync": "0c54bcc88621ad3e5fd7cdc3561b53ecfc3733e7d7acf3d27d5707f61dbd2912"
+  },
+  "local_match": {
+    "send_feedback": true,
+    "_load_feedback_artifacts": true,
+    "estimate_beta_kg_s_exact": true,
+    "_plantnet_health_sync": true
+  }
+}

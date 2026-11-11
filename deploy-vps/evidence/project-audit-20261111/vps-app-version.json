@@ -1,0 +1,43 @@
+{
+  "checkout_sha": "5d8176a22fddd6634c266a1ed09f1845019065c5",
+  "tracked_worktree_clean": true,
+  "api_images": {
+    "arborscan-api": {
+      "image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+      "configured_image": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+      "started_at": "2026-11-09T17:10:54.517222206Z"
+    },
+    "arborscan-api-v4": {
+      "image": "sha256:2abb56ed5d84e4ddbe4465da851c842861498101f030fab016f66630c4ee1762",
+      "configured_image": "sha256:2abb56ed5d84e4ddbe4465da851c842861498101f030fab016f66630c4ee1762",
+      "started_at": "2026-11-09T17:10:54.507495065Z"
+    }
+  },
+  "nginx_routes": [
+    {
+      "config_name": "arborscan-https",
+      "directive": "client_max_body_size 40m;"
+    },
+    {
+      "config_name": "arborscan-https",
+      "directive": "location /api/v3/ {"
+    },
+    {
+      "config_name": "arborscan-https",
+      "directive": "proxy_pass http://127.0.0.1:8000/;"
+    },
+    {
+      "config_name": "arborscan-https",
+      "directive": "location /api/v4/ {"
+    },
+    {
+      "config_name": "arborscan-https",
+      "directive": "proxy_pass http://127.0.0.1:8001/;"
+    },
+    {
+      "config_name": "arborscan-https",
+      "directive": "location / {"
+    }
+  ],
+  "scope": "read-only; checkout SHA is not image source SHA"
+}

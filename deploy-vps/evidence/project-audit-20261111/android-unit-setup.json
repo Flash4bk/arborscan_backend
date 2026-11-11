@@ -1,0 +1,5 @@
+{
+  "exit_code": 1,
+  "command": "gradlew.bat testDebugUnitTest --offline --console=plain",
+  "java_home_process_only": "documented JDK21.0.8"
+}
