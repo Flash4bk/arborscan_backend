@@ -1,4 +1,8 @@
-FROM python:3.11-slim-bookworm
+# A fresh image is gated separately from the exact-runtime overlay.
+ARG PYTHON_BASE_IMAGE
+FROM ${PYTHON_BASE_IMAGE}
+ARG PYTHON_BASE_IMAGE
+RUN python -c "import os,re,sys; assert re.fullmatch(r'python:3\.11\.16-slim-bookworm@sha256:[a-f0-9]{64}',os.environ['PYTHON_BASE_IMAGE']); assert sys.version_info[:3]==(3,11,16)"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -18,13 +22,16 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY deploy-vps/requirements.v4.txt /tmp/requirements.v4.txt
+COPY deploy-vps/requirements.runtime-v4.lock.txt /tmp/requirements.runtime-v4.lock.txt
 
 # CPU-only VPS.  Installing the CPU wheel first prevents a CUDA-heavy runtime.
-RUN python -m pip install --upgrade pip setuptools wheel \
+RUN python -m pip install --upgrade pip==26.2.1 setuptools==84.0.0 wheel==0.48.0 \
     && python -m pip install \
         --index-url https://download.pytorch.org/whl/cpu \
-        torch torchvision \
-    && python -m pip install -r /tmp/requirements.v4.txt
+        --no-deps torch==2.14.0+cpu torchvision==0.29.0+cpu \
+    && python -m pip install --no-deps -r /tmp/requirements.v4.txt \
+    && python -m pip check \
+    && python -c "import importlib.metadata as m,cv2,numpy,torch,torchvision,ultralytics,fastapi,PIL; assert torch.version.cuda is None; assert not any(d.metadata['Name'].lower()=='opencv-python-headless' for d in m.distributions())"
 
 RUN groupadd --gid 1000 arborscan \
     && useradd \

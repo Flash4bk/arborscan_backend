@@ -37,6 +37,9 @@ models
 
 # VPS deployment/runtime directories
 deploy-vps
+!deploy-vps/
+deploy-vps/**
+!deploy-vps/requirements.runtime-v3.lock.txt
 runtime
 
 # Repo leftovers / local artifacts

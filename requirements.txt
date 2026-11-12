@@ -1,14 +1,3 @@
-fastapi
-uvicorn[standard]
-pillow
-torch
-torchvision
-ultralytics
-opencv-python-headless==4.10.0.84
-numpy
-python-multipart
-requests
-tqdm
-supabase
-google-auth>=2.29.0
-rembg[cpu]
+# Linux/Python 3.11 clean-build candidate; see deploy-vps/RUNTIME_REPRODUCIBILITY.md.
+# CPU Torch must be installed from its pinned official CPU index first.
+-r deploy-vps/requirements.runtime-v3.lock.txt

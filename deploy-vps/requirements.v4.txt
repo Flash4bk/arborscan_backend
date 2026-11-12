@@ -1,8 +1,2 @@
-fastapi
-uvicorn[standard]
-pillow
-ultralytics
-opencv-python-headless==4.10.0.84
-numpy
-python-multipart
-requests
+# Linux/Python 3.11 clean-build candidate, not a validated fresh image.
+-r requirements.runtime-v4.lock.txt
