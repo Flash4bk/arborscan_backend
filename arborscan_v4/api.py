@@ -42,6 +42,7 @@ from .schema import (
 )
 from .species_profiles import get_mechanical_profile
 from .vision_engine import TreeVisionRuntime, crop_tree, encode_visuals
+from .safe_logging import install_access_log_filter
 
 
 MAX_UPLOAD_BYTES = max(1, int(os.getenv("V4_MAX_UPLOAD_MB", "15"))) * 1024 * 1024
@@ -52,6 +53,7 @@ plantnet = PlantNetClient()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    install_access_log_filter()
     await run_in_threadpool(vision.load)
     print(f"[*] ArborScan Unified Analysis {API_VERSION} ready")
     print(f"[*] Tree model: {vision.health()}")
@@ -407,6 +409,8 @@ from .corrections_api import router as corrections_router
 app.include_router(corrections_router)
 from .report_history import router as reports_router
 app.include_router(reports_router)
+from .science_api import router as science_router
+app.include_router(science_router)
 
 from .model_quality_api import router as model_quality_router
 app.include_router(model_quality_router)

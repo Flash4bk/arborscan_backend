@@ -36,6 +36,7 @@ RUN groupadd --gid 1000 arborscan \
 
 COPY --chown=arborscan:arborscan config.py /app/config.py
 COPY --chown=arborscan:arborscan arborscan_v4 /app/arborscan_v4
+COPY --chown=arborscan:arborscan arborscan_science /app/arborscan_science
 
 USER arborscan
 
