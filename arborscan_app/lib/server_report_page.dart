@@ -20,6 +20,9 @@ import 'reference_preview.dart';
 import 'combined_reference.dart';
 import 'species_annotation.dart';
 import 'measurement_results_summary.dart';
+import 'science_section_page.dart';
+import 'science_section_service.dart';
+import 'science_result_card.dart';
 
 class ServerReportPage extends StatefulWidget {
   final String? versionId, localId;
@@ -198,6 +201,34 @@ class _ServerReportPageState extends State<ServerReportPage> {
                     ? null
                     : () => _act(() => _editSpecies(s, row!, photo))),
             MeasurementResultsSummary(snapshot: Map<String, dynamic>.from(s)),
+            if (s.containsKey('science_result'))
+              ScienceResultCard(result: s['science_result']),
+            if (widget.versionId != null || row?['saved'] == true)
+              OutlinedButton.icon(
+                  icon: const Icon(Icons.calculate_outlined),
+                  label: const Text('Расчёты: сценарий сечения'),
+                  onPressed: _busy
+                      ? null
+                      : () async {
+                          final version = await Navigator.push<String>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => ScienceSectionPage(
+                                      sourceVersionId: row!['version_id'],
+                                      service: ScienceSectionService(
+                                          history: _service))));
+                          if (version != null && context.mounted && !_invalid) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => ServerReportPage(
+                                        versionId: version,
+                                        service: _service)));
+                          }
+                        })
+            else
+              const Text(
+                  'Для серверного сценария сечения сначала сохраните отчёт в аккаунте.'),
             if (ref != null) ...[
               ExpansionTile(
                   title: const Text('Расширенный анализ'),

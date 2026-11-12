@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'report_export_data.dart';
 import 'combined_reference.dart';
+import 'science_section.dart';
 
 // Approved A “Axis and crown”; exact path from assets/icons/forest_atlas.svg.
 // Kept inline for the background isolate: export never needs a network font/logo.
@@ -338,6 +339,15 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
             heading('Измерения выбранной версии'),
             text(data.method),
             ...data.metrics.expand(metricWidgets),
+            if (s.containsKey('science_result')) ...[
+              heading('Сценарий одного сечения'),
+              if (SectionScienceResult.parse(s['science_result'])
+                  case final result?)
+                ...result.lines.map(text)
+              else
+                text(
+                    'Формат научного сценария не поддерживается. Его значения не интерпретированы.'),
+            ],
             if (images.annotated != null) ...[
               pw.NewPage(),
               heading('Разметка выбранной версии'),
