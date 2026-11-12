@@ -74,6 +74,9 @@ void main() {
   testWidgets('legacy report request uses bearer header without URL token',
       (t) async {
     await open(t);
+    expect(find.text('С прежней оценкой'), findsOneWidget);
+    expect(find.text('Без прежней оценки'), findsOneWidget);
+    expect(find.text('Без риска'), findsNothing);
     await t.ensureVisible(find.text('DEMO historical'));
     await t.tap(find.text('DEMO historical'));
     await t.pumpAndSettle();

@@ -708,13 +708,13 @@ class _FilterChipGroup extends StatelessWidget {
                 AppTheme.color(context, AppTheme.primary).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.all)),
         ChoiceChip(
-            label: const Text('С риском'),
+            label: const Text('С прежней оценкой'),
             selected: value == _FilterMode.withRisk,
             selectedColor:
                 AppTheme.color(context, AppTheme.danger).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.withRisk)),
         ChoiceChip(
-            label: const Text('Без риска'),
+            label: const Text('Без прежней оценки'),
             selected: value == _FilterMode.noRisk,
             selectedColor:
                 AppTheme.color(context, AppTheme.success).withOpacity(0.3),
