@@ -69,6 +69,20 @@ def test_partial_upload_never_registers_or_reports_saved():
         with pytest.raises(HTTPException):store.save(OWNER,OWNER,OWNER,None,payload)
         rpc.assert_not_called()
 
+
+def test_empty_or_mismatched_index_reply_never_reports_saved():
+    store=object.__new__(h.ReportStore)
+    payload=h.validate_snapshot(json.dumps(snapshot()),IMAGE)
+    expected={'owner_id':OWNER,'analysis_id':OWNER,'version_id':OWNER,'parent_id':None,
+              'payload_sha256':'a'*64,'image_sha256':payload['image']['sha256']}
+    replies=[None,{}]+[{**expected,key:'wrong'} for key in expected]
+    for reply in replies:
+        with patch.object(store,'ready'),patch.object(store,'write_blob',return_value='a'*64),patch.object(store,'request',return_value=reply):
+            with pytest.raises(HTTPException) as error:store.save(OWNER,OWNER,OWNER,None,payload)
+            assert error.value.status_code==503
+    with patch.object(store,'ready'),patch.object(store,'write_blob',return_value='a'*64),patch.object(store,'request',return_value=expected):
+        assert store.save(OWNER,OWNER,OWNER,None,payload)['saved'] is True
+
 def test_all_routes_require_authorization():
     app=FastAPI();app.include_router(h.router)
     client=TestClient(app)

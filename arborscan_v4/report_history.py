@@ -28,6 +28,59 @@ def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False).encode()
 
 
+def presentation_summary(payload):
+    """Small read-only projection of the selected version, never new inference."""
+    def mapping(value):
+        return value if isinstance(value,dict) else {}
+    report = payload['report']
+    predicted = report.get('species')
+    if isinstance(predicted, dict):
+        predicted = predicted.get('display_name') or predicted.get('scientific_name')
+    predicted = predicted if isinstance(predicted, str) and predicted.strip() else 'Вид не определён'
+    annotation = report.get('species_annotation')
+    manual = annotation.get('display_name') if isinstance(annotation, dict) else None
+    manual = manual.strip() if isinstance(manual, str) and 0 < len(manual.strip()) <= 120 else None
+    reference = bool(payload.get('reference'))
+
+    def positive(value):
+        return value if type(value) in (int, float) and math.isfinite(value) and value > 0 else None
+
+    def metric(key, scalar):
+        measurements = mapping(report.get('measurements'))
+        if not reference and key in measurements:
+            item = measurements[key]
+            if (not isinstance(item, dict) or not item.get('source') or
+                    item.get('source') in ('unavailable', 'vision') or
+                    item.get('available') is False or item.get('unit') not in (None, 'm')):
+                return None
+            return positive(item.get('value_m'))
+        sources = mapping(report.get('measurement_sources'))
+        source = sources.get(scalar) or report.get('method') or report.get('dimensions_source')
+        if not reference and source in ('unavailable', 'vision'):
+            return None
+        return positive(report.get(scalar))
+
+    trunk = metric('trunk_diameter', 'trunk_diameter_m')
+    if reference:
+        section = mapping(mapping(report.get('geometry')).get('trunk_diameter'))
+        trunk = (positive(section.get('value')) if section.get('unit') == 'm' and
+                 section.get('available') is not False and section.get('source') not in ('unavailable', 'vision')
+                 else None)
+    result = {
+        'presentation_version': 1, 'kind': payload['kind'],
+        'species': manual or predicted,
+        'species_source': 'user' if manual else 'saved_inference',
+        # A supplied name never acquires taxonomic/moderation confirmation.
+        'species_confirmed': False, 'inference_species': predicted,
+        'height_m': metric('height', 'height_m'),
+        'crown_width_m': metric('crown_width', 'crown_width_m'),
+        'trunk_diameter_m': trunk, 'captured_at': payload['captured_at'],
+    }
+    if (payload.get('environment') or {}).get('version') == 1:
+        result['environment'] = payload['environment']
+    return result
+
+
 def validate_snapshot(raw, image):
     if len(raw.encode()) > 20_000_000:
         raise HTTPException(413, 'Report too large')
@@ -148,18 +201,17 @@ class ReportStore(WorkflowStore):
     def save(self,owner,analysis,version,parent,payload):
         self.ready()
         digest=self.write_blob(owner,payload)
-        report=payload['report']; species=report.get('species')
-        if isinstance(species,dict): species=species.get('display_name') or species.get('scientific_name')
-        summary={'kind':payload['kind'],'species':species or 'Вид не определён',
-                 'height_m':report.get('height_m') or (report.get('measurements',{}).get('height') or {}).get('value_m'),
-                 'captured_at':payload['captured_at']}
+        summary=presentation_summary(payload)
         # Only new versions receive metadata. Existing snapshots/index entries
         # remain immutable; no external lookup or inferred GPS during listing.
-        if (payload.get('environment') or {}).get('version') == 1:
-            summary['environment'] = payload['environment']
         row=self.request('POST','rpc/save_report_version',json={'p_owner':owner,'p_analysis':analysis,
             'p_version':version,'p_parent':parent,'p_payload':digest,'p_image':payload['image']['sha256'],
             'p_correction':payload.get('correction_id'),'p_summary':summary})
+        if (not isinstance(row,dict) or row.get('owner_id')!=owner or
+                row.get('analysis_id')!=analysis or row.get('version_id')!=version or
+                row.get('parent_id')!=parent or row.get('payload_sha256')!=digest or
+                row.get('image_sha256')!=payload['image']['sha256']):
+            raise HTTPException(503,'Save was not confirmed; retry the same operation')
         return {'saved':True,'persisted':True,'history_version':1,'record':row}
 
     def get(self,owner,version):
@@ -171,7 +223,16 @@ class ReportStore(WorkflowStore):
         params={'owner_id':'eq.'+owner,'order':'created_at.desc,version_id.desc','limit':'30','offset':str(offset)}
         if analysis: params['analysis_id']='eq.'+_uuid(analysis)
         rows=self.request('GET','report_versions',params=params)
-        return {'items':rows,'next_offset':offset+30 if len(rows)==30 else None}
+        # Old immutable summaries predate manual-species projection. Mark their
+        # name as the original inference; do not read full photo blobs for a list
+        # or rewrite historic rows. Opening the exact snapshot reveals its name.
+        items = []
+        for row in rows:
+            summary = dict(row.get('summary') or {})
+            if summary.get('presentation_version') != 1:
+                summary.update(presentation_version=0, species_source='legacy_inference')
+            items.append({**row, 'summary': summary})
+        return {'items':items,'next_offset':offset+30 if len(rows)==30 else None}
 
 
 @router.get('/capabilities')
