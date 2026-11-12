@@ -15,100 +15,27 @@ class MeasurementResultsSummary extends StatelessWidget {
     // nested measurements remain authoritative even when unavailable.
     // Keep full-resolution base64 photos/masks out of repeated UI JSON copies.
     // Selection and units still use the same frozen metric fields as the PDF.
-    final inputReport = exportMap(snapshot['report']);
-    final inputReference = exportMap(snapshot['reference']);
-    final data = ReportExportData(
-      snapshot: {
-        'kind': snapshot['kind'],
-        'report': {
-          for (final key in [
-            'method',
-            'dimensions_source',
-            'measurement_method_version',
-            'height_m',
-            'crown_width_m',
-            'trunk_diameter_m',
-            'height',
-            'crown',
-            'trunk',
-            'measurement_sources',
-            'measurements',
-            'geometry',
-          ])
-            if (inputReport.containsKey(key)) key: inputReport[key],
-        },
-        if (inputReference.isNotEmpty)
-          'reference': {
-            'method': inputReference['method'],
-            'version': inputReference['version'],
-          },
-      },
-      record: const {},
-      local: true,
-    );
+    final data = ReportExportData.measurementView(snapshot);
     final report = data.report;
     final reference = data.reference.isNotEmpty;
     final metrics = data.metrics;
     final geometry = exportMap(report['geometry']);
-    final measurements = exportMap(report['measurements']);
     final legacy = data.snapshot['kind'] == 'legacy';
-
-    ExportMetric primary(int index, String key) {
-      final metric = metrics[index];
-      if (reference) return metric;
-      final input = exportMap(measurements[key]);
-      if (!measurements.containsKey(key)) {
-        return ExportMetric(
-          metric.label,
-          metric.source == exportMethodLabel('unavailable')
-              ? null
-              : metric.value,
-          metric.unit,
-          'Сохранённое значение · ${metric.source}',
-          metric.limitation,
-        );
-      }
-      final source = input['source']?.toString();
-      // value_m is an SI field. An explicitly conflicting unit is unsupported.
-      final available = source != null &&
-          source.isNotEmpty &&
-          source != 'unavailable' &&
-          source != 'vision' &&
-          input['available'] != false &&
-          (input['unit'] == null || input['unit'] == 'm');
-      return ExportMetric(
-        metric.label,
-        available ? exportNumeric(input['value_m']) : null,
-        'м',
-        exportMethodLabel(source),
-        metric.limitation,
-      );
-    }
-
-    final height = primary(0, 'height');
-    final crown = primary(1, 'crown_width');
+    final height = metrics[0];
+    final crown = metrics[1];
     final trunk = reference
         ? metrics.firstWhere(
             (m) => m.label == GeometryReport.labels['trunk_diameter'],
           )
-        : primary(2, 'trunk_diameter');
+        : metrics[2];
     final trunkUnit =
         reference ? exportMap(geometry['trunk_diameter'])['unit'] : 'm';
     final additional = <Widget>[];
     for (final entry in GeometryReport.labels.entries) {
       if (entry.key == 'trunk_diameter') continue;
-      final raw = exportMap(geometry[entry.key]);
-      if (raw['source'] == 'unavailable' || raw['available'] == false) continue;
-      final value = exportNumeric(raw['value']);
-      final expectedUnit = entry.key == 'trunk_lean'
-          ? 'deg'
-          : entry.key == 'crown_porosity'
-              ? '1'
-              : 'm';
-      if (value == null || raw['unit'] != expectedUnit || value < 0) continue;
-      if (entry.key == 'crown_porosity' && value > 1) continue;
-      if (expectedUnit == 'm' && value == 0) continue;
       final metric = metrics.firstWhere((m) => m.label == entry.value);
+      final value = metric.value;
+      if (value == null) continue;
       additional.add(
         _SummaryRow(
           label: entry.key == 'dbh' ? 'DBH (сохранённая метка)' : entry.value,

@@ -546,13 +546,14 @@ class _ServerReportPageState extends State<ServerReportPage> {
 
 class ServerHistoryPanel extends StatefulWidget {
   final String? analysisId;
-  const ServerHistoryPanel({super.key, this.analysisId});
+  final ReportHistoryService? service;
+  const ServerHistoryPanel({super.key, this.analysisId, this.service});
   @override
   State<ServerHistoryPanel> createState() => _ServerHistoryPanelState();
 }
 
 class _ServerHistoryPanelState extends State<ServerHistoryPanel> {
-  final _service = ReportHistoryService();
+  late final _service = widget.service ?? ReportHistoryService();
   final List<Map<String, dynamic>> _rows = [];
   List<Map<String, dynamic>> _local = [];
   String? _error;
@@ -654,7 +655,7 @@ class _ServerHistoryPanelState extends State<ServerHistoryPanel> {
         for (final r in _rows)
           ListTile(
               leading: const Icon(Icons.cloud_done),
-              title: Text('${r['summary']?['species'] ?? 'Измерение'}'),
+              title: Text(summarySpeciesName(r['summary'] as Map?)),
               subtitle: Text(
                   '${r['created_at']} · ${r['parent_id'] == null ? 'Исходная версия' : 'Новая версия'}'),
               onTap: () => Navigator.push(

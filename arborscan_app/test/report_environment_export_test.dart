@@ -132,7 +132,7 @@ void main() {
     final data = ReportExportData(
         snapshot: {'kind': 'legacy', 'report': raw}, record: {}, local: false);
     expect(data.metrics.take(3).map((m) => m.value), [13.25, 5.1, .42]);
-    expect(data.metrics.first.source, 'AR-измерение');
+    expect(data.metrics.first.source, 'Сохранённое значение · AR-измерение');
     expect(data.photo, orderedEquals(photo));
     expect(data.historicalValues.join('\n'),
         contains('Прежнее значение β: 38.6 кг/с'));

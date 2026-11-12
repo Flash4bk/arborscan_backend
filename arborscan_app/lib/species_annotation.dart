@@ -20,6 +20,15 @@ String speciesDisplayName(Map? report) {
       : 'Вид не указан';
 }
 
+/// Older immutable list indexes contain the original inference, not necessarily
+/// the later manual name. Keep that limitation explicit without fetching photos.
+String summarySpeciesName(Map? summary) {
+  final name = summary?['species']?.toString() ?? 'Вид не определён';
+  return summary?['presentation_version'] == 1
+      ? name
+      : 'Исходное определение: $name';
+}
+
 Map<String, dynamic> withSpeciesAnnotation(Map report, String name) {
   final text = name.trim();
   if (text.length > 120) {

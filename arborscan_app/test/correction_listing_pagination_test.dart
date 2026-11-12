@@ -23,6 +23,10 @@ void main() {
     final service = CorrectionsService(
         clientFactory: () => MockClient((request) async {
               expect(request.headers['Authorization'], 'Bearer listing-owner');
+              if (request.url.path.endsWith('/preview')) {
+                return http.Response(
+                    '', 404); // Older API: icon, no original prefetch.
+              }
               if (request.url.path.endsWith('/committed-id')) {
                 openedIds.add(request.url.pathSegments.last);
                 return http.Response(
@@ -63,6 +67,7 @@ void main() {
     expect(offsets, ['0', '50']);
     expect(find.text('Загрузить ещё'), findsNothing);
     expect(find.text('Загружено записей: 1'), findsOneWidget);
+    expect(openedIds, isEmpty);
 
     await tester.tap(find.text('Сохранённый контур'));
     await tester.pumpAndSettle();

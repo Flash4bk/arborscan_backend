@@ -224,6 +224,50 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
           height: 340,
           width: 490,
           child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain)));
+  List<pw.Widget> metricWidgets(ExportMetric metric) {
+    // Keep label/value, source and a short opening explanation together.
+    // An arbitrarily long saved explanation may continue on later pages,
+    // without forcing an over-height unbreakable widget or discarding text.
+    final explanation = metric.limitation;
+    var split = explanation.length;
+    if (split > 220) {
+      final boundary = explanation.lastIndexOf(' ', 220);
+      split = boundary > 0 ? boundary : 220;
+    }
+    return [
+      pw.Inseparable(
+          child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Table(
+            border: pw.TableBorder.all(color: accent),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(3),
+              1: const pw.FlexColumnWidth(1)
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: accent),
+                children: [
+                  pw.Padding(
+                      padding: const pw.EdgeInsets.all(7),
+                      child: pw.Text(metric.label)),
+                  pw.Padding(
+                      padding: const pw.EdgeInsets.all(7),
+                      child: pw.Text(metric.display)),
+                ],
+              )
+            ],
+          ),
+          text('Источник / метод: ${metric.source}'),
+          text(explanation.substring(0, split)),
+        ],
+      )),
+      if (split < explanation.length)
+        text(explanation.substring(split).trimLeft()),
+    ];
+  }
+
   final s = data.snapshot;
   pdf.addPage(pw.MultiPage(
       pageTheme: pw.PageTheme(
@@ -293,28 +337,7 @@ Future<Uint8List> buildReportPdf(ReportExportData data,
             pw.NewPage(),
             heading('Измерения выбранной версии'),
             text(data.method),
-            for (final m in data.metrics) ...[
-              pw.Table(
-                  border: pw.TableBorder.all(color: accent),
-                  columnWidths: {
-                    0: const pw.FlexColumnWidth(3),
-                    1: const pw.FlexColumnWidth(1)
-                  },
-                  children: [
-                    pw.TableRow(
-                        decoration: const pw.BoxDecoration(color: accent),
-                        children: [
-                          pw.Padding(
-                              padding: const pw.EdgeInsets.all(7),
-                              child: pw.Text(m.label)),
-                          pw.Padding(
-                              padding: const pw.EdgeInsets.all(7),
-                              child: pw.Text(m.display)),
-                        ])
-                  ]),
-              text('Источник / метод: ${m.source}'),
-              text(m.limitation),
-            ],
+            ...data.metrics.expand(metricWidgets),
             if (images.annotated != null) ...[
               pw.NewPage(),
               heading('Разметка выбранной версии'),

@@ -78,13 +78,19 @@ void main() {
   testWidgets('pagination, cold reopening from server and account invalidation', (tester) async {
     final offsets = <String?>[];
     var details = 0;
+    var previews = 0;
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
     final service = CorrectionsService(clientFactory: () => MockClient((request) async {
       expect(request.headers['Authorization'], 'Bearer alice');
+      if (request.url.path.endsWith('/preview')) {
+        previews++;
+        return http.Response('', 404); // Old API keeps an icon, no detail prefetch.
+      }
       if (request.url.path.endsWith('/id')) {
         details++;
         return http.Response(jsonEncode({'original_image_base64': png, 'mask_png_base64': png}), 200);
       }
+      expect(request.url.path, ApiConfig.v4('/v4/corrections').path);
       offsets.add(request.url.queryParameters['offset']);
       return http.Response(jsonEncode({'items': [{'correction_id': 'id'}],
         'next_offset': offsets.length == 1 ? 50 : null}), 200);
@@ -94,6 +100,10 @@ void main() {
     await tester.tap(find.text('Загрузить ещё'));
     await tester.pumpAndSettle();
     expect(offsets, ['0', '50']);
+    expect(previews, greaterThan(0));
+    expect(details, 0);
+    expect(find.byType(Image), findsNothing);
+    expect(find.byIcon(Icons.layers_outlined), findsWidgets);
     await tester.tap(find.text('Сохранённый контур'));
     await tester.pumpAndSettle();
     expect(find.byType(Image), findsOneWidget);

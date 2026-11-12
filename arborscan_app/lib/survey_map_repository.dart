@@ -8,6 +8,9 @@ import 'api_config.dart';
 import 'corrections_service.dart';
 import 'report_history_service.dart';
 import 'survey_environment.dart';
+import 'species_annotation.dart';
+import 'report_export_data.dart';
+import 'geometry_report.dart';
 
 Map<String, dynamic> _map(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
@@ -61,20 +64,36 @@ class SurveyMapEntry {
         summary['environment'] ??
         report['environment_snapshot']);
     final gps = environment['gps'] ?? report['gps'];
-    final measures = _map(report['measurements']);
     final speciesRaw = report['species'] ?? summary['species'];
-    final species = speciesRaw is Map
-        ? '${speciesRaw['display_name'] ?? speciesRaw['scientific_name'] ?? 'Вид не определён'}'
-        : '${speciesRaw ?? 'Вид не определён'}';
+    final manualName = userSpeciesName(report) ??
+        (summary['species_source'] == 'user'
+            ? summary['species'] as String?
+            : null);
+    final species = manualName ??
+        (speciesRaw is Map
+            ? '${speciesRaw['display_name'] ?? speciesRaw['scientific_name'] ?? 'Вид не определён'}'
+            : '${speciesRaw ?? 'Вид не определён'}');
     final point = SurveyPoint.fromJson(gps) ??
         SurveyPoint.fromJson({'lat': report['lat'], 'lon': report['lon']});
     final version = row['version_id']?.toString();
     final local = localId ?? row['draft_id']?.toString();
     // A display name alone is not a confirmed taxonomic label.
-    final speciesStatus =
-        speciesRaw is Map && speciesRaw['status'] == 'confirmed'
-            ? 'Подтверждено в этой версии'
-            : 'Без подтверждения в этой версии';
+    final speciesStatus = manualName != null
+        ? 'Указано пользователем · определение не подтверждено'
+        : report.isEmpty && summary['presentation_version'] != 1
+            ? 'Исходное определение; уточнения доступны в отчёте'
+            : speciesRaw is Map && speciesRaw['status'] == 'confirmed'
+                ? 'Подтверждено в этой версии'
+                : 'Без подтверждения в этой версии';
+    final metrics = ReportExportData.measurementView(snapshot.isNotEmpty
+            ? snapshot
+            : {'kind': 'legacy', 'report': summary})
+        .metrics;
+    final isReference = _map(snapshot['reference']).isNotEmpty;
+    final trunk = isReference
+        ? metrics.firstWhere(
+            (m) => m.label == GeometryReport.labels['trunk_diameter'])
+        : metrics[2];
     return SurveyMapEntry(
       key: version == null || version.isEmpty
           ? 'local:$local'
@@ -92,15 +111,9 @@ class SurveyMapEntry {
       metadata: Map<String, dynamic>.from(row),
       environment: environment,
       speciesStatus: speciesStatus,
-      heightM: _number(summary['height_m'] ??
-          report['height_m'] ??
-          _map(measures['height'])['value_m']),
-      crownM: _number(summary['crown_width_m'] ??
-          report['crown_width_m'] ??
-          _map(measures['crown_width'])['value_m']),
-      trunkM: _number(summary['trunk_diameter_m'] ??
-          report['trunk_diameter_m'] ??
-          _map(measures['trunk_diameter'])['value_m']),
+      heightM: metrics[0].value?.toDouble(),
+      crownM: metrics[1].value?.toDouble(),
+      trunkM: trunk.value?.toDouble(),
     );
   }
 

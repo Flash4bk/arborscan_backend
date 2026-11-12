@@ -12,12 +12,13 @@ import 'reference_measurement_page.dart';
 import 'server_report_page.dart';
 import 'corrections_service.dart';
 import 'report_history_service.dart';
-import 'map_page.dart';
 import 'api_config.dart';
 import 'analysis_report_page.dart'; // Нужно для перехода в отчет
 
 class HistoryTabPage extends StatefulWidget {
-  const HistoryTabPage({super.key});
+  final http.Client Function()? clientFactory;
+  final ReportHistoryService? reportHistory;
+  const HistoryTabPage({super.key, this.clientFactory, this.reportHistory});
 
   @override
   State<HistoryTabPage> createState() => _HistoryTabPageState();
@@ -28,6 +29,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
   static const String _tokenKey = 'arborscan_auth_token';
 
   bool _loading = true;
+  bool _changingHistory = false;
+  Set<String> _hidden = {};
   String? _error;
 
   List<_HistoryItem> _all = const [];
@@ -59,6 +62,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
     setState(() {
       _all = [];
       _filtered = [];
+      _hidden = {};
     });
     _load();
   }
@@ -75,6 +79,9 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       final owner = prefs.getString('arborscan_user_id');
       final generation = CorrectionsService.authChanges.value;
       final list = prefs.getStringList(_historyKey) ?? const [];
+      final hidden = owner == null
+          ? <String>{}
+          : (prefs.getStringList(_hiddenKey(owner)) ?? <String>[]).toSet();
 
       final items = <_HistoryItem>[];
       for (final s in list) {
@@ -89,9 +96,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
 
       if (token.isNotEmpty) {
         try {
-          final r = await http.get(ApiConfig.v3('/analyses/my'), headers: {
-            'Authorization': 'Bearer $token'
-          }).timeout(const Duration(seconds: 15));
+          final r = await _legacyGet(ApiConfig.v3('/analyses/my'), token);
           if (r.statusCode == 200) {
             final rows = jsonDecode(utf8.decode(r.bodyBytes))['items'] as List;
             for (final row in rows) {
@@ -119,11 +124,13 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
           await CorrectionsService.currentToken() != token) {
         return;
       }
+      items.removeWhere((item) => hidden.contains(item.uniqueKey));
       items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
       if (!mounted) return;
       setState(() {
         _all = items;
+        _hidden = hidden;
         _loading = false;
       });
       _applyFilters();
@@ -134,6 +141,37 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         _loading = false;
       });
     }
+  }
+
+  Future<http.Response> _legacyGet(Uri uri, String token) async {
+    final client = (widget.clientFactory ?? http.Client.new)();
+    try {
+      return await client.get(uri, headers: {
+        'Authorization': 'Bearer $token'
+      }).timeout(const Duration(seconds: 15));
+    } finally {
+      client.close();
+    }
+  }
+
+  String _hiddenKey(String owner) => 'arborscan_history_hidden_v1_$owner';
+
+  Future<void> _writeHidden(
+      Set<String> values, String token, String owner, int generation) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (generation != CorrectionsService.authChanges.value ||
+        prefs.getString(_tokenKey) != token ||
+        prefs.getString('arborscan_user_id') != owner) {
+      throw const CorrectionException('Аккаунт изменился. Повторите действие.');
+    }
+    // Presentation only, scoped to the captured owner. Originals and server
+    // versions are preserved, and hiding can be undone on this device.
+    await prefs.setStringList(_hiddenKey(owner), values.toList()..sort());
+    if (generation != CorrectionsService.authChanges.value ||
+        await CorrectionsService.currentToken() != token) {
+      return;
+    }
+    await _load();
   }
 
   void _applyFilters() {
@@ -168,81 +206,83 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
     setState(() => _filtered = out);
   }
 
-  Future<void> _clearAll() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Очистить историю?'),
-        content: const Text(
-            'Будут удалены краткие локальные записи текущего аккаунта. Серверные отчёты и оригиналы останутся.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Отмена')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Очистить')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    final prefs = await SharedPreferences.getInstance();
-    final owner = prefs.getString('arborscan_user_id');
-    final kept = (prefs.getStringList(_historyKey) ?? []).where((s) {
-      try {
-        return owner == null || jsonDecode(s)['owner_id'] != owner;
-      } catch (_) {
-        return true;
+  Future<void> _clearAll() =>
+      _hideItems(_all.map((item) => item.uniqueKey).toSet(), all: true);
+
+  Future<void> _deleteOne(_HistoryItem item) => _hideItems({item.uniqueKey});
+
+  Future<void> _hideItems(Set<String> ids, {bool all = false}) async {
+    if (_changingHistory || ids.isEmpty) return;
+    setState(() => _changingHistory = true);
+    final generation = CorrectionsService.authChanges.value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey) ?? '';
+      final owner = prefs.getString('arborscan_user_id');
+      if (!mounted || owner == null || token.isEmpty) return;
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(all
+              ? 'Скрыть журнал на устройстве?'
+              : 'Скрыть запись на устройстве?'),
+          content: const Text(
+              'Записи будут скрыты только в этом журнале текущего аккаунта. '
+              'Серверные отчёты и оригиналы останутся. Кнопка «Показать скрытые записи» вернёт их в список.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Отмена')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Скрыть')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      final hidden = (prefs.getStringList(_hiddenKey(owner)) ?? <String>[])
+          .toSet()
+        ..addAll(ids);
+      await _writeHidden(hidden, token, owner, generation);
+      if (mounted && generation == CorrectionsService.authChanges.value) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Запись скрыта на этом устройстве. Серверные данные сохранены.')));
       }
-    }).toList();
-    await prefs.setStringList(_historyKey, kept);
-    await _load();
+    } catch (e) {
+      if (mounted && generation == CorrectionsService.authChanges.value) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _changingHistory = false);
+    }
   }
 
-  Future<void> _deleteOne(_HistoryItem item) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Удалить запись?'),
-        content: Text('“${item.species}” будет удалено из истории.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Отмена')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Удалить')),
-        ],
-      ),
-    );
-
-    if (ok != true) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_historyKey) ?? const [];
-    final newList = <String>[];
-    for (final s in list) {
-      try {
-        final m = jsonDecode(s) as Map<String, dynamic>;
-        final other = _HistoryItem.fromJson(m);
-        if (other.uniqueKey != item.uniqueKey ||
-            m['owner_id'] != prefs.getString('arborscan_user_id')) {
-          newList.add(s);
-        }
-      } catch (_) {
-        newList.add(s);
+  Future<void> _restoreHidden() async {
+    if (_changingHistory) return;
+    setState(() => _changingHistory = true);
+    final generation = CorrectionsService.authChanges.value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey) ?? '';
+      final owner = prefs.getString('arborscan_user_id');
+      if (owner != null && token.isNotEmpty) {
+        await _writeHidden({}, token, owner, generation);
       }
+    } catch (e) {
+      if (mounted && generation == CorrectionsService.authChanges.value) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _changingHistory = false);
     }
-    await prefs.setStringList(_historyKey, newList);
-    await _load();
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Запись удалена')));
   }
 
   // --- ИСПРАВЛЕНИЕ: СКАЧИВАНИЕ ПОЛНОГО ОТЧЕТА С СЕРВЕРА ---
   Future<void> _openFullReport(_HistoryItem item) async {
+    final requestGeneration = CorrectionsService.authChanges.value;
     bool dialogOpen = false;
     if (item.analysisId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -261,10 +301,11 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString(_tokenKey) ?? '';
-      final history = ReportHistoryService();
+      final history = widget.reportHistory ?? ReportHistoryService();
       final owner = await history.auth.owner(token);
       final local = await history.journal.load(owner, item.analysisId);
       await history.auth.checkSession(token);
+      if (requestGeneration != CorrectionsService.authChanges.value) return;
       if (!mounted) return;
       if (local != null) {
         Navigator.pop(context);
@@ -272,15 +313,18 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         await Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => ServerReportPage(localId: item.analysisId)));
+                builder: (_) => ServerReportPage(
+                    localId: item.analysisId, service: history)));
         return;
       }
 
       final uri =
-          ApiConfig.v3('/analyses/${Uri.encodeComponent(item.analysisId)}')
-              .replace(queryParameters: {'token': token});
-      final res = await http.get(uri).timeout(const Duration(seconds: 15));
-      if (await CorrectionsService.currentToken() != token) return;
+          ApiConfig.v3('/analyses/${Uri.encodeComponent(item.analysisId)}');
+      final res = await _legacyGet(uri, token);
+      if (await CorrectionsService.currentToken() != token ||
+          requestGeneration != CorrectionsService.authChanges.value) {
+        return;
+      }
 
       if (!mounted) return;
       Navigator.pop(context); // Закрываем крутилку
@@ -295,7 +339,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
       final analysisRaw = data['analysis'] as Map<String, dynamic>?;
 
       if (analysisRaw != null) {
-        final generation = CorrectionsService.authChanges.value;
+        final generation = requestGeneration;
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => ValueListenableBuilder<int>(
@@ -313,7 +357,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted &&
+          requestGeneration == CorrectionsService.authChanges.value) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Ошибка загрузки: $e')));
       }
@@ -356,9 +401,15 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
           ),
         ),
         actions: [
+          if (_hidden.isNotEmpty)
+            IconButton(
+                tooltip: 'Показать скрытые записи',
+                icon: const Icon(Icons.visibility_outlined),
+                onPressed: _changingHistory ? null : _restoreHidden),
           IconButton(
               tooltip: 'Обновить',
-              icon: Icon(Icons.refresh, color: AppTheme.color(context, AppTheme.primary)),
+              icon: Icon(Icons.refresh,
+                  color: AppTheme.color(context, AppTheme.primary)),
               onPressed: _load),
           IconButton(
               tooltip: 'Измерения по эталону',
@@ -368,9 +419,10 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                   MaterialPageRoute(
                       builder: (_) => const ReferenceHistoryPage()))),
           IconButton(
-            tooltip: 'Очистить всё',
-            icon: Icon(Icons.delete_outline, color: AppTheme.color(context, AppTheme.danger)),
-            onPressed: _all.isEmpty ? null : _clearAll,
+            tooltip: 'Скрыть журнал на устройстве',
+            icon: Icon(Icons.delete_outline,
+                color: AppTheme.color(context, AppTheme.danger)),
+            onPressed: _all.isEmpty || _changingHistory ? null : _clearAll,
           ),
         ],
       ),
@@ -378,7 +430,7 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
           ? _ErrorState(message: _error!, onRetry: _load)
           : ListView(
               children: [
-                const ServerHistoryPanel(),
+                ServerHistoryPanel(service: widget.reportHistory),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
                   child: Column(
@@ -403,7 +455,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                                     value: '${_all.length}',
                                     label: 'ВСЕГО',
                                     icon: Icons.history_rounded,
-                                    color: AppTheme.color(context, AppTheme.primary),
+                                    color: AppTheme.color(
+                                        context, AppTheme.primary),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -413,7 +466,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                                         '${_all.where((e) => e.lat != null && e.lon != null).length}',
                                     label: 'С GPS',
                                     icon: Icons.location_on_rounded,
-                                    color: AppTheme.color(context, AppTheme.warning),
+                                    color: AppTheme.color(
+                                        context, AppTheme.warning),
                                   ),
                                 ),
                               ],
@@ -444,7 +498,9 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                             const SizedBox(width: 8),
                             FilterChip(
                               label: const Text('Только GPS'),
-                              selectedColor: AppTheme.color(context, AppTheme.primary).withOpacity(0.3),
+                              selectedColor:
+                                  AppTheme.color(context, AppTheme.primary)
+                                      .withOpacity(0.3),
                               selected: _onlyWithGeo,
                               onSelected: (v) {
                                 setState(() => _onlyWithGeo = v);
@@ -470,7 +526,8 @@ class _HistoryTabPageState extends State<HistoryTabPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Icon(Icons.inbox_outlined,
-                                      color: AppTheme.color(context, AppTheme.muted)),
+                                      color: AppTheme.color(
+                                          context, AppTheme.muted)),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
@@ -521,15 +578,12 @@ class _HistoryPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isHighRisk = item.riskCategory == 'высокий';
-    final riskColor = isHighRisk ? AppTheme.color(context, AppTheme.danger) : AppTheme.color(context, AppTheme.primary);
+    final riskColor = AppTheme.color(context, AppTheme.muted);
 
     return GlassPanel(
       padding: EdgeInsets.zero,
       onTap: onTap,
-      border: Border.all(
-          color:
-              isHighRisk ? AppTheme.color(context, AppTheme.danger).withOpacity(0.5) : AppTheme.color(context, AppTheme.border)),
+      border: Border.all(color: AppTheme.color(context, AppTheme.border)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -563,7 +617,9 @@ class _HistoryPreviewCard extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       Ui.badge(
-                        text: item.riskCategory?.toUpperCase() ?? 'АНАЛИЗ',
+                        text: item.riskCategory?.isNotEmpty == true
+                            ? 'ПРЕЖНЯЯ ОЦЕНКА: ${item.riskCategory}'
+                            : 'АНАЛИЗ',
                         color: riskColor,
                       ),
                       if (item.lat != null && item.lon != null)
@@ -577,7 +633,10 @@ class _HistoryPreviewCard extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, color: AppTheme.color(context, AppTheme.danger)),
+              key: ValueKey('hide-history-${item.uniqueKey}'),
+              tooltip: 'Скрыть запись на устройстве',
+              icon: Icon(Icons.visibility_off_outlined,
+                  color: AppTheme.color(context, AppTheme.muted)),
               onPressed: onDelete,
             )
           ],
@@ -602,15 +661,14 @@ class _ErrorState extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.error_outline, color: AppTheme.color(context, AppTheme.danger)),
+              Icon(Icons.error_outline,
+                  color: AppTheme.color(context, AppTheme.danger)),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   message,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: AppTheme.color(context, AppTheme.danger)),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.color(context, AppTheme.danger)),
                 ),
               ),
             ],
@@ -646,17 +704,20 @@ class _FilterChipGroup extends StatelessWidget {
         ChoiceChip(
             label: const Text('Все'),
             selected: value == _FilterMode.all,
-            selectedColor: AppTheme.color(context, AppTheme.primary).withOpacity(0.3),
+            selectedColor:
+                AppTheme.color(context, AppTheme.primary).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.all)),
         ChoiceChip(
             label: const Text('С риском'),
             selected: value == _FilterMode.withRisk,
-            selectedColor: AppTheme.color(context, AppTheme.danger).withOpacity(0.3),
+            selectedColor:
+                AppTheme.color(context, AppTheme.danger).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.withRisk)),
         ChoiceChip(
             label: const Text('Без риска'),
             selected: value == _FilterMode.noRisk,
-            selectedColor: AppTheme.color(context, AppTheme.success).withOpacity(0.3),
+            selectedColor:
+                AppTheme.color(context, AppTheme.success).withOpacity(0.3),
             onSelected: (_) => onChanged(_FilterMode.noRisk)),
       ],
     );

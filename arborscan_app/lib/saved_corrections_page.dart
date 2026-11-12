@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:async';
+import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
 import 'binary_mask_overlay.dart';
@@ -41,7 +43,9 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
   Uint8List? _mask;
   Map<String, dynamic>? _record;
   String _view = 'photo';
-  final Map<String, Future<Uint8List?>> _previews = {};
+  final _previews = <String, Uint8List>{};
+  final _previewWaiters = Queue<Completer<void>>();
+  int _activePreviews = 0, _previewGeneration = 0;
   final _reason = TextEditingController();
 
   @override
@@ -67,6 +71,7 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
       _reason.clear();
       _error = 'Сессия изменилась. Откройте список заново из Истории.';
     });
+    _wakePreviewWaiters();
   }
 
   @override
@@ -79,6 +84,9 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
 
   @override
   void dispose() {
+    _invalidSession = true;
+    _previews.clear();
+    _wakePreviewWaiters();
     _reason.dispose();
     WidgetsBinding.instance.removeObserver(this);
     CorrectionsService.authChanges.removeListener(_invalidate);
@@ -90,6 +98,10 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
     setState(() {
       _busy = true;
       _error = null;
+      if (refresh) {
+        _previewGeneration++;
+        _previews.clear();
+      }
     });
     try {
       final token = await _session;
@@ -171,17 +183,54 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
     }
   }
 
-  Future<Uint8List?> _preview(Map<String, dynamic> item) {
+  void _wakePreviewWaiters() {
+    while (_previewWaiters.isNotEmpty) {
+      _previewWaiters.removeFirst().complete();
+    }
+  }
+
+  Future<bool> _previewSlot(bool Function() visible) async {
+    while (_activePreviews >= 2) {
+      final waiter = Completer<void>();
+      _previewWaiters.add(waiter);
+      await waiter.future;
+      if (!mounted || _invalidSession || !visible()) return false;
+    }
+    if (!mounted || _invalidSession || !visible()) return false;
+    _activePreviews++;
+    return true;
+  }
+
+  Future<Uint8List?> _preview(
+      Map<String, dynamic> item, bool Function() visible) async {
     final key = '${item['owner_id']}/${item['correction_id']}';
-    return _previews.putIfAbsent(key, () async {
-      if (_invalidSession || widget.localDrafts) return null;
-      final record = await _service.record(
+    if (_invalidSession || widget.localDrafts) return null;
+    final cached = _previews.remove(key);
+    if (cached != null) {
+      _previews[key] = cached;
+      return cached;
+    }
+    if (!await _previewSlot(visible)) return null;
+    try {
+      final bytes = await _service.preview(
           await _session, item['correction_id'] as String,
           ownerId: widget.adminQueue ? item['owner_id'] as String : null);
       if (_invalidSession || !mounted) return null;
-      final encoded = record['original_image_base64'];
-      return encoded is String ? base64Decode(encoded) : null;
-    });
+      if (bytes != null) {
+        _previews[key] = bytes;
+        while (_previews.length > 8) {
+          _previews.remove(_previews.keys.first);
+        }
+      }
+      return bytes;
+    } catch (_) {
+      // A preview is optional. The original still opens through its normal
+      // guarded detail action; do not fetch that full resource for a list icon.
+      return null;
+    } finally {
+      _activePreviews--;
+      _wakePreviewWaiters();
+    }
   }
 
   String _listStatus(Map<String, dynamic> item) {
@@ -222,7 +271,9 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
         body: AppContentList(padding: const EdgeInsets.all(16), children: [
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) ...[
-            Text(_error!, style: TextStyle(color: AppTheme.color(context, AppTheme.danger))),
+            Text(_error!,
+                style:
+                    TextStyle(color: AppTheme.color(context, AppTheme.danger))),
             if (!_invalidSession)
               OutlinedButton(
                   onPressed: _busy ? null : _load,
@@ -252,19 +303,10 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                         child: SizedBox(
                             width: 56,
                             height: 56,
-                            child: FutureBuilder<Uint8List?>(
-                                future: _preview(item),
-                                builder: (context, snapshot) => snapshot.hasData
-                                    ? Image.memory(snapshot.data!,
-                                        cacheWidth: 140,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Icon(
-                                                Icons.broken_image_outlined))
-                                    : ColoredBox(
-                                        color: AppTheme.color(context, AppTheme.surface2),
-                                        child: Icon(Icons.layers_outlined,
-                                            color: AppTheme.color(context, AppTheme.primary)))))),
+                            child: _CorrectionPreview(
+                                key: ValueKey(
+                                    '${widget.adminQueue}/${item['owner_id']}/${item['correction_id']}/$_previewGeneration'),
+                                load: (visible) => _preview(item, visible)))),
                 trailing: const Icon(Icons.chevron_right),
                 title: Text(widget.localDrafts
                     ? 'Черновик контура'
@@ -365,6 +407,10 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
                           'Время решения (исходное): ${event['at']}'),
                     SelectableText('Автор решения: ${event['actor_id']}')
                   ]),
+            if (_record?['feedback_proposal'] is Map)
+              _FeedbackProposal(
+                  proposal:
+                      Map<String, dynamic>.from(_record!['feedback_proposal'])),
             const Text(
                 'Принятие касается только маски: высота, DBH и механическая оценка не подтверждаются. Обучение не запускается.'),
             if (widget.reviewOwner == null)
@@ -413,4 +459,82 @@ class _SavedCorrectionsPageState extends State<SavedCorrectionsPage>
 
   Widget _imageError(BuildContext context, Object error, StackTrace? stack) =>
       const Text('Изображение повреждено. Попробуйте обновить.');
+}
+
+/// Loading starts when this element enters the lazy list's viewport/cache area,
+/// rather than while the parent constructs every loaded Card widget.
+class _CorrectionPreview extends StatefulWidget {
+  final Future<Uint8List?> Function(bool Function() visible) load;
+  const _CorrectionPreview({super.key, required this.load});
+  @override
+  State<_CorrectionPreview> createState() => _CorrectionPreviewState();
+}
+
+class _CorrectionPreviewState extends State<_CorrectionPreview> {
+  late final Future<Uint8List?> _image;
+  @override
+  void initState() {
+    super.initState();
+    _image = widget.load(() => mounted);
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Uint8List?>(
+      future: _image,
+      builder: (_, snapshot) => snapshot.hasData
+          ? Image.memory(snapshot.data!,
+              cacheWidth: 140,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.broken_image_outlined))
+          : ColoredBox(
+              color: AppTheme.color(context, AppTheme.surface2),
+              child: Icon(Icons.layers_outlined,
+                  color: AppTheme.color(context, AppTheme.primary))));
+}
+
+class _FeedbackProposal extends StatelessWidget {
+  final Map<String, dynamic> proposal;
+  const _FeedbackProposal({required this.proposal});
+  @override
+  Widget build(BuildContext context) {
+    final corrections = proposal['corrections'] is Map
+        ? proposal['corrections'] as Map
+        : const {};
+    final quality =
+        proposal['quality'] is Map ? proposal['quality'] as Map : const {};
+    return ExpansionTile(
+      title: const Text('Предложения автора прежней обратной связи'),
+      subtitle: const Text('Не проверены; измерения отчёта не изменены'),
+      childrenPadding: const EdgeInsets.all(12),
+      children: [
+        const Text(
+            'Это предложения пользователя, а не результаты проверки или новый расчёт. Принятие PNG подтверждает только маску.'),
+        if (corrections['species'] is String)
+          Text('Предложенный вид: ${corrections['species']}'),
+        for (final field in const {
+          'height_m': 'Предложенная высота (м)',
+          'crown_width_m': 'Предложенная ширина кроны (м)',
+          'trunk_diameter_m': 'Предложенный диаметр сечения (м)',
+          'scale_px_to_m':
+              'Предложенный масштаб (м/пиксель; система пикселей не подтверждена)',
+        }.entries)
+          if (corrections[field.key] is num &&
+              (corrections[field.key] as num).isFinite)
+            Text('${field.value}: ${corrections[field.key]}'),
+        for (final field in const {
+          'tree_ok': 'Выделение дерева',
+          'stick_ok': 'Выделение эталона',
+          'params_ok': 'Размеры',
+          'species_ok': 'Вид',
+        }.entries)
+          if (quality[field.key] is bool)
+            Text(
+                'По мнению автора: ${field.value} ${quality[field.key] == true ? 'верны' : 'требуют исправления'}'),
+        Text(proposal['training_consent'] == true
+            ? 'Автор разрешил использовать пример для обучения. Допуск к набору и запуск обучения выполняются отдельно.'
+            : 'Разрешение автора на использование в обучении не дано.'),
+      ],
+    );
+  }
 }

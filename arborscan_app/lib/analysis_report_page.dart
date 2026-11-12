@@ -298,7 +298,7 @@ class _HeroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ИТОГОВАЯ ОЦЕНКА',
+                      'СОХРАНЁННЫЙ ОТЧЁТ',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: AppTheme.color(context, AppTheme.text),
@@ -323,7 +323,7 @@ class _HeroCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              _RiskBadge(hero: hero),
+              Flexible(child: _RiskBadge(hero: hero)),
             ],
           ),
           const SizedBox(height: 16),
@@ -948,37 +948,10 @@ class _RiskHeroData {
     required String? riskCategory,
     required ThemeData theme,
   }) {
-    final cat = (riskCategory ?? '').trim().toLowerCase();
     final idx = riskIndex;
-
-    if (cat == 'низкий') {
-      return _RiskHeroData(
-        label: 'БЕЗОПАСНО',
-        valueText: idx != null ? idx.toStringAsFixed(2) : '—',
-        background: AppTheme.resolve(AppTheme.success, theme.brightness),
-        foreground: Colors.black,
-      );
-    }
-    if (cat == 'средний') {
-      return _RiskHeroData(
-        label: 'ВНИМАНИЕ',
-        valueText: idx != null ? idx.toStringAsFixed(2) : '—',
-        background: AppTheme.resolve(AppTheme.warning, theme.brightness),
-        foreground: Colors.black,
-      );
-    }
-    if (cat == 'высокий' || cat.isNotEmpty) {
-      return _RiskHeroData(
-        label: 'КРИТИЧНО',
-        valueText: idx != null ? idx.toStringAsFixed(2) : '—',
-        background: AppTheme.resolve(AppTheme.danger, theme.brightness),
-        foreground: AppTheme.resolve(AppTheme.danger, theme.brightness),
-      );
-    }
-
     return _RiskHeroData(
-      label: 'РИСК',
-      valueText: idx != null ? idx.toStringAsFixed(2) : '—',
+      label: 'ИСТОРИЧЕСКАЯ ОЦЕНКА',
+      valueText: idx != null && idx.isFinite ? idx.toStringAsFixed(2) : '—',
       background: AppTheme.resolve(AppTheme.surface3, theme.brightness),
       foreground: AppTheme.resolve(AppTheme.muted, theme.brightness),
     );

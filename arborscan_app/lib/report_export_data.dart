@@ -120,6 +120,38 @@ class ReportExportData {
             annotation == null ? null : Uint8List.fromList(annotation),
         _mask = mask == null ? null : Uint8List.fromList(mask);
 
+  /// The same immutable metric selector for summaries, map cards and PDF.
+  /// Omit large photo/mask assets when only presenting saved measurements.
+  factory ReportExportData.measurementView(Map<String, dynamic> snapshot) {
+    final report = exportMap(snapshot['report']);
+    final reference = exportMap(snapshot['reference']);
+    return ReportExportData(snapshot: {
+      'kind': snapshot['kind'],
+      'report': {
+        for (final key in [
+          'method',
+          'dimensions_source',
+          'measurement_method_version',
+          'height_m',
+          'crown_width_m',
+          'trunk_diameter_m',
+          'height',
+          'crown',
+          'trunk',
+          'measurement_sources',
+          'measurements',
+          'geometry',
+        ])
+          if (report.containsKey(key)) key: report[key],
+      },
+      if (reference.isNotEmpty)
+        'reference': {
+          'method': reference['method'],
+          'version': reference['version'],
+        },
+    }, record: const {}, local: true);
+  }
+
   /// A linked correction is a binary original-size PNG. The v4 model instead
   /// returns a fitted RGBA preview: foreground is encoded by alpha, not RGB.
   Uint8List? _embeddedCorrectionMask() {
@@ -188,21 +220,37 @@ class ReportExportData {
         'crown_width_m': 'crown',
         'trunk_diameter_m': 'trunk'
       };
-      final raw =
-          ref ? r[legacy] : a['value_m'] ?? r[legacy] ?? r[aliases[legacy]];
-      final value = exportNumeric(raw);
+      // An explicit nested metric is authoritative, including null or an
+      // unavailable source. Do not resurrect an older scalar as its fallback.
+      final explicit = !ref && m.containsKey(key);
+      final raw = ref
+          ? r[legacy]
+          : explicit
+              ? a['value_m']
+              : r[legacy] ?? r[aliases[legacy]];
       final rawSource = ref
           ? reference['method']
           : a['source'] ??
               exportMap(r['measurement_sources'])[legacy] ??
               r['method'] ??
               r['dimensions_source'];
+      final parsed = exportNumeric(raw);
+      final supported = rawSource != 'unavailable' &&
+          rawSource != 'vision' &&
+          (!explicit ||
+              (a['source'] is String &&
+                  (a['source'] as String).isNotEmpty &&
+                  a['available'] != false &&
+                  (a['unit'] == null || a['unit'] == 'm')));
+      final value = supported && parsed != null && parsed > 0 ? parsed : null;
       return ExportMetric(
           name,
           value,
           'м',
-          exportMethodLabel(rawSource),
-          raw != null && value == null
+          !ref && !explicit
+              ? 'Сохранённое значение · ${exportMethodLabel(rawSource)}'
+              : exportMethodLabel(rawSource),
+          raw != null && parsed == null
               ? 'Поле $legacy присутствует, но его формат не поддерживается экспортом. Требуется проверка исходной версии.'
               : ref
                   ? 'Проекция; общая глубина и малая перспектива. Полевая точность не подтверждена.'
@@ -227,16 +275,37 @@ class ReportExportData {
         metric('trunk_diameter', 'Диаметр ствола (не автоматически DBH)',
             'trunk_diameter_m'),
     ];
+    final nestedTrunk = exportMap(m['trunk_diameter']);
+    final nestedDbhSupported = nestedTrunk['standard'] == 'dbh_1_3m' &&
+        nestedTrunk['source'] is String &&
+        (nestedTrunk['source'] as String).isNotEmpty &&
+        nestedTrunk['source'] != 'unavailable' &&
+        nestedTrunk['source'] != 'vision' &&
+        nestedTrunk['available'] != false &&
+        (nestedTrunk['unit'] == null || nestedTrunk['unit'] == 'm');
     for (final e in GeometryReport.labels.entries) {
       final a = exportMap(g[e.key]);
       final legacyDbh = e.key == 'dbh'
-          ? (r['dbh_m'] ??
-              (exportMap(m['trunk_diameter'])['standard'] == 'dbh_1_3m'
-                  ? exportMap(m['trunk_diameter'])['value_m']
-                  : null))
+          ? (r['dbh_m'] ?? (nestedDbhSupported ? nestedTrunk['value_m'] : null))
           : null;
-      final rawValue = a['value'] ?? legacyDbh;
-      final value = exportNumeric(rawValue);
+      final rawValue = a.isEmpty ? legacyDbh : a['value'];
+      final parsed = exportNumeric(rawValue);
+      final expectedUnit = e.key == 'trunk_lean'
+          ? 'deg'
+          : e.key == 'crown_porosity'
+              ? '1'
+              : 'm';
+      final supported = a['available'] != false &&
+          a['source'] != 'unavailable' &&
+          a['source'] != 'vision' &&
+          (a['unit'] == expectedUnit || (a.isEmpty && legacyDbh != null));
+      final value = supported &&
+              parsed != null &&
+              parsed >= 0 &&
+              (expectedUnit != 'm' || parsed > 0) &&
+              (e.key != 'crown_porosity' || parsed <= 1)
+          ? parsed
+          : null;
       result.add(ExportMetric(
           e.value,
           value,
@@ -246,7 +315,7 @@ class ReportExportData {
                   ? 'м'
                   : a['unit'] ?? (e.key == 'crown_porosity' ? '1' : 'м')),
           exportMethodLabel(a['method'] ?? a['source'] ?? r['method']),
-          rawValue != null && value == null
+          rawValue != null && parsed == null
               ? 'Поле geometry.${e.key} присутствует, но его формат не поддерживается экспортом.'
               : legacyDbh != null && a['value'] == null
                   ? 'Историческая метка DBH из сохранённой версии; соблюдение полевого протокола этим экспортом не подтверждается.'
