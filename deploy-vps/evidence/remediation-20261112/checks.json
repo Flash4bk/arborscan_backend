@@ -1,0 +1,131 @@
+{
+  "date": "2026-11-12",
+  "branch": "codex/remediation-science",
+  "source_apk": "81013ce51b4f18bf81b56aa79848c5616f641077",
+  "flutter_full": {
+    "passed": 351,
+    "log_sha256": "5508cef444f349fc2d5170ca531bee14b82fdabf6f361a2eaed83f6203e1046f"
+  },
+  "history_labels_after_full": {
+    "passed": 4,
+    "changes": "text labels only; no metric/filter predicate changes"
+  },
+  "analyzer": {
+    "comparison": "Counter(file,diagnostic,rule); line/column ignored",
+    "baseline_count": 49,
+    "current_count": 47,
+    "baseline_severities": {
+      "info": 46,
+      "warning": 3
+    },
+    "current_severities": {
+      "info": 45,
+      "warning": 2
+    },
+    "new": [],
+    "removed": [
+      [
+        "lib/history_tab_page.dart",
+        "Unused import: 'map_page.dart'",
+        "unused_import"
+      ],
+      [
+        "lib/history_tab_page.dart",
+        "'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss",
+        "deprecated_member_use"
+      ]
+    ],
+    "new_count": 0,
+    "exit_status": 1,
+    "explanation": "Analyzer exit1 remains due preexisting47 issues; no new error/warning/info."
+  },
+  "native_junit": {
+    "suites": [
+      {
+        "name": "com.example.arborscan_app.ArAvailabilityFailureTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.example.arborscan_app.ArGeometryTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ]
+  },
+  "backend": "174 passed +1 Torch skip; subsequent overlapping58; science46; runtime25. Do not add overlaps.",
+  "ops": "172 passed +1 platform skip,3 separate compatibility tests, real Linux synthetic fixtures; not a production restore",
+  "pdf": {
+    "synthetic_documents": 6,
+    "pages_reviewed": 23,
+    "actual_device_SAF": false
+  },
+  "debug_apk": {
+    "source_commit": "81013ce51b4f18bf81b56aa79848c5616f641077",
+    "sha256": "3b9047f9f24d51cea49141c690b2353893d89deb0f5f1d49178793593dce4734",
+    "version_name": "1.5.0-science.1",
+    "version_code": 35,
+    "type": "debug_only_not_release_signature",
+    "avd": "Codex_ArborScan_Review_20261109",
+    "avd_install_r": "Success",
+    "new_filter_labels_verified_on_actual_apk": true,
+    "s24_installed": false,
+    "field_validation": false
+  },
+  "release": {
+    "built": false,
+    "missing_modules": [
+      "androidx.fragment:fragment:1.5.7",
+      "androidx.lifecycle:lifecycle-common:2.6.2",
+      "androidx.lifecycle:lifecycle-livedata-core-ktx:2.6.1",
+      "androidx.lifecycle:lifecycle-livedata-core:2.6.1",
+      "androidx.lifecycle:lifecycle-process:2.6.1",
+      "androidx.lifecycle:lifecycle-runtime:2.6.2",
+      "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1",
+      "androidx.window:window:1.0.0",
+      "io.flutter:arm64_v8a_release:1.0.0-3452d735bd38224ef2db85ca763d862d6326b17f",
+      "io.flutter:armeabi_v7a_release:1.0.0-3452d735bd38224ef2db85ca763d862d6326b17f",
+      "io.flutter:flutter_embedding_release:1.0.0-3452d735bd38224ef2db85ca763d862d6326b17f",
+      "io.flutter:x86_64_release:1.0.0-3452d735bd38224ef2db85ca763d862d6326b17f"
+    ]
+  },
+  "ui": {
+    "avd": "owned read-only Android16/API36 guest, emulator5562",
+    "font_scale": 1.6,
+    "font_restored": true,
+    "cold_restart": true,
+    "s24_tested": false,
+    "authorized_science_e2e": false
+  },
+  "beta": {
+    "author_package_available": false,
+    "photo_regressor_available": false,
+    "field_validated": false
+  },
+  "artifacts": {
+    "avd-cold-restart-font160.png": "639e805207e94120691412c2ded87322bc2be75eb91165a5718a77a1cf9e3647",
+    "avd-history35.png": "1ad56f8b619500a204accf02cbdc39a320a084817c4d8a67daa38e82410025f3",
+    "avd-home35.png": "a1102124689fae3d13e76b926018e1039ec681bdbb377501afaffa46af936ec6",
+    "avd-profile-font160.png": "fcc91024b525e6e8668f8d697b4f7e8d9c85b3bc1604a78715494543b48b0ce2",
+    "science-demo-pdf-contact.png": "a8182f614571539c8e35424dd707927592a43e96bd2464d258e282f227d66e43"
+  },
+  "ops_applied": {
+    "source_commit": "07400c0c",
+    "deleted_failed_attempts": 7,
+    "copied_source_files": 98,
+    "freed_allocated_bytes": 12404465664,
+    "complete_sets_retained": 26,
+    "attempt8_retained": true,
+    "tools_installed": true,
+    "runtime_index_switched": true,
+    "preflight_roles": 7,
+    "index_sha256": "be74e405c0b5f820f4a4d3fa3965e5fd016dae75576bf1e276446f1d662d6242",
+    "fresh_systemd_backup_confirmed": false,
+    "production_sql_restore": false,
+    "api_images_changed": false
+  }
+}
