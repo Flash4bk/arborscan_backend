@@ -1,0 +1,175 @@
+{
+  "review_date": "2026-11-12",
+  "reviewer": "/root/forestgales_integration",
+  "task_ids": [
+    "AS-10",
+    "AS-11",
+    "AS-13"
+  ],
+  "master_plan_version_read": "1.54",
+  "scope": "All complete new rendered PNG pages 18-21, plus complete page 17 to confirm the concluding paragraph spill was resolved. Final render has 21 pages.",
+  "docx_build_metadata": {
+    "source": "D:/arborscan_backend/output/arborscan-science-plan-20261111/docx-build.json",
+    "docx": "D:/arborscan_backend/output/arborscan-science-plan-20261111/ArborScan_План_научных_расчетов_2026-11-12.docx",
+    "sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+    "source_markdown_sha256": "c81bfe9da75a26c3b255ea076f88c1c159fe35c509d51b9662f816870b53a75b",
+    "tables": 4,
+    "paragraphs": 271,
+    "catalog_entries": 76
+  },
+  "inspection": {
+    "method": "tools.view_image, detail original, separate complete image inspection for every assigned page",
+    "render_reused": true,
+    "render_repeated": false,
+    "document_changed": false,
+    "plan_changed": false,
+    "authoring_or_rendering_tools_executed": false
+  },
+  "previous_review": [
+    {
+      "docx_sha256": "c06ba4647e6479a00bb27db7deda10bbc9b9003de3ba3ad5d255b20e9d25080c",
+      "finding": "CATALOG_N05_DEPTH",
+      "status": "resolved",
+      "resolution": "Explicit publisher-preview wording verified on final page 19. N01/N10/N13/N16 preview classifications also verified."
+    },
+    {
+      "docx_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+      "finding": "PAGE18_TWO_LINE_SPILL",
+      "status": "resolved",
+      "resolution": "Complete concluding paragraph now fits on final page 17. Catalogue begins on final page 18; no near-empty spill page remains."
+    }
+  ],
+  "pages": [
+    {
+      "page": 17,
+      "image": "D:/arborscan_backend/output/arborscan-science-plan-20261111/plan-render/page-17.png",
+      "image_sha256": "8bb764eb6d83b65fa376b8cdc6a4b98fc503bae65be75ec5b4bc1448598c11f2",
+      "docx_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+      "visual_status": "pass",
+      "checks": {
+        "clipping_or_overflow": false,
+        "missing_glyphs_or_tofu": false,
+        "overlap": false,
+        "orphan_heading": false,
+        "excessive_blank_area": false,
+        "unreadable_text": false,
+        "tables": "No table on this page."
+      },
+      "findings": [
+        {
+          "severity": "none",
+          "type": "layout_and_catalogue",
+          "finding": "Concluding evidence paragraphs now fit completely on page 17, including the final lines ending with БД сохранены. No clipping, orphan heading or excessive whitespace. The former PAGE18_TWO_LINE_SPILL is resolved."
+        }
+      ]
+    },
+    {
+      "page": 18,
+      "image": "D:/arborscan_backend/output/arborscan-science-plan-20261111/plan-render/page-18.png",
+      "image_sha256": "614d597694e0d9c48d789e9aacf5442a0d0fe93202fc1e7f25a4b8d0281ec04e",
+      "docx_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+      "visual_status": "pass",
+      "checks": {
+        "clipping_or_overflow": false,
+        "missing_glyphs_or_tofu": false,
+        "overlap": false,
+        "orphan_heading": false,
+        "excessive_blank_area": false,
+        "unreadable_text": false,
+        "tables": "No table on this page."
+      },
+      "findings": [
+        {
+          "severity": "none",
+          "type": "layout_and_catalogue",
+          "finding": "Catalogue opening and B/A sources are legible. Mechanics heading has a complete O01 entry beneath it; links and footer are intact."
+        }
+      ]
+    },
+    {
+      "page": 19,
+      "image": "D:/arborscan_backend/output/arborscan-science-plan-20261111/plan-render/page-19.png",
+      "image_sha256": "d5b322f6f633600c82d914c71a63813fb5abd9043f47568a1508c75f6067cc69",
+      "docx_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+      "visual_status": "pass",
+      "checks": {
+        "clipping_or_overflow": false,
+        "missing_glyphs_or_tofu": false,
+        "overlap": false,
+        "orphan_heading": false,
+        "excessive_blank_area": false,
+        "unreadable_text": false,
+        "tables": "No table on this page."
+      },
+      "findings": [
+        {
+          "severity": "none",
+          "type": "layout_and_catalogue",
+          "finding": "Mechanics entries O02-N13 are legible. N05 explicitly says abstract, introduction and selected publisher-preview fragments; full text not read. N01/N10/N13 correctly remain abstract/preview."
+        }
+      ]
+    },
+    {
+      "page": 20,
+      "image": "D:/arborscan_backend/output/arborscan-science-plan-20261111/plan-render/page-20.png",
+      "image_sha256": "73b0f4bdd237ca9b176e75c214a35d5cb1e12af65fe20e3cb575cf74a8d4dcfa",
+      "docx_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+      "visual_status": "pass",
+      "checks": {
+        "clipping_or_overflow": false,
+        "missing_glyphs_or_tofu": false,
+        "overlap": false,
+        "orphan_heading": false,
+        "excessive_blank_area": false,
+        "unreadable_text": false,
+        "tables": "No table on this page."
+      },
+      "findings": [
+        {
+          "severity": "none",
+          "type": "layout_and_catalogue",
+          "finding": "N14-N16 and data/services sources are legible. N16 correctly says abstract/preview. No clipping, orphan heading or broken wrapping."
+        }
+      ]
+    },
+    {
+      "page": 21,
+      "image": "D:/arborscan_backend/output/arborscan-science-plan-20261111/plan-render/page-21.png",
+      "image_sha256": "250fb5464cefd4936df15be936c1b20b02a8e569cbd36a70d4ad59fc25401180",
+      "docx_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+      "visual_status": "pass",
+      "checks": {
+        "clipping_or_overflow": false,
+        "missing_glyphs_or_tofu": false,
+        "overlap": false,
+        "orphan_heading": false,
+        "excessive_blank_area": false,
+        "unreadable_text": false,
+        "tables": "No table on this page."
+      },
+      "findings": [
+        {
+          "severity": "none",
+          "type": "layout_and_catalogue",
+          "finding": "Remaining data/services and four integration records are legible. Integration heading has four following records. Final-page whitespace is acceptable and footer is intact."
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "all_assigned_pages_visually_inspected": true,
+    "visual_layout_defects": 0,
+    "source_catalogue_findings": 0,
+    "layout_verdict": "pass",
+    "catalogue_verdict": "pass; N05 corrected and verified",
+    "limitations": "Covers the final recorded pages 17-21 and their verified hashes only. No revalidation of all 76 source links. Stale page-22.png is excluded because render-result.json lists only pages 1-21."
+  },
+  "render_metadata": {
+    "source": "D:/arborscan_backend/output/arborscan-science-plan-20261111/render-result.json",
+    "pages": 21,
+    "dpi": 120,
+    "stale_image_excluded": "D:/arborscan_backend/output/arborscan-science-plan-20261111/plan-render/page-22.png",
+    "docx_hash_verified": true,
+    "png_hashes_verified": true
+  }
+}

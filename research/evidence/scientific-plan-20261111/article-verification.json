@@ -1,0 +1,30 @@
+{
+  "task_ids": [
+    "AS-10",
+    "AS-11",
+    "AS-13"
+  ],
+  "master_plan_read": "1.53",
+  "date": "2026-11-11",
+  "original_docx_sha256": "cb85bba8ac8927e8ceca4a450e9baca72ab61d5689a1052eed3f9d6dc0ba2a5b",
+  "original_docx_rehash_unchanged": true,
+  "original_docx_rehash_method": "Read-only shared FileStream because Word held source open",
+  "bibliography_entries": 8,
+  "total_source_records": 15,
+  "unobtained_exact_original": [
+    "B5"
+  ],
+  "all_full_texts_read": false,
+  "table_rows": 9,
+  "arithmetic_status": "matches author rounding",
+  "files": {
+    "RESEARCH.md": "e1905da0a3000e0e1c4eaf936962943396e8594521060d5e598cad3f7de2a69d",
+    "sources.json": "e7e668311ac95f6e7c40eb13d881feb0fabb9da91e40fbd657187f2cef8af41e",
+    "article-table-arithmetic.json": "3745fb53cb84f3287e90a056dc269b9394b1879b1b170a093c56b49fae3bcbaa",
+    "audit_article.py": "66932869b8eff851b8e1ea9848d2be094d4c303fd795a77332496a587c67026f"
+  },
+  "production_changes": false,
+  "plan_changes": false,
+  "training_run": false,
+  "original_program_run": false
+}

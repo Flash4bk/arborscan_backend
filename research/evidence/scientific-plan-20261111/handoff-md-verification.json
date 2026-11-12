@@ -1,0 +1,18 @@
+{
+  "path": "D:\\arborscan_backend\\research\\ARBORSCAN_HANDOFF.md",
+  "bytes": 160173,
+  "sha256": "ff5f848a525d625ac2e574a622b859ea0e5a084723db12d1f699d9cf21da1741",
+  "source_master_version": "1.55",
+  "source_plan_sha256": "c81bfe9da75a26c3b255ea076f88c1c159fe35c509d51b9662f816870b53a75b",
+  "source_catalog_sha256": "f2a2a600c71561b4e040c4227dbba9ca04eba141ac32f7ea56484738ca4af245",
+  "contains_full_plan": true,
+  "contains_full_catalog": true,
+  "application_or_production_changed": false,
+  "all_13_packages_present": true,
+  "internal_anchors_verified": true,
+  "source_documents_unchanged": true,
+  "review": "Independent read-only review of the introductory section found no material errors; full plan and catalog match source content with declared heading/link changes.",
+  "new_application_or_api_tests": false,
+  "new_field_validation": false,
+  "user_acceptance": false
+}

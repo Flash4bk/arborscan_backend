@@ -1,0 +1,121 @@
+{
+  "task": "AS-10/AS-11/AS-13 scientific implementation plan DOCX final visual QA rerun",
+  "reviewer": "agent-beta",
+  "review_date": "2026-11-12",
+  "report_page_count": 21,
+  "report_docx": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\ArborScan_План_научных_расчетов_2026-11-12.docx",
+  "report_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+  "source_markdown_sha256": "c81bfe9da75a26c3b255ea076f88c1c159fe35c509d51b9662f816870b53a75b",
+  "supersedes_report_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+  "render": "Existing final Word+packaged render_docx+bundled Poppler120dpi; no re-render by this agent",
+  "pages": [
+    {
+      "page": 8,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-8.png",
+      "sha256": "a18afb82a0bd2761dc137c0ccc07d2272282199538355e4401ebc9359d921bae",
+      "inspection": "Full PNG re-opened with view_image detail=original, image emitted and visually inspected after final reflow to22pages",
+      "status": "pass",
+      "finding": "Повторно просмотрена вся страница после финальных правок: раздел8, формулы, стрелки, β/π/φ и индексы читаемы. Нет обрезки, tofu, переполнения или одиноких заголовков; оба подзаголовка имеют содержательные абзацы на той же странице.",
+      "clipping": false,
+      "tofu": false,
+      "table_overflow": false,
+      "orphan_heading": false,
+      "inappropriate_whitespace": false,
+      "readable": true
+    },
+    {
+      "page": 9,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-9.png",
+      "sha256": "e15d9dc2826c7671b953537b44c0c4faa67feeca666cdb059c3a85c71df31389",
+      "inspection": "Full PNG re-opened with view_image detail=original, image emitted and visually inspected after final reflow to22pages",
+      "status": "pass",
+      "finding": "Повторно просмотрена вся страница: «Численная реализация» и раздел9 размещены со следующим текстом. Нижний абзац начинается двумя полными строками и продолжается на странице10; это обычный перенос. Обрезки, tofu и неуместных пустот нет.",
+      "clipping": false,
+      "tofu": false,
+      "table_overflow": false,
+      "orphan_heading": false,
+      "inappropriate_whitespace": false,
+      "readable": true
+    },
+    {
+      "page": 10,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-10.png",
+      "sha256": "ec7f4d7a26d2edac2a33b83df7a2bcfe4b48f5b947608e03fb6a7ce47510b455",
+      "inspection": "Full PNG re-opened with view_image detail=original, image emitted and visually inspected after final reflow to22pages",
+      "status": "pass",
+      "finding": "Повторно просмотрена вся страница: вероятностная формула с θ/Π, список1–6 и основной мобильный поток читаемы. Заголовок раздела10 не одинокий; длинные строки и стрелки не выходят за поля. Таблица теперь начинается целиком на следующей странице.",
+      "clipping": false,
+      "tofu": false,
+      "table_overflow": false,
+      "orphan_heading": false,
+      "inappropriate_whitespace": false,
+      "readable": true
+    },
+    {
+      "page": 11,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-11.png",
+      "sha256": "7b2e0fdd01955286bfb55a9bde7153e1e9b70dcfe716fcd47399ce0fcfb6a7a2",
+      "inspection": "Full PNG re-opened with view_image detail=original, image emitted and visually inspected after final reflow to22pages",
+      "status": "pass",
+      "finding": "Повторно просмотрена вся страница: таблица состояний целиком помещается на странице, все6строк и заголовок читаемы; ячейки не обрезаны. Прежний одиночный перенос последней строки устранён. Раздел11 связан с абзацами. Окончание API-абзаца продолжается на странице12 без потери содержимого.",
+      "clipping": false,
+      "tofu": false,
+      "table_overflow": false,
+      "orphan_heading": false,
+      "inappropriate_whitespace": false,
+      "readable": true
+    },
+    {
+      "page": 12,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-12.png",
+      "sha256": "259e31327f860c50e7693aa2e3642483e7c439c4b4e0ab29dd932e3b213babcb",
+      "inspection": "Full PNG re-opened with view_image detail=original, image emitted and visually inspected after final reflow to22pages",
+      "status": "pass",
+      "finding": "Повторно просмотрена вся страница: продолжение архитектуры, code-paths, ссылки, раздел12 и пакетыП00/П01 читаемы. Новый абзац пререквизитов аудита1.54 не обрезан. П00 иП01 имеют содержимое после заголовков; нет tofu, переполнения и неуместных пустот.",
+      "clipping": false,
+      "tofu": false,
+      "table_overflow": false,
+      "orphan_heading": false,
+      "inappropriate_whitespace": false,
+      "readable": true
+    }
+  ],
+  "blocking_findings": [],
+  "minor_findings": [],
+  "resolved_previous_minor_findings": [
+    "The state table now fits completely on page11; no final-row-only spill"
+  ],
+  "overall": "pass",
+  "document_modified": false,
+  "previous_report_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+  "reused_identical_images": true,
+  "image_reuse_evidence": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\pre-pagination-image-hashes.json",
+  "image_reuse_verification": [
+    {
+      "page": 8,
+      "sha256": "a18afb82a0bd2761dc137c0ccc07d2272282199538355e4401ebc9359d921bae",
+      "unchanged": true
+    },
+    {
+      "page": 9,
+      "sha256": "e15d9dc2826c7671b953537b44c0c4faa67feeca666cdb059c3a85c71df31389",
+      "unchanged": true
+    },
+    {
+      "page": 10,
+      "sha256": "ec7f4d7a26d2edac2a33b83df7a2bcfe4b48f5b947608e03fb6a7ce47510b455",
+      "unchanged": true
+    },
+    {
+      "page": 11,
+      "sha256": "7b2e0fdd01955286bfb55a9bde7153e1e9b70dcfe716fcd47399ce0fcfb6a7a2",
+      "unchanged": true
+    },
+    {
+      "page": 12,
+      "sha256": "259e31327f860c50e7693aa2e3642483e7c439c4b4e0ab29dd932e3b213babcb",
+      "unchanged": true
+    }
+  ],
+  "reuse_note": "Only pagination of pages17-21 changed. Pages8-12 were not viewed again: current PNG hashes equal both previously visually reviewed hashes and pre-pagination manifest. Original per-page findings and hashes retained."
+}

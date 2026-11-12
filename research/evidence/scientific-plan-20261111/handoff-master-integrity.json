@@ -1,0 +1,12 @@
+{
+  "version_before": "1.55",
+  "version_after": "1.56",
+  "before_sha256": "d96833bf1ff434052bbc77b41a8fd06666ac26aeb6cb2704065ee28173a0b0d9",
+  "after_sha256": "32147ad1dcaf61514a3ab882fc7e65b64aa4dfca0f82fe8e80347f42da9a1366",
+  "all_previous_content_preserved_except_version_new_section_and_appended_log": true,
+  "all_16_registry_rows_identical": true,
+  "handoff_sha256": "ff5f848a525d625ac2e574a622b859ea0e5a084723db12d1f699d9cf21da1741",
+  "application_or_production_changed": false,
+  "new_field_validation": false,
+  "user_acceptance": false
+}

@@ -1,0 +1,132 @@
+{
+  "task": "AS-10/AS-11/AS-13 scientific implementation plan DOCX visual QA",
+  "reviewer": "/root/reverse_audit",
+  "checked_at_minsk": "2026-11-12T00:09:13.077133+03:00",
+  "docx_path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\ArborScan_План_научных_расчетов_2026-11-12.docx",
+  "docx_sha256_from_build": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+  "docx_sha256_observed": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+  "docx_build_receipt": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\docx-build.json",
+  "source_markdown_sha256_from_build": "c81bfe9da75a26c3b255ea076f88c1c159fe35c509d51b9662f816870b53a75b",
+  "reviewed_pages": [
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "expected_total_pages_parent": 21,
+  "review_iteration": 3,
+  "supersedes_docx_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+  "reused_visual_pages_after_identical_hash_check": [
+    13,
+    14,
+    15,
+    16
+  ],
+  "new_full_page_views": [
+    17
+  ],
+  "render_source": "Existing Word PDF plus packaged render_docx/bundled Poppler120dpi, as provided by parent; not rerendered",
+  "runtime_for_receipt": "C:\\Users\\danik\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+  "pages": [
+    {
+      "page": 13,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-13.png",
+      "sha256": "85b719bd4451a06dc53d310afaf93e276b2f59853e03b394a759150a9dac96d3",
+      "inspection": "reused original full-page visual review after verified identical PNG SHA256",
+      "reused_visual_review": true,
+      "same_image_hash_as_pre_pagination": true,
+      "prior_visual_review_docx_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+      "status": "pass",
+      "finding": "Повторно полностью просмотрена актуальная страница: продолжение П01, П02–П05. Текст и β читаемы; заголовки сопровождаются несколькими строками содержания, обрезок/наложений/тофу и чрезмерных пустот нет.",
+      "clipping": false,
+      "overlap": false,
+      "missing_glyphs_or_tofu": false,
+      "orphan_heading": false,
+      "tables_present": false,
+      "readable": true
+    },
+    {
+      "page": 14,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-14.png",
+      "sha256": "8d36a0427fa4904dd425204766079fb40cbfda11950181d9c7a5b75be28a79c6",
+      "inspection": "reused original full-page visual review after verified identical PNG SHA256",
+      "reused_visual_review": true,
+      "same_image_hash_as_pre_pagination": true,
+      "prior_visual_review_docx_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+      "status": "pass",
+      "finding": "Повторно полностью просмотрена актуальная страница: продолжение П05, П06–П09. μ/ζ/β читаемы. После П09 есть две строки ролей/зависимостей, действия продолжаются на следующей странице; одинокого заголовка нет.",
+      "clipping": false,
+      "overlap": false,
+      "missing_glyphs_or_tofu": false,
+      "orphan_heading": false,
+      "tables_present": false,
+      "readable": true
+    },
+    {
+      "page": 15,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-15.png",
+      "sha256": "a70e306d3e0364a92edc0a8d6f35ccbab1af5631ec15038113a6b5bd551eec92",
+      "inspection": "reused original full-page visual review after verified identical PNG SHA256",
+      "reused_visual_review": true,
+      "same_image_hash_as_pre_pagination": true,
+      "prior_visual_review_docx_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+      "status": "pass",
+      "finding": "Повторно полностью просмотрена актуальная страница: продолжение П09, П10–П12. Сквозной маршрут server→UI→save→offline→PDF и β читаемы; заголовки не оторваны, нижняя строка и номер страницы не перекрываются.",
+      "clipping": false,
+      "overlap": false,
+      "missing_glyphs_or_tofu": false,
+      "orphan_heading": false,
+      "tables_present": false,
+      "readable": true
+    },
+    {
+      "page": 16,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-16.png",
+      "sha256": "3f254bcf3cf916128daf0eb6b7c0af4c9f7813bc521af29527fddd7fb7b7a587",
+      "inspection": "reused original full-page visual review after verified identical PNG SHA256",
+      "reused_visual_review": true,
+      "same_image_hash_as_pre_pagination": true,
+      "prior_visual_review_docx_sha256": "6513c1bd37c0a4a04a78691002b4a986366760bb67b3464c48c914db0409b067",
+      "status": "pass",
+      "finding": "Повторно полностью просмотрена актуальная страница: раздел13 и начало14. Формула допуска, символы Δβ/≤ и показатель d³ читаемы; формула переносится без выхода за поля, у заголовка14 достаточно текста.",
+      "clipping": false,
+      "overlap": false,
+      "missing_glyphs_or_tofu": false,
+      "orphan_heading": false,
+      "tables_present": false,
+      "readable": true
+    },
+    {
+      "page": 17,
+      "path": "D:\\arborscan_backend\\output\\arborscan-science-plan-20261111\\plan-render\\page-17.png",
+      "sha256": "8bb764eb6d83b65fa376b8cdc6a4b98fc503bae65be75ec5b4bc1448598c11f2",
+      "inspection": "new entire full-page PNG viewed with view_image(detail=original)",
+      "reused_visual_review": false,
+      "same_image_hash_as_pre_pagination": false,
+      "prior_visual_review_docx_sha256": null,
+      "status": "pass",
+      "finding": "Повторно полностью просмотрена актуальная страница: продолжение14, разделы15–16. Список1–8 и ссылка/технические пути читаемы и остаются в полях; раздел16 сопровождается содержанием. После локальной pagination-правки весь заключительный абзац помещается на странице; нижнее поле и номер не перекрываются. Чрезмерных пустот, наложений и тофу нет.",
+      "clipping": false,
+      "overlap": false,
+      "missing_glyphs_or_tofu": false,
+      "orphan_heading": false,
+      "tables_present": false,
+      "readable": true
+    }
+  ],
+  "summary": {
+    "blocking_visual_findings": 0,
+    "nonblocking_notes": 0,
+    "pass": true,
+    "all_assigned_full_pages_visually_inspected": true
+  },
+  "limitations": [
+    "Only assigned pages13-17 inspected by this reviewer.",
+    "No tables occur on assigned pages; other reviewers cover table pages.",
+    "Visual QA does not establish scientific correctness or user acceptance."
+  ],
+  "document_or_plan_modified": false,
+  "rerendered": false,
+  "desktop_libreoffice_used": false
+}

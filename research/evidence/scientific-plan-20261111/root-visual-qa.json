@@ -1,0 +1,41 @@
+{
+  "report_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+  "pages": [
+    {
+      "page": 1,
+      "image_sha256": "9624966ccad21067ea18e3a54fd17f628e0db415ea7ce92bc6a96b956437cd16",
+      "finding": "pass; full original image viewed, title border removed; no clipping/overlap/tofu"
+    },
+    {
+      "page": 2,
+      "image_sha256": "ae14c3dfe6e2fecfe06b5310b7aa21f3d09c9abf71546ca584b663a130199fc8",
+      "finding": "pass; full original image viewed, title border removed; no clipping/overlap/tofu"
+    },
+    {
+      "page": 3,
+      "image_sha256": "7895240eb182406f14d615350f00f899c0685839e4ae3e58267566b549eb6201",
+      "finding": "pass; full original image viewed, title border removed; no clipping/overlap/tofu"
+    },
+    {
+      "page": 4,
+      "image_sha256": "d5262577dcd57816fdd9497f42dbef345cd299b107cb4e116d8252ec478a925e",
+      "finding": "pass; full original image viewed, title border removed; no clipping/overlap/tofu"
+    },
+    {
+      "page": 5,
+      "image_sha256": "835839ffa7b6f17084838c3b31ff99eba4af5a5fa215644ff4798af133d99e70",
+      "finding": "pass; full original image viewed, title border removed; no clipping/overlap/tofu"
+    },
+    {
+      "page": 6,
+      "image_sha256": "3f8bb903aa1c7f9683c16117c1cd411efd6f4eb552209607047c282fc6face4d",
+      "finding": "pass; full original image viewed, title border removed; no clipping/overlap/tofu"
+    },
+    {
+      "page": 7,
+      "image_sha256": "e8f8f304b1aff9a4dc84e06ad693270f9855cf398dc7dfad644df2df5f5d4b9c",
+      "finding": "pass; full original image viewed, title border removed; no clipping/overlap/tofu"
+    }
+  ],
+  "status": "pass"
+}

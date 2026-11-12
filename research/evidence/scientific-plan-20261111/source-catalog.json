@@ -1,0 +1,1659 @@
+{
+  "date": "2026-11-11",
+  "entries_before_deduplication": 77,
+  "unique_entries": 76,
+  "publication_entries_with_doi": 38,
+  "source_article_bibliographic_entries": 8,
+  "note": "Sources include prior reviews, selected full texts, abstracts, metadata and official service documentation; counts do not mean all full texts were read.",
+  "sources": [
+    {
+      "id": "B1",
+      "article_reference": 1,
+      "title": "Анализ вероятности возникновения ветровалов на территории Республики Беларусь",
+      "authors": "Ребко Д.В.",
+      "publication_date": "2025-11",
+      "doi": "10.33408/2519-237X.2025.9-4.551",
+      "url": "https://doi.org/10.33408/2519-237X.2025.9-4.551",
+      "read_depth": "full text, all 11 PDF pages; extraction, not complete visual formula QA",
+      "local_source": "D:/arborscan_backend/output/contest-revision-20261027/rebko2025.pdf",
+      "sha256": "cd452480c808f1924621ef536959601e3d9b78bae77129ae40e7825228b69e9e",
+      "findings": "Mamdani prototype, illustrative risk outputs and limited validation; species beta values use kg/(m*s), distinct from total beta kg/s.",
+      "limitations": "No reproducible risk calibration supplied by this article; current model artefacts not established by publication.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B1"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "B2",
+      "article_reference": 2,
+      "title": "Review: Wind impacts on plant growth, mechanics and damage",
+      "authors": "Gardiner B., Berry P., Moulia B.",
+      "publication_date": "2016-04; online 2016-01-27",
+      "doi": "10.1016/j.plantsci.2016.01.006",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0168945216300061",
+      "alternative_url": "https://pubmed.ncbi.nlm.nih.gov/26940495/",
+      "read_depth": "abstract and publisher section previews; not full 25-page review",
+      "findings": "Reconfiguration, dynamic loading and acclimation matter; tree mechanics varies with environment.",
+      "limitations": "Does not supply an experimentally calibrated photo-to-beta regressor.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B2"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "B3",
+      "article_reference": 3,
+      "title": "Drag relationships for full-grown Scots pine trees",
+      "authors": "Borisevich S.A., Kamluk A.N., Rebko D.V.",
+      "publication_date": "2022-05; publisher preview states online 2022-02-11",
+      "doi": "10.1139/cjfr-2021-0043",
+      "url": "https://cdnsciencepub.com/doi/10.1139/cjfr-2021-0043",
+      "metadata_url": "https://api.crossref.org/works/10.1139/cjfr-2021-0043",
+      "preview_url": "https://www.researchgate.net/publication/358539484_Drag_relationships_for_full-grown_Scots_pine_trees",
+      "read_depth": "publisher abstract and first-page publisher preview (882); Crossref deposited publisher metadata. Prior project proof analysis read as historical evidence, not reread original proof here.",
+      "findings": "Five pine free-fall experiments; constant linear scaling parameter 25.5-90 kg/s in abstract. Final title is full-grown, not full-scale.",
+      "limitations": "Final full text not obtained. No >100-tree training set or aspen photo regression verified.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B3"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "B4",
+      "article_reference": 4,
+      "title": "Evaluation of the drag coefficients of tree crowns by numerical modeling of their free fall",
+      "authors": "Borisevich S.A., Vikhrenko V.S.",
+      "publication_date": "2018-06-15",
+      "doi": "10.1016/j.agrformet.2018.03.020",
+      "url": "https://www.sciencedirect.com/science/article/abs/pii/S0168192318301035",
+      "read_depth": "abstract, introduction and publisher section snippets (methods/results/discussion/conclusion), not full seven-page paper",
+      "findings": "Five symmetrical forest pines 23-27m near Minsk; free fall, linear drag, triangular distributed profile; intensity gamma_max has kg/(m*s), not automatically total beta.",
+      "limitations": "No raw trajectories/Maple reproduction package obtained; complete integration method not recovered from previews.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B4"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "B5",
+      "article_reference": 5,
+      "title": "Определение сопротивления движению кроны дерева",
+      "authors": "Борисевич С.А., Камлюк А.Н., Ребко Д.В.",
+      "publication_date": "2013",
+      "doi": null,
+      "url": "https://elibrary.ru/TKARSZ",
+      "url_status": "EDN locator from primary B1 bibliography; access failed; not a verified full-text link",
+      "read_depth": "bibliographic entry in supplied manuscript and in full primary B1 only; exact original not obtained",
+      "bibliography": "Труды БГТУ. №6. Физико-математические науки и информатика, №6(162),34-36; EDN TKARSZ",
+      "findings": "Exact reference has been accounted for, not silently replaced by a different 2013 article.",
+      "limitations": "No independent content-based conclusions attributed to this inaccessible original; DOI not established.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B5"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "B6",
+      "article_reference": 6,
+      "title": "Greedy function approximation: A gradient boosting machine",
+      "authors": "Friedman J.H.",
+      "publication_date": "2001-10-01",
+      "doi": "10.1214/aos/1013203451",
+      "url": "https://projecteuclid.org/journals/annals-of-statistics/volume-29/issue-5/Greedy-function-approximation-A-gradient-boosting-machine/10.1214/aos/1013203451.full",
+      "preprint_url": "https://www.cse.iitb.ac.in/~soumen/readings/papers/Friedman1999GreedyFuncApprox.pdf",
+      "read_depth": "2001 publisher metadata/abstract; selected text sections 1-3 and5 (regularization) of author 1999-02-24 preprint. Scanned final PDF obtained through browser but body not read visually; not full final article.",
+      "findings": "Stagewise gradient boosting and shrinkage/iteration regularization are methodological basis, not evidence of any ArborScan trained model.",
+      "limitations": "A citation to an algorithm does not establish implementation, training data, model weights or external validation.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B6"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "B7",
+      "article_reference": 7,
+      "title": "A concordance correlation coefficient to evaluate reproducibility",
+      "authors": "Lin L.I.",
+      "publication_date": "1989-03",
+      "doi": "10.2307/2532051",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/2720055/",
+      "publisher_url": "https://www.jstor.org/stable/2532051",
+      "read_depth": "NLM-indexed abstract and publisher-deposited Crossref metadata; not full 14-page paper",
+      "findings": "Agreement near the identity line differs from association. Table CCC recalculated independently.",
+      "limitations": "CCC alone is not a validated safety decision or evidence of causal beta identifiability.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B7"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "B8",
+      "article_reference": 8,
+      "title": "Statistical methods for assessing agreement between two methods of clinical measurement",
+      "authors": "Bland J.M., Altman D.G.",
+      "publication_date": "1986-02",
+      "doi": "10.1016/S0140-6736(86)90837-8",
+      "url": "https://www-users.york.ac.uk/~mb55/meas/ba.pdf",
+      "read_depth": "full 9-page author-hosted reprint, text; uncertainty and repeatability sections included",
+      "findings": "Bias and limits of agreement must be judged against prespecified use limits; small samples give imprecise limits; correlation is not agreement.",
+      "limitations": "Does not justify universal acceptable error bands for beta or tree failure.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "B8"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "A1",
+      "title": "Определение сопротивления кроны дерева при его движении: экспериментальные результаты и численные расчеты",
+      "authors": "Камлюк А.Н., Борисевич С.А., Ребко Д.В.",
+      "publication_date": "2013",
+      "doi": null,
+      "url": "https://agz.edu.kz/public/uploads/raznoe/Vestnik_11.pdf",
+      "read_depth": "full article text, PDF pages12-18 (indices11-17) within104-page issue; not whole issue",
+      "findings": "Cut-edge rotation axis without leaving stump, triangular beta_max; initial angular speed estimated from early motion then drag from later motion.",
+      "limitations": "Different publication from B5. Ambiguous beta_max/total-beta relation and discretization require explicit definitions; not >100 tree regression evidence.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "A1"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "A2",
+      "title": "Structural and practical identifiability analysis of partially observed dynamical models by exploiting the profile likelihood",
+      "authors": "Raue A. et al.",
+      "publication_date": "2009-08-01; online2009-06-08",
+      "doi": "10.1093/bioinformatics/btp358",
+      "url": "https://academic.oup.com/bioinformatics/article/25/15/1923/213246",
+      "alternative_url": "https://pubmed.ncbi.nlm.nih.gov/19505944/",
+      "read_depth": "abstract and indexed publisher method excerpts; two author/institutional PDF fetches timed out; not full",
+      "findings": "Profile likelihood detects structural/practical non-identifiability and informs experiment design.",
+      "limitations": "Method adaptation to tree dynamics is a proposed design, not a result in the paper.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "A2"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "A3",
+      "title": "Cross-validation strategies for data with temporal, spatial, hierarchical, or phylogenetic structure",
+      "authors": "Roberts D.R. et al.",
+      "publication_date": "2017 issue40(8),913-929; online2016-12-08",
+      "doi": "10.1111/ecog.02881",
+      "url": "https://nsojournals.onlinelibrary.wiley.com/doi/full/10.1111/ecog.02881",
+      "read_depth": "abstract and selected full-text sections on structured data and cross-validation objectives; not all simulations/references",
+      "findings": "Blocked validation should match deployment objective and dependence structure; tree/site/campaign grouped splits proposed.",
+      "limitations": "No universally optimal block size or performance guarantee for Belarus data.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "A3"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "A4",
+      "title": "Conformalized Quantile Regression",
+      "authors": "Romano Y., Patterson E., Candès E.J.",
+      "publication_date": "2019 NeurIPS32; preprint2019-05-08",
+      "doi": "10.48550/arXiv.1905.03222",
+      "doi_note": "arXiv DOI identifies preprint; no conference DOI established",
+      "url": "https://proceedings.neurips.cc/paper/2019/file/5103c3584b063c431bd1268e9b5e76fb-Paper.pdf",
+      "read_depth": "selected full-text pages1-7 and9: methods1-5, Algorithm1, Theorem1/2 and conclusion; not supplementary proofs or all experiment details",
+      "findings": "Separate training/calibration; conformity score correction; finite-sample marginal coverage under exchangeability, not guaranteed per individual or OOD urban case.",
+      "limitations": "Prediction intervals must be calibrated on the same target/measurement regime; reference-label error is not automatically removed.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "A4"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "A5",
+      "title": "Natural sway frequencies and damping ratios of trees: concepts, review and synthesis of previous studies",
+      "authors": "Moore J.R., Maguire D.A.",
+      "publication_date": "2004-03",
+      "doi": "10.1007/s00468-003-0295-6",
+      "url": "https://napier-repository.worktribe.com/output/259422/natural-sway-frequencies-and-damping-ratios-of-trees-concepts-review-and-synthesis-of-previous-studies",
+      "read_depth": "author-institutional abstract/metadata; not full review",
+      "findings": "Damping combines internal, aerodynamic and crown-contact processes; aerodynamic damping can depend nonlinearly on speed.",
+      "limitations": "A fitted sway damping ratio is not directly the total free-fall crown beta.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "A5"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "A6",
+      "title": "An architectural understanding of natural sway frequencies in trees",
+      "authors": "Jackson T. et al.",
+      "publication_date": "2019-06-05",
+      "doi": "10.1098/rsif.2019.0116",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6597771/",
+      "read_depth": "selected full-text abstract, Introduction1.1/1.2 and Methods2.1/2.2; not all finite-element sensitivity analyses",
+      "findings": "Architecture/leaf state matters; field pull-release fitted strain decay. Detailed QSM architecture is not equivalent to a single photograph.",
+      "limitations": "Does not validate the article beta regressor or prescribe a unique damping-transfer map.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "A6",
+        "N11"
+      ],
+      "additional_reading": [
+        {
+          "id": "N11",
+          "depth": "selected accepted-manuscript PDF text: methods,architecture and modal framework; publisher abstract cross-checked"
+        }
+      ]
+    },
+    {
+      "id": "A7",
+      "title": "In situ drag coefficient measurements for rooftop trees",
+      "authors": "Koizumi A., Shimizu M., Sasaki Y., Hirai T.",
+      "publication_date": "2016-05-18; issue2016-08",
+      "doi": "10.1007/s10086-016-1556-5",
+      "url": "https://link.springer.com/article/10.1007/s10086-016-1556-5",
+      "read_depth": "publisher abstract and metadata; subscription full text not accessed",
+      "findings": "Wind/deflection measurement in built setting provides a relevant independent standing-tree calibration direction.",
+      "limitations": "Only two reported rooftop specimens, no universal urban-tree beta or transfer factor.",
+      "accessed_date": "2026-11-11",
+      "category": "Бета и статистика",
+      "agent_source": "agent-beta",
+      "aliases": [
+        "A7"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O01",
+      "status": "previously_reviewed",
+      "authors": "Gardiner, Peltola, Kellomaki",
+      "title": "Comparison of two models for predicting the critical wind speeds required to damage coniferous trees",
+      "year": 2000,
+      "doi": "10.1016/S0304-3800(00)00220-9",
+      "url": "https://doi.org/10.1016/S0304-3800(00)00220-9",
+      "primary": true,
+      "read_depth": "Prior report: selected full author text; not reread here",
+      "tree_state": "forest stands; GALES/HWIND",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O01"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O02",
+      "status": "previously_reviewed",
+      "authors": "Hale et al.",
+      "title": "Wind loading of trees: influence of tree size and competition",
+      "year": 2012,
+      "doi": "10.1007/s10342-010-0448-2",
+      "url": "https://doi.org/10.1007/s10342-010-0448-2",
+      "primary": true,
+      "read_depth": "Prior report: methods, sample and relationships from full author text; not reread here",
+      "tree_state": "standing trees within stands; TMC",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O02"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O03",
+      "status": "previously_reviewed",
+      "authors": "Hale et al.",
+      "title": "Comparison and validation of three versions of a forest wind risk model",
+      "year": 2015,
+      "doi": "10.1016/j.envsoft.2015.01.016",
+      "url": "https://doi.org/10.1016/j.envsoft.2015.01.016",
+      "primary": true,
+      "read_depth": "Prior report: full article, selected formula/result pages; supplement not obtained; not reread here",
+      "tree_state": "forest stand event validation; TMC and roughness",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O03"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O04",
+      "status": "previously_reviewed",
+      "authors": "Neild and Wood",
+      "title": "Estimating stem and root-anchorage flexibility in trees",
+      "year": 1999,
+      "doi": "10.1093/treephys/19.3.141",
+      "url": "https://doi.org/10.1093/treephys/19.3.141",
+      "primary": true,
+      "read_depth": "Prior report: full author text selected mathematics and validation; not reread here",
+      "tree_state": "standing tree bending and root rotation",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O04"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O05",
+      "status": "previously_reviewed",
+      "authors": "Nicoll et al.",
+      "title": "Anchorage of coniferous trees in relation to species, soil type, and rooting depth",
+      "year": 2006,
+      "doi": "10.1139/X06-072",
+      "url": "https://doi.org/10.1139/X06-072",
+      "primary": true,
+      "read_depth": "Prior report: full author text methods/results/tables/discussion; not reread here",
+      "tree_state": "forest pulling tests; root-rot trees excluded from relevant regression",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O05"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O06",
+      "status": "previously_reviewed",
+      "authors": "Achim and Nicoll",
+      "title": "Modelling the anchorage of shallow-rooted trees",
+      "year": 2009,
+      "doi": "10.1093/forestry/cpp004",
+      "url": "https://doi.org/10.1093/forestry/cpp004",
+      "primary": true,
+      "read_depth": "Prior report: full author text methods/equations/tables/discussion; not reread here",
+      "tree_state": "148 Sitka spruce; shallow root-plate model",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O06"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O07",
+      "status": "previously_reviewed",
+      "authors": "Locatelli et al.",
+      "title": "Variance-based sensitivity analysis of a wind risk model - Model behaviour and lessons for forest modelling",
+      "year": 2017,
+      "doi": "10.1016/j.envsoft.2016.10.010",
+      "url": "https://doi.org/10.1016/j.envsoft.2016.10.010",
+      "primary": true,
+      "read_depth": "Prior report: selected methods/inputs/discussion in author manuscript; not reread here",
+      "tree_state": "numerical sensitivity of forest model; correlated inputs",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O07"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O08",
+      "status": "previously_reviewed",
+      "authors": "Krisans et al.",
+      "title": "Presence of Root Rot Reduces Stability of Norway Spruce (Picea abies): Results of Static Pulling Tests in Latvia",
+      "year": 2020,
+      "doi": "10.3390/f11040416",
+      "url": "https://doi.org/10.3390/f11040416",
+      "primary": true,
+      "read_depth": "Prior report: full HTML methods/results/tables1-3/conclusions; not reread here",
+      "tree_state": "77 spruce, static destructive pulling; root rot",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O08"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "O09",
+      "status": "previously_reviewed",
+      "authors": "Merlin, Gardiner and Solberg",
+      "title": "Predicting the risk of individual tree fall along powerlines in Norway with a mechanistic wind risk model and machine learning",
+      "year": 2026,
+      "doi": "10.5194/nhess-26-2461-2026",
+      "url": "https://doi.org/10.5194/nhess-26-2461-2026",
+      "primary": true,
+      "read_depth": "Prior report: full HTML methods/results/discussion/appendices/data-code statement; not reread here",
+      "tree_state": "individual trees at forest powerline corridors; no major storm during winter",
+      "accessed_on": "2026-11-11",
+      "current_work": "Referenced through existing FORESTGALES_LITERATURE_AND_CORE.md, without a claim of a new full reread",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "O09"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N01",
+      "status": "new_in_this_extension",
+      "authors": "Angelou, Dellwik and Mann",
+      "title": "Wind load estimation on an open-grown European oak tree",
+      "year": 2019,
+      "doi": "10.1093/forestry/cpz026",
+      "url": "https://doi.org/10.1093/forestry/cpz026",
+      "read_url": "https://orbit.dtu.dk/en/publications/wind-load-estimation-on-an-open-grown-european-oak-tree/",
+      "primary": true,
+      "read_depth": "author-institution repository abstract and bibliographic record",
+      "tree_state": "living rooted open-grown oak, leaf-on and leaf-off",
+      "contribution": "In-situ strain-based wind-load calibration; seasonal changes and drift compensation",
+      "limitations": "Full article not read here; one oak campaign overlaps later DTU papers",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N01"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N02",
+      "status": "new_in_this_extension",
+      "authors": "Bekkers, Angelou and Dellwik",
+      "title": "Drag coefficient and frontal area of a solitary mature tree",
+      "year": 2022,
+      "doi": "10.1016/j.jweia.2021.104854",
+      "url": "https://doi.org/10.1016/j.jweia.2021.104854",
+      "read_url": "https://backend.orbit.dtu.dk/ws/files/266089898/1_s2.0_S0167610521003287_main.pdf",
+      "primary": true,
+      "read_depth": "selected full PDF text: sections1-3,6.3-7, Eq2; no visual formula audit",
+      "tree_state": "living rooted solitary Quercus robur; 6.5m tall,8.5m crown; controlled direction sector at coastal site",
+      "contribution": "Dimensionally consistent Cd(U) and A(U), reference speed U0; upstream velocity differs from local CFD velocity",
+      "limitations": "One stiff oak and narrow exposure; not an urban-canyon or extreme-storm validation; same research campaign as N01/N03",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N02"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N03",
+      "status": "new_in_this_extension",
+      "authors": "Angelou, Gardiner and Dellwik",
+      "title": "Mean and maximum two dimensional wind force on an open-grown tree",
+      "year": 2025,
+      "doi": "10.1016/j.jweia.2024.105966",
+      "url": "https://doi.org/10.1016/j.jweia.2024.105966",
+      "read_url": "https://backend.orbit.dtu.dk/ws/files/383705417/1-s2.0-S0167610524003295-main.pdf",
+      "primary": true,
+      "read_depth": "selected full PDF text: calibration/methods, discussion, AppendixB, data statement",
+      "tree_state": "living rooted rural open-grown oak; summer and winter",
+      "contribution": "Two strain sensors, calibration in two directions with third-direction check; mean and maximum forces over explicit windows",
+      "limitations": "Moderate measured wind range, one tree/campaign; raw data on request; paper beta is power-law premultiplier, not AS-10 linear beta",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N03"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N04",
+      "status": "new_in_this_extension",
+      "authors": "Vollsinger, Mitchell, Byrne, Novak and Rudnicki",
+      "title": "Wind tunnel measurements of crown streamlining and drag relationships for several hardwood species",
+      "year": 2005,
+      "doi": "10.1139/X05-051",
+      "url": "https://doi.org/10.1139/X05-051",
+      "read_url": "https://www.researchgate.net/publication/237866316_Wind_tunnel_measurements_of_crown_streamlining_and_drag_relationships_for_several_hardwood_species",
+      "primary": true,
+      "read_depth": "author-uploaded full HTML text: abstract and methods, pp1239-1240; not all result tables",
+      "tree_state": "freshly cut juvenile crowns, recut to1.9m, kept moist; fixed wind-tunnel fixture",
+      "contribution": "Static-area and speed-specific-area drag are distinct conventions; measured reconfiguration",
+      "limitations": "No roots; limited size and 4-20m/s near-uniform tunnel flow; not a validation of mature standing-tree dynamics; webpage year2011 conflicts with actual2005 issue",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N04"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N05",
+      "status": "new_in_this_extension",
+      "authors": "Ciftci, Arwade, Kane and Brena",
+      "title": "Analysis of the probability of failure for open-grown trees during wind storms",
+      "year": 2014,
+      "doi": "10.1016/j.probengmech.2014.04.002",
+      "url": "https://doi.org/10.1016/j.probengmech.2014.04.002",
+      "read_url": "https://www.sciencedirect.com/science/article/pii/S0266892014000277",
+      "primary": true,
+      "read_depth": "publisher abstract, introduction and selected methods/results preview; full text not read",
+      "tree_state": "two modelled sugar maples with measured geometry; numerical storms; fixed base",
+      "contribution": "Conditional fragility via stochastic wind histories, FE dynamics and Monte Carlo; summer/winter/decay scenarios",
+      "limitations": "Failure is stem yield at1.4m, not uprooting; assumed damping5% winter/15% summer; no Belarus calibration; not annual probability or target risk",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N05"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N06",
+      "status": "new_in_this_extension",
+      "authors": "Miesbauer, Koeser and Kane",
+      "title": "Impact of Trenching on Root Loss and Tree Stability",
+      "year": 2025,
+      "doi": "10.48044/jauf.2024.026",
+      "url": "https://doi.org/10.48044/jauf.2024.026",
+      "read_url": "https://www.researchgate.net/publication/387779744_Impact_of_Trenching_on_Root_Loss_and_Tree_Stability",
+      "primary": true,
+      "read_depth": "author-uploaded full HTML text: methods pp95-96, results/discussion pp98-100",
+      "tree_state": "30 established rooted Acer rubrum, pre/post trenching, pull-to1degree, then root excavation",
+      "contribution": "Randomized trench distance and root-volume loss quantified with SfM; measured change in response",
+      "limitations": "Young trees DBH9.9-17cm, one site, acute response; tilt/stress proxy is not direct ultimate uprooting load or long-term failure probability",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N06"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N07",
+      "status": "new_in_this_extension",
+      "authors": "Pavlis, Kane, Harris and Seiler",
+      "title": "The Effects of Pruning on Drag and Bending Moment of Shade Trees",
+      "year": 2008,
+      "doi": "10.48044/jauf.2008.028",
+      "url": "https://doi.org/10.48044/jauf.2008.028",
+      "read_url": "https://joa.isa-arbor.com/request.asp?ArticleID=3051&JournalID=1&Type=2",
+      "primary": true,
+      "read_depth": "full PDF selected methods pp207-209 and discussion pp212-213",
+      "tree_state": "trees cut above root flare, mounted on pickup truck; three shade-tree species",
+      "contribution": "Drag and center-of-pressure change after pruning; crown-area removal alone does not reliably predict load reduction",
+      "limitations": "No root coupling; roughly4-5m trees, not mature street-tree failure outcomes; pruning alters physiology and architecture too",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N07"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N08",
+      "status": "new_in_this_extension",
+      "authors": "Detter, Rust and Krisans",
+      "title": "Experimental Test of Non-Destructive Methods to Assess the Anchorage of Trees",
+      "year": 2023,
+      "doi": "10.3390/f14030533",
+      "url": "https://doi.org/10.3390/f14030533",
+      "read_url": "https://www.mdpi.com/1999-4907/14/3/533",
+      "primary": true,
+      "read_depth": "full HTML selected methods,results,discussion; Eq1 and definition of kr; not a visual PDF audit",
+      "tree_state": "more than280 rooted trees on urban/forest sites; crowns removed before nondestructive then destructive pull",
+      "contribution": "Anchorage prediction from M at0.25degree; Eq1 Ma=2.5*M0.25; comparison with revised empirical curve",
+      "limitations": "Their kr is a moment at fixed tilt, not Nm/rad spring stiffness; size/species/extrapolation error; modified tree not complete natural-wind validation; six nonlinear fits excluded",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N08"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N09",
+      "status": "new_in_this_extension",
+      "authors": "Smiley",
+      "title": "Root Pruning and Stability of Young Willow Oak",
+      "year": 2008,
+      "doi": "10.48044/jauf.2008.016",
+      "url": "https://doi.org/10.48044/jauf.2008.016",
+      "read_url": "https://joa.isa-arbor.com/request.asp?ArticleID=3039&JournalID=1&Type=2",
+      "primary": true,
+      "read_depth": "full PDF selected methods and results, pp123-126",
+      "tree_state": "young rooted Quercus phellos; repeated1degree pulls; subset pulled to failure",
+      "contribution": "Measured root-cut effects and correlation between small-tilt force and ultimate force",
+      "limitations": "One young species/site; no universal safety distance or percentage-capacity multiplier for all Belarus trees",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N09"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N10",
+      "status": "new_in_this_extension",
+      "authors": "Ciftci, Kane, Brena and Arwade",
+      "title": "Loss in moment capacity of tree stems induced by decay",
+      "year": 2014,
+      "doi": "10.1007/s00468-013-0968-8",
+      "url": "https://doi.org/10.1007/s00468-013-0968-8",
+      "read_url": "https://link.springer.com/article/10.1007/s00468-013-0968-8",
+      "primary": true,
+      "read_depth": "publisher abstract/preview; author PDF fetch timed out",
+      "tree_state": "cross-section mechanics plus selected oak winching experiments",
+      "contribution": "Offset defect geometry, direction and neutral-axis shift affect moment capacity",
+      "limitations": "Exact equations and all validation data not read; not justification for a universal hollow ratio or automatic capacity from one photo",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N10"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N12",
+      "status": "new_in_this_extension",
+      "authors": "Jackson et al.",
+      "title": "The motion of trees in the wind: a data synthesis",
+      "year": 2021,
+      "doi": "10.5194/bg-18-4059-2021",
+      "url": "https://doi.org/10.5194/bg-18-4059-2021",
+      "read_url": "https://bg.copernicus.org/articles/18/4059/2021/",
+      "primary": true,
+      "read_depth": "full HTML selected methods,discussion,conclusions,data/code statements",
+      "tree_state": "243 living trees from20studies,4-20Hz sensor data; broadleaf/conifer and open/forest",
+      "contribution": "Public motion-data starting point, heterogeneous sensors, stable spectral behavior at higher observed winds",
+      "limitations": "Many datasets lack collocated high-frequency wind; not a ready aerodynamic beta or failure validation dataset; input studies overlap some other papers",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N12"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N13",
+      "status": "new_in_this_extension",
+      "authors": "Moore and Maguire",
+      "title": "Natural sway frequencies and damping ratios of trees: influence of crown structure",
+      "year": 2005,
+      "doi": "10.1007/s00468-004-0387-y",
+      "url": "https://doi.org/10.1007/s00468-004-0387-y",
+      "read_url": "https://link.springer.com/article/10.1007/s00468-004-0387-y",
+      "primary": true,
+      "read_depth": "publisher abstract/preview only",
+      "tree_state": "nine rooted plantation Douglas-fir, progressive crown removal",
+      "contribution": "Mass distribution and branching influence frequency/damping; debranched versus intact tree differs",
+      "limitations": "Full methods not read; small conifer sample; cannot transfer damping constants to urban broadleaves",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N13"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N14",
+      "status": "new_in_this_extension",
+      "authors": "Sellier and Fourcaud",
+      "title": "Crown structure and wood properties: Influence on tree sway and response to high winds",
+      "year": 2009,
+      "doi": "10.3732/ajb.0800226",
+      "url": "https://doi.org/10.3732/ajb.0800226",
+      "read_url": "https://bsapubs.onlinelibrary.wiley.com/doi/10.3732/ajb.0800226",
+      "primary": true,
+      "read_depth": "full HTML selected methods,load scenarios,results/discussion",
+      "tree_state": "virtual35year maritime pine;3D beams calibrated to forest architecture",
+      "contribution": "Explicit branching, material/geometry sensitivity, dynamic versus static load scenarios",
+      "limitations": "Numerical response study; root/stem failure resistance not modelled; a reported dynamic amplification is not a universal multiplier",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N14"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N15",
+      "status": "new_in_this_extension",
+      "authors": "James",
+      "title": "A Study of Branch Dynamics on an Open-Grown Tree",
+      "year": 2014,
+      "doi": "10.48044/jauf.2014.014",
+      "url": "https://doi.org/10.48044/jauf.2014.014",
+      "read_url": "https://joa.isa-arbor.com/request.asp?ArticleID=3318&JournalID=1&Type=2",
+      "primary": true,
+      "read_depth": "full PDF selected methods and discussion, pp125-130",
+      "tree_state": "one rooted19.7m silver maple with4codominant branches; successive pruning and pull-release",
+      "contribution": "Branch coupling and damping matter; pull-release differs from wind excitation",
+      "limitations": "Single tree, artificial excitation, not a universal pruning rule or capacity measurement",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N15"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "N16",
+      "status": "new_in_this_extension",
+      "authors": "Kane, Modarres-Sadeghi, James and Reiland",
+      "title": "Effects of crown structure on the sway characteristics of large decurrent trees",
+      "year": 2014,
+      "doi": "10.1007/s00468-013-0938-1",
+      "url": "https://doi.org/10.1007/s00468-013-0938-1",
+      "read_url": "https://link.springer.com/article/10.1007/s00468-013-0938-1",
+      "primary": true,
+      "read_depth": "publisher abstract/preview only",
+      "tree_state": "eight large open-grown sugar maples",
+      "contribution": "Primary-branch architecture and crown width relate to measured dynamic properties",
+      "limitations": "Eight trees in one region; empirical predictors are not validated for all urban species/conditions",
+      "accessed_on": "2026-11-11",
+      "category": "Механика дерева",
+      "agent_source": "agent-mechanics",
+      "aliases": [
+        "N16"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "era5",
+      "title": "C3S ERA5 hourly single levels",
+      "url": "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read",
+      "reading_depth": "Dataset overview/data description/licence label; no CDS download",
+      "primary_source": true,
+      "coverage_belarus": "yes, global gridded coverage",
+      "resolution": "0.25 degree public grid; native atmosphere about 31 km",
+      "time": "hourly, 1940-present; daily updates, provisional ERA5T about 5-day lag, final 2-3 months later",
+      "variables": [
+        "u10",
+        "v10",
+        "u100",
+        "v100",
+        "10m_gust",
+        "surface_pressure",
+        "temperature"
+      ],
+      "access": "CDS API/GRIB, account and dataset terms required; no account created or terms accepted",
+      "license": "Official catalogue: CC-BY licence; record exact linked text/version on production ingestion",
+      "uncertainty": "Ensemble sampling coarser; grid smooths local shelter/topography/extremes; height/averaging must be retained",
+      "does_not_determine": "individual-tree canopy wind, urban building wakes, root strength, beta or validated annual failure probability",
+      "priority": "core climate source candidate; local/station validation required",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "era5"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "era5-land",
+      "title": "C3S ERA5-Land hourly",
+      "url": "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land?tab=overview",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read",
+      "reading_depth": "Overview, forcing, grid, depth/time, licence label; no download",
+      "primary_source": true,
+      "coverage_belarus": "yes",
+      "resolution": "0.1 degree public grid, 9 km native land model",
+      "time": "hourly, 1950-present; daily updates",
+      "variables": [
+        "soil_water_4_layers",
+        "soil_temperature",
+        "snow",
+        "10m_wind_components"
+      ],
+      "access": "CDS API, account/terms; not exercised",
+      "license": "CC-BY label in catalogue",
+      "uncertainty": "Atmospheric forcing inherited from ERA5; 9 km land grid is not independent 9 km wind observations",
+      "does_not_determine": "water table at tree, rootable depth, tree-specific anchorage or more accurate local wind by resolution alone",
+      "priority": "optional environment/state covariate, not substitute for wind validation",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "era5-land"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "openmeteo-archive",
+      "title": "Open-Meteo Historical Weather API",
+      "url": "https://open-meteo.com/en/docs/historical-weather-api",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read_live_probe_network_failed",
+      "reading_depth": "Model options/variables/time coverage and consistency recommendation",
+      "primary_source": true,
+      "coverage_belarus": "documented global models; Minsk query attempted, no data response obtained",
+      "resolution": "ERA5 0.25 degree; ERA5-Land 0.1 degree; Best Match mixes models",
+      "time": "ERA5 from1940, ERA5-Land from1950; request fixed model and interval",
+      "variables": [
+        "hourly_wind_speed_10m",
+        "wind_direction_10m",
+        "wind_gusts_10m"
+      ],
+      "access": "GET archive-api.open-meteo.com/v1/archive, no key for free endpoint; two small attempts failed DNS",
+      "license": "Data CC-BY4.0; hosted free API restricted to non-commercial use by separate terms",
+      "uncertainty": "Provider interpolation/processing; best_match model transitions can create non-climatic inhomogeneity",
+      "does_not_determine": "measured tree wind or validated AEP",
+      "priority": "quick research adapter/fallback; pin models=era5",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "openmeteo-archive"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "openmeteo-terms",
+      "title": "Open-Meteo Terms",
+      "url": "https://open-meteo.com/en/terms",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read",
+      "reading_depth": "Non-commercial limits, data licence and commercial endpoint distinction",
+      "primary_source": true,
+      "license": "CC-BY4.0 data; free hosted service non-commercial; currently 10000 calls/day,5000/hour,600/min",
+      "access": "No subscription or acceptance UI used; production procurement remains a separate decision",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "openmeteo-terms"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "openweather",
+      "title": "OpenWeather Current Weather API / guide",
+      "url": "https://openweathermap.org/current",
+      "checked_date": "2026-11-11",
+      "status": "official_documentation_search_read",
+      "reading_depth": "Current variable/key contract; no authenticated request",
+      "primary_source": true,
+      "coverage_belarus": "global point coverage documented",
+      "resolution": "provider/model dependent, no guaranteed tree-scale grid",
+      "time": "current observation/model snapshot; product-specific forecast/historical services distinct",
+      "variables": [
+        "wind_speed",
+        "wind_deg",
+        "wind_gust_if_present",
+        "temperature",
+        "pressure"
+      ],
+      "access": "API key required; existing ArborScan integration present; no keys read or used",
+      "license": "Current official guide describes ODbL framework; subscription/product terms retained separately",
+      "uncertainty": "Blended models/observations; exact station/averaging metadata may be absent",
+      "does_not_determine": "long-term wind distribution, return period, tree-scale gust field or beta",
+      "priority": "retain current weather display only; never use one snapshot for climate AEP",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "openweather"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "openweather-license",
+      "title": "OpenWeather guide licensing",
+      "url": "https://openweathermap.org/guide",
+      "checked_date": "2026-11-11",
+      "status": "official_documentation_read",
+      "reading_depth": "Key/subscription workflow and current licensing summary",
+      "primary_source": true,
+      "license": "ODbL framework per guide; no paid requests/subscription",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "openweather-license"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "noaa-isd",
+      "title": "NOAA NCEI Global Hourly / ISD",
+      "url": "https://www.ncei.noaa.gov/products/land-based-station/integrated-surface-database",
+      "checked_date": "2026-11-11",
+      "status": "official_page_and_live_station_sample_read",
+      "reading_depth": "Coverage, variables, QC, update/access descriptions and one station/day sample",
+      "primary_source": true,
+      "coverage_belarus": "confirmed Minsk1 station26850099999,53.864472N27.539683E; wider national completeness not audited",
+      "resolution": "station points, hourly and synoptic/subhourly reports, not a spatial grid",
+      "time": "archive globally1901-present; station-specific gaps; active records updated daily",
+      "variables": [
+        "WND_direction",
+        "WND_speed",
+        "wind_type",
+        "QC",
+        "gust_if_available",
+        "station_metadata"
+      ],
+      "access": "Unauthenticated NCEI access-data-service API and annual files; HTTP200 sample,7FM-12 reports for2020-01-01",
+      "license": "Publicly accessible US-government distributed data; detailed dataset/source reuse terms to retain before redistribution",
+      "uncertainty": "Station relocations/exposure/instrument changes, missingness, heterogeneous averaging/report types; QC does not remove all biases",
+      "does_not_determine": "wind at tree in an urban courtyard or forest understory; seven reports are not24hourlymeans",
+      "priority": "essential independent station comparison where temporal coverage is sufficient",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "noaa-isd"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "noaa-api",
+      "title": "NCEI Access Data Service API documentation",
+      "url": "https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read_live_api_success",
+      "reading_depth": "Query/dataTypes/location/name response contract",
+      "primary_source": true,
+      "access": "GET /access/services/data/v1, dataset=global-hourly, stations=26850099999, format=json",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "noaa-api"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "noaa-wind-format",
+      "title": "NOAA ISD record-format specification",
+      "url": "https://www.ncei.noaa.gov/nerms/api/document/5b2ced2e766e4f7091d66ab228a58813/download",
+      "checked_date": "2026-11-11",
+      "status": "official_primary_search_extract_read",
+      "reading_depth": "Wind speed scaling, observation-type codes and QC definitions only",
+      "primary_source": true,
+      "interpretation": "WND speed0040/10=4.0m/s; N means Normal, not a proof of60-minute averaging; R explicitly60-minute",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "noaa-wind-format"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "belhydromet",
+      "title": "Белгидромет / Pogoda.by official portals",
+      "url": "https://belgidromet.by/",
+      "checked_date": "2026-11-11",
+      "status": "official_portal_not_readable",
+      "reading_depth": "Direct official-page opening failed; pogoda.by yielded no readable lines; no documented public hourly API established",
+      "primary_source": true,
+      "coverage_belarus": "national observation operator, access contract not verified here",
+      "resolution": "station metadata/request specification required",
+      "time": "not established for requested export",
+      "variables": [
+        "hourly_mean_wind",
+        "directions",
+        "gusts",
+        "station_history_requested_if_available"
+      ],
+      "access": "Do not assume free bulk/API access; request/export/terms must be clarified separately; no contact sent",
+      "license": "not established",
+      "uncertainty": "Would require station history, averaging and gap metadata",
+      "does_not_determine": "automatic full national availability or permission to redistribute",
+      "priority": "desired national validation partner/input, not an implemented dependency",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "belhydromet"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "gwa4",
+      "title": "DTU/World Bank Global Wind Atlas4 dataset",
+      "url": "https://data.dtu.dk/articles/dataset/Global_Wind_Atlas_4/28955267",
+      "checked_date": "2026-11-11",
+      "status": "primary_repository_metadata_live_http200",
+      "reading_depth": "Full repository description/file catalogue/licence through Figshare API; no raster downloaded",
+      "primary_source": true,
+      "repository_api": "https://api.figshare.com/v2/articles/28955267",
+      "doi": "10.11583/DTU.28955267.v1",
+      "coverage_belarus": "global land coverage documented; Minsk pixel not extracted",
+      "resolution": "approximately250m; WGS84 grid0.0025degree",
+      "time": "ERA5/WRF simulation2008-2017; edition2025, no real-time updates",
+      "variables": [
+        "mean_wind_speed_at10_50_100_150_200m",
+        "combined_Weibull_A_k",
+        "air_density",
+        "terrain_RIX"
+      ],
+      "access": "Public COG/download URLs in repository API; multi-GB global assets, use windows/country subsets/cache",
+      "license": "CC-BY4.0, confirmed repository licence",
+      "uncertainty": "All-sector combined Weibull can conceal directional mixtures; modelled downscaling, not local measurement",
+      "does_not_determine": "annual extreme/failure probability, urban wakes, individual tree effective wind or beta",
+      "priority": "secondary wind-climate prior and exposure cross-check, not AEP calibration by itself",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "gwa4"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "gwa4-method",
+      "title": "Global Wind Atlas official introduction",
+      "url": "https://globalwindatlas.info/en/about/introduction",
+      "checked_date": "2026-11-11",
+      "status": "primary_search_extract_read",
+      "reading_depth": "4.0 model changes and histogram generalisation; website direct view JS shell",
+      "primary_source": true,
+      "note": "4.0 still publishes combined-Weibull layers; histogram method does not mean those layers are absent",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "gwa4-method"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "gwa4-validation",
+      "title": "DTU Global Wind Atlas4 Validation report",
+      "url": "https://backend.orbit.dtu.dk/ws/portalfiles/portal/400877326/DTU_Wind_Energy_Report-E-0256.pdf",
+      "checked_date": "2026-11-11",
+      "status": "primary_search_extract_read",
+      "reading_depth": "Method/2008-2017 reference period and5heights sections; not full report read",
+      "primary_source": true,
+      "note": "Validation at other countries/sites does not establish Belarus/tree-scale accuracy",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "gwa4-validation"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "soilgrids",
+      "title": "ISRIC SoilGrids layers",
+      "url": "https://docs.isric.org/globaldata/soilgrids/SoilGrids_faqs_01.html",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read",
+      "reading_depth": "Layer names/scaling/depths/quantiles/mask/update descriptions",
+      "primary_source": true,
+      "coverage_belarus": "global prediction product, but urban mask can yield NoData; Minsk pixel not obtained",
+      "resolution": "250m native prediction support",
+      "time": "multi-age soil observations; no single reference year; rolling release",
+      "variables": [
+        "clay_sand_silt",
+        "bulk_density",
+        "organic_carbon",
+        "coarse_fragments",
+        "pH",
+        "water_retention_at_fixed_pressures"
+      ],
+      "depth_cm": [
+        [
+          0,
+          5
+        ],
+        [
+          5,
+          15
+        ],
+        [
+          15,
+          30
+        ],
+        [
+          30,
+          60
+        ],
+        [
+          60,
+          100
+        ],
+        [
+          100,
+          200
+        ]
+      ],
+      "access": "Public WCS subset or WebDAV/VRT tiles preferred; existing v4 uses only0-5cm mean",
+      "license": "CC-BY4.0 (current product; do not confuse older2017ODbL)",
+      "uncertainty": "RetainQ05/Q50/Q95+mean; global model, urban masks, sparse observations and soil-class conventions",
+      "does_not_determine": "rootable depth, actual groundwater/compaction/root damage, anchorage strength or beta",
+      "priority": "background context/prior only, never automatic measured rooting or A-D mechanical class",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "soilgrids"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "soilgrids-access",
+      "title": "ISRIC SoilGrids access",
+      "url": "https://docs.isric.org/globaldata/soilgrids/SoilGrids_faqs_02.html",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read_live_probe_network_failed",
+      "reading_depth": "Licence/access methods and REST paused notice",
+      "primary_source": true,
+      "access": "REST temporarily paused/no ETA per provider; WCS/WebDAV alternatives; former fair-use5calls/min",
+      "note": "Local DNS probe failures are distinct from provider REST pause notice",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "soilgrids-access"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "soilgrids-wcs",
+      "title": "ISRIC WCS protocol",
+      "url": "https://docs.isric.org/globaldata/soilgrids/wcs.html",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read",
+      "reading_depth": "Capabilities/DescribeCoverage/GetCoverage, CRS/subset parameter contract",
+      "primary_source": true,
+      "access": "Public WCS mapserv; small3x3clay query attempted without credentials, no response due DNS",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "soilgrids-wcs"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "soilgrids-local-limit",
+      "title": "ISRIC SoilGrids FAQ",
+      "url": "https://docs.isric.org/globaldata/soilgrids/SoilGrids_faqs_04.html",
+      "checked_date": "2026-11-11",
+      "status": "official_primary_search_extract_read",
+      "reading_depth": "No single year and caution against local/farm interpretation",
+      "primary_source": true,
+      "note": "Manufacturer recommends global/continental or macroregion applications; national/regional use requires care",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "soilgrids-local-limit"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "copdem",
+      "title": "Copernicus DEM official collection",
+      "url": "https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read_minsk_asset_head200",
+      "reading_depth": "DSM definition/acquisition/resolution/free licence plus public tile HEAD only",
+      "primary_source": true,
+      "coverage_belarus": "GLO30 global; N53E027 asset availability confirmedHTTP200, no pixel sampled",
+      "resolution": "1arc-second nominal30m",
+      "time": "principallyTanDEM-X2011-2015 plus gap-fill; static release",
+      "variables": [
+        "surface_elevation",
+        "derived_slope_aspect_regional_exposure"
+      ],
+      "access": "CDSE account route or public AWS COG windows; tile header no auth",
+      "license": "Copernicus DEM free/worldwide licence, mandatory specific attribution; not genericCC0",
+      "uncertainty": "DSM includes canopy/buildings; errors enter derivatives, particularly flat terrain",
+      "does_not_determine": "bare-earth microtopography, exact tree height by DSM subtraction, root geometry or urban flow",
+      "priority": "regional topography/exposure context; field/more preciseDTM needed for critical local cases",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "copdem"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "worldcover",
+      "title": "ESA WorldCover data access",
+      "url": "https://esa-worldcover.org/en/data-access",
+      "checked_date": "2026-11-11",
+      "status": "official_primary_search_read_minsk_asset_head200",
+      "reading_depth": "Product/tile/access metadata; no pixel value sampled",
+      "primary_source": true,
+      "coverage_belarus": "yes; N51E027tile availability confirmedHTTP200",
+      "resolution": "10m nominal",
+      "time": "2020v100 and2021v200 snapshots; versions use different algorithms, not annual operational change series",
+      "variables": [
+        "tree_cover",
+        "built_up",
+        "cropland",
+        "water",
+        "wetland_classes"
+      ],
+      "access": "Public COG/S3 window reads; no key; no whole TIFF downloaded",
+      "license": "CC-BY4.0",
+      "uncertainty": "2021global accuracy76.7% is not Belarus accuracy; mixed pixels/class errors and stale edges",
+      "does_not_determine": "species, stem spacing, tree height, exact gaps or recent felling",
+      "priority": "landscape/edge candidate detection, user/field confirmation for model inputs",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "worldcover"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "worldcover-manual",
+      "title": "ESA WorldCover2021 Product User ManualV2",
+      "url": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/docs/WorldCover_PUM_V2.0.pdf",
+      "checked_date": "2026-11-11",
+      "status": "primary_search_extract_read",
+      "reading_depth": "Product versions/accuracy/comparability introduction only; not complete manual read",
+      "primary_source": true,
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "worldcover-manual"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "osm",
+      "title": "OpenStreetMap copyright",
+      "url": "https://www.openstreetmap.org/copyright?locale=en-GB",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read",
+      "reading_depth": "Data licence/attribution",
+      "primary_source": true,
+      "coverage_belarus": "global community map, completeness varies",
+      "resolution": "vector geometry, no uniform accuracy/resolution",
+      "time": "continuously edited, retain exact snapshot/osm_base and object versions",
+      "variables": [
+        "building_footprints",
+        "optional_height_levels",
+        "forest_polygons",
+        "roads"
+      ],
+      "access": "Overpass read-only for small research; regionalPBF for operational cache; tiny Minsk query failed connection",
+      "license": "ODbL data with attribution/share-alike obligations; display tiles separate terms",
+      "uncertainty": "Missing tags/features, inferred heights from levels uncertain, map absence is not physical absence",
+      "does_not_determine": "certified building heights, complete tree inventory or local turbulence",
+      "priority": "city surroundings/shelter context; never directCFD/structural safety evidence",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "osm"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "overpass",
+      "title": "Overpass official community API documentation",
+      "url": "https://wiki.openstreetmap.org/wiki/Overpass_API",
+      "checked_date": "2026-11-11",
+      "status": "documentation_read",
+      "reading_depth": "Read-only contract/public-instance usage/overload limits and extracts recommendation",
+      "primary_source": true,
+      "note": "Do not base production tree analysis on an unbounded public Overpass call for every user",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "overpass"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "ghsl",
+      "title": "EC-JRC GHS-BUILT-H R2023A",
+      "url": "https://human-settlement.emergency.copernicus.eu/ghs_buH2023.php",
+      "checked_date": "2026-11-11",
+      "status": "official_page_read",
+      "reading_depth": "Dataset identity/source epoch;100m technical specification via EC/JRC source extract",
+      "primary_source": true,
+      "coverage_belarus": "global product; pixel not checked",
+      "resolution": "100m cell-average building height",
+      "time": "2018reference, older underlying elevation acquisitions; versionR2023A",
+      "variables": [
+        "average_building_height"
+      ],
+      "access": "Public tiledGeoTIFF viaGHSL download; no key; no data download",
+      "license": "EU reuse with source acknowledgment perGHSL datasets page; retain product-specific notice",
+      "uncertainty": "Area-average/DEM-derived mixed cells, not height of each building",
+      "does_not_determine": "courtyard wakes, wall geometry or current building-by-building obstruction",
+      "priority": "optional fallback urban context, lower priority than mapped/measured buildings",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "ghsl"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "ghsl-catalog",
+      "title": "EC-JRC GHSL datasets and reuse notice",
+      "url": "https://human-settlement.emergency.copernicus.eu/datasets.php",
+      "checked_date": "2026-11-11",
+      "status": "official_page_search_read",
+      "reading_depth": "Public/free availability and source acknowledgment statement",
+      "primary_source": true,
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "ghsl-catalog"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "gedi",
+      "title": "GEDI instrument specifications",
+      "url": "https://gedi.umd.edu/instrument/specifications/",
+      "checked_date": "2026-11-11",
+      "status": "official_primary_search_read",
+      "reading_depth": "Latitude/footprint/sampling geometry",
+      "primary_source": true,
+      "coverage_belarus": "Minsk53.9Noutside; bulk ofBelarus north of51.6N; possible far-southern fringe is not national coverage",
+      "resolution": "about25m footprints, sparse tracks",
+      "time": "mission observations from2019, not continuous point monitoring",
+      "variables": [
+        "waveform_relative_heights",
+        "canopy_structure"
+      ],
+      "access": "Earthdata products generally requireEarthdata login for granules; no login used",
+      "license": "NASA open-data terms; exact product/quality flags retained if later used",
+      "uncertainty": "Sparse tracks, cloud/quality/geolocation filters",
+      "does_not_determine": "GEDI measured height inMinsk or wall-to-wallBelarus canopy",
+      "priority": "not a Belarus primary field-reference dataset",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "gedi"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "glad2019",
+      "title": "UMD GLAD Global Forest Canopy Height2019",
+      "url": "https://www.glad.geog.umd.edu/dataset/gedi/",
+      "checked_date": "2026-11-11",
+      "status": "official_primary_search_read",
+      "reading_depth": "Explicit data-provided-only-withinGEDI-range notice and map metadata",
+      "primary_source": true,
+      "coverage_belarus": "Minsk outside publishedGEDI-range layer; not a reliable national solution",
+      "resolution": "30m nominal",
+      "time": "2019snapshot",
+      "variables": [
+        "modelled_canopy_RH95_height"
+      ],
+      "access": "Public continentalGeoTIFF/GEE; no downloads/account",
+      "license": "not established in this inspectedpage",
+      "uncertainty": "GEDI/Landsat model and geographic extent;0/101/102/103 coding must not be treated as valid height",
+      "does_not_determine": "Minsk tree height or current per-tree geometry",
+      "priority": "exclude from initial national pipeline",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "glad2019"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "eth-canopy",
+      "title": "ETH global canopy height2020",
+      "url": "https://langnico.github.io/globalcanopyheight/",
+      "checked_date": "2026-11-11",
+      "status": "authors_primary_page_search_read",
+      "reading_depth": "Method/global coverage/height and uncertainty layers/licence",
+      "primary_source": true,
+      "coverage_belarus": "wall-to-wall global map includesBelarus; north-ofGEDIregion is model extrapolation, not localGEDIobservations",
+      "resolution": "10m nominal pixels",
+      "time": "2020snapshot",
+      "variables": [
+        "predicted_canopy_top_height",
+        "predicted_standard_deviation"
+      ],
+      "access": "Public individualGeoTIFFtiles, GEE assets requireaccount; no tiles downloaded",
+      "license": "CC-BY4.0",
+      "uncertainty": "Optical/GEDI-trained model, distribution shift, mixed pixels,2020staleness;globalmetric not localvalidation",
+      "does_not_determine": "height/diameter of selected individual tree or top100dominantstems/ha bydefinition",
+      "priority": "regionalcanopy prior/range check with uncertainty, no silent substitution of measuredgeometry",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "eth-canopy"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "gwdd2",
+      "title": "Global Wood Density Databasev2.2",
+      "url": "https://zenodo.org/records/20815517",
+      "checked_date": "2026-11-11",
+      "status": "repository_metadata_and_bounded_aggregate_data_live_http200",
+      "reading_depth": "Full recordmetadata/licence,1.71MBbinomialaggregate and3.5KBcolumnmetadata; no73-85MBrawfiles",
+      "primary_source": true,
+      "concept_doi": "10.5281/zenodo.16919509",
+      "version_doi": "10.5281/zenodo.20815517",
+      "coverage_belarus": "taxon rather than spatial coverage;10targetBelarusiantaxa matched, localprovenance not established",
+      "resolution": "species/binomial/genus statistics; not GIScells",
+      "time": "v2.2published2026-06-23; versionedupdates",
+      "variables": [
+        "basic_wood_density_SG",
+        "trunk_branch_estimates",
+        "sample_source_country_counts"
+      ],
+      "access": "Zenodo RESTmetadata/publicCSV; noauth",
+      "license": "CC-BY4.0 confirmed metadata",
+      "uncertainty": "Within-species,organ,site/age/moisture variability; aggregation lacks individual-tree measurement",
+      "does_not_determine": "freshlivingmassdensity,E,MOR,Creg,beta or condition/decay ofone tree",
+      "priority": "curated versioned speciesprior with densitybasis retained; neverrename togreen-density",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "gwdd2"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "wood-handbook",
+      "title": "USDA FPL Wood Handbook2021 Chapter5",
+      "url": "https://research.fs.usda.gov/treesearch/62244",
+      "checked_date": "2026-11-11",
+      "status": "official_abstract_read",
+      "reading_depth": "Variability/moisture/knots/slope-ofgrain scope; full46-pagechapter not read for this task",
+      "primary_source": true,
+      "coverage_belarus": "species-specific literature, not nationalGIScoverage; precise taxa/table/method eligibility must be checked",
+      "resolution": "testspecimen/statistical property",
+      "time": "static2021publication",
+      "variables": [
+        "E",
+        "MOR",
+        "mechanical_variability"
+      ],
+      "access": "PublicPDF5.24MBnotdownloaded",
+      "license": "USDAgovernmentpublication; externalincludedtables/coefficients require attribution/sourcecheck",
+      "uncertainty": "Clearwood/lumberproperties dependonmoisture/grain/defects,testmode; not entireliving-tree strength",
+      "does_not_determine": "measuredE/MORofselectedtree or rootplatefailure",
+      "priority": "referenceboundary; not automatically validated profile",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "wood-handbook"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "repola2009",
+      "title": "Repola2009 pine/spruce componentbiomass",
+      "url": "https://silvafennica.fi/article/184",
+      "checked_date": "2026-11-11",
+      "status": "primary_abstract_and_selected_pdf_extracts_read",
+      "reading_depth": "Scope/sample/species/components/inputdescription; no fullcoefficienttranscription",
+      "primary_source": true,
+      "coverage_belarus": "Finlandcalibration, Scots pine andNorway spruce; Belarus transfer requiresvalidation",
+      "resolution": "individual-tree allometricprediction",
+      "time": "static2009publication",
+      "variables": [
+        "dry_component_biomass_from_DBH_height_additionalvariables"
+      ],
+      "access": "Openarticle/PDF, noAPIneeded; curatedcoeffregistry planned",
+      "license": "exactarticlelicence not established in this inspection",
+      "uncertainty": "Forest/mineral-soilsample; regional/urbantransfer,correlatedcomponenterrors anddry/wetbasis",
+      "does_not_determine": "freshmassdistribution,inertia,rootstrength,E,beta or validityforurbansolitarytrees",
+      "priority": "candidate regional forestallometry, explicit domain and uncertainty",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "repola2009"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "zianis2005",
+      "title": "European biomass/stem-volume equation catalogue",
+      "url": "https://silvafennica.fi/show/mono/mono4",
+      "checked_date": "2026-11-11",
+      "status": "primary_abstract_and_selected_table_extracts_read",
+      "reading_depth": "Equation catalogue scope, species/country/tree-size metadata; not all837equations reviewed",
+      "primary_source": true,
+      "coverage_belarus": "Europeanliterature, applicability equation-specific",
+      "resolution": "treeallometry",
+      "time": "static2005catalogue",
+      "variables": [
+        "biomass",
+        "stem_volume",
+        "DBH_height_range",
+        "region"
+      ],
+      "access": "PublicPDF; curatefewrelevantoriginalequations",
+      "license": "notestablishedforbulkcoefficientredistribution",
+      "uncertainty": "heterogeneousandlimitedcalibrationsamples",
+      "does_not_determine": "nationalcalibrationorfieldmeasurement",
+      "priority": "source-discovery only, not defaultformula selector",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "zianis2005"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "era5-temporal-semantics",
+      "title": "ECMWF ERA5 terminology current version",
+      "url": "https://confluence.ecmwf.int/spaces/CKB/pages/85402030/ERA5%2Bterminology%2Banalysis%2Band%2Bforecast%2Btime%2Band%2Bsteps%2Binstantaneous%2Band%2Baccumulated%2Band%2Bmean%2Brates%2Band%2Bmin%2Bmax%2Bparameters",
+      "checked_date": "2026-11-11",
+      "status": "official_current_page_read",
+      "reading_depth": "Analysis/forecast and instantaneous/accumulated/mean/minmax definitions; followed current-version link from historical pageId111151514",
+      "primary_source": true,
+      "note": "Hourly sampling of instantaneous analysis is not an hourly temporal mean. Keep sampling_interval and averaging_period separately.",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "era5-temporal-semantics"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "era5-data-docs",
+      "title": "ECMWF ERA5 data documentation current version",
+      "url": "https://confluence.ecmwf.int/spaces/CKB/pages/76414402/ERA5%2Bdata%2Bdocumentation",
+      "checked_date": "2026-11-11",
+      "status": "official_current_selected_sections_read",
+      "reading_depth": "Data organisation, analysis-on-CDS and temporal frequency; not entire64min-document read; historical pageId212448915 replaced by current-version link",
+      "primary_source": true,
+      "note": "Variable-specific parameter class and temporal metadata must be retained; no station height/10min averaging guessed.",
+      "category": "Данные и сервисы",
+      "agent_source": "agent-data",
+      "aliases": [
+        "era5-data-docs"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "T01",
+      "category": "Интеграция",
+      "title": "GroupKFold",
+      "url": "https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html",
+      "read_depth": "Current official API documentation; grouped splitting contract",
+      "findings": "Non-overlapping groups for tree-level cross-validation",
+      "aliases": [
+        "T01"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "T02",
+      "category": "Интеграция",
+      "title": "Common pitfalls and data leakage",
+      "url": "https://scikit-learn.org/stable/common_pitfalls.html",
+      "read_depth": "Official documentation, data leakage/preprocessing sections",
+      "findings": "Fit transformations on training data; pipeline inside validation",
+      "aliases": [
+        "T02"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "T03",
+      "category": "Интеграция",
+      "title": "Supabase Row Level Security",
+      "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+      "read_depth": "Official documentation, RLS and bypass/keys sections; no live database changed",
+      "findings": "Owner isolation, server keys, RLS and grants are distinct",
+      "aliases": [
+        "T03"
+      ],
+      "additional_reading": []
+    },
+    {
+      "id": "T04",
+      "category": "Интеграция",
+      "title": "Tables not exposed to Data and GraphQL API automatically",
+      "url": "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically",
+      "read_depth": "Official changelog and relevant summary; self-hosted installed version not audited",
+      "findings": "Verify grants for new tables separately from RLS and migrations",
+      "aliases": [
+        "T04"
+      ],
+      "additional_reading": []
+    }
+  ]
+}

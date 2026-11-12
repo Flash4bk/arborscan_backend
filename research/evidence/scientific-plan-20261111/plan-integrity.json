@@ -1,0 +1,11 @@
+{
+  "version_before": "1.54",
+  "version_after": "1.55",
+  "before_sha256": "7a5b62c5b6ad7f4604f1fb7abf56cf2fdb2c9c82f2cfa3ecd8f03d1f5b386111",
+  "after_sha256": "d96833bf1ff434052bbc77b41a8fd06666ac26aeb6cb2704065ee28173a0b0d9",
+  "all_previous_content_preserved_except_declared_replacements": true,
+  "other_13_registry_rows_identical": true,
+  "top_level_ids_preserved": 16,
+  "user_acceptance": false,
+  "new_field_validation": false
+}

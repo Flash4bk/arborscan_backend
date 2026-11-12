@@ -1,0 +1,49 @@
+{
+  "date_finalized": "2026-11-12",
+  "source_checks_date": "2026-11-11",
+  "task_ids": [
+    "AS-10",
+    "AS-11",
+    "AS-13"
+  ],
+  "scope": "individual tree forest and city Belarus; all UI/output in ArborScan",
+  "article": {
+    "sha256": "cb85bba8ac8927e8ceca4a450e9baca72ab61d5689a1052eed3f9d6dc0ba2a5b",
+    "source_unchanged": true,
+    "paragraphs": 257,
+    "ole_objects": 75,
+    "pages_visually_read": 10,
+    "bibliography_entries": 8,
+    "table_rows_recalculated": 9
+  },
+  "source_catalog_unique_entries": 76,
+  "provider_primary_entries": 33,
+  "api_probes": 14,
+  "http200_results": 8,
+  "plan_work_packages": 13,
+  "docx_pages": 21,
+  "docx_tables": 4,
+  "docx_sha256": "46c76539af0a49141dfc99f9a44b4910cfd629d517dce2cc32956b452c77142d",
+  "all_final_pages_visually_reviewed": true,
+  "application_code_changed": false,
+  "model_training": false,
+  "new_field_validation": false,
+  "production_or_database_changed": false,
+  "user_acceptance": false,
+  "limitations": [
+    "Some literature only abstract/preview/metadata; exact depth recorded",
+    "Author training data/model/independence not reproduced",
+    "API availability/metadata probes are not local tree measurements"
+  ],
+  "plan_integrity": {
+    "version_before": "1.54",
+    "version_after": "1.55",
+    "before_sha256": "7a5b62c5b6ad7f4604f1fb7abf56cf2fdb2c9c82f2cfa3ecd8f03d1f5b386111",
+    "after_sha256": "d96833bf1ff434052bbc77b41a8fd06666ac26aeb6cb2704065ee28173a0b0d9",
+    "all_previous_content_preserved_except_declared_replacements": true,
+    "other_13_registry_rows_identical": true,
+    "top_level_ids_preserved": 16,
+    "user_acceptance": false,
+    "new_field_validation": false
+  }
+}
