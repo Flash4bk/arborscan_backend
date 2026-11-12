@@ -14,7 +14,7 @@ import numpy as np
 import requests
 import torch
 from ultralytics import YOLO
-from PIL import Image, ExifTags
+from PIL import Image, ImageOps, UnidentifiedImageError, ExifTags
 from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form, Header, Depends
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
@@ -904,6 +904,8 @@ def decode_base64_bytes(b64: str) -> bytes:
     return raw
 
 def ensure_png_mask_bytes(mask_b64: str) -> bytes:
+    if not isinstance(mask_b64, str) or len(mask_b64) > 12_000_000:
+        raise HTTPException(413, "Маска превышает допустимый размер")
     raw = decode_base64_bytes(mask_b64)
     try:
         if raw[:1] in (b"{", b"["):
@@ -911,12 +913,21 @@ def ensure_png_mask_bytes(mask_b64: str) -> bytes:
             if isinstance(obj, dict) and obj.get("mask_png_base64"):
                 raw = decode_base64_bytes(str(obj["mask_png_base64"]))
     except Exception: pass
-    np_buf = np.frombuffer(raw, np.uint8)
-    mask = cv2.imdecode(np_buf, cv2.IMREAD_GRAYSCALE)
-    if mask is None: raise ValueError("user_mask_base64 is not a valid PNG/JPEG")
-    _, mask_bin = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
-    ok, out = cv2.imencode(".png", mask_bin)
-    return out.tobytes()
+    if len(raw) > 8 * 1024 * 1024:
+        raise HTTPException(413, "Маска превышает 8 МиБ")
+    try:
+        with Image.open(io.BytesIO(raw)) as source:
+            if source.width * source.height > MAX_LEGACY_PIXELS:
+                raise HTTPException(413, "Маска превышает 25 мегапикселей")
+            mask = np.asarray(ImageOps.exif_transpose(source).convert('L'))
+        output = io.BytesIO()
+        Image.fromarray(np.where(mask > 127, 255, 0).astype(np.uint8)).save(output, 'PNG')
+        result = output.getvalue()
+        if len(result) > 8 * 1024 * 1024:
+            raise HTTPException(413, "Маска превышает 8 МиБ")
+        return result
+    except Image.DecompressionBombError:
+        raise HTTPException(413, "Маска превышает допустимое разрешение") from None
 
 def encode_jpeg_base64(img_bgr, max_side=1280, quality=74):
     h, w = img_bgr.shape[:2]
@@ -1114,8 +1125,8 @@ def extract_exif_scale(image_bytes: bytes, image_height_px: int):
                 visible_height_m = dist_m * 36.0 / focal_mm
                 scale = visible_height_m / image_height_px
                 return scale, f"Оптика (EXIF: D={dist_m:.1f}м, F={focal_mm:.0f}мм)"
-    except Exception as e:
-        print(f"[EXIF] Ошибка извлечения дистанции: {e}")
+    except Exception:
+        print("[EXIF] metadata_read_failed")
     return None, None
 # ------------------------------------------------
 
@@ -1151,28 +1162,11 @@ SPECIES_REF_HEIGHT = {
 def _clamp(x: float, lo: float, hi: float) -> float: return max(lo, min(hi, x))
 
 def estimate_beta_kg_s_exact(species: str, crown_area_m2: float, manual_beta_kg_s=None, crown_density_factor=1.0) -> dict:
-    """Точный расчет беты на основе реальной площади кроны с фотографии."""
-    if manual_beta_kg_s is not None and manual_beta_kg_s > 0:
-        value = round(_clamp(float(manual_beta_kg_s), 5.0, 200.0), 2)
-        return {"beta_kg_s": value, "beta_max_scenario": value, "method": "manual", "source": "Введено вручную", "input": {"manual_beta_kg_s": float(manual_beta_kg_s)}}
-    
-    # Берем аэродинамический коэффициент породы, по умолчанию 4.5
-    c_aero = SPECIES_AERO_FACTOR.get(species, 4.5)
-    
-    # Физическая формула: Бета = Аэродинамический коэфф * Площадь проекции * Плотность (пористость)
-    beta_expected = c_aero * crown_area_m2 * float(crown_density_factor or 1.0)
-    beta_expected = max(5.0, beta_expected) # Минимальный порог
-    
-    # Худший сценарий (жесткая крона, которая не сгибается под ветром)
-    beta_max_scenario = beta_expected * 1.5
-
-    return {
-        "beta_kg_s": round(beta_expected, 2),
-        "beta_max_scenario": round(beta_max_scenario, 2),
-        "method": "pixel_area_integration",
-        "source": "Вычислено по попиксельной маске (Computer Vision)",
-        "input": {"species": species, "crown_area_m2": round(crown_area_m2, 2), "c_aero": c_aero}
-    }
+    """Keep legacy response keys without inventing a dynamic measurement."""
+    return {"available": False, "beta_kg_s": None, "beta_max_scenario": None,
+            "method": "unavailable", "input": {},
+            "reason": "dynamic_experiment_or_validated_prediction_required",
+            "source": "Нужны данные эксперимента или проверенная модель прогноза β"}
 
 def slenderness_score(height_m, diameter_m):
     if not diameter_m or diameter_m <= 0: return 0.0, 0.0
@@ -1213,27 +1207,9 @@ def bending_stress_score(species, trunk_diameter_m, beta_kg_s, wind_speed, lever
     return safety_factor, score, expl, force_n, lever_arm_m, bending_moment_nm
 
 def compute_risk(species, height, diameter, lean_angle_deg, beta_info, wind_speed, lever_arm_m):
-    expl = []
-    lean_score = 0.0
-    if lean_angle_deg > 15.0:
-        lean_score = 1.0; expl.append(f"ОПАСНОСТЬ: Аномальный наклон ствола ({lean_angle_deg}°). Риск выкорчевывания.")
-    elif lean_angle_deg > 7.0:
-        lean_score = 0.5; expl.append(f"Внимание: Наклон ствола {lean_angle_deg}°.")
-    else: expl.append(f"Наклон ствола в пределах нормы ({lean_angle_deg}°).")
-
-    S, s_score = slenderness_score(height, diameter)
-    if diameter and diameter > 0:
-        state = "Опасно (Тонкое)" if S > 80 else "Норма"
-        expl.append(f"Стройность H/D: {S:.1f} ({state})")
-
-    beta = beta_info.get("beta_max_scenario") or beta_info.get("beta_kg_s") or 0
-    safety_factor, wind_score_val, wind_expl, f_n, l_m, m_nm = bending_stress_score(species, diameter, beta, wind_speed, lever_arm_m)
-    expl.extend(wind_expl)
-
-    index = max(lean_score, s_score, wind_score_val) + 0.1 * (lean_score + s_score + wind_score_val)
-    index = max(0.0, min(index, 1.0))
-    cat = "низкий" if index < 0.4 else "средний" if index < 0.7 else "высокий"
-    return {"index": index, "category": cat, "explanation": expl}, f_n, l_m, m_nm, safety_factor
+    return {"available": False, "index": None, "category": None,
+            "reason": "validated_mechanics_and_wind_scenario_required",
+            "explanation": ["Механическая устойчивость и вероятность повреждения не определены."]}, None, None, None, None
 
 
 class FeedbackRequest(BaseModel):
@@ -1263,6 +1239,8 @@ class AuthGoogleRequest(BaseModel):
 
 
 app = FastAPI(title="ArborScan API v2.9 (Protected Admin API)")
+MAX_LEGACY_IMAGE_BYTES = 15 * 1024 * 1024
+MAX_LEGACY_PIXELS = 25_000_000
 
 AUTH_TOKEN_TTL_DAYS = int(os.getenv("ARBORSCAN_AUTH_TOKEN_TTL_DAYS", "30"))
 GOOGLE_CLIENT_ID = os.getenv(
@@ -1648,8 +1626,8 @@ async def auth_set_role_disabled():
 
 
 def _save_analysis_record(response: dict, user: dict | None):
-    if not SUPABASE_DB_BASE:
-        return
+    if not SUPABASE_DB_BASE or not user:
+        return False
     risk = response.get("risk") or {}
     beta = response.get("beta") or {}
     analytic_out = (response.get("analytic_wind_model") or {}).get("outputs") or {}
@@ -1670,7 +1648,9 @@ def _save_analysis_record(response: dict, user: dict | None):
         "lat": gps.get("lat"),
         "lon": gps.get("lon"),
         "address": response.get("address"),
-        "response_json": response,
+        # This snapshot is visible only if the write commits. Do not mutate the
+        # in-memory response until its acknowledgement has been received.
+        "response_json": {**response, "server_saved": True},
     }
     try:
         _db_json(
@@ -1679,8 +1659,10 @@ def _save_analysis_record(response: dict, user: dict | None):
             json_body=payload,
             prefer="resolution=merge-duplicates,return=minimal",
         )
-    except Exception as exc:
-        print(f"[!] Failed to save analysis row: {exc}")
+        return True
+    except Exception:
+        print("[!] Analysis record write was not confirmed")
+        return False
 
 
 def _analysis_summary(row: dict) -> dict:
@@ -1834,6 +1816,8 @@ def log_training_event(
 
 @app.on_event("startup")
 def _startup_load_models():
+    from arborscan_v4.safe_logging import install_access_log_filter
+    install_access_log_filter()
     print(f"[*] ArborScan API {API_VERSION} startup")
     print(f"[*] Project root: {PROJECT_ROOT}")
     print(f"[*] Model directory: {MODEL_DIR}")
@@ -2047,12 +2031,6 @@ def _run_classifier_sync(crop_bgr) -> dict:
     if crop_bgr is None or getattr(crop_bgr, "size", 0) == 0:
         return _plantnet_unknown("empty_crop", "Tree crop is empty")
 
-    # --- ОТЛАДКА: Сохраняем кроп, чтобы посмотреть, что реально отправляется ---
-    debug_path = Path("/tmp/plantnet_debug_crop.jpg")
-    cv2.imwrite(str(debug_path), crop_bgr)
-    print(f"[*] Debug crop saved to {debug_path} (Size: {crop_bgr.shape})")
-    # -------------------------------------------------------------------------
-
     ok, encoded_img = cv2.imencode(
         ".jpg",
         crop_bgr,
@@ -2089,10 +2067,9 @@ def _run_classifier_sync(crop_bgr) -> dict:
         latency_ms = round((time.perf_counter() - started) * 1000, 1)
 
         if response.status_code != 200:
-            body_preview = response.text[:500].replace("\n", " ")
             print(
                 f"[PlantNet] identify failed: HTTP {response.status_code}; "
-                f"latency={latency_ms} ms; body={body_preview}"
+                f"latency={latency_ms} ms"
             )
             return _plantnet_unknown(
                 "http_error",
@@ -2101,8 +2078,8 @@ def _run_classifier_sync(crop_bgr) -> dict:
 
         try:
             payload = response.json()
-        except ValueError as exc:
-            print(f"[PlantNet] invalid JSON response: {exc}")
+        except ValueError:
+            print("[PlantNet] invalid JSON response")
             return _plantnet_unknown(
                 "invalid_response",
                 "Pl@ntNet returned invalid JSON",
@@ -2110,11 +2087,7 @@ def _run_classifier_sync(crop_bgr) -> dict:
 
         raw_results = payload.get("results") or []
         if not isinstance(raw_results, list) or not raw_results:
-            print(
-                "[PlantNet] no results; "
-                f"bestMatch={payload.get('bestMatch')!r}; "
-                f"predictedOrgans={payload.get('predictedOrgans')!r}"
-            )
+            print("[PlantNet] no results")
             result = _plantnet_unknown(
                 "no_results",
                 "Pl@ntNet did not return species candidates",
@@ -2165,12 +2138,12 @@ def _run_classifier_sync(crop_bgr) -> dict:
     except requests.Timeout:
         print(f"[PlantNet] identify timeout after {PLANTNET_TIMEOUT_SEC} s")
         return _plantnet_unknown("timeout", "Pl@ntNet request timed out")
-    except requests.RequestException as exc:
-        print(f"[PlantNet] network error: {exc}")
-        return _plantnet_unknown("network_error", str(exc))
-    except Exception as exc:
-        print(f"[PlantNet] unexpected classifier error: {exc}")
-        return _plantnet_unknown("internal_error", str(exc))
+    except requests.RequestException:
+        print("[PlantNet] connection failed")
+        return _plantnet_unknown("network_error", "Pl@ntNet connection failed")
+    except Exception:
+        print("[PlantNet] invalid identification response")
+        return _plantnet_unknown("internal_error", "Invalid identification response")
 
 
 def _plantnet_health_sync() -> dict:
@@ -2203,11 +2176,30 @@ def _plantnet_health_sync() -> dict:
         else:
             info["reachable"] = False
             info["error"] = f"HTTP {response.status_code}"
-    except Exception as exc:
+    except Exception:
         info["latency_ms"] = round((time.perf_counter() - started) * 1000, 1)
         info["reachable"] = False
-        info["error"] = str(exc)
+        info["error"] = "Pl@ntNet health request failed"
     return info
+
+
+def _decode_legacy_image(raw):
+    """Bound decoded allocation and normalize orientation before coordinates."""
+    if not raw:
+        raise HTTPException(400, "Пустое изображение")
+    if len(raw) > MAX_LEGACY_IMAGE_BYTES:
+        raise HTTPException(413, "Фото превышает 15 МиБ")
+    try:
+        with Image.open(io.BytesIO(raw)) as source:
+            if source.width * source.height > MAX_LEGACY_PIXELS:
+                raise HTTPException(413, "Фото превышает 25 мегапикселей")
+            image = np.asarray(ImageOps.exif_transpose(source).convert('RGB'))
+        return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    except Image.DecompressionBombError:
+        raise HTTPException(413, "Фото превышает допустимое разрешение") from None
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise HTTPException(400, "Не удалось прочитать изображение") from None
+
 
 @app.post("/analyze-tree")
 async def analyze_tree(
@@ -2228,13 +2220,24 @@ async def analyze_tree(
     auth_token: Optional[str] = Form(None),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
+    authorization: str | None = Header(default=None),
 ):
-    analysis_user = _get_user_by_token(auth_token) if auth_token else None
+    resolved_token = _resolve_auth_token(authorization, auth_token)
+    analysis_user = _get_user_by_token(resolved_token) if resolved_token else None
 
-    image_bytes = await file.read()
-    img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    if img is None: raise HTTPException(status_code=400, detail="Не удалось прочитать изображение")
+    image_bytes = await file.read(MAX_LEGACY_IMAGE_BYTES + 1)
+    img = await run_in_threadpool(_decode_legacy_image, image_bytes)
     H, W = img.shape[:2]
+    for value in (ar_height_m, ar_crown_width_m, ar_trunk_diameter_m, manual_scale):
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            raise HTTPException(422, "Размеры и масштаб должны быть конечными положительными числами")
+    if ((tap_x is None) != (tap_y is None) or any(v is not None and
+            (not math.isfinite(v) or not 0 <= v <= 1) for v in (tap_x, tap_y))):
+        raise HTTPException(422, "Некорректная точка выбора дерева")
+    if ai_conf is not None and not math.isfinite(ai_conf):
+        raise HTTPException(422, "Некорректный порог обнаружения")
+    if ai_smoothness is not None and not 1 <= ai_smoothness <= 31:
+        raise HTTPException(422, "Параметр сглаживания должен быть от 1 до 31")
 
     conf_val = max(0.05, min(0.95, float(ai_conf))) if ai_conf else 0.25
     
@@ -2251,11 +2254,7 @@ async def analyze_tree(
     kernel = np.ones((smooth_k, smooth_k), np.uint8)
 
     if tree_res.masks is None or len(tree_res.masks.data) == 0:
-        fallback_mask = np.zeros((H, W), dtype=np.uint8)
-        cv2.rectangle(fallback_mask, (int(W*0.3), int(H*0.1)), (int(W*0.7), int(H*0.9)), 255, -1)
-        masks.append(fallback_mask)
-        idx = 0
-        x1, y1, x2, y2 = int(W*0.3), int(H*0.1), int(W*0.7), int(H*0.9)
+        raise HTTPException(422, "Дерево не обнаружено. Выберите другое фото или создайте контур в редакторе v4.")
     else:
         idx = -1
         for i, m in enumerate(tree_res.masks.data):
@@ -2315,8 +2314,7 @@ async def analyze_tree(
             mask = final_mask
         except Exception: mask = yolo_mask
     else:
-        try: mask = yolo_mask
-        except Exception: mask = fallback_mask
+        mask = yolo_mask
 
     ys, xs = np.where(mask > 0)
     if len(ys) == 0: return JSONResponse({"error": "Ошибка контура"}, status_code=400)
@@ -2336,106 +2334,43 @@ async def analyze_tree(
         img[y1_c:y2_c, x1_c:x2_c],
     )
     species_name = classification.get("display_name") or "Неизвестно"
-    species_group = classification.get("species_group") or "Сосна"
+    species_group = classification.get("species_group")
 
-    # =========================================================
-    # БЛОК МАСШТАБА: УМНАЯ АВТО-КАЛИБРОВКА (EXIF + YOLO COCO)
-    # =========================================================
-    scale = None
-    dimensions_source = "Неизвестно"
+    # Legacy inputs do not establish camera intrinsics, a known object size or
+    # AR/photo association. Keep explicit user inputs, never infer a scale from
+    # a species, person, car, assumed stick length, fixed FOV or another size.
+    scale = float(manual_scale) if manual_scale is not None else None
+    dimensions_source = "Пользовательский масштаб" if scale else "Масштаб не определён"
+    height_m_ai = round(float(height_px) * scale, 2) if scale else None
+    crown_m_ai = round(float(crown_width_px) * scale, 2) if scale else None
+    # The average lower silhouette width is not a measured trunk diameter/DBH.
+    trunk_m_ai = None
+    height_m = float(ar_height_m) if ar_height_m is not None else height_m_ai
+    crown_m = float(ar_crown_width_m) if ar_crown_width_m is not None else crown_m_ai
+    trunk_m = float(ar_trunk_diameter_m) if ar_trunk_diameter_m is not None else None
+    if any(v is not None and (not math.isfinite(v) or v <= 0)
+           for v in (height_m, crown_m, trunk_m)):
+        raise HTTPException(422, "Размеры превышают поддерживаемый диапазон")
+    ar_measurements = {"height_m": ar_height_m, "crown_width_m": ar_crown_width_m,
+                       "trunk_diameter_m": ar_trunk_diameter_m}
+    measurement_sources = {
+        "height_m": "manual_legacy_ar" if ar_height_m is not None else ("manual_scale+vision" if height_m is not None else "unavailable"),
+        "crown_width_m": "manual_legacy_ar" if ar_crown_width_m is not None else ("manual_scale+vision" if crown_m is not None else "unavailable"),
+        "trunk_diameter_m": "manual_legacy_ar" if trunk_m is not None else "unavailable",
+    }
+    warnings = []
+    if scale is None:
+        warnings.append("scale_unavailable_explicit_reference_required")
+    if any(v is not None for v in ar_measurements.values()):
+        dimensions_source = "Введено пользователем: привязка legacy AR к фото не подтверждена"
+        warnings.append("legacy_ar_user_input_without_photo_binding")
+    if camera_distance_m is not None:
+        warnings.append("camera_distance_not_used_without_calibrated_intrinsics")
+    if manual_beta_kg_s is not None:
+        warnings.append("legacy_manual_beta_not_used_without_provenance")
 
-    # 1. Если пользователь сам нарисовал линию на экране
-    if manual_scale and float(manual_scale) > 0:
-        scale = float(manual_scale); dimensions_source = "Пользовательский маркер"
-    
-    # 2. НОВЫЙ МЕТОД: Читаем лазерный фокус (дистанцию) прямо из EXIF метаданных фото
-    if not scale:
-        exif_scale, exif_source = extract_exif_scale(image_bytes, H)
-        if exif_scale and exif_scale > 0:
-            scale = exif_scale
-            dimensions_source = exif_source
-
-    # 3. Резервный метод: оптическая дальность, переданная с телефона 
-    if not scale and camera_distance_m and float(camera_distance_m) > 0:
-        fov_v_rad = 1.047
-        dist = float(camera_distance_m)
-        visible_world_height_m = 2.0 * dist * math.tan(fov_v_rad / 2.0)
-        scale = visible_world_height_m / H
-        dimensions_source = f"Оптика (Дистанция {dist}м)"
-        
-    # 4. НОВЫЙ МЕТОД: Авто-Эталон. YOLO ищет людей или машины в кадре
-    if not scale and len(coco_res.boxes) > 0:
-        best_person_h = 0
-        best_car_h = 0
-        for box in coco_res.boxes:
-            cls_id = int(box.cls[0].item())
-            h_px = box.xyxy[0][3].item() - box.xyxy[0][1].item()
-            # Берем самого крупного человека/машину в кадре
-            if cls_id == 0 and h_px > best_person_h:
-                best_person_h = h_px
-            elif cls_id == 2 and h_px > best_car_h:
-                best_car_h = h_px
-                
-        # Человек/машина должны занимать хотя бы 5% от высоты кадра, чтобы масштаб не исказился
-        if best_person_h > (H * 0.05): 
-            scale = 1.7 / best_person_h # Средний рост человека 1.7 м
-            dimensions_source = "Авто-эталон (Силуэт человека 1.7м)"
-        elif best_car_h > (H * 0.05):
-            scale = 1.5 / best_car_h # Средняя высота легкового авто 1.5 м
-            dimensions_source = "Авто-эталон (Автомобиль 1.5м)"
-
-    # 5. Классическая палка (Stick YOLO)
-    if not scale and len(stick_res.boxes) > 0:
-        best = max(stick_res.boxes, key=lambda b: b.xyxy[0][3] - b.xyxy[0][1])
-        stick_h = best.xyxy[0][3].cpu().item() - best.xyxy[0][1].cpu().item()
-        if stick_h > 10: scale = REAL_STICK_M / stick_h; dimensions_source = "Авто-маркер (Палка 1м)"
-    
-    # 6. Если в кадре нет ни людей, ни машин, ни палки, ни EXIF — берем замеры AR
-    if not scale:
-        if ar_height_m and height_px > 0: scale = float(ar_height_m) / height_px; dimensions_source = "Пропорционально (по AR Высоте)"
-        elif ar_crown_width_m and crown_width_px > 0: scale = float(ar_crown_width_m) / crown_width_px; dimensions_source = "Пропорционально (по AR Кроне)"
-        elif ar_trunk_diameter_m and trunk_px > 0: scale = float(ar_trunk_diameter_m) / trunk_px; dimensions_source = "Пропорционально (по AR Стволу)"
-
-    # 7. Самый последний запасной вариант — средняя высота по породе
-    if not scale:
-        ref_h = SPECIES_REF_HEIGHT.get(species_group, 20.0)
-        if height_px > 0: scale = ref_h / height_px; dimensions_source = f"Био. статистика ({species_name})"
-
-    # =========================================================
-
-    height_m = round(height_px * scale, 2) if scale else None
-    crown_m = round(crown_width_px * scale, 2) if scale else None
-    trunk_m = round(trunk_px * scale, 2) if scale and trunk_px else None
-
-    height_m_ai = height_m
-    crown_m_ai = crown_m
-    trunk_m_ai = trunk_m
-
-    if ar_height_m: height_m = round(float(ar_height_m), 2)
-    if ar_crown_width_m: crown_m = round(float(ar_crown_width_m), 2)
-    if ar_trunk_diameter_m: trunk_m = round(float(ar_trunk_diameter_m), 2)
-
-    if ar_trunk_diameter_m and not ar_height_m and trunk_px > 0:
-        if (height_px / trunk_px) < 35:  
-            typical_s = {"Сосна": 65, "Ель": 70, "Береза": 60, "Дуб": 45, "Тополь": 55, "Клен": 50, "Ясень": 55, "Липа": 50}.get(species_group, 55)
-            height_m = round(float(ar_trunk_diameter_m) * typical_s, 2)
-            if not ar_crown_width_m: crown_m = round(float(ar_trunk_diameter_m) * (12 if species_group in ["Ель", "Сосна"] else 18), 2)
-            dimensions_source = "Аллометрия (Коррекция перспективы)"
-
-    if ar_height_m or ar_crown_width_m or ar_trunk_diameter_m:
-        if not manual_scale and "Аллометрия" not in dimensions_source: dimensions_source = "Введено пользователем"
-
-    ar_measurements = {"height_m": height_m if ar_height_m else None, "crown_width_m": crown_m if ar_crown_width_m else None, "trunk_diameter_m": trunk_m if ar_trunk_diameter_m else None}
-    measurement_sources = {"height_m": "ar" if ar_height_m else "image", "crown_width_m": "ar" if ar_crown_width_m else "image", "trunk_diameter_m": "ar" if ar_trunk_diameter_m else "image"}
-
-    crown_density_ai = 1.0
-    try:
-        crown_mask = mask[y_min : y_min + int(0.7 * height_px), :]
-        contours, _ = cv2.findContours(crown_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if contours:
-            hull = cv2.convexHull(np.vstack(contours))
-            if cv2.contourArea(hull) > 0: crown_density_ai = max(0.1, min(round(float(np.sum(crown_mask > 0) / cv2.contourArea(hull)), 3), 1.0))
-    except Exception: pass
+    # A filled whole-tree contour cannot measure crown porosity.
+    crown_density_ai = None
 
     lean_angle_deg = 0.0
     try:
@@ -2455,57 +2390,17 @@ async def analyze_tree(
         gps = {"lat": float(lat), "lon": float(lon)} if (lat and lon) else extract_gps(image_bytes)
         if gps: address = normalize_address_ru(reverse_geocode(gps["lat"], gps["lon"]))
 
-    # ---------------------------------------------------------
-    # НОВЫЙ БЛОК: ФИЗИКА ПО ПИКСЕЛЯМ МАСКИ
-    # ---------------------------------------------------------
-    real_crown_area_m2 = 0.0
-    lever_arm_m = (height_m or 0) * 0.5  # Фолбэк
-    
-    try:
-        # 1. Выделяем крону (отсекаем нижние 15% маски, считая их голым стволом)
-        crown_mask = mask.copy()
-        trunk_split_y = int(y_max - 0.15 * height_px)
-        crown_mask[trunk_split_y:, :] = 0
-        
-        # 2. Вычисляем точную площадь кроны в пикселях
-        crown_area_px = cv2.countNonZero(crown_mask)
-        
-        # 3. Находим ЦЕНТР МАСС (центроид) кроны с помощью моментов
-        M = cv2.moments(crown_mask)
-        if M["m00"] > 0:
-            cY_px = int(M["m01"] / M["m00"])
-        else:
-            cY_px = int(y_min + height_px * 0.4) # Фолбэк на 40% от верхушки
-            
-        # 4. Расстояние от основания (земли) до центра масс в пикселях
-        lever_arm_px = y_max - cY_px
-        
-        # Переводим в реальные метры, если известен масштаб
-        if scale and scale > 0:
-            real_crown_area_m2 = crown_area_px * (scale ** 2)
-            lever_arm_m = lever_arm_px * scale
-    except Exception as e:
-        print(f"[Physics] Ошибка расчета площади кроны: {e}")
-
-    # Если масштаб не определен, делаем грубую прикидку по высоте
-    if real_crown_area_m2 == 0 and height_m and crown_m:
-        real_crown_area_m2 = height_m * crown_m * 0.6
-    # ---------------------------------------------------------
-
-    final_crown_density = crown_density_factor if crown_density_factor else crown_density_ai
-    
-    # ВЫЧИСЛЯЕМ БЕТУ НА ОСНОВЕ ПЛОЩАДИ, а не среднего значения!
-    beta_info = estimate_beta_kg_s_exact(species_group, real_crown_area_m2, manual_beta_kg_s=manual_beta_kg_s, crown_density_factor=final_crown_density)
-    
-    wind_design = float(manual_wind_speed_m_s or 25.0)
-    
-    # ВЫЧИСЛЯЕМ РИСК НА ОСНОВЕ РЕАЛЬНОГО РЫЧАГА (ЦЕНТРА МАСС)
-    risk_data, f_n, l_m, m_nm, s_f = compute_risk(species_group, height_m, trunk_m, lean_angle_deg, beta_info, wind_design, lever_arm_m)
-
+    # Retain legacy keys with unavailable values until a supported, validated
+    # mechanics/identification model and the required observations are supplied.
+    beta_info = estimate_beta_kg_s_exact(species_group, None)
+    risk_data, _, _, _, _ = compute_risk(species_group, height_m, trunk_m,
+        lean_angle_deg, beta_info, None, None)
     analytic_wind_model = {
-        "available": True,
-        "outputs": {"total_force_n": round(f_n, 1), "center_of_load_m": round(l_m, 1), "base_moment_nm": round(m_nm, 1), "analytical_score": round(s_f, 2)},
-        "inputs": {"crown_start_height_m": round((height_m or 0) * 0.5, 1), "n_elements": 1}
+        "available": False,
+        "reason": "validated_mechanics_and_wind_scenario_required",
+        "outputs": {"total_force_n": None, "center_of_load_m": None,
+                    "base_moment_nm": None, "analytical_score": None},
+        "inputs": {},
     }
 
     analysis_id = str(uuid4())
@@ -2524,62 +2419,63 @@ async def analyze_tree(
         },
     }
 
-    try:
-        # Keep the original upload for audit, and a resized image that exactly
-        # matches both the automatic and future user masks.
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/input_original.jpg",
-            image_bytes,
-        )
-        # Backward-compatible name for older tools.
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/input.jpg",
-            feedback_assets["image_bytes"],
-        )
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/feedback_input.jpg",
-            feedback_assets["image_bytes"],
-        )
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/annotated.jpg",
-            feedback_assets["annotated_bytes"],
-        )
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/mask_auto.png",
-            feedback_assets["mask_bytes"],
-        )
-        supabase_upload_json(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/meta_auto.json",
-            meta,
-        )
-    except Exception as e:
-        print(f"[!] Failed to upload raw sample: {e}")
+    if analysis_user is not None:
+        try:
+            # Keep the original upload for audit, and a resized image that exactly
+            # matches both the automatic and future user masks.
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_RAW,
+                f"{analysis_id}/input_original.jpg",
+                image_bytes,
+            )
+            # Backward-compatible name for older tools.
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_RAW,
+                f"{analysis_id}/input.jpg",
+                feedback_assets["image_bytes"],
+            )
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_RAW,
+                f"{analysis_id}/feedback_input.jpg",
+                feedback_assets["image_bytes"],
+            )
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_RAW,
+                f"{analysis_id}/annotated.jpg",
+                feedback_assets["annotated_bytes"],
+            )
+            supabase_upload_bytes(
+                SUPABASE_BUCKET_RAW,
+                f"{analysis_id}/mask_auto.png",
+                feedback_assets["mask_bytes"],
+            )
+            supabase_upload_json(
+                SUPABASE_BUCKET_RAW,
+                f"{analysis_id}/meta_auto.json",
+                meta,
+            )
+        except Exception:
+            print("[storage] legacy_raw_upload_failed")
 
-    try:
-        tmp_dir = Path("/tmp") / analysis_id
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        (tmp_dir / "input.jpg").write_bytes(feedback_assets["image_bytes"])
-        (tmp_dir / "feedback_input.jpg").write_bytes(
-            feedback_assets["image_bytes"]
-        )
-        (tmp_dir / "annotated.jpg").write_bytes(
-            feedback_assets["annotated_bytes"]
-        )
-        (tmp_dir / "mask_auto.png").write_bytes(
-            feedback_assets["mask_bytes"]
-        )
-        (tmp_dir / "meta.json").write_text(
-            json.dumps(meta, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-    except Exception as e:
-        print(f"[!] Failed to cache in /tmp: {e}")
+        try:
+            tmp_dir = Path("/tmp") / analysis_id
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            (tmp_dir / "input.jpg").write_bytes(feedback_assets["image_bytes"])
+            (tmp_dir / "feedback_input.jpg").write_bytes(
+                feedback_assets["image_bytes"]
+            )
+            (tmp_dir / "annotated.jpg").write_bytes(
+                feedback_assets["annotated_bytes"]
+            )
+            (tmp_dir / "mask_auto.png").write_bytes(
+                feedback_assets["mask_bytes"]
+            )
+            (tmp_dir / "meta.json").write_text(
+                json.dumps(meta, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            print("[cache] legacy_preview_cache_failed")
 
     response = {
         "analysis_id": analysis_id, "species": species_name, "species_group": species_group, "classification": classification, "height_m": height_m, "crown_width_m": crown_m, "trunk_diameter_m": trunk_m,
@@ -2598,9 +2494,13 @@ async def analyze_tree(
         "gps": gps, "address": address, "risk": risk_data,
     }
 
-    response["server_saved"] = analysis_user is not None
-    try: _save_analysis_record(response, analysis_user)
-    except Exception as e: print(f"[!] Failed to save DB record: {e}")
+    response["warnings"] = warnings
+    response["accuracy_policy"] = {"fake_mask_fallback": False, "assumed_object_scale": False,
+        "species_height_scale": False, "beta_available": False, "risk_available": False,
+        "legacy_ar_photo_binding": False, "trunk_standard_confirmed": False}
+    response["server_saved"] = False
+    if analysis_user is not None:
+        response["server_saved"] = _save_analysis_record(response, analysis_user) is True
 
     return JSONResponse(response)
 
@@ -2709,410 +2609,121 @@ def _load_feedback_artifacts(analysis_id: str) -> dict:
     }
 
 
+def _legacy_feedback_user(analysis_id, token):
+    if not token:
+        raise HTTPException(401, "Войдите перед отправкой исправлений")
+    user = _get_user_by_token(token)
+    if not isinstance(user, dict) or not user.get('id'):
+        raise HTTPException(401, "Сессия отсутствует или истекла")
+    try:
+        rows = _db_json('GET', 'analyses', params={
+            'id': 'eq.' + analysis_id, 'user_id': 'eq.' + user['id'],
+            'select': 'id,user_id', 'limit': '1'}, timeout=10)
+    except Exception:
+        raise HTTPException(503, "Не удалось проверить владельца анализа") from None
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise HTTPException(503, "Не удалось проверить владельца анализа")
+    if not rows or rows[0].get('id') != analysis_id or rows[0].get('user_id') != user['id']:
+        raise HTTPException(404, "Анализ недоступен для этого аккаунта")
+    return user
+
+
+def _persist_legacy_feedback(owner, analysis_id, artifacts, mask, proposal):
+    from arborscan_v4.legacy_feedback import save_feedback_proposal
+    original_mask = mask if mask is not None else artifacts.get('auto_mask_bytes')
+    if not original_mask:
+        raise HTTPException(422, "Добавьте PNG-маску для проверки контура")
+    return save_feedback_proposal(owner, analysis_id, artifacts['input_bytes'], original_mask, proposal)
+
+
 @app.post("/feedback")
 @app.post("/api/feedback")
-def send_feedback(
-    payload: dict = Body(...),
-    authorization: str | None = Header(default=None),
-):
-    analysis_id = _validate_analysis_id(
-        payload.get("analysis_id") or payload.get("analysisId") or ""
-    )
+def send_feedback(payload: dict = Body(...), authorization: str | None = Header(default=None)):
+    analysis_id = _validate_analysis_id(payload.get('analysis_id') or payload.get('analysisId') or '')
+    token = _resolve_auth_token(authorization, payload.get('auth_token') or payload.get('authToken'))
+    user = _legacy_feedback_user(analysis_id, token)
 
-    def _as_bool(value, default: bool = True) -> bool:
+    def boolean(value, default=False):
         if value is None:
             return default
-        if isinstance(value, bool):
+        if type(value) is bool:
             return value
-        if isinstance(value, (int, float)):
+        if type(value) is int and value in (0, 1):
             return bool(value)
         if isinstance(value, str):
             normalized = value.strip().lower()
-            if normalized in {"1", "true", "yes", "y", "ok"}:
+            if normalized in {'true', 'yes', '1', 'on'}:
                 return True
-            if normalized in {"0", "false", "no", "n"}:
+            if normalized in {'false', 'no', '0', 'off'}:
                 return False
-        return default
+        raise HTTPException(422, "Некорректный признак обратной связи")
 
-    def _as_float(*values):
+    def number(*values):
         for value in values:
-            if value is None:
+            if value is None or value == '':
                 continue
-            if isinstance(value, (int, float)):
-                result = float(value)
-            elif isinstance(value, str):
-                normalized = value.strip().replace(",", ".")
-                if not normalized or normalized.lower() in {
-                    "null",
-                    "none",
-                    "nan",
-                }:
+            if isinstance(value, str):
+                value = value.strip().replace(',', '.')
+                if value.lower() == 'null':
                     continue
-                try:
-                    result = float(normalized)
-                except ValueError:
-                    continue
-            else:
-                continue
-            if math.isfinite(result):
-                return result
+            if type(value) is bool:
+                raise HTTPException(422, "Некорректное предложенное измерение")
+            try:
+                parsed = float(value)
+            except (ValueError, TypeError, OverflowError):
+                raise HTTPException(422, "Некорректное предложенное измерение") from None
+            if not math.isfinite(parsed):
+                raise HTTPException(422, "Измерение должно быть конечным числом")
+            return parsed
         return None
 
-    use_for_training = _as_bool(
-        payload.get("use_for_training", payload.get("useForTraining")),
-        default=True,
-    )
-    tree_ok = _as_bool(
-        payload.get("tree_ok", payload.get("treeOk")),
-        default=True,
-    )
-    stick_ok = _as_bool(
-        payload.get("stick_ok", payload.get("stickOk")),
-        default=True,
-    )
-    params_ok = _as_bool(
-        payload.get("params_ok", payload.get("paramsOk")),
-        default=True,
-    )
-    species_ok = _as_bool(
-        payload.get("species_ok", payload.get("speciesOk")),
-        default=True,
-    )
-
-    correct_species_raw = (
-        payload.get("correct_species") or payload.get("correctSpecies")
-    )
-    correct_species = (
-        str(correct_species_raw).strip() if correct_species_raw is not None else None
-    )
-    if correct_species == "":
-        correct_species = None
-
-    corrected_height_m = _as_float(
-        payload.get("corrected_height_m"),
-        payload.get("correctedHeightM"),
-        payload.get("height_m_corrected"),
-    )
-    corrected_crown_width_m = _as_float(
-        payload.get("corrected_crown_width_m"),
-        payload.get("correctedCrownWidthM"),
-        payload.get("crown_width_m_corrected"),
-    )
-    corrected_trunk_diameter_m = _as_float(
-        payload.get("corrected_trunk_diameter_m"),
-        payload.get("correctedTrunkDiameterM"),
-        payload.get("trunk_diameter_m_corrected"),
-    )
-    corrected_scale_px_to_m = _as_float(
-        payload.get("corrected_scale_px_to_m"),
-        payload.get("correctedScalePxToM"),
-        payload.get("scale_px_to_m_corrected"),
-        payload.get("scalePxToMCorrected"),
-    )
-    user_mask_base64 = (
-        payload.get("user_mask_base64")
-        or payload.get("userMaskBase64")
-        or payload.get("mask_base64")
-        or payload.get("maskBase64")
-    )
-
-    if corrected_height_m is not None and not 0.5 <= corrected_height_m <= 100:
-        raise HTTPException(status_code=422, detail="Высота должна быть от 0,5 до 100 м")
-    if (
-        corrected_crown_width_m is not None
-        and not 0.1 <= corrected_crown_width_m <= 100
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Ширина кроны должна быть от 0,1 до 100 м",
-        )
-    if (
-        corrected_trunk_diameter_m is not None
-        and not 0.01 <= corrected_trunk_diameter_m <= 10
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Диаметр ствола должен быть от 0,01 до 10 м",
-        )
-    if corrected_scale_px_to_m is not None and corrected_scale_px_to_m <= 0:
-        raise HTTPException(status_code=422, detail="Масштаб должен быть больше нуля")
-
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise HTTPException(status_code=500, detail="Supabase не настроен")
-
-    resolved_token = _resolve_auth_token(
-        authorization,
-        payload.get("auth_token") or payload.get("authToken"),
-    )
-    feedback_user = _get_user_by_token(resolved_token or "")
-    verifier_role = (
-        str(feedback_user.get("role") or "user").strip().lower()
-        if feedback_user
-        else "anonymous"
-    )
-    if verifier_role not in {"admin", "user"}:
-        verifier_role = "user"
-
+    # Consent is opt-in. Quality flags are hints to a reviewer, never approval.
+    consent = boolean(payload.get('use_for_training', payload.get('useForTraining')), False)
+    quality = {key: boolean(payload.get(key, payload.get(alias)), True)
+               for key, alias in [('tree_ok', 'treeOk'), ('stick_ok', 'stickOk'),
+                                  ('params_ok', 'paramsOk'), ('species_ok', 'speciesOk')]}
+    species = payload.get('correct_species') or payload.get('correctSpecies')
+    if species is not None:
+        if not isinstance(species, str):
+            raise HTTPException(422, "Некорректное предложенное название вида")
+        species = species.strip() or None
+    corrections = {
+        'species': species,
+        'height_m': number(payload.get('corrected_height_m'), payload.get('correctedHeightM'), payload.get('height_m_corrected')),
+        'crown_width_m': number(payload.get('corrected_crown_width_m'), payload.get('correctedCrownWidthM'), payload.get('crown_width_m_corrected')),
+        'trunk_diameter_m': number(payload.get('corrected_trunk_diameter_m'), payload.get('correctedTrunkDiameterM'), payload.get('trunk_diameter_m_corrected')),
+        'scale_px_to_m': number(payload.get('corrected_scale_px_to_m'), payload.get('correctedScalePxToM'), payload.get('scale_px_to_m_corrected'), payload.get('scalePxToMCorrected')),
+    }
+    mask_text = (payload.get('user_mask_base64') or payload.get('userMaskBase64')
+                 or payload.get('mask_base64') or payload.get('maskBase64'))
+    mask = None
+    if mask_text:
+        if not isinstance(mask_text, str) or len(mask_text) > 12_000_000:
+            raise HTTPException(413, "Маска превышает допустимый размер")
+        try:
+            mask = ensure_png_mask_bytes(mask_text)
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(422, "Не удалось прочитать PNG-маску") from None
+    proposal = {'version': 1, 'kind': 'legacy_user_feedback', 'training_consent': consent,
+                'quality': quality, 'corrections': corrections, 'has_user_mask': mask is not None}
+    # Read originals only after ownership validation. No raw/meta/verified writes.
     artifacts = _load_feedback_artifacts(analysis_id)
-    input_bytes: bytes = artifacts["input_bytes"]
-    annotated_bytes: bytes | None = artifacts.get("annotated_bytes")
-    meta = dict(artifacts["meta"])
+    saved = _persist_legacy_feedback(user['id'], analysis_id, artifacts, mask, proposal)
+    if saved.get('saved') is not True:
+        raise HTTPException(503, "Сохранение исправлений не подтверждено; повторите запрос")
+    status = ('saved_pending_review' if consent else 'saved_not_for_training')
+    if saved['review_status'] not in ('draft', 'submitted'):
+        status = 'saved_reviewed'
+    return {**saved, 'status': status, 'analysis_id': analysis_id, 'trust_score': None,
+            'verified': False, 'use_for_training': consent, 'eligible_for_training': False,
+            'has_user_mask': mask is not None, 'recovered_from': artifacts.get('source'),
+            'proposal_only': True, 'corrections_applied': False,
+            'corrected': {key: None for key in corrections},
+            'proposed_corrections': corrections}
 
-    existing_verified_meta = _json_from_bytes(
-        _download_optional(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/meta_verified.json",
-        )
-    )
-    existing_mask_bytes = (
-        _download_optional(
-            SUPABASE_BUCKET_VERIFIED,
-            f"{analysis_id}/user_mask.png",
-        )
-        or _download_optional(
-            SUPABASE_BUCKET_INPUTS,
-            f"{analysis_id}/user_mask.png",
-        )
-    )
 
-    submitted_mask_bytes = None
-    mask_text = str(user_mask_base64 or "").strip()
-    if mask_text and mask_text.lower() not in {"null", "undefined"}:
-        try:
-            submitted_mask_bytes = normalize_mask_to_image(
-                ensure_png_mask_bytes(mask_text),
-                input_bytes,
-            )
-        except Exception as exc:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Не удалось обработать пользовательскую маску: {exc}",
-            )
-
-    final_mask_bytes = submitted_mask_bytes or existing_mask_bytes
-    if final_mask_bytes is not None:
-        final_mask_bytes = normalize_mask_to_image(final_mask_bytes, input_bytes)
-    has_user_mask = final_mask_bytes is not None
-
-    # A corrected mask is positive evidence even when the automatic mask was
-    # marked as incorrect. The same applies to an explicitly corrected species.
-    tree_component_ok = tree_ok or has_user_mask
-    species_component_ok = species_ok or bool(correct_species)
-    trust = round(
-        (0.30 if tree_component_ok else 0.0)
-        + (0.20 if stick_ok else 0.0)
-        + (0.20 if params_ok else 0.0)
-        + (0.30 if species_component_ok else 0.0),
-        3,
-    )
-
-    now_iso = _now_iso()
-    meta.update(
-        {
-            "analysis_id": analysis_id,
-            "tree_ok": tree_ok,
-            "stick_ok": stick_ok,
-            "params_ok": params_ok,
-            "species_ok": species_ok,
-            "correct_species": correct_species,
-            "has_user_mask": has_user_mask,
-            "use_for_training": use_for_training,
-            "exclude_from_training": not use_for_training,
-            "trust_score": trust,
-            "feedback_received_at": now_iso,
-            "feedback_source": artifacts["source"],
-            "verifier_role": verifier_role,
-            "verifier_user_id": (
-                feedback_user.get("id") if feedback_user else None
-            ),
-            "feedback_revision": int(
-                existing_verified_meta.get("feedback_revision", 0) or 0
-            )
-            + 1,
-        }
-    )
-
-    if not species_ok and correct_species:
-        meta["species"] = correct_species
-    if corrected_height_m is not None:
-        meta["height_m"] = corrected_height_m
-    if corrected_crown_width_m is not None:
-        meta["crown_width_m"] = corrected_crown_width_m
-    if corrected_trunk_diameter_m is not None:
-        meta["trunk_diameter_m"] = corrected_trunk_diameter_m
-    if corrected_scale_px_to_m is not None:
-        meta["scale_px_to_m"] = corrected_scale_px_to_m
-
-    is_verified = bool(
-        use_for_training and trust >= VERIFIED_TRUST_THRESHOLD
-    )
-    meta["verified"] = is_verified
-    if is_verified:
-        meta["verified_at"] = now_iso
-
-    feedback_audit = {
-        "analysis_id": analysis_id,
-        "received_at": now_iso,
-        "verifier_role": verifier_role,
-        "verifier_user_id": feedback_user.get("id") if feedback_user else None,
-        "use_for_training": use_for_training,
-        "quality": {
-            "tree_ok": tree_ok,
-            "stick_ok": stick_ok,
-            "params_ok": params_ok,
-            "species_ok": species_ok,
-        },
-        "corrections": {
-            "species": correct_species,
-            "height_m": corrected_height_m,
-            "crown_width_m": corrected_crown_width_m,
-            "trunk_diameter_m": corrected_trunk_diameter_m,
-            "scale_px_to_m": corrected_scale_px_to_m,
-        },
-        "has_user_mask": has_user_mask,
-        "trust_score": trust,
-        "verified": is_verified,
-    }
-
-    try:
-        # Durable audit is always stored, even when the user opts out of model
-        # training. Opt-out therefore means "do not train", not "discard".
-        supabase_upload_json(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/feedback.json",
-            feedback_audit,
-        )
-        supabase_upload_json(
-            SUPABASE_BUCKET_RAW,
-            f"{analysis_id}/meta_feedback.json",
-            meta,
-        )
-        if submitted_mask_bytes is not None:
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_RAW,
-                f"{analysis_id}/user_mask.png",
-                submitted_mask_bytes,
-            )
-
-        supabase_upload_bytes(
-            SUPABASE_BUCKET_INPUTS,
-            f"{analysis_id}/input.jpg",
-            input_bytes,
-        )
-        if annotated_bytes:
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{analysis_id}/annotated.jpg",
-                annotated_bytes,
-            )
-        if final_mask_bytes:
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_INPUTS,
-                f"{analysis_id}/user_mask.png",
-                final_mask_bytes,
-            )
-        supabase_upload_json(
-            SUPABASE_BUCKET_META,
-            f"{analysis_id}.json",
-            meta,
-        )
-
-        if is_verified:
-            supabase_upload_bytes(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/input.jpg",
-                input_bytes,
-            )
-            if annotated_bytes:
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/annotated.jpg",
-                    annotated_bytes,
-                )
-            if final_mask_bytes:
-                supabase_upload_bytes(
-                    SUPABASE_BUCKET_VERIFIED,
-                    f"{analysis_id}/user_mask.png",
-                    final_mask_bytes,
-                )
-            # Preserve worker/admin fields that may already exist.
-            meta_verified = dict(existing_verified_meta)
-            meta_verified.update(meta)
-            supabase_upload_json(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/meta_verified.json",
-                meta_verified,
-            )
-        elif existing_verified_meta:
-            # A later opt-out must immediately exclude an already verified
-            # sample without deleting its audit history.
-            updated_existing = dict(existing_verified_meta)
-            updated_existing.update(
-                {
-                    "use_for_training": use_for_training,
-                    "exclude_from_training": not use_for_training,
-                    "feedback_received_at": now_iso,
-                    "feedback_revision": meta["feedback_revision"],
-                }
-            )
-            supabase_upload_json(
-                SUPABASE_BUCKET_VERIFIED,
-                f"{analysis_id}/meta_verified.json",
-                updated_existing,
-            )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Ошибка сохранения обратной связи в Supabase: {exc}",
-        )
-
-    if SUPABASE_ENABLE_QUEUE:
-        try:
-            supabase_db_insert(
-                SUPABASE_QUEUE_TABLE,
-                {
-                    "analysis_id": analysis_id,
-                    "trust_score": trust,
-                    "species": meta.get("species"),
-                    "has_user_mask": has_user_mask,
-                    "tree_ok": tree_ok,
-                    "stick_ok": stick_ok,
-                    "params_ok": params_ok,
-                    "species_ok": species_ok,
-                },
-            )
-        except Exception as exc:
-            print(f"[!] Queue error: {exc}")
-
-    tmp_dir: Path = artifacts["tmp_dir"]
-    try:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-    except Exception:
-        pass
-
-    if not use_for_training:
-        status = "saved_not_for_training"
-    elif is_verified:
-        status = "verified"
-    else:
-        status = "saved_pending_review"
-
-    return {
-        "status": status,
-        "analysis_id": analysis_id,
-        "trust_score": trust,
-        "verified": is_verified,
-        "use_for_training": use_for_training,
-        "has_user_mask": has_user_mask,
-        "recovered_from": artifacts["source"],
-        "corrected": {
-            "species": meta.get("species"),
-            "height_m": meta.get("height_m"),
-            "crown_width_m": meta.get("crown_width_m"),
-            "trunk_diameter_m": meta.get("trunk_diameter_m"),
-            "scale_px_to_m": meta.get("scale_px_to_m"),
-        },
-    }
 
 
 @app.get("/admin/verified-list")
@@ -3123,8 +2734,8 @@ def admin_verified_list(
     del admin
     try:
         objects = supabase_list_objects(SUPABASE_BUCKET_VERIFIED)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=503, detail="Verified contour list is temporarily unavailable") from None
 
     analysis_ids = sorted(
         {

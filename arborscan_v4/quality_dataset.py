@@ -59,6 +59,12 @@ def polygon_labels(mask):
 def sample(record, metadata, label=None, model_type='segmentation'):
     if record.get('purpose')=='export_smoke_test_only_not_model_evaluation':
         raise ValueError('synthetic_export_smoke_not_evaluation_data')
+    if 'feedback_proposal' in record:
+        proposal = record['feedback_proposal']
+        if (not isinstance(proposal, dict) or type(proposal.get('version')) is not int
+                or proposal['version'] != 1 or proposal.get('kind') != 'legacy_user_feedback'
+                or proposal.get('training_consent') is not True):
+            raise ValueError('legacy_feedback_training_consent_required')
     if metadata.get('image_sha256') and metadata['image_sha256']!=record['image_sha256']:
         raise ValueError('revision_original_mismatch')
     if model_type=='segmentation':

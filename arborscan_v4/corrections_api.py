@@ -16,6 +16,7 @@ import requests
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
 try:
     from .correction_workflow import WorkflowStore, validate_editor, overlay
 except ImportError:
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/v4/corrections", tags=["contour corrections"])
 MAX_IMAGE = 15 * 1024 * 1024
 MAX_MASK = 8 * 1024 * 1024
 MAX_PIXELS = 25_000_000
+MAX_PREVIEW_BYTES = 64 * 1024
 KEY_RE = re.compile(r"^[0-9a-f-]{36}_[0-9a-f]{64}\.json$")
 
 
@@ -136,8 +138,19 @@ def _summary(record):
         "image_sha256", "mask_sha256", "width", "height")}
 
 
-def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes, editor_state=None, parent_id=None):
+def _requires_workflow_commit(record):
+    return (record.get('schema_version') == 2
+            or record.get('requires_workflow_commit') is True
+            or 'feedback_proposal' in record)
+
+
+def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes, editor_state=None, parent_id=None, proposal=None):
     analysis_id = _uuid(analysis_id)
+    if proposal is not None:
+        from .legacy_feedback import validate_feedback_proposal
+        if editor_state is not None or parent_id is not None:
+            raise HTTPException(422, 'A legacy feedback proposal cannot replace editor revisions')
+        proposal = validate_feedback_proposal(proposal)
     # Inspect headers before allocating decoded image arrays.
     from PIL import Image, UnidentifiedImageError
     from io import BytesIO
@@ -167,6 +180,9 @@ def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes, editor_state
     if state is not None:
         revision = hashlib.sha256(json.dumps([analysis_id, image_hash, mask_hash, state, parent_id],
             sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+    elif proposal is not None:
+        revision = hashlib.sha256(json.dumps([analysis_id, image_hash, mask_hash, proposal],
+            sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
     key = f"{analysis_id}_{revision}.json"
     record = {
         "schema_version": 1, "owner_id": owner, "analysis_id": analysis_id,
@@ -178,6 +194,9 @@ def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes, editor_state
         "original_image_base64": base64.b64encode(image_bytes).decode(),
         "mask_png_base64": base64.b64encode(mask_bytes).decode(),
     }
+    if proposal is not None:
+        record.update(feedback_proposal=proposal, requires_workflow_commit=True,
+                      provenance='legacy_owner_feedback_unverified_proposal')
     if state is not None:
         store = WorkflowStore(_config)
         store.ready()
@@ -199,7 +218,7 @@ def _validate_and_save(owner, analysis_id, image_bytes, mask_bytes, editor_state
 def _ensure_metadata(store, owner, key, record):
     metadata = store.get(owner, key)
     if metadata: return metadata
-    if record.get('schema_version') == 2:
+    if _requires_workflow_commit(record):
         # An unregistered blob may be left after a conflicting or timed-out save.
         raise HTTPException(409, 'Revision not committed; retry its original save request')
     return store.transition('legacy', owner, key, analysis=record['analysis_id'], image=record['image_sha256'])
@@ -334,7 +353,7 @@ def list_corrections(offset: int = 0, owner: str = Depends(current_user)):
             # unindexed candidates need a blob read; committed photos do not.
             record = _get(owner, key)
             schema = record.get('schema_version', 1)
-            if schema == 2:
+            if _requires_workflow_commit(record):
                 if workflow_error is not None:
                     # An outage cannot be mistaken for an empty history or an
                     # uncommitted revision: metadata could not be checked.
@@ -355,9 +374,62 @@ def get_correction(correction_id: str, owner: str = Depends(current_user)):
     try:
         metadata = WorkflowStore(_config).get(owner, correction_id)
         if metadata: record = overlay(record, metadata)
-        elif record.get('schema_version') == 2: raise HTTPException(409, 'Revision save not committed')
+        elif _requires_workflow_commit(record): raise HTTPException(409, 'Revision save not committed')
     except HTTPException as exc:
         if exc.status_code != 503: raise
-        if record.get('schema_version') == 2: raise
+        if _requires_workflow_commit(record): raise
         record = {**record, 'workflow_available':False}
     return {"correction_id": correction_id, **record}
+
+
+def _thumbnail(record, correction_id):
+    """Small derivative only; never changes the stored original, mask or state."""
+    from io import BytesIO
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    encoded = record.get('original_image_base64')
+    if not isinstance(encoded, str) or len(encoded) > ((MAX_IMAGE + 2) // 3) * 4:
+        raise HTTPException(413, 'Original photo exceeds preview input limit')
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+        if not raw or len(raw) > MAX_IMAGE:
+            raise HTTPException(413, 'Original photo exceeds preview input limit')
+        with Image.open(BytesIO(raw)) as source:
+            if source.width < 1 or source.height < 1 or source.width * source.height > MAX_PIXELS:
+                raise HTTPException(413, 'Original photo resolution exceeds preview limit')
+            # JPEG draft avoids allocating its complete resolution when possible.
+            source.draft('RGB', (320, 320))
+            oriented = ImageOps.exif_transpose(source)
+            oriented.thumbnail((160, 160), Image.Resampling.LANCZOS)
+            if oriented.mode in ('RGBA', 'LA'):
+                rgb = Image.new('RGB', oriented.size, 'white')
+                rgb.paste(oriented.convert('RGB'), mask=oriented.getchannel('A'))
+            else:
+                rgb = oriented.convert('RGB')
+            output = BytesIO()
+            rgb.save(output, format='JPEG', quality=75, optimize=True)
+            thumbnail = output.getvalue()
+            width, height = rgb.size
+        if len(thumbnail) > MAX_PREVIEW_BYTES:
+            raise HTTPException(413, 'Preview exceeds size limit')
+        return {
+            'correction_id': correction_id, 'content_type': 'image/jpeg',
+            'thumbnail_base64': base64.b64encode(thumbnail).decode('ascii'),
+            'width': width, 'height': height,
+        }
+    except HTTPException:
+        raise
+    except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError):
+        raise HTTPException(422, 'Original photo cannot be previewed') from None
+
+
+@router.get('/{correction_id}/preview')
+def correction_preview(correction_id: str, owner: str = Depends(current_user)):
+    # Reuse exact owner/committed-revision semantics, including legacy PNGs.
+    record = get_correction(correction_id, owner)
+    return JSONResponse(_thumbnail(record, correction_id), headers={'Cache-Control': 'private, no-store'})
+
+
+@router.get('/workflow/review/{owner_id}/{correction_id}/preview')
+def review_preview(owner_id: str, correction_id: str, admin: str = Depends(current_admin)):
+    record = review_detail(owner_id, correction_id, admin)
+    return JSONResponse(_thumbnail(record, correction_id), headers={'Cache-Control': 'private, no-store'})

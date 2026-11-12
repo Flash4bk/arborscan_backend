@@ -41,6 +41,8 @@ RUN groupadd --gid 1000 arborscan \
 
 COPY --chown=arborscan:arborscan server.py auth_google_identity.py config.py tree_dynamics.py /app/
 COPY --chown=arborscan:arborscan services /app/services
+# Legacy feedback uses private, immutable v4 moderation without starting its API.
+COPY --chown=arborscan:arborscan arborscan_v4 /app/arborscan_v4
 
 RUN chown arborscan:arborscan /app/yolov8n.pt \
     && mkdir -p \

@@ -21,8 +21,19 @@ SPEC.loader.exec_module(candidate)
 class CandidateBoundaries(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.prepared = candidate.prepared_sources(REPO)
-        cls.baseline = subprocess.check_output(["git", "show", "10b54e7:server.py"], cwd=REPO)
+        # This historical overlay intentionally accepts only its pinned source.
+        # Test that contract against a real isolated fixture, not a requirement
+        # that the actively developed application never change server.py again.
+        cls.fixture = tempfile.TemporaryDirectory(prefix='arborscan-google-overlay-test-')
+        cls.addClassCleanup(cls.fixture.cleanup)
+        cls.repo = Path(cls.fixture.name).resolve() / 'prepared'
+        subprocess.run(['git', 'clone', '--shared', '--no-checkout', str(REPO), str(cls.repo)],
+                       check=True, capture_output=True)
+        for name in candidate.PREPARED_SHA:
+            (cls.repo / name).write_bytes(subprocess.check_output(
+                ['git', 'show', candidate.PREPARED_COMMIT + ':' + name], cwd=cls.repo))
+        cls.prepared = candidate.prepared_sources(cls.repo)
+        cls.baseline = subprocess.check_output(["git", "show", "10b54e7:server.py"], cwd=cls.repo)
         cls.image = "sha256:" + "a" * 64
 
     def test_exact_live_auth_function_guard_matches_previous_verified_baseline(self):
@@ -93,14 +104,14 @@ class CandidateBoundaries(unittest.TestCase):
         with mock.patch.object(candidate.subprocess, "run", return_value=
                 subprocess.CompletedProcess([], 0, b"changed", b"")):
             with self.assertRaisesRegex(ValueError, "prepared_git_object_digest_mismatch"):
-                candidate.prepared_sources(REPO)
+                candidate.prepared_sources(self.repo)
         with mock.patch.object(candidate, "read_source", return_value=b"modified checkout"):
             with self.assertRaisesRegex(ValueError, "prepared_checkout_modified"):
-                candidate.prepared_sources(REPO)
+                candidate.prepared_sources(self.repo)
         # Windows Git checkout CRLF is representation, not a policy/source change.
         with mock.patch.object(candidate, "read_source", side_effect=[
                 self.prepared[name].replace(b"\n", b"\r\n") for name in candidate.PREPARED_SHA]):
-            self.assertEqual(candidate.prepared_sources(REPO), self.prepared)
+            self.assertEqual(candidate.prepared_sources(self.repo), self.prepared)
 
     def test_minimal_context_manifest_and_dockerfile_inherit_runtime(self):
         with tempfile.TemporaryDirectory() as parent:
@@ -108,7 +119,7 @@ class CandidateBoundaries(unittest.TestCase):
             baseline = parent / "baseline.private.py"
             baseline.write_bytes(self.baseline + b"\n# PRIVATE_TEST_ONLY\n")
             output = parent / "candidate"
-            manifest = candidate.prepare(REPO, baseline, candidate.sha(baseline.read_bytes()),
+            manifest = candidate.prepare(self.repo, baseline, candidate.sha(baseline.read_bytes()),
                                          self.image, output)
             self.assertEqual(set(p.name for p in output.iterdir()),
                              {"server.py", "auth_google_identity.py", "Dockerfile", "provenance.json"})
@@ -135,11 +146,11 @@ class CandidateBoundaries(unittest.TestCase):
             existing.mkdir()
             marker = existing / "keep"
             marker.write_bytes(b"unchanged")
-            outputs = (existing, Path("relative"), REPO / "output-candidate-never-created",
+            outputs = (existing, Path("relative"), self.repo / "output-candidate-never-created",
                        parent / "child" / ".." / "escape")
             for output in outputs:
                 with self.subTest(case=str(output)), self.assertRaises(ValueError):
-                    candidate.prepare(REPO, baseline, candidate.sha(self.baseline), self.image, output)
+                    candidate.prepare(self.repo, baseline, candidate.sha(self.baseline), self.image, output)
             self.assertEqual(marker.read_bytes(), b"unchanged")
 
     def test_symlink_input_and_output_parent_refused(self):
@@ -157,7 +168,7 @@ class CandidateBoundaries(unittest.TestCase):
             for baseline, output in ((link / "baseline.py", parent / "candidate"),
                                      (source, link / "candidate")):
                 with self.assertRaisesRegex(ValueError, "symlink_or_junction_not_allowed"):
-                    candidate.prepare(REPO, baseline, candidate.sha(self.baseline), self.image, output)
+                    candidate.prepare(self.repo, baseline, candidate.sha(self.baseline), self.image, output)
             self.assertFalse((real / "candidate").exists())
 
     def test_docker_image_id_cannot_inject_instruction_or_pull_registry_image(self):
@@ -167,7 +178,7 @@ class CandidateBoundaries(unittest.TestCase):
                 candidate.base_tag(image)
 
     def test_cli_does_not_expose_source_private_path_or_exception_content(self):
-        args = [str(PATH), "--repo", str(REPO), "--baseline", "private",
+        args = [str(PATH), "--repo", str(self.repo), "--baseline", "private",
                 "--baseline-sha256", "a" * 64, "--base-image-id", self.image,
                 "--output", "output"]
         error = io.StringIO()
