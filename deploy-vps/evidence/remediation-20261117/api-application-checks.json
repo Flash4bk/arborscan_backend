@@ -1,0 +1,294 @@
+{
+  "activation_proof_sha256": "159ad441b8b693d8c3668ebf5e7a502179b3ae5b65c1d69312a59844bb57017b",
+  "api_data_cleanup_performed": false,
+  "automatic_retry_performed": false,
+  "cleanup": "No public account/report/correction delete route; keep tagged test data. Revoke sessions via normal /auth/logout only.",
+  "deliberate_artifact_producing_conflict_requests": 0,
+  "events": [
+    {
+      "check": "v3_source_health",
+      "elapsed_seconds": 0.51,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "v4_health",
+      "elapsed_seconds": 0.545,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "logged_out_auth",
+      "elapsed_seconds": 0.72,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "check": "logged_out_reports",
+      "elapsed_seconds": 0.8,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "check": "logged_out_capabilities",
+      "elapsed_seconds": 0.768,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "check": "logged_out_capabilities",
+      "elapsed_seconds": 0.739,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "check": "owner_resume_password_login",
+      "elapsed_seconds": 0.931,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "other_resume_password_login",
+      "elapsed_seconds": 0.718,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "ordinary_user_not_admin_v3",
+      "elapsed_seconds": 0.881,
+      "method": "GET",
+      "status": 403
+    },
+    {
+      "check": "ordinary_user_not_admin_v4",
+      "elapsed_seconds": 1.456,
+      "method": "GET",
+      "status": 403
+    },
+    {
+      "check": "history_capabilities",
+      "elapsed_seconds": 0.84,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "science_capabilities",
+      "elapsed_seconds": 0.645,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "draft_contour_save",
+      "elapsed_seconds": 0.898,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "owned_draft_contour_reopen",
+      "elapsed_seconds": 0.573,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "draft_contour_identical_retry",
+      "elapsed_seconds": 0.852,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "non_owner_contour",
+      "elapsed_seconds": 0.664,
+      "method": "GET",
+      "status": 404
+    },
+    {
+      "check": "non_owner_preview",
+      "elapsed_seconds": 0.718,
+      "method": "GET",
+      "status": 404
+    },
+    {
+      "check": "owner_preview",
+      "elapsed_seconds": 0.808,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "reference_report_save",
+      "elapsed_seconds": 0.949,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "reference_identical_retry",
+      "elapsed_seconds": 0.825,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "reference_report_reopen",
+      "elapsed_seconds": 0.702,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "reference_report_listing",
+      "elapsed_seconds": 0.72,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "non_owner_report",
+      "elapsed_seconds": 0.741,
+      "method": "GET",
+      "status": 404
+    },
+    {
+      "check": "other_empty_history",
+      "elapsed_seconds": 0.767,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "non_owner_science_append",
+      "elapsed_seconds": 0.723,
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "check": "explicit_invalid_science_units",
+      "elapsed_seconds": 0.713,
+      "method": "POST",
+      "status": 422
+    },
+    {
+      "check": "science_child_save",
+      "elapsed_seconds": 0.944,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "science_identical_retry",
+      "elapsed_seconds": 0.814,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "science_changed_same_intent_conflict_before_write",
+      "elapsed_seconds": 1.084,
+      "method": "POST",
+      "status": 409
+    },
+    {
+      "check": "science_child_reopen",
+      "elapsed_seconds": 2.971,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "original_remains_immutable",
+      "elapsed_seconds": 0.895,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "unavailable_metric_report",
+      "elapsed_seconds": 1.446,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "unavailable_metric_projection",
+      "elapsed_seconds": 0.829,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "one_generated_legacy_analysis",
+      "elapsed_seconds": 13.559,
+      "method": "POST",
+      "status": 422
+    },
+    {
+      "check": "owner_logout",
+      "elapsed_seconds": 0.687,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "owner_logged_out",
+      "elapsed_seconds": 0.781,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "check": "owner_v4_logged_out",
+      "elapsed_seconds": 0.725,
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "check": "password_relogin",
+      "elapsed_seconds": 0.818,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "science_reopen_after_new_session",
+      "elapsed_seconds": 0.762,
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "check": "fixture_session_logout",
+      "elapsed_seconds": 0.633,
+      "method": "POST",
+      "status": 401
+    },
+    {
+      "check": "fixture_session_logout",
+      "elapsed_seconds": 0.744,
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "check": "fixture_session_logout",
+      "elapsed_seconds": 0.771,
+      "method": "POST",
+      "status": 401
+    },
+    {
+      "check": "fixture_session_logout",
+      "elapsed_seconds": 0.742,
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "explicit_resume_same_fixture_accounts": true,
+  "finished_at_utc": "2026-11-17T20:47:15.0000000+00:00",
+  "fixtures_retained": true,
+  "known_retained_contour_rows": 1,
+  "known_retained_legacy_analyses": 0,
+  "known_retained_report_rows": 3,
+  "known_retained_user_count": 2,
+  "known_session_logout_complete": true,
+  "legacy_fixture_limitation": "Generated image not detected; no legacy analysis seeded and positive owner proposal unverified.",
+  "limitations": [
+    "No admin acceptance/rejection, Flutter UI, S24, field accuracy, service restart or model quality claim."
+  ],
+  "prior_attempt": {
+    "backend_regression_confirmed": false,
+    "cause": "Correction save summary intentionally omits eligible_for_training; verify it in the full owned record.",
+    "classification": "harness_assertion_error",
+    "proof_sha256": "479898e034b079cf492a00ddf22573cad482f45701a49c70758f793629907f82"
+  },
+  "real_user_data_used": false,
+  "service_role_SQL_or_role_mutation_used": false,
+  "session_logout_complete": true,
+  "source_commit": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+  "started_at_utc": "2026-11-17T20:46:26.0000000+00:00",
+  "status": "core_passed_legacy_fixture_limited",
+  "unknown_fixture_auth_sessions_possible": false,
+  "unknown_operation_preserved_for_recovery": false,
+  "source_public_proof_sha256": "e8950e91d88d13e7d7a95bccce86616d472311ab7b288517ebaff8ba15802dbf"
+}

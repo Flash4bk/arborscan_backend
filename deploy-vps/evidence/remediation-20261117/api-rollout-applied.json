@@ -1,0 +1,104 @@
+{
+  "task": "AS-01/AS-14",
+  "status": "ACTIVATED_HEALTH_AND_INVARIANTS_PASS_SMOKE_PENDING",
+  "at_utc": "2026-11-17T20:43:41.0000000+00:00",
+  "job": "/home/arborscan/ops-rollouts/remediation37b-20261117T203912Z-b4697a62",
+  "roles": {
+    "v3": {
+      "identity": {
+        "Id": "d52e5667fc0a6c9414ea042d4954730093b63b818d5910b36984f4a6fdca4e70",
+        "Name": "/arborscan-api",
+        "Image": "sha256:cbef234f2240fcb1bec3980b5e992fcdfac97967822b464422eff65ccda673d7",
+        "Created": "2026-11-17T20:39:32.238192707Z",
+        "started_at": "2026-11-17T20:39:34.175532842Z",
+        "running": true
+      },
+      "health": {
+        "internal": {
+          "status": "ok",
+          "model_loaded": true,
+          "model_version": 4,
+          "build_commit": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+          "public_tls": false
+        },
+        "public": {
+          "status": "ok",
+          "model_loaded": true,
+          "model_version": 4,
+          "build_commit": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+          "public_tls": true
+        }
+      },
+      "environment_revision": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+      "image_revision_label": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+      "restart_count": 0,
+      "oom": false
+    },
+    "api": {
+      "identity": {
+        "Id": "d3274558994db5696902fb98247ad7d3d3b495cce7b17708e417159b4c010800",
+        "Name": "/arborscan-api-v4",
+        "Image": "sha256:66bde6a3cbf80a3eebf7caa9135cd289430e5d1bd66d256eca2a0050cb1e76fe",
+        "Created": "2026-11-17T20:42:08.307424463Z",
+        "started_at": "2026-11-17T20:42:10.199190181Z",
+        "running": true
+      },
+      "health": {
+        "internal": {
+          "status": "ok",
+          "model_loaded": true,
+          "model_version": 4,
+          "build_commit": null,
+          "public_tls": false
+        },
+        "public": {
+          "status": "ok",
+          "model_loaded": true,
+          "model_version": 4,
+          "build_commit": null,
+          "public_tls": true
+        }
+      },
+      "environment_revision": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+      "image_revision_label": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+      "restart_count": 0,
+      "oom": false
+    }
+  },
+  "source_config_and_indexes_pinned": true,
+  "compose_sha256": "1c8607265237b0a6a58c08857dc6a132cbdb87388eb8590c02b43ddfced0b911",
+  "backup_config_sha256": "eae5d47735f8f707cae63c21ce9c554c4dd4572571121999dfd1f73a46084747",
+  "runtime_index_sha256": "983469c9582ca6640510c44f2fdc1f38a000c86e306654cc91c7bbca26a6134f",
+  "other_containers_unchanged": true,
+  "worker_still_stopped": true,
+  "model_bytes_and_metadata_unchanged": true,
+  "model_sha256": {
+    "model_v1.pt": "535e5295095325db3add8167f8f7bacc24643581bb15d15ff0c8ac809c03788f",
+    "model_v2.pt": "c1fed324ff1621eaf3df3bb465f79d917fae09127ccabbced245badeea80375f",
+    "model_v4.pt": "626f62b97b05fd65275dc3f909c3aec090f6c9957c4ef9f12c4e743a1f75a2bb"
+  },
+  "backup_lock_acquired_and_released": true,
+  "startup_logs": {
+    "v3": {
+      "traceback_count": 0,
+      "startup_complete_count": 1,
+      "exception_categories": []
+    },
+    "api": {
+      "traceback_count": 0,
+      "startup_complete_count": 1,
+      "exception_categories": []
+    }
+  },
+  "remote_receipt_sha256": "159ad441b8b693d8c3668ebf5e7a502179b3ae5b65c1d69312a59844bb57017b",
+  "operator_started_backup": false,
+  "operator_created_app_records": false,
+  "operator_changed_schema": false,
+  "private_values_printed": false,
+  "first_launch": {
+    "correction": "renamed rollout_worker.py and launched with python3 -I -B",
+    "reason": "worker filename shadowed Python standard library operator",
+    "result": "stopped_before_mutation"
+  },
+  "rollback_performed": false
+}
