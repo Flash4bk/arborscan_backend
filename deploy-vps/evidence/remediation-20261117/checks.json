@@ -1,0 +1,170 @@
+{
+  "task": "AS-14",
+  "recorded_date": "2026-11-17",
+  "systemd": {
+    "TimeoutStartUSec": "40min",
+    "MainPID": "0",
+    "Result": "success",
+    "ExecMainStartTimestamp": "Tue 2026-11-17 12:45:24 UTC",
+    "ExecMainExitTimestamp": "Tue 2026-11-17 13:22:26 UTC",
+    "ExecMainStatus": "0",
+    "ActiveState": "inactive",
+    "SubState": "dead"
+  },
+  "timer": {
+    "NextElapseUSecRealtime": "Wed 2026-11-18 03:19:31 UTC",
+    "LastTriggerUSec": "Tue 2026-11-17 03:20:48 UTC",
+    "ActiveState": "active",
+    "SubState": "waiting"
+  },
+  "snapshot": {
+    "name": "20261117T033225Z",
+    "operation_id": "selfhost-daily-2026-11-17",
+    "completed_at_utc": "2026-11-17T03:45:47.007355+00:00",
+    "last_integrity_check_at_utc": "2026-11-17T13:22:26.775429+00:00",
+    "deleted": [
+      "20261013T032406Z"
+    ],
+    "manifest_sha256": "d08ba26c5bbfeabd7de26ee4e6261ff184b416cf5b1885a19cf6446b472e18b8"
+  },
+  "complete_sets_observed": 28,
+  "systemd_source_commit": "07400c0ca5d8446b7ad07de95687788d5456ac64",
+  "journal": {
+    "journal_exit_code": 0,
+    "entries": 1,
+    "safe_structured_events": [
+      {
+        "event": "verified_existing"
+      }
+    ],
+    "access_hint_present": false
+  },
+  "https_health": {
+    "v3": {
+      "http_status": 200,
+      "status": "ok",
+      "tls_verification": true
+    },
+    "v4": {
+      "http_status": 200,
+      "status": "ok",
+      "tls_verification": true
+    }
+  },
+  "actual_isolated_restore": {
+    "success": true,
+    "source_commit": "682ec13bd6e896d656153669c1f85ff1e996b242",
+    "adapter_sha256": "8efea7c3fe2aad9c8348df2a228606df7797f90d56910e95ca3f4e283990624f",
+    "manifest_sha256": "d08ba26c5bbfeabd7de26ee4e6261ff184b416cf5b1885a19cf6446b472e18b8",
+    "backup_unchanged": true,
+    "production_container_identity_unchanged": true,
+    "public_tables_compared": 15,
+    "scope": "actual SQL and raw files restore on same VPS; not a new-host drill",
+    "raw_helpers_backup_directory_mounted_readonly": true,
+    "db_production_credentials_mounted": false,
+    "owned_resources_cleaned": 3,
+    "local_receipt_file_sha256": "0ba32087e62deedd944be0dc6e0d5d9bc3f76ffb41b1e0d1fe59338613060a4c",
+    "remote_canonical_receipt_sha256": "2b9103e46c9715d2b431a6397b6adb0d94d049bcc8c0228ac0d46c7c12c286a3",
+    "owned_containers_remaining": 0,
+    "owned_volumes_remaining": 0
+  },
+  "windows_pull": {
+    "exit_code": 0,
+    "selected": {
+      "20261115T032812Z": "213e0c3a50722b04d6b4c92d702870e1510345029beeb28f595c6b4c0211102d",
+      "20261117T033225Z": "d08ba26c5bbfeabd7de26ee4e6261ff184b416cf5b1885a19cf6446b472e18b8"
+    },
+    "seeded_bytes": 3439612782,
+    "installed_sources_unchanged": true,
+    "all_outer_native_runtime_checks_retained": true
+  },
+  "windows_retention": {
+    "task": "AS-14",
+    "at_utc": "2026-11-17T18:10:42.996488+00:00",
+    "root": "D:\\ArborScanBackups",
+    "free_before": 47387041792,
+    "free_after": 49104805888,
+    "quarantine_proof_unchanged": true,
+    "deleted": [
+      "20261022T033459Z",
+      "20261025T033213Z"
+    ],
+    "retained_verified_sets": 2,
+    "shared_runtime_archives_preserved": 8
+  },
+  "policy_tests": {
+    "exit_code": 0,
+    "counts": {
+      "passed": 141,
+      "skipped": 3,
+      "failed": 0,
+      "error": 0
+    },
+    "policy_sha256": "a7294e65dd69cc338409c70032d023f878db27b85f44fb9dd93cbbe3e9bd7b0a",
+    "test_sha256": "d3a333de8c55936ba484b696edc64d71af64c0c3ce8441c39a4ff8f0f29c369e",
+    "log_sha256": "466e59ff93a2efbff48d23e2101d61b2fc19ac041902fada2f6aebb6d27e427b"
+  },
+  "policy_linux_fixture": {
+    "event": "offline_cache_fixture_verified",
+    "archive_sha256": "46e560c53c8dca700cfd4640a3491b1127e6b161bcfc02e2aab2958b4d3dbcab",
+    "manifest_sha256": "b0a00cd76c7577040a6f6270bd856322f80dfb1bd7897be84056a18ed1f79ef6",
+    "source_sha256": {
+      "deploy-vps/ops_backup_policy.py": "a7294e65dd69cc338409c70032d023f878db27b85f44fb9dd93cbbe3e9bd7b0a",
+      "deploy-vps/ops_runtime_contract.py": "fad605f2428701f2300dab999dcb949008d1dfbc0259571721051cb59a37e5c9",
+      "deploy-vps/ops_selfhost_backup.py": "3eb7f4d692cc30bc2264d1b9a343f188c65d479c4c488d1c27ed19f4b18812b7",
+      "deploy-vps/ops_selfhost_runtime_preflight.py": "95c1e265608a318410033954f74e8d1cf90beac817d51140f8babdd8f8b922bd",
+      "deploy-vps/ops_verify_restore.py": "bd64482f6cd6801908f8db52baaa054a2b3c925a2f6488f4b90ff851e69b35f4",
+      "run_cache_fixture_stdlib.py": "e97db642ff096a668397197940067a27d172d8aac0130baa8af9abbeb4c7040f",
+      "RUN_LINUX.txt": "73dcf77bf7735a43f9c134c6f67e365f5283413494073930498c70ab351adf79",
+      "tests_v4/test_ops_verified_set_cache.py": "d3a333de8c55936ba484b696edc64d71af64c0c3ce8441c39a4ff8f0f29c369e"
+    },
+    "python": "3.12.3",
+    "real_linux": true,
+    "original_regressions": {
+      "passed": 21,
+      "skipped": 0,
+      "failed": 0
+    },
+    "additional_adversarial": {
+      "passed": 4,
+      "skipped": 0,
+      "failed": 0
+    },
+    "runner_exit_code": 0,
+    "runner_stdout_sha256": "584b5646b13afae7f0aa117c1cb19701b89270de816578fc3748f6859c836455",
+    "runner_stderr_bytes": 0
+  },
+  "policy_install": {
+    "task": "AS-14",
+    "installed": true,
+    "source_commit": "75135519",
+    "old_sha256": "c5c82730b384b090a33f4b6ad6a6e68b6faf44c3e05ad29a9b1dbc90b4ade3e2",
+    "new_sha256": "a7294e65dd69cc338409c70032d023f878db27b85f44fb9dd93cbbe3e9bd7b0a",
+    "rollback_directory": "/home/arborscan/ops-tools-policy-rollback-20261117-75135519",
+    "other_tool_config_sha_unchanged": true,
+    "production_containers_unchanged": true,
+    "at_utc": "2026-11-17T18:07:02.316958+00:00"
+  },
+  "policy_direct_replay": {
+    "task": "AS-14",
+    "kind": "direct_dispatcher_replay_not_systemd",
+    "started_at_utc": "2026-11-17T18:08:12.763268+00:00",
+    "finished_at_utc": "2026-11-17T18:19:45.463650+00:00",
+    "duration_seconds": 692.7,
+    "exit_code": 0,
+    "policy_sha256": "a7294e65dd69cc338409c70032d023f878db27b85f44fb9dd93cbbe3e9bd7b0a",
+    "snapshot": "20261117T033225Z",
+    "snapshot_capture_time_unchanged": true,
+    "last_integrity_check_at_utc": "2026-11-17T18:19:45.381083+00:00",
+    "manifest_sha256": "d08ba26c5bbfeabd7de26ee4e6261ff184b416cf5b1885a19cf6446b472e18b8",
+    "policy_still_exact": true,
+    "stderr_bytes": 0,
+    "event": "verified_existing",
+    "deleted": []
+  },
+  "application_images_deployed": false,
+  "restored_over_production_database": false,
+  "independent_always_on_receiver_verified": false,
+  "new_host_drill_verified": false,
+  "user_acceptance_claimed": false
+}

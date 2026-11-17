@@ -40,6 +40,39 @@ pytest invocation. Fixture storage full-SHA reads fell from 44 to 12 across two
 replays; production duration of the new candidate is not established by that
 fixture. Installation/replay evidence must be recorded separately below.
 
+The policy from `75135519f44d88b286a475499f4b02bb3646c9a3` was installed at
+18:07 UTC using the existing lock and an inactive service. Only the policy
+changed: SHA `c5c82730b384b090a33f4b6ad6a6e68b6faf44c3e05ad29a9b1dbc90b4ade3e2`
+to `a7294e65dd69cc338409c70032d023f878db27b85f44fb9dd93cbbe3e9bd7b0a`.
+Other tool/config hashes and production container identities stayed unchanged.
+Direct replay through the same dispatcher completed at 18:19:45 UTC: exit0,
+`verified_existing`, same snapshot/manifest, `deleted:[]`, stderr0 bytes,
+692.7 seconds. The previous systemd run took 2222 seconds. These are different
+invocations/environments, not a controlled performance benchmark. The new run
+was direct CLI; do not describe it as another systemd execution. The next
+scheduled systemd invocation of the newly installed source is not yet observed.
+
+Prepared rollback, **not executed**:
+
+```sh
+python3 -B /home/arborscan/ops-tools-policy-rollback-20261117-75135519/rollback-policy.py
+```
+
+Its SHA is `45d20f90334e347ad1bfed50b4f5e24c7f95e8b89b22fb6339099a1d9a3bba40`.
+It requires the existing backup lock, inactive service, current new-policy SHA
+and verified old bytes before atomic replacement. It refuses concurrent backup
+or source drift; no force, configuration/index change or application restart.
+The preceding runtime/index rollback and exact-seven quarantine remain separate.
+
+Both selected sets `20261115T032812Z` and `20261117T033225Z` were copied to the
+existing `D:/ArborScanBackups` and fully verified with native/runtime checks by
+the unchanged installed Windows reader. Its retention policy then removed only
+the reviewed `20261022T033459Z` and `20261025T033213Z`. Two verified COMPLETE sets,
+eight shared runtime archives and the quarantine pins remain. Read-only HTTPS
+health returned 200/status:ok for v3/v4 with normal certificate verification.
+Safe proof: [checks.json](evidence/remediation-20261117/checks.json). This does
+not create an independent always-on receiver or prove recovery on a new host.
+
 ## Evidence and source identity
 
 Record the actual service/timer result, free bytes, installed tool hashes,
