@@ -5,6 +5,41 @@ Do not start a worker, train, prune Docker, remove COMPLETE sets, overwrite live
 data or change an API as part of this procedure. User approval must name exact
 failed staging trees before cleanup. Keep private records outside Git.
 
+## Recorded verification: 17 November 2026
+
+The separately authorized 07400c0c tools/index repair was installed on 12 November.
+The owner's actual systemd start on 17 November finished with `Result=success`,
+`ExecMainStatus=0`, from 12:45:24 to 13:22:26 UTC. It verified/replayed the existing
+`20261117T033225Z` operation, whose data capture completed at 03:45:47 UTC;
+13:22:26 is the integrity check time, not a second database snapshot. Existing
+retention removed `20261013T032406Z`. The timer is active/waiting for 18 November.
+
+The same snapshot was actually restored on 17 November in a fresh, network-none,
+resource-limited PostgreSQL container: all 15 public tables matched, Storage
+inventory and the three migration versions matched. Raw Storage/runtime files
+also matched bytes and uid/gid/mode/mtime/xattrs. Only the newly created test
+container and two named volumes were removed. The seven production container
+identities and snapshot identity remained unchanged. Raw helpers mounted the
+snapshot directory read-only, including its private files; the test database
+did not receive production credentials. No values of private files were printed.
+This is an isolated restore on the existing VPS, not a new-host recovery drill.
+
+The 37-minute service duration exposed repeated full scans of unchanged sets.
+The candidate `_VerifiedSetCache` retains the first complete SHA/native/raw/runtime
+verification and is scoped to one locked Linux `run_backup` invocation. Every hit
+checks exact membership, inode, Linux ctime, mtime, size, mode and ownership before
+and after use; external runtime checks remain separate. Windows/other platforms
+and unpublished stages keep full reads. Destructive candidates always receive
+fresh, uncached full verification. No success receipt is trusted as a cache.
+
+Checks of this candidate: Windows pytest **141 passed / 3 skipped** (two skips
+need Linux ctime; one existing platform skip). On actual Linux/Python 3.12.3,
+the stdlib adapter ran the unchanged 21 test cases plus four separate adversarial
+ctime/hardlink cases: **21 + 4 passed**, no skips. This adapter run is not a native
+pytest invocation. Fixture storage full-SHA reads fell from 44 to 12 across two
+replays; production duration of the new candidate is not established by that
+fixture. Installation/replay evidence must be recorded separately below.
+
 ## Evidence and source identity
 
 Record the actual service/timer result, free bytes, installed tool hashes,
