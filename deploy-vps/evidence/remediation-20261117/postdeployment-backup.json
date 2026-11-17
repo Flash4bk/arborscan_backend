@@ -1,0 +1,72 @@
+{
+  "tasks": [
+    "AS-01",
+    "AS-14"
+  ],
+  "status": "post_deployment_backup_and_offsite_verified",
+  "recorded_at_utc": "2026-11-17T21:27:38.659635+00:00",
+  "snapshot": "20261117T205926Z",
+  "manifest_sha256": "c0ea6676a14f55667990b071ec80c477c56c59ea91e9b3dcbd8a8e0c56505036",
+  "operation_id": "selfhost-remediation37b-postdeploy-20261117",
+  "vps_capture": {
+    "published_at_utc": "2026-11-17T21:03:49.883215+00:00",
+    "final_integrity_at_utc": "2026-11-17T21:06:56.378621+00:00",
+    "duration_seconds": 1109.48,
+    "exit_code": 0,
+    "fresh_capture": true,
+    "systemd_invocation": false,
+    "native_postgres_covered": true,
+    "postgres_and_json_consistency": "same_exported_snapshot",
+    "runtime_image_ids": [
+      "sha256:178f0976b54a39237096bfa310c1a352dbc82fb1b08dda45cdb8acb5d40c1426",
+      "sha256:3fe28a5b7eb5716a71e984908520c31fff9ac325a9c5885c5e102e93996ac14a",
+      "sha256:66bde6a3cbf80a3eebf7caa9135cd289430e5d1bd66d256eca2a0050cb1e76fe",
+      "sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "sha256:b393ac5759a45a934557a150ecdb97157bbdd419e0193e4c5dc5770b9ddd7ee1",
+      "sha256:c9dc201e555f5d8e37e7f39cdd4df0229774996e213bfd7de8d10ac609030f2c",
+      "sha256:cbef234f2240fcb1bec3980b5e992fcdfac97967822b464422eff65ccda673d7"
+    ],
+    "runtime_index_sha256": "983469c9582ca6640510c44f2fdc1f38a000c86e306654cc91c7bbca26a6134f",
+    "backup_config_sha256": "eae5d47735f8f707cae63c21ce9c554c4dd4572571121999dfd1f73a46084747",
+    "retained_complete_count": 28,
+    "deleted_by_existing_vps_policy": [
+      "20261015T032443Z"
+    ],
+    "minimum_free_bytes_observed": 8478920704
+  },
+  "windows_copy": {
+    "duration_seconds": 1076.34,
+    "exit_code": 0,
+    "default_inventory_timeout_seconds": 180,
+    "verified_final_sets": {
+      "20261117T200418Z": "52a447b85e5849ebc22998d3cd4bfe4a2e48619952ea4f4a64dbc225167c4214",
+      "20261117T205926Z": "c0ea6676a14f55667990b071ec80c477c56c59ea91e9b3dcbd8a8e0c56505036"
+    },
+    "retention_duration_seconds": 79.717,
+    "deleted_by_existing_local_policy": [
+      "20261117T033225Z"
+    ],
+    "shared_runtime_archive_count": 10,
+    "scheduled_task_definition_sha256": "8d91e857d7d6a502409742b1140142718d286e322e0526b81ecf0e5671fb3344",
+    "local_policy_sha256": "73a6cb7dbbfc8bf390fa557b0713ca110652219326c9d8cc698a8d3c276b2d40"
+  },
+  "verification_checks": {
+    "exact_two_final_manifests": true,
+    "shared_runtime_asset_count_exact": true,
+    "scheduled_task_definition_unchanged": true,
+    "local_policy_unchanged": true,
+    "reviewed_installed_reader_and_helper_unchanged": true,
+    "all_sources_unchanged_during_standard_pull_and_apply": true,
+    "postdeploy_vps_sources_config_index_and_activated_production_identities_unchanged": true,
+    "exact_new_seven_runtime_image_ids": true,
+    "exact_activated_config_and_index": true
+  },
+  "isolated_sql_restore_of_this_snapshot_performed": false,
+  "source_receipt_sha256": {
+    "postdeploy-backup-result.json": "d175cbd643028d6a1a9a7db2f657fa68af4e983c4eb1b7c84309f9a6575023b3",
+    "postdeploy-windows-pull.json": "6385b7693ae35bdc163f6c122bcba8b22564f492634549ff1ebe7cb8200b5f7e",
+    "postdeploy-windows-pull.events.json": "e245ef7b1709334dffa1048e1a4fadaf82d8ea21c07ce13737d6a774fc66e71c",
+    "postdeploy-windows-retention.json": "00e1c02efa91cc90b37e3f8b4fba7dcc3f4b08bb530e33c82ceef51c4f10aa7c",
+    "postdeploy-final-proof.json": "ee1ff46d3e8c685518eedd02ece9aa54fa4002c634e0f981970003d8bc3ab9d1"
+  }
+}
