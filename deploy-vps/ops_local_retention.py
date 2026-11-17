@@ -17,6 +17,87 @@ PREPARED_POLICY_FILE = 'LOCAL_LATEST_TWO_POLICY.prepared.private.json'
 NAME = re.compile(r'\d{8}T\d{6}Z')
 SHA = re.compile(r'[a-f0-9]{64}')
 
+# Inserted after the installed inventory's complete live/protection discovery.
+# Eligibility is small metadata only; the original selected payload/runtime
+# hashing and the installed local verifiers remain mandatory afterwards.
+_REMOTE_SELECTION = r'''
+def compact_file(folder,name,limit=None):
+ path=folder
+ for part in pathlib.PurePosixPath(name).parts:
+  path=path/part
+  if path.is_symlink():raise ValueError('unsafe_latest_two_metadata')
+ if not path.is_file() or (limit is not None and path.stat().st_size>limit):raise ValueError('invalid_latest_two_metadata')
+ return path
+def compact_read(folder,name,limit):
+ with compact_file(folder,name,limit).open('rb') as stream:raw=stream.read(limit+1)
+ if len(raw)>limit:raise ValueError('invalid_latest_two_metadata')
+ return raw
+def compact_entries(raw):
+ entries={}
+ for line in raw.decode('utf-8').splitlines():
+  expected,name=line.split('  ',1)
+  parsed=pathlib.PurePosixPath(name)
+  if (not re.fullmatch('[a-f0-9]{64}',expected) or name in entries or str(parsed)!=name or parsed.is_absolute() or '..' in parsed.parts or name=='.' or not re.fullmatch('[A-Za-z0-9_./-]+',name)):raise ValueError('invalid_latest_two_manifest')
+  entries[name]=expected
+ return entries
+def compact_metadata(folder,name,entries,limit):
+ raw=compact_read(folder,name,limit)
+ if hashlib.sha256(raw).hexdigest()!=entries.get(name):raise ValueError('latest_two_metadata_checksum_mismatch')
+ return raw
+for ancestor in [root,*root.parents]:
+ if ancestor.is_symlink():raise ValueError('unsafe_latest_two_metadata')
+compact_selected=[]
+compact_native={'database.dump','roles.sql','source.json','archive-list.private.txt'}
+compact_required={'application.tar','local-files.tar','arborscan.env.private','containers.private.json'}
+for candidate in sorted(root.iterdir(),reverse=True):
+ if not re.fullmatch(r'\d{8}T\d{6}Z',candidate.name):continue
+ if candidate.is_symlink():raise ValueError('unsafe_latest_two_metadata')
+ complete=candidate/'COMPLETE'
+ if complete.is_symlink():raise ValueError('unsafe_latest_two_metadata')
+ if not complete.exists():continue
+ compact_file(candidate,'COMPLETE')
+ covered=compact_entries(compact_read(candidate,'SHA256SUMS',4*1024**2))
+ if not compact_required<=covered.keys():raise ValueError('invalid_latest_two_manifest')
+ for name in covered:compact_file(candidate,name)
+ modern=(any(name=='postgres' or name.startswith('postgres/') or name in ('RUNTIME_DEPENDENCIES.json','SELFHOST_BACKUP.json') for name in covered)
+         or any((candidate/name).exists() or (candidate/name).is_symlink() for name in ('postgres','RUNTIME_DEPENDENCIES.json','SELFHOST_BACKUP.json')))
+ if not modern:continue
+ required={'postgres/'+name for name in compact_native|{'COMPLETE','SHA256SUMS'}}|{'RUNTIME_DEPENDENCIES.json'}
+ if not required<=covered.keys():raise ValueError('incomplete_latest_two_native_runtime')
+ native=compact_entries(compact_metadata(candidate,'postgres/SHA256SUMS',covered,1024**2))
+ if native.keys()!=compact_native or any(covered['postgres/'+name]!=sha for name,sha in native.items()):raise ValueError('invalid_latest_two_native_manifest')
+ runtime=json.loads(compact_metadata(candidate,'RUNTIME_DEPENDENCIES.json',covered,2*1024**2))
+ if not isinstance(runtime,dict) or type(runtime.get('format')) is not int or runtime.get('format')!=1 or not isinstance(runtime.get('images'),dict) or not runtime['images']:raise ValueError('invalid_latest_two_runtime')
+ for image,assets in runtime['images'].items():
+  if not re.fullmatch('sha256:[a-f0-9]{64}',image) or not isinstance(assets,list) or not assets:raise ValueError('invalid_latest_two_runtime')
+  for asset in assets:
+   if not isinstance(asset,dict) or not isinstance(asset.get('path'),str) or not isinstance(asset.get('sha256'),str) or not re.fullmatch('[a-f0-9]{64}',asset['sha256']):raise ValueError('invalid_latest_two_runtime')
+   path=pathlib.Path(asset['path'])
+   if not path.is_absolute() or path.is_symlink() or any(parent.is_symlink() for parent in path.parents) or not path.is_file():raise ValueError('unsafe_latest_two_runtime')
+ if 'SELFHOST_BACKUP.json' in covered or (candidate/'SELFHOST_BACKUP.json').exists():
+  if runtime.get('selfhost') is not True:raise ValueError('invalid_latest_two_runtime')
+ if runtime.get('selfhost') is True:
+  marker=json.loads(compact_metadata(candidate,'SELFHOST_BACKUP.json',covered,2*1024**2))
+  if not isinstance(marker,dict) or type(marker.get('format')) is not int or marker.get('format')!=1 or marker.get('kind')!='local_selfhost_backup':raise ValueError('invalid_latest_two_selfhost_marker')
+ compact_selected.append(candidate)
+ if len(compact_selected)==2:break
+if len(compact_selected)!=2:raise ValueError('two_native_runtime_backups_required')
+compact_selected.reverse()
+for p in compact_selected:
+'''
+
+
+def inventory_source(source, policy):
+    """Opt in before heavy inventory; absent policy preserves exact source bytes."""
+    if policy is None:
+        return source
+    loop = 'for p in sorted(root.iterdir()):\n'
+    if (source.count(loop) != 1 or source.count('runtime_checked={}') != 1
+            or source.count('print(json.dumps(result))') != 1
+            or not source.index('runtime_checked={}') < source.index(loop) < source.index('print(json.dumps(result))')):
+        raise ValueError('unknown_installed_inventory_layout')
+    return source.replace(loop, _REMOTE_SELECTION.lstrip('\n'))
+
 
 def write_plan(root, proposal):
     ret = _retention()
@@ -34,15 +115,25 @@ def write_plan(root, proposal):
 
 def adapt_reader_source(source):
     """Add only opt-in hooks to the exact installed reader, preserving its fixes."""
-    if 'compact_policy = load_policy(root)' in source:
-        return source
     delta = '            def delta(record,filename,target):'
     latest = '            latest = records[-1]'
-    if source.count(delta) != 1 or source.count(latest) != 1:
-        raise ValueError('unknown_installed_reader_layout')
     before = ('            from ops_local_retention import load_policy, select_records, plan as compact_plan, apply as compact_apply, write_plan as compact_write_plan\n'
               '            compact_policy = load_policy(root)\n'
               '            records = select_records(records, compact_policy)\n')
+    early = ('            from ops_local_retention import load_policy, select_records, inventory_source as compact_inventory_source, plan as compact_plan, apply as compact_apply, write_plan as compact_write_plan\n'
+             '            compact_policy = load_policy(root)\n'
+             '            # local_latest_two_inventory_v2\n')
+    option = 'inventory_source=compact_inventory_source(INVENTORY, compact_policy)'
+    signature = ('def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None,\n'
+                 '                   known=None, timeout=180):')
+    new_signature = signature.replace('timeout=180):', 'timeout=180, inventory_source=None):')
+    source_line = "    source = INVENTORY if not known else 'KNOWN_LOCAL_MANIFESTS = ' + repr(dict(sorted(known.items()))) + '\\n' + INVENTORY"
+    new_source_line = ("    inventory = INVENTORY if inventory_source is None else inventory_source\n"
+                       "    source = inventory if not known else 'KNOWN_LOCAL_MANIFESTS = ' + repr(dict(sorted(known.items()))) + '\\n' + inventory")
+    legacy_signature = 'def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None):'
+    legacy_new_signature = legacy_signature.replace('sleep=None):', 'sleep=None, inventory_source=None):')
+    legacy_input = 'input=INVENTORY.encode(), capture_output=True,'
+    legacy_new_input = 'input=(INVENTORY if inventory_source is None else inventory_source).encode(), capture_output=True,'
     block = ("            if compact_policy is not None:\n"
              "                proposal = compact_plan(root, compact_policy, selected=[r['name'] for r in records])\n"
              "                compact_write_plan(root,proposal)\n"
@@ -52,12 +143,49 @@ def adapt_reader_source(source):
              "                    log('retention_complete',**compact_apply(root,proposal,lock_held=True))\n"
              "                log('success',complete_sets=len(records),retain=2)\n"
              "                return 0\n")
-    source = source.replace(delta, before + delta).replace(latest, block + latest)
-    transition = '            preserve_transition_history(root, records)'
-    if source.count(transition) > 1:
+    inventory_call = '            records=read_inventory('
+    selected = '            records = select_records(records, compact_policy)\n'
+    if 'local_latest_two_inventory_v2' in source:
+        valid_transport = ((source.count(new_signature) == 1 and source.count(new_source_line) == 1)
+                           or (source.count(legacy_new_signature) == 1 and source.count(legacy_new_input) == 1))
+        if (source.count(early) != 1 or source.count(option) != 1 or not valid_transport
+                or source.count('local_latest_two_inventory_v2') != 1
+                or source.count('def read_inventory(') != 1 or source.count(inventory_call) != 1
+                or source.count(selected) != 1 or source.count(block) != 1
+                or source.count('compact_policy = load_policy(root)') != 1
+                or not source.index(early) < source.index(inventory_call) < source.index(selected)):
+            raise ValueError('unknown_installed_reader_layout')
+        return source
+    if source.count(delta) != 1 or source.count(latest) != 1:
         raise ValueError('unknown_installed_reader_layout')
-    if transition in source:
-        source = source.replace(transition, '            if compact_policy is None:\n    ' + transition)
+    if 'compact_policy = load_policy(root)' in source:
+        if source.count(before) != 1 or source.count(block) != 1:
+            raise ValueError('unknown_installed_reader_layout')
+    else:
+        source = source.replace(delta, before + delta).replace(latest, block + latest)
+        transition = '            preserve_transition_history(root, records)'
+        if source.count(transition) > 1:
+            raise ValueError('unknown_installed_reader_layout')
+        if transition in source:
+            source = source.replace(transition, '            if compact_policy is None:\n    ' + transition)
+    if source.count(inventory_call) != 1 or source.count('def read_inventory(') != 1:
+        raise ValueError('unknown_installed_reader_layout')
+    source = source.replace(before, selected)
+    source = source.replace(inventory_call, early + inventory_call)
+    if source.count(signature) == 1 and source.count(source_line) == 1:
+        argument = 'known=known_local_manifests(root),timeout=args.inventory_timeout)'
+        if source.count(argument) != 1:
+            raise ValueError('unknown_installed_reader_layout')
+        source = source.replace(signature, new_signature).replace(source_line, new_source_line)
+        source = source.replace(argument, argument[:-1] + ',' + option + ')')
+    elif source.count(legacy_signature) == 1 and source.count(legacy_input) == 1:
+        argument = "args.host,'python3 -'],hidden=hidden,log=log)"
+        if source.count(argument) != 1:
+            raise ValueError('unknown_installed_reader_layout')
+        source = source.replace(legacy_signature, legacy_new_signature).replace(legacy_input, legacy_new_input)
+        source = source.replace(argument, argument[:-1] + ',' + option + ')')
+    else:
+        raise ValueError('unknown_installed_reader_layout')
     return source
 
 

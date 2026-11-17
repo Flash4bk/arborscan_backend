@@ -78,6 +78,11 @@ class LocalLatestTwoTest(unittest.TestCase):
 
     def test_installed_reader_adapter_preserves_existing_fixes_and_is_idempotent(self):
         source='''import os
+INVENTORY = ''
+def read_inventory(command, *, hidden=None, log=None, run=None, sleep=None,
+                   known=None, timeout=180):
+    source = INVENTORY if not known else 'KNOWN_LOCAL_MANIFESTS = ' + repr(dict(sorted(known.items()))) + '\\n' + INVENTORY
+    return source
 def main():
     try:
             records=read_inventory(known=known_local_manifests(root),timeout=args.inventory_timeout)

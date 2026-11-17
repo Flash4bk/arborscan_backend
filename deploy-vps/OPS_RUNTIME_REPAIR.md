@@ -73,6 +73,28 @@ health returned 200/status:ok for v3/v4 with normal certificate verification.
 Safe proof: [checks.json](evidence/remediation-20261117/checks.json). This does
 not create an independent always-on receiver or prove recovery on a new host.
 
+## Scheduled Windows reader: select before expensive inventory
+
+The installed reader is newer than the repository's historical reader. Keep it:
+`ops_local_retention.adapt_reader_source` changes only its `main`/`read_inventory`
+hooks, preserving other function ASTs and the original inventory program.
+With the existing explicit latest-two policy, load policy first and choose two
+eligible snapshots from bounded manifest/native/runtime metadata before building
+block maps or hashing runtime assets. All-container live/protection discovery
+still runs first. A malformed modern newest COMPLETE refuses; it is not hidden
+by falling back to an older snapshot. Clearly legacy sets remain distinguishable.
+Without the policy the original remote program/transport bytes are unchanged.
+
+This is selection, not a cached integrity receipt: selected full SHA, native,
+runtime and destination/retention verification remain mandatory. Metadata reads
+are bounded to 4 MiB outer manifest, 1 MiB native manifest, 2 MiB runtime/marker.
+The 28-set fixture reproduced 56 unnecessary heavy reads; the fix reads four
+selected payload/runtime files. The scoped Windows compatibility suite passed
+75 tests. Installation must preserve exact old bytes under the existing local
+pull lock and compare all other installed tool hashes; do not overwrite the
+newer reader with the older repository copy. A standard CLI run with the
+default 180-second inventory timeout is separate evidence from these tests.
+
 ## Evidence and source identity
 
 Record the actual service/timer result, free bytes, installed tool hashes,
