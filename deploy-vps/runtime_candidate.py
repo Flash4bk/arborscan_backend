@@ -7,8 +7,10 @@ Version metadata is not a wheel hash lock or a security-advisory clearance.
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import tempfile
 
@@ -91,11 +93,16 @@ def validate_destination(root, destination):
     return destination
 
 
-INVENTORY_CODE = '''import importlib.metadata as m,json,sys
-print(json.dumps({"python":sys.version.split()[0],"packages":dict(sorted((d.metadata["Name"],d.version) for d in m.distributions()))}))
+INVENTORY_CODE = '''import importlib.metadata as m,json,pathlib,sys
+private=sum(1 for p in pathlib.Path('/app').rglob('*') if p.is_file() and
+ (p.name=='.env' or p.name.startswith('.env.') or p.name.endswith(('.env','.env.private'))))
+print(json.dumps({"python":sys.version.split()[0],"packages":dict(sorted((d.metadata["Name"],d.version) for d in m.distributions())),"private_configuration_files":private}))
 '''
 IMPORT_CODE = '''import cv2,numpy,PIL,torch,torchvision,ultralytics,fastapi,requests
 assert torch.version.cuda is None, "cpu_runtime_required"
+assert torch.equal(torch.add(torch.tensor([1.,2.]),torch.tensor([1.,2.])),torch.tensor([2.,4.]))
+assert torchvision.ops.nms(torch.tensor([[0.,0.,1.,1.],[0.,0.,1.,1.]]),torch.tensor([.9,.8]),.5).tolist()==[0]
+assert cv2.cvtColor(numpy.zeros((1,1,3),dtype=numpy.uint8),cv2.COLOR_BGR2GRAY).shape==(1,1)
 import arborscan_v4.legacy_feedback,arborscan_v4.safe_logging
 print("runtime_imports_ok")
 '''
@@ -188,25 +195,85 @@ def prepare_context(root, role, commit, destination, manifest):
     return provenance
 
 
-def build_local(context, runtime, role):
+def docker_run(arguments, **kwargs):
+    # Match every image operation to the explicitly selected local builder.
+    # A remote DOCKER_HOST/CONTEXT override must not divert just half the calls.
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith(('DOCKER_', 'BUILDX_'))}
+    return subprocess.run(['docker', '--context', 'default', *arguments], env=environment, **kwargs)
+
+
+def inspect_local_image(reference, *, required=True):
+    reply = docker_run(['image', 'inspect', reference, '--format', '{{json .}}'],
+                       capture_output=True, text=True)
+    if reply.returncode:
+        if required:
+            raise ValueError('local_image_unavailable')
+        return None
+    value = json.loads(reply.stdout)
+    if not isinstance(value, dict) or not IMAGE.fullmatch(value.get('Id', '')):
+        raise ValueError('invalid_local_image_metadata')
+    return value
+
+
+def smoke_command(image, environment_keys):
+    # Clear every inherited image setting, including unexpected private keys.
+    # No production env, model or configuration path is mounted or imported.
+    isolated = {'PATH': '/usr/local/bin:/usr/bin:/bin', 'LANG': 'C.UTF-8',
+                'PYTHONDONTWRITEBYTECODE': '1', 'PYTHONPYCACHEPREFIX': '/tmp/as14-pycache',
+                'XDG_CONFIG_HOME': '/tmp/as14-config', 'YOLO_CONFIG_DIR': '/tmp/as14-ultralytics',
+                'YOLO_OFFLINE': 'true', 'YOLO_AUTOINSTALL': 'false',
+                'TORCH_HOME': '/tmp/as14-torch', 'MPLCONFIGDIR': '/tmp/as14-matplotlib',
+                'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'OPENBLAS_NUM_THREADS': '1'}
+    environment = dict.fromkeys(environment_keys, '') | isolated
+    args = ['run', '--rm', '--network=none', '--pull=never', '--read-only',
+            '--user', 'arborscan', '--workdir', '/app', '--memory', '2g', '--cpus', '1',
+            '--pids-limit', '128', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+            '--tmpfs', '/tmp:rw,nosuid,nodev,noexec,size=134217728,mode=1777']
+    for key, value in sorted(environment.items()):
+        args.extend(['--env', key + '=' + value])
+    return [*args, '--entrypoint', 'python', image, '-B']
+
+
+def build_local(context, runtime, role, *, audit=None):
     provenance = verify_context(context, runtime, role)
     image = runtime['image_id']
-    observed = subprocess.run(['docker', 'image', 'inspect', image, '--format', '{{.Id}}'],
-                              check=True, capture_output=True, text=True).stdout.strip()
-    if observed != image:
+    builder = json.loads(docker_run(
+        ['buildx', 'inspect', 'default', '--format', '{{json .}}'],
+        check=True, capture_output=True, text=True).stdout)
+    if (builder.get('Name') != 'default' or builder.get('Driver') != 'docker'
+            or len(builder.get('Nodes', [])) != 1
+            or builder['Nodes'][0].get('Endpoint') != 'default'
+            or builder['Nodes'][0].get('Status') != 'running'):
+        raise ValueError('local_default_docker_builder_required')
+    base = inspect_local_image(image)
+    if base['Id'] != image:
         raise ValueError('local_base_image_id_mismatch')
-    candidate = f'arborscan-{role}:local-candidate-' + provenance['source_commit'][:12] + '-' + image[7:19]
-    subprocess.run(['docker', 'build', '--network=none', '--pull=false', '-t', candidate,
-                    '-f', str(Path(context) / 'Dockerfile'), str(context)], check=True)
-    candidate_id = subprocess.run(['docker', 'image', 'inspect', candidate, '--format', '{{.Id}}'],
-                                  check=True, capture_output=True, text=True).stdout.strip()
-    if not IMAGE.fullmatch(candidate_id):
-        raise ValueError('candidate_image_id_unconfirmed')
-    run = ['docker', 'run', '--rm', '--network=none', '--read-only', '--tmpfs', '/tmp',
-           '--entrypoint', 'python', candidate_id]
-    value = subprocess.run([*run, '-c', INVENTORY_CODE], check=True, capture_output=True, text=True)
-    if verify_inventory(runtime, json.loads(value.stdout)):
-        raise ValueError('candidate_runtime_inventory_mismatch')
+    original_references = set(base.get('RepoTags') or []) | set(base.get('RepoDigests') or [])
+    if not original_references:
+        raise ValueError('original_base_image_reference_required')
+    config = base.get('Config') or {}
+    if config.get('Volumes') or config.get('User') != 'arborscan' or config.get('WorkingDir') != '/app':
+        raise ValueError('unexpected_base_image_configuration')
+    environment_keys = sorted({entry.partition('=')[0] for entry in config.get('Env', [])})
+    if any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key) for key in environment_keys):
+        raise ValueError('unexpected_base_image_environment_key')
+    job = secrets.token_hex(6)
+    alias = 'arborscan-runtime-base:' + role + '-' + job
+    candidate = (f'arborscan-{role}:local-candidate-' + provenance['source_commit'][:12]
+                 + '-' + image[7:19] + '-' + job)
+    if inspect_local_image(alias, required=False) or inspect_local_image(candidate, required=False):
+        raise ValueError('existing_candidate_or_base_alias_preserved')
+    original = (Path(context) / 'Dockerfile').read_bytes()
+    effective = ('FROM ' + alias + '\n').encode() + original.split(b'\n', 1)[1]
+    proof = {'builder': 'default', 'driver': 'docker', 'base_image_id': image,
+             'base_alias': alias, 'candidate_tag': candidate,
+             'original_dockerfile_sha256': hashlib.sha256(original).hexdigest(),
+             'effective_dockerfile_sha256': hashlib.sha256(effective).hexdigest(),
+             'inherited_environment_keys': environment_keys,
+             'original_base_references': sorted(original_references), 'base_alias_removed': False}
+    if audit is not None:
+        audit.update(proof)
     # Import success alone does not prove the image contains the reviewed bytes.
     source_check = '''import hashlib,json,pathlib
 expected=json.loads(%r)
@@ -217,10 +284,47 @@ for prefix in {n.split('/')[0] for n in expected if '/' in n}:
  assert actual=={n for n in expected if n.startswith(prefix+'/')}, 'candidate_has_stale_source'
 print('candidate_source_hashes_ok')
 ''' % json.dumps(provenance['source_sha256'], sort_keys=True)
-    subprocess.run([*run, '-c', source_check], check=True)
-    imports = IMPORT_CODE + ('\nimport arborscan_science.section\n' if role == 'v4' else '')
-    subprocess.run([*run, '-c', imports], check=True)
-    return candidate_id
+    created = False
+    try:
+        docker_run(['image', 'tag', image, alias], check=True)
+        created = True
+        if inspect_local_image(alias)['Id'] != image:
+            raise ValueError('local_base_alias_changed')
+        # BuildKit cannot use `FROM sha256:<config-id>`. The default Docker
+        # driver with pull=false resolves this owned local alias first. Keep
+        # the committed context unchanged; only this temporary FROM differs.
+        with tempfile.TemporaryDirectory(prefix='as14-runtime-recipe-') as temporary:
+            dockerfile = Path(temporary) / 'Dockerfile'
+            dockerfile.write_bytes(effective)
+            docker_run(['buildx', 'build', '--builder', 'default', '--network=none',
+                        '--pull=false', '--provenance=false', '-t', candidate,
+                        '-f', str(dockerfile), str(context)], check=True)
+        if inspect_local_image(alias)['Id'] != image:
+            raise ValueError('local_base_alias_changed')
+        verify_context(context, runtime, role)
+        candidate_id = inspect_local_image(candidate)['Id']
+        run = smoke_command(candidate_id, environment_keys)
+        value = docker_run([*run, '-c', INVENTORY_CODE], check=True, capture_output=True, text=True)
+        observed = json.loads(value.stdout)
+        if observed.get('private_configuration_files') != 0:
+            raise ValueError('candidate_private_configuration_files_present')
+        if verify_inventory(runtime, observed):
+            raise ValueError('candidate_runtime_inventory_mismatch')
+        docker_run([*run, '-c', source_check], check=True)
+        imports = IMPORT_CODE + ('\nimport arborscan_science.section\n' if role == 'v4' else '')
+        docker_run([*run, '-c', imports], check=True)
+        return candidate_id
+    finally:
+        if created:
+            current = inspect_local_image(alias)
+            if current['Id'] != image:
+                raise ValueError('local_base_alias_changed_preserved')
+            references = set(current.get('RepoTags') or []) | set(current.get('RepoDigests') or [])
+            if not original_references <= references:
+                raise ValueError('original_base_image_references_changed_preserved')
+            docker_run(['image', 'rm', '--no-prune', alias], check=True)
+            if audit is not None:
+                audit['base_alias_removed'] = True
 
 
 def main():
@@ -234,7 +338,9 @@ def main():
     manifest = validate_manifest(json.loads((root / 'deploy-vps/runtime-lock.json').read_text()))
     result = prepare_context(root, args.role, args.revision, args.output, manifest)
     if args.build:
-        result['image'] = build_local(args.output, manifest['runtimes'][args.role], args.role)
+        audit = {}
+        result['image'] = build_local(args.output, manifest['runtimes'][args.role], args.role, audit=audit)
+        result['build_audit'] = audit
         result['built'] = True
         (args.output / 'provenance.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({k: v for k, v in result.items() if k != 'source_sha256'}))

@@ -1,8 +1,8 @@
 # Runtime: фиксированный кандидат и отдельная чистая сборка
 
-AS-01, AS-14, AS-16 / REL-01. Проверено локально 12.11.2026.
-Production не изменялся. Docker на этом Windows-ПК отсутствует, поэтому
-новые Linux-образы не собирались и не запускались.
+AS-01, AS-14, AS-16 / REL-01. Обновлено 17.11.2026.
+Рабочие API/модели не заменялись. Docker на этом Windows-ПК отсутствует;
+сборка изолированных Linux-кандидатов учитывается отдельно от локальных тестов.
 
 ## Что зафиксировано
 
@@ -52,11 +52,28 @@ release_commit=$(git rev-parse HEAD)
 python3 deploy-vps/runtime_candidate.py --role v4 --revision "$release_commit" --output output/runtime-v4-checked --build
 ```
 
-Перед сборкой инструмент проверяет точный локальный image ID. Docker
-собирает с `--network=none --pull=false`, без pip/apt. Отдельный контейнер
-запускается без сети, с read-only root и временным `/tmp`: сравнивает
+Перед сборкой инструмент проверяет точный локальный image ID. Все Docker
+команды явно используют `--context default` с удалёнными из окружения
+`DOCKER_*`/`BUILDX_*` overrides. Разрешён только уже работающий local
+`default` builder с driver `docker`: `--network=none` сам по себе не запрещает
+сетевое разрешение FROM. Буквальный `FROM sha256:<config-id>` для BuildKit
+не подходит. Поэтому инструмент создаёт уникальный локальный tag точного ID
+и временный Dockerfile с единственной заменой FROM; исходный контекст и
+provenance сохраняются. `pull=false` у этого driver использует prefer-local.
+Чужой builder, существующий tag, изменившийся alias или потеря исходных
+base references приводят к отказу. Удаляется только собственный tag после CAS,
+через `image rm --no-prune TAG`, без force/prune/удаления по ID.
+
+Docker собирает с `--network=none --pull=false`, без pip/apt. Отдельный контейнер
+запускается без сети/pull, с read-only root и временным `/tmp` 128 МиБ,
+памятью 2 ГиБ, CPU1/PID128, непривилегированным пользователем, cap-drop ALL
+и no-new-privileges. Значения унаследованных ENV очищены; private/config/model
+mounts отсутствуют. Первый stdlib helper проверяет только наличие имён
+dotenv-файлов, не читая их значения; наличие запрещает дальнейший импорт.
+Контейнер сравнивает
 Python/весь набор пакетов, импортирует cv2/NumPy/Torch/Torchvision,
-Ultralytics и адаптеры, проверяет CPU Torch. Только затем фиксируется
+Ultralytics и адаптеры, выполняет CPU torch.add/torchvision NMS/cv2.cvtColor.
+Только затем фиксируется
 ID кандидата. API-процесс не запускается, production-контейнеры не заменяются.
 До обращения к Docker проверяются SHA файлов подготовленного контекста,
 точный Dockerfile и отсутствие лишних файлов/ссылок. После сборки внутри
@@ -64,6 +81,23 @@ ID кандидата. API-процесс не запускается, productio
 в заменяемых пакетах. Изменённый после подготовки контекст отклоняется.
 Обычные интеграционные тесты API/хранилища и smoke реального кандидата
 должны пройти отдельно; import-проверка их не заменяет.
+
+Для Ultralytics явно заданы `YOLO_OFFLINE=true` и `YOLO_AUTOINSTALL=false`.
+Попытки сетевой установки не являются частью проверки импортов.
+
+Исправление orchestration проверено 17.11: 47 локальных тестов (25 прежних
+контрактных/logging и 22 новых fake-Docker сценария), включая RED для registry resolution,
+foreign Docker context, потери base references и stale source. Fake-Docker
+граница не является фактической сборкой образа. Реальный Linux build/run должен
+иметь собственные source/base/image SHA, package/ABI результаты и подтверждение
+неизменных production Id/Image/StartedAt; metadata inventory не заменяет эти gates.
+
+Основание prefer-local проверено по исходникам фактической версии:
+[buildx ac30b249, opt.go](https://github.com/docker/buildx/blob/ac30b249211430b85fb8f37b6e7154b5c47ba0b6/build/opt.go#L550-L554),
+[BuildKit 0.33, resolver](https://github.com/moby/buildkit/blob/v0.33.0/util/resolver/pool.go#L237-L243).
+Ограничение literal config-ID обсуждается в
+[BuildKit issue 2204](https://github.com/moby/buildkit/issues/2204).
+Это не общее разрешение использовать remote/container driver или делать pull.
 
 Старый `Dockerfile.v4-contour` также получил COPY/whitelist для
 `arborscan_science`. Сам по себе он принимает произвольный BASE_IMAGE;
