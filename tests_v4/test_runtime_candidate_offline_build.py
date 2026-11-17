@@ -48,6 +48,7 @@ class DockerBoundary:
         self.actual_calls = []
         self.environments = []
         self.driver = 'docker'
+        self.conflicting_duplicate = False
         self.fail_build = False
         self.mutate_alias = False
         self.mutate_references = False
@@ -67,8 +68,16 @@ class DockerBoundary:
         self.calls.append(args)
         output, code = '', 0
         if args[:3] == ['docker', 'buildx', 'inspect']:
-            output = json.dumps({'Name': 'default', 'Driver': self.driver, 'Nodes': [
-                {'Name': 'default', 'Endpoint': 'default', 'Status': 'running'}]})
+            # Buildx 0.37 inspect has no --format option (actual VPS exit125).
+            code = 125
+        elif args[:3] == ['docker', 'buildx', 'ls']:
+            row = {'Name': 'default', 'Driver': self.driver, 'Nodes': [
+                {'Name': 'default', 'Endpoint': 'default', 'Status': 'running'}]}
+            duplicate = copy.deepcopy(row)
+            if self.conflicting_duplicate:
+                duplicate['Nodes'][0]['Name'] = 'unexpected-other-node'
+            output = '\n'.join(json.dumps(r) for r in [row, duplicate, {
+                'Name': 'unrelated', 'Driver': 'remote', 'Nodes': []}])
         elif args[:3] == ['docker', 'image', 'inspect']:
             row = self.images.get(args[3])
             if row is None:
@@ -139,6 +148,21 @@ def test_nonlocal_driver_fails_before_tagging_or_building(boundary, driver):
         candidate.build_local(context, runtime, 'v3')
     assert not any(c[:3] == ['docker', 'image', 'tag'] for c in docker.calls)
     assert docker.effective is None
+
+
+def test_builder_probe_uses_supported_jsonl_listing_with_duplicate_default_rows(boundary):
+    context, runtime, docker = boundary
+    assert candidate.build_local(context, runtime, 'v3') == BUILT
+    assert ['docker', 'buildx', 'ls', '--format', '{{json .}}'] in docker.calls
+    assert not any(c[:3] == ['docker', 'buildx', 'inspect'] for c in docker.calls)
+
+
+def test_nonidentical_default_builder_rows_refuse_before_tagging(boundary):
+    context, runtime, docker = boundary
+    docker.conflicting_duplicate = True
+    with pytest.raises(ValueError, match='builder'):
+        candidate.build_local(context, runtime, 'v3')
+    assert docker.alias is None and docker.effective is None
 
 
 def test_all_docker_operations_pin_default_context_and_remove_remote_overrides(boundary, monkeypatch):

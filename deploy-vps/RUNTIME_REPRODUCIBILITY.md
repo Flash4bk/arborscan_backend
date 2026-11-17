@@ -85,12 +85,19 @@ ID кандидата. API-процесс не запускается, productio
 Для Ultralytics явно заданы `YOLO_OFFLINE=true` и `YOLO_AUTOINSTALL=false`.
 Попытки сетевой установки не являются частью проверки импортов.
 
-Исправление orchestration проверено 17.11: 47 локальных тестов (25 прежних
-контрактных/logging и 22 новых fake-Docker сценария), включая RED для registry resolution,
+Исправление orchestration проверено 17.11: 49 локальных тестов (25 прежних
+контрактных/logging и 24 новых fake-Docker сценария), включая RED для registry resolution,
 foreign Docker context, потери base references и stale source. Fake-Docker
 граница не является фактической сборкой образа. Реальный Linux build/run должен
 иметь собственные source/base/image SHA, package/ABI результаты и подтверждение
 неизменных production Id/Image/StartedAt; metadata inventory не заменяет эти gates.
+
+Первый фактический probe остановился до создания tag/build/helper: Buildx0.37
+не поддерживает `inspect --format`. Это дефект orchestration, не сбой приложения.
+Исправление использует реально проверенный `buildx ls --format '{{json .}}'`
+и принимает дублирующиеся default-строки только при полном совпадении JSON.
+Readonly CLI capability probes и воспроизводящие тесты добавлены до повтора;
+исходный failed receipt сохранён. Рабочие контейнеры этим probe не менялись.
 
 Основание prefer-local проверено по исходникам фактической версии:
 [buildx ac30b249, opt.go](https://github.com/docker/buildx/blob/ac30b249211430b85fb8f37b6e7154b5c47ba0b6/build/opt.go#L550-L554),

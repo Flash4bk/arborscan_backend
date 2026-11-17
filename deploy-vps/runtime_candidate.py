@@ -238,11 +238,20 @@ def smoke_command(image, environment_keys):
 def build_local(context, runtime, role, *, audit=None):
     provenance = verify_context(context, runtime, role)
     image = runtime['image_id']
-    builder = json.loads(docker_run(
-        ['buildx', 'inspect', 'default', '--format', '{{json .}}'],
-        check=True, capture_output=True, text=True).stdout)
-    if (builder.get('Name') != 'default' or builder.get('Driver') != 'docker'
-            or len(builder.get('Nodes', [])) != 1
+    # `inspect` has no --format in Buildx 0.37; `ls` exposes JSON lines.
+    # Docker may list the same default node twice for its context and builder.
+    listing = docker_run(['buildx', 'ls', '--format', '{{json .}}'],
+                         check=True, capture_output=True, text=True).stdout
+    builders = []
+    for line in listing.splitlines():
+        if line.strip():
+            row = json.loads(line)
+            if row.get('Name') == 'default':
+                builders.append(row)
+    if len({json.dumps(row, sort_keys=True) for row in builders}) != 1:
+        raise ValueError('ambiguous_or_missing_default_builder')
+    builder = builders[0]
+    if (builder.get('Driver') != 'docker' or len(builder.get('Nodes', [])) != 1
             or builder['Nodes'][0].get('Endpoint') != 'default'
             or builder['Nodes'][0].get('Status') != 'running'):
         raise ValueError('local_default_docker_builder_required')
