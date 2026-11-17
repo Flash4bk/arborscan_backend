@@ -95,6 +95,16 @@ pull lock and compare all other installed tool hashes; do not overwrite the
 newer reader with the older repository copy. A standard CLI run with the
 default 180-second inventory timeout is separate evidence from these tests.
 
+Actual CAS install of `aaf6d65b` completed on 17 November at 19:13 UTC. Only
+`ops_local_retention.py` (SHA `1ba3a1fc…662ce`) and the adapted newer reader
+(SHA `65a4501b…936ee`) changed. Exact old bytes/metadata/ACL and CAS rollback
+were retained privately under the existing backup root. Other tools/config/
+policy and scheduled-task XML hashes remained unchanged. The standard installed
+CLI, with `--retention-dry-run` and default inventory timeout180, completed
+exit0 in102.061s: both sets verified_existing, zero deletion candidates, no
+retry/monkeypatch/timeout override. This was the actual entry point, not a new
+calendar-triggered task run. [Proof](evidence/remediation-20261117/windows-scheduled.json).
+
 ## Evidence and source identity
 
 Record the actual service/timer result, free bytes, installed tool hashes,
@@ -210,6 +220,20 @@ It retains the active attempt, operation record and all recorded COMPLETE sets.
 No global staging cleanup or Docker prune belongs in this operation.
 
 ## Rollback and later verification
+
+Actual 17 November continuation: a new pre-deployment capture (not a daily
+replay or systemd invocation) published `20261117T200418Z`, manifest SHA
+`52a447b85e5849ebc22998d3cd4bfe4a2e48619952ea4f4a64dbc225167c4214`,
+exit 0 in 1090.420 seconds. PostgreSQL/JSON share the exported snapshot and
+the seven current runtime identities remain unchanged. Existing VPS retention14
+deleted only `20261014T032748Z`; all other retained manifests stayed unchanged.
+The standard installed Windows pull succeeded in 178.898 seconds with the
+default 180-second inventory limit. Existing latest-two apply removed only
+`20261115T032812Z` after full verification; final retained sets are
+`20261117T033225Z` and `20261117T200418Z`, with eight shared runtime archives.
+Installed tools, policy and scheduled-task definition stayed unchanged. This
+is not a fresh SQL restore: the actual isolated restore used the morning set.
+[Final proof](evidence/remediation-20261117/fresh-backup.json).
 
 Retain previous source/config/index and all runtime archives. Before reverting
 a config pointer, hold the same lock with service inactive and check expected

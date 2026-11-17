@@ -106,6 +106,27 @@ Readonly CLI capability probes и воспроизводящие тесты до
 [BuildKit issue 2204](https://github.com/moby/buildkit/issues/2204).
 Это не общее разрешение использовать remote/container driver или делать pull.
 
+## Реальные Linux-кандидаты 17.11.2026
+
+Builder `b1699313` выполнил два последовательных code-only build source
+`37b5be131820f65b2180cdbfc33be48bbf832a4d`. v3:
+`sha256:cbef234f2240fcb1bec3980b5e992fcdfac97967822b464422eff65ccda673d7`;
+v4: `sha256:66bde6a3cbf80a3eebf7caa9135cd289430e5d1bd66d256eca2a0050cb1e76fe`.
+Source/no stale gates, Python3.11.16, 100/59 package versions, CPU native
+операции и узкие импорты прошли. Шесть своих helpers удалены; base aliases
+удалены после CAS. Все семь production Id/Image/StartedAt остались прежними.
+Исходный frozen `provenance.json` контекстов сохранён без перезаписи; результат
+build находится во внешней audit receipt. Git LF/Windows CRLF runtime-lock
+имеют разные SHA при одинаковых JSON-значениях; это явно проверено.
+
+Это не запуск API, моделей или end-to-end HTTP/auth/science. Образы не
+активированы. Две полные Docker-save копии, новый immutable index и их offsite
+на D уже проверены отдельно; старые архивы/текущий указатель сохранены.
+Активация требует отдельного разрешения. Доказательства:
+[runtime-candidates.json](evidence/remediation-20261117/runtime-candidates.json),
+[runtime-rollout.json](evidence/remediation-20261117/runtime-rollout.json),
+[точный rollout/rollback](REMEDIATION_API_ROLLOUT.md).
+
 Старый `Dockerfile.v4-contour` также получил COPY/whitelist для
 `arborscan_science`. Сам по себе он принимает произвольный BASE_IMAGE;
 для проверяемого выпуска использовать инструмент выше.

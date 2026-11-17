@@ -1,0 +1,48 @@
+{
+  "tasks": [
+    "AS-01",
+    "AS-14"
+  ],
+  "status": "PREPARED_NOT_APPLIED",
+  "application_source_commit": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+  "source_index_sha256": "983469c9582ca6640510c44f2fdc1f38a000c86e306654cc91c7bbca26a6134f",
+  "index_selected_in_production": false,
+  "new_full_archive_bytes": 1396569088,
+  "actual_network_delta_bytes": 243855,
+  "offsite_completed_at_utc": "2026-11-17T19:46:47.477238+00:00",
+  "offsite_status": "COMPLETE_OFFSITE_ARCHIVES_NOT_ACTIVATED",
+  "coverage_asset_counts": {
+    "current": 8,
+    "future": 8,
+    "rollback_union": 10,
+    "full_index": 11
+  },
+  "old_oci_verification_repeated": false,
+  "old_asset_evidence": "Previous standard-reader full SHA plus unchanged bytes/dev/inode/size/mtime; extra asset separately hashed. New candidates passed fresh full-file/OCI/config/platform checks. Current eight archives additionally reverified by final fresh pull/apply.",
+  "private_acl_unapproved_allow_aces": 0,
+  "independent_final_packet_review": "No factual or approval-scope blockers",
+  "prepared_configuration_changes": {
+    "compose_original_sha256": "81d9cf5b65f4b50db1f2171157940ba078552e84880ff1f162e8cb9c64622785",
+    "compose_target_sha256": "1c8607265237b0a6a58c08857dc6a132cbdb87388eb8590c02b43ddfced0b911",
+    "compose_changed_fields": [
+      "/services/v3/image",
+      "/services/api/image",
+      "/services/v3/environment/GIT_COMMIT",
+      "/services/api/environment/GIT_COMMIT"
+    ],
+    "backup_config_original_sha256": "0faf23fe8d4c9a594279d996dfafd7987ee3a0d3182e643b6060f7d6e80e782f",
+    "backup_config_target_sha256": "eae5d47735f8f707cae63c21ce9c554c4dd4572571121999dfd1f73a46084747",
+    "backup_config_changed_field": "/runtime_index"
+  },
+  "api_activation_performed": false,
+  "http_auth_science_candidate_smoke_performed": false,
+  "schema_mutations_performed": false,
+  "docker_load_on_new_host_performed": false,
+  "private_configuration_bytes_in_git": false,
+  "source_receipt_sha256": {
+    "runtime-rollout-prepared.json": "205b42659c6842d148a4739ec3be83474ea8c2d876294f62aa5794d7a32fb6dd",
+    "runtime-offsite-executed.receipt.json": "92b0ad154dd1e2754ab78f9e3f92b4f45dd124c8b4ba2fd3cc2e165b271508bd",
+    "rollout-prepared.packet.md": "3444ba313be4cfe96d8c300e18d199ce808bb2102583856d3a911165345540fe",
+    "runtime-exports-executed.receipt.json": "4eb89606138767d060f962b8941754ec64a5b9f95df11b107e29df900819931d"
+  }
+}

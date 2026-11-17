@@ -12,7 +12,8 @@ ID: AS-01...AS-16 для исправлений аудита; AS-10 / AS-11 / AS
 Срез 12.11 сохранён; 17.11 подтверждены результат systemd, целостность новой
 копии, фактическое изолированное SQL/files-восстановление и две проверенные
 копии на ПК. Подробности и границы последующих проверок приведены ниже.
-Это не объявление подписанного release или пользовательской приёмки.
+Подписанный APK35 готов; установка на S24 и вертикальная проверка нового API
+ещё не выполнены. Пользовательская приёмка учитывается отдельно.
 
 ## Границы
 
@@ -21,7 +22,7 @@ ID: AS-01...AS-16 для исправлений аудита; AS-10 / AS-11 / AS
 таблицы не являются обучающей выборкой. Их арифметическая проверка не
 восстанавливает эксперимент. β по фото остаётся недоступным.
 
-План в этом worktree обновлён до 1.62 поверх canonical 1.60 и прежней 1.61.
+План в этом worktree обновлён до 1.63 поверх canonical 1.60 и прежних 1.61-1.62.
 Результаты и журналы 1.58-1.60 о руководствах YOLOv8 сохранены дословно
 как результаты другого задания. Новые YOLO-файлы этим пакетом не импортировались
 и их проверки не выполнялись заново. Ранее перенесённые research/handoff/source
@@ -219,7 +220,7 @@ mount каталога копии, включая private-файлы; в тес�
 не передавались, значения private-файлов не печатались. Это не проверка на
 новом хосте и не восстановление поверх рабочей базы.
 
-Установленный Windows reader сохранил свои исходники: invocation-only adapter
+Первый перенос выполнил неизменённый Windows reader: invocation-only adapter
 выбрал две последние COMPLETE до затратного inventory и восстановил 18 файлов
 из прежнего проверенного карантина только по точному полному SHA. Это
 сэкономило 3439612782 байта повторного скачивания; итоговые native/runtime/SHA
@@ -229,6 +230,16 @@ runtime-архивов. Штатная явно разрешённая latest-tw
 `20261022T033459Z` и `20261025T033213Z` после проверки замен. Free вырос
 с 47387041792 до 49104805888 байт; карантин и общие runtime-архивы сохранены.
 Это копии на существующем ПК, а не независимый постоянно работающий сервер.
+
+Затем найденный дефект исправлен постоянно в `aaf6d65b`: existing latest-two
+policy загружается до большого remote inventory, выбираются две записи по
+bounded metadata. 75 scoped тестов прошли. CAS обновил только helper и два
+hook-фрагмента установленного более нового reader, прочие verifier/retention/
+transport AST, policy и Task XML сохранены; старые bytes/metadata/ACL и rollback
+защищены. **Штатный installed CLI** без monkeypatch/override/retry прошёл exit0
+за102,061с с defaulttimeout180: обе копии verified_existing, delete candidates0.
+Календарный запуск новой версии отдельно ещё не наблюдался.
+[Доказательство](evidence/remediation-20261117/windows-scheduled.json).
 
 37 минут из 40 отведённых службе выявили лишние повторные чтения одних наборов.
 Исправление `75135519f44d88b286a475499f4b02bb3646c9a3` прошло 141 pytest-тест
@@ -296,7 +307,7 @@ Worker остановлен намеренно при selfhost-переходе;
 - `07400c0c` - exact failed-stage preservation/cleanup guard;
 - `81013ce51b4f18bf81b56aa79848c5616f641077` - честные подписи фильтров прежней оценки,4targeted tests GREEN.
 
-Финальный для текущего локального среза **debug**, не signed release:
+Сохранённый **debug-артефакт от 12.11**, отдельный от release ниже:
 `1.5.0-science.1+35`, source
 `81013ce51b4f18bf81b56aa79848c5616f641077`, файл
 `output/remediation-20261112/ArborScan-1.5.0-science.1-35-debug.apk`, SHA256
@@ -312,22 +323,110 @@ font scale восстановлен. Числа и predicate фильтра не
 S24 отсутствует; установка на него, авторизованный end-to-end science/
 модерация, tracking и системные диалоги этой версии не проверены.
 
-Release-сборка не завершена. Офлайн-проверка установила конкретный внешний
-блокер: **12 Gradle-артефактов отсутствуют в локальном кеше**, предыдущие
-попытки metadata/network/proxy/daemon не дали signed release. Успешные
-final debug/JUnit не заменяют release. Старый release-артефакт04.11 не менялся.
+### Подписанный release от 17.11.2026
+
+Прежний внешний блокер устранён: 12 закреплённых Gradle-артефактов доступны,
+HTTPS проверен также тем же JDK21 с обычным truststore. Первая попытка с
+`--no-pub` выявила устаревший generated Android plugin registrant. Исправлен
+порядок сборки: offline `pub get --enforce-lockfile`, затем обычная release
+сборка со штатной regeneration tooling. Зависимости, lockfile и tracked
+Dart/Android/assets не изменились. Первая ошибка и успешный повтор сохранены
+раздельно; старый APK не выдавался за новый.
+
+Собран и штатно подписан `1.5.0-science.1+35`, исходники сборки
+`75135519f44d88b286a475499f4b02bb3646c9a3`, Dart/Android lineage
+`81013ce51b4f18bf81b56aa79848c5616f641077`.
+Файл `output/remediation-20261117/ArborScan-1.5.0-science.1+35-source75135519.apk`,
+116540846 байт, SHA256
+`8c5ac1fa30f3715280c34437d2df9911fdb939aa24656bd6be60ac410a9a28a6`.
+Package `com.example.arborscan_app`, min24/target36/compile36, non-debuggable,
+INTERNET, три ABI. Проверены подписи/два сертификата lineage, 16 KiB alignment,
+сохранение всех 695 payload entries при подписи и соответствие семи code entries
+реальным release intermediates. Приватные ключи/config/cipher не менялись.
+Это доказательство сборки/подписи, а не встроенная в APK подпись Git-коммита.
+
+Две попытки запуска только своего read-only API36 AVD остановлены до установки
+APK защитой ресурса ПК: min available host RAM 787542016/332980224 байт при
+пороге 805306368 байт. Порог не снижался, чужие приложения не закрывались;
+постоянная база AVD не изменилась. Свежих release UI screenshot и проверки
+font1.6/restart нет. Прежние debug-скриншоты не подменяют эту проверку.
+S24 сейчас не подключён; пользователь ответил «Подключу позже». Новый APK
+на нём не установлен, аккаунт/данные телефона не трогались. Доказательство:
+[release35.json](evidence/remediation-20261117/release35.json).
+
+### Два настоящих Linux-кандидата API от 17.11.2026
+
+После исправления offline BuildKit orchestration реально собраны и проверены
+два отдельных code-only overlay из application source
+`37b5be131820f65b2180cdbfc33be48bbf832a4d`, builder `b1699313`:
+
+- v3: `sha256:cbef234f2240fcb1bec3980b5e992fcdfac97967822b464422eff65ccda673d7`;
+- v4: `sha256:66bde6a3cbf80a3eebf7caa9135cd289430e5d1bd66d256eca2a0050cb1e76fe`.
+
+Python3.11.16 и 100/59 дистрибутивов совпали с фиксированными базами;
+source SHA/no stale modules, отсутствие dotenv-файлов, CPU torch.add,
+torchvision NMS, cv2.cvtColor и узкие импорты прошли. Шесть network-none,
+read-only, ограниченных по ресурсам helpers удалены автоматически, свои base
+aliases удалены с CAS. Все семь production Id/Image/StartedAt и действующие
+backup policy/index остались прежними. Это не API startup/HTTP/auth/science
+end-to-end и не активация новых образов. Metadata lock в Git имеет LF, рабочий
+Windows-файл CRLF; их SHA различаются, JSON-значения совпадают. Первые failed
+CLI probe и корректный повтор учтены раздельно. 49 scoped unit-тестов и реальный
+Linux build/ABI run - разные доказательства.
+[runtime-candidates.json](evidence/remediation-20261117/runtime-candidates.json),
+[методика](RUNTIME_REPRODUCIBILITY.md).
+
+Полные Docker-save архивы новых кандидатов и immutable future index983469c9
+проверены на VPS без смены указателя. `189dd175` добавил explicit raw-v2 reader
+для точных native headers/directories/EOF; старый v1 сохранён. 55 focused тестов
+и независимый sparse/contiguous regression review пройдены. На D действительно
+восстановлены 1396569088 байт двух архивов из243855 байт переданных дельт,
+full target SHA/OCI/config/platform совпали. Полный index11assets присутствует;
+current/future refs8/8 и rollback union10 различаются явно. Прежние8 использовали
+недавнюю full-SHA проверку штатного reader и unchanged identity, extra asset
+проверен отдельно; только новые2 проходили новые OCI/full-file gates здесь.
+Private Compose/config originals/targets и точный rollback подготовлены с
+diff4+1 JSON pointer. В рабочие API/указатели ничего не применено.
+[Пакет для разрешения](REMEDIATION_API_ROLLOUT.md).
+
+### Свежая копия перед обновлением и финальная ротация на ПК
+
+Новая операция `selfhost-remediation37b-predeploy-20261117-1939` действительно
+создала COMPLETE `20261117T200418Z`, manifest SHA
+`52a447b85e5849ebc22998d3cd4bfe4a2e48619952ea4f4a64dbc225167c4214`.
+Публикация 20:08:32 UTC, integrity 20:11:14 UTC, exit0 за1090,420с. Native
+PostgreSQL/JSON используют один exported snapshot, покрыты семь текущих старых
+runtime images. Источники/config/index и production identities не менялись;
+min free8461168640 байт. Это новый capture, не replay и не новый systemd run.
+Существующая VPS retention14 удалила только `20261014T032748Z`; оставшиеся
+27 старых manifest SHA сохранились, всего COMPLETE28.
+
+Штатный installed Windows CLI с default180 прошёл за178,898с без override,
+monkeypatch или retry. После проверки нового набора штатный latest-two apply
+за56,182с удалил только `20261115T032812Z`. Финальные два набора на D:
+`20261117T033225Z` и `20261117T200418Z`; восемь общих runtime-архивов сохранены
+и полностью проверены. Tools/policy/Task XML неизменны; свободно на D
+17809764352 байта. Отдельный пакет неактивных новых API-архивов также сохранён.
+Проверка20:18:25 UTC: все семь итоговых условий true. SQL restore именно нового
+набора не выполнялся: фактический isolated restore относится к утреннему
+набору17.11, не подменяется проверкой свежих SHA/native файлов.
+[Безопасные доказательства](evidence/remediation-20261117/fresh-backup.json),
+[пакет кандидатов](evidence/remediation-20261117/runtime-rollout.json).
 
 ## Оставшиеся действия
 
-1. Получить недостающие12 Gradle-артефактов, собрать и проверить signed release;
-   отдельно проверить доступный авторизованный интерфейс и S24, когда доступен.
-   Debug/source/SHA и целевая label regression уже зафиксированы выше.
+1. Установить готовый signed release35 и проверить авторизованный интерфейс на
+   S24 после подключения. Сборка/подпись готовы; свежая release UI-проверка
+   на AVD не состоялась из-за памяти ПК. Не повторять подпись/полный тестовый
+   baseline вместо проверки этого конкретного оставшегося пробела.
 2. Наблюдать следующий systemd запуск новой политики; прямой dispatcher replay
-   уже завершился успешно. Изолированный SQL/files restore и Windows latest-two
+   и отдельная новая съёмка уже завершились успешно. Изолированный SQL/files restore и Windows latest-two
    pull/retention выполнены. Независимый offhost receiver и new-host drill
-   остаются отдельными ресурсными ограничениями; повторять cleanup не нужно.
-3. Собирать и развёртывать API v3/v4 только как отдельные exact-source кандидаты
-   с rollback и smoke; существующий runtime/pip/модели не менять скрыто.
+   остаются отложенными по прежнему решению пользователя; повторять cleanup не нужно.
+3. Backup/offsite closure и reviewed rollout packet двух v3/v4-кандидатов готовы.
+   Активация требует отдельного разрешения: текущие рабочие
+   API не обновлены. После неё нужны HTTP/auth/owner/retry/science smoke на
+   отдельных тестовых данных. Пакеты, модели, worker и реальные решения не менять.
 4. Продолжить П00/П02/П06 отдельными проверяемыми срезами по научному плану.
    Полный F1/TMC/U1/D1, β/regressor/корни/CWS/вероятности и AS-13 не закрыты.
 

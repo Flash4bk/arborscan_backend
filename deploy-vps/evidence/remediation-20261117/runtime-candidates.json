@@ -1,0 +1,47 @@
+{
+  "task": "AS-01/AS-14",
+  "started_at_utc": "2026-11-17T18:38:19.553919+00:00",
+  "builder_commit": "b169931326d2d512323010c29520f46c6169991d",
+  "application_source_commit": "37b5be131820f65b2180cdbfc33be48bbf832a4d",
+  "application_archive_sha256": "e118ff8f27f385a6abf2d32a1adb323fbd1a375e3608dba7d58c7e6e40747fa4",
+  "builder_sha256": "b352576a37aae48e75ae244eb1b7124e27f2a5ed070aa96133115330ff68d9e4",
+  "runtime_lock_sha256": "cc8b72f4187e595a51b98de7b13256af35da0c8b14ada006fe7f4ead99b33acb",
+  "adapter_sha256": "8f4a1a734cfae43d92be3d82d319a5cf6b0b709a24c6dbf33fad2841da0a9cbe",
+  "completed_at_utc": "2026-11-17T18:39:43.582195+00:00",
+  "production_container_identity_unchanged": true,
+  "success": true,
+  "roles": {
+    "v3": {
+      "image_id": "sha256:cbef234f2240fcb1bec3980b5e992fcdfac97967822b464422eff65ccda673d7",
+      "python": "3.11.16",
+      "distributions_matched": 100,
+      "source_and_abi_gates_passed": true,
+      "base_image_id": "sha256:60c6cf1fc185e41aaf6275522df851b60f142887554685ce7aec49b3f702a990",
+      "base_alias_removed": true
+    },
+    "v4": {
+      "image_id": "sha256:66bde6a3cbf80a3eebf7caa9135cd289430e5d1bd66d256eca2a0050cb1e76fe",
+      "python": "3.11.16",
+      "distributions_matched": 59,
+      "source_and_abi_gates_passed": true,
+      "base_image_id": "sha256:2abb56ed5d84e4ddbe4465da851c842861498101f030fab016f66630c4ee1762",
+      "base_alias_removed": true
+    }
+  },
+  "own_helpers_absent": 6,
+  "candidate_images_not_deployed": true,
+  "backup_policy_and_runtime_index_unchanged": {
+    "policy": "a7294e65dd69cc338409c70032d023f878db27b85f44fb9dd93cbbe3e9bd7b0a",
+    "runtime_index": "be74e405c0b5f820f4a4d3fa3965e5fd016dae75576bf1e276446f1d662d6242"
+  },
+  "safe_server_receipt_sha256": "d79d0b9902cd8b00651bc183d3834db85647666463e133cabc963f2d258fee77",
+  "application_or_model_startup_performed": false,
+  "production_api_e2e_verified": false,
+  "unit_tests": {
+    "passed": 49,
+    "scope": "25 previous contracts/logging +24 fake-Docker cases"
+  },
+  "git_lf_runtime_lock_sha256": "cc8b72f4187e595a51b98de7b13256af35da0c8b14ada006fe7f4ead99b33acb",
+  "working_crlf_and_committed_lf_json_equal": true,
+  "first_probe_failed_before_tag_build_helper": "unsupported buildx inspect --format; fixed to ls JSONL"
+}

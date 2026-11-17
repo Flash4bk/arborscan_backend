@@ -1,0 +1,80 @@
+{
+  "tasks": [
+    "AS-14",
+    "AS-01"
+  ],
+  "status": "ACTUALLY_COMPLETED",
+  "recorded_at_utc": "2026-11-17T20:18:25.885962+00:00",
+  "fresh_capture": {
+    "operation_id": "selfhost-remediation37b-predeploy-20261117-1939",
+    "snapshot": "20261117T200418Z",
+    "manifest_sha256": "52a447b85e5849ebc22998d3cd4bfe4a2e48619952ea4f4a64dbc225167c4214",
+    "started_at_utc": "2026-11-17T19:53:04.621778+00:00",
+    "published_at_utc": "2026-11-17T20:08:32.862161+00:00",
+    "last_integrity_check_at_utc": "2026-11-17T20:11:14.158405+00:00",
+    "duration_seconds": 1090.42,
+    "exit_code": 0,
+    "systemd_run": false,
+    "daily_operation_replay": false,
+    "native_postgres_covered": true,
+    "database_and_json": "same_exported_snapshot",
+    "runtime_role_count": 7,
+    "minimum_free_observed_bytes": 8461168640,
+    "unchanged_vps_retention": 14,
+    "deleted_by_unchanged_policy": [
+      "20261014T032748Z"
+    ],
+    "retained_complete_count": 28,
+    "all_other_retained_manifests_unchanged": true,
+    "current_sources_config_index_and_production_identities_unchanged": true
+  },
+  "windows_standard_pull": {
+    "duration_seconds": 178.898,
+    "exit_code": 0,
+    "default_inventory_timeout_seconds": 180,
+    "timeout_override": false,
+    "runtime_monkeypatch": false,
+    "automatic_retry": false,
+    "actual_scheduled_task_run": false
+  },
+  "windows_existing_latest_two_apply": {
+    "duration_seconds": 56.182,
+    "success": true,
+    "deleted_only": [
+      "20261115T032812Z"
+    ],
+    "final_verified_complete_sets": {
+      "20261117T033225Z": "d08ba26c5bbfeabd7de26ee4e6261ff184b416cf5b1885a19cf6446b472e18b8",
+      "20261117T200418Z": "52a447b85e5849ebc22998d3cd4bfe4a2e48619952ea4f4a64dbc225167c4214"
+    },
+    "shared_runtime_archive_count": 8,
+    "full_verification_basis": "Exact installed dry-run transfer and installed apply (including its final plan) performed full data/native/runtime/archive SHA checks; final collector reads only small metadata and stats.",
+    "free_bytes_after": {
+      "C": 5746561024,
+      "D": 17809764352
+    },
+    "reviewed_plan_sha256": "e962997524d7ed19415c7e35a620dada2b16eb6bab07259058da1b0222b7dca5"
+  },
+  "final_checks": {
+    "exact_two_final_manifests": true,
+    "shared_runtime_asset_count_exact": true,
+    "scheduled_task_definition_unchanged": true,
+    "local_policy_unchanged": true,
+    "reviewed_installed_reader_and_helper_unchanged": true,
+    "all_sources_unchanged_during_standard_pull_and_apply": true,
+    "fresh_vps_sources_config_index_and_old_production_identities_unchanged": true
+  },
+  "scheduled_task_state": "Ready",
+  "scheduled_task_definition_sha256": "8d91e857d7d6a502409742b1140142718d286e322e0526b81ecf0e5671fb3344",
+  "local_policy_sha256": "73a6cb7dbbfc8bf390fa557b0713ca110652219326c9d8cc698a8d3c276b2d40",
+  "api_activation_performed": false,
+  "production_database_restore_performed": false,
+  "new_host_restore": false,
+  "source_receipt_sha256": {
+    "fresh-predeploy-backup-result.json": "4ec6b659dc289520b6fdd75e65d1fcd4494ba90bf9a92479c0d6ae16bdccb571",
+    "fresh-predeploy-windows-pull.json": "1aadb1e5beb9f6637d244a8dde64b7be8125be16105aadca012b5be0039fb0cf",
+    "fresh-predeploy-windows-pull.events.json": "8a2ec3797004793e10c23478995d0eb3110cd5d94f667533942eb65cb122e53f",
+    "fresh-predeploy-windows-retention.json": "b01f0bc8758ebc2d51f71b0cba3ba0f03193ed9ebf93020f2fff0269436522f2",
+    "fresh-predeploy-final-proof.json": "1e138c2970c888046d2bcfc58f69764f7d26ef8d364c48927842cdbc4a80cd4e"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "task": "AS-14",
+  "recorded_date": "2026-11-17",
+  "source_commit": "aaf6d65be690bf431ebd3f7443c1393a7e792918",
+  "software_tests": {
+    "command": "output/audit-20261111/backend/venv/Scripts/python.exe -m pytest tests_v4/test_scheduled_latest_two_inventory.py tests_v4/test_windows_retention_two.py tests_v4/test_ops_pull.py tests_v4/test_ops_windows_runtime_retention.py -q",
+    "passed": 75,
+    "skipped": 0,
+    "log": "scheduled-inventory-final.txt",
+    "log_sha256": "6167d0c1bec717fa7dd0c46bdc20e87304613dcf62cd62e7e16ef7277ad5526e"
+  },
+  "fixture_heavy_file_reads": {
+    "before": 56,
+    "after": 4
+  },
+  "installed": {
+    "old_sha256": {
+      "ops_local_retention.py": "96d0365895448f3462c75cf9fb0245ae8f66d33316f6a1494c0201b71ca5db02",
+      "ops_pull_backups.py": "ff5a16e26f41e5940627af17b296507a29940f5046dc691ac7099c64fb16709b"
+    },
+    "new_sha256": {
+      "ops_local_retention.py": "1ba3a1fc0bbd843a7738f56975d998dd31abc7152cffc2718724aaba4fa662ce",
+      "ops_pull_backups.py": "65a4501b061e57513c087ac6d61677951b1b5a744cf3f35a426ad889c4c936ee"
+    },
+    "installed": true,
+    "backup_data_deleted": false,
+    "scheduled_task_modified": false,
+    "only_two_sources_changed": true,
+    "all_other_tools_configs_policy_sha256_unchanged": true,
+    "exact_old_bytes_metadata_acl_preserved": true,
+    "installed_metadata_acl_preserved": true,
+    "complete_backup_manifests_unchanged": {
+      "20261115T032812Z": "213e0c3a50722b04d6b4c92d702870e1510345029beeb28f595c6b4c0211102d",
+      "20261117T033225Z": "d08ba26c5bbfeabd7de26ee4e6261ff184b416cf5b1885a19cf6446b472e18b8"
+    },
+    "scheduled_task_definition_sha256": "8d91e857d7d6a502409742b1140142718d286e322e0526b81ecf0e5671fb3344"
+  },
+  "standard_cli": {
+    "started_at_utc": "2026-11-17T19:13:53.287655+00:00",
+    "finished_at_utc": "2026-11-17T19:15:35.349125+00:00",
+    "inventory_timeout_seconds": 180,
+    "timeout_override_used": false,
+    "runtime_monkeypatch_or_hint_spoof_used": false,
+    "retention_apply": false,
+    "exit_code": 0,
+    "elapsed_seconds": 102.061,
+    "installed_sources_unchanged": true,
+    "policy_unchanged": true,
+    "verified_existing": [
+      "20261115T032812Z",
+      "20261117T033225Z"
+    ],
+    "scheduled_reader_smoke_success": true,
+    "remote_inventory_timeout_unknown": false,
+    "automatic_retry_performed": false
+  },
+  "final": {
+    "retention_delete_candidates": 0,
+    "retention_apply_or_backup_deletion": false,
+    "complete_backup_manifest_sha256_unchanged": {
+      "20261115T032812Z": "213e0c3a50722b04d6b4c92d702870e1510345029beeb28f595c6b4c0211102d",
+      "20261117T033225Z": "d08ba26c5bbfeabd7de26ee4e6261ff184b416cf5b1885a19cf6446b472e18b8"
+    },
+    "scheduled_task_definition_sha256_unchanged": "8d91e857d7d6a502409742b1140142718d286e322e0526b81ecf0e5671fb3344",
+    "private_CAS_rollback_request_present": true,
+    "installation_receipt_sha256": "bb7282974a7868979e241e93643853d85eabc895fb784e4622b2feace354dce5",
+    "standard_run_receipt_sha256": "e7fc86849495fc014d2c45691b266d5ba671ba0998902d3ad81d2e46bd0d9fa3",
+    "safe_events_sha256": "ac02ba22bb7cd908d8afa1058592117f5d70ae858f6a22b1322538d4eb70e74f",
+    "ordinary_calendar_task_run_observed": false
+  },
+  "all_other_function_asts_and_inventory_preserved": true,
+  "new_calendar_scheduler_execution_claimed": false,
+  "private_values_published": false
+}
