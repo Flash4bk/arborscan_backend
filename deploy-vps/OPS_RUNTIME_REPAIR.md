@@ -128,6 +128,29 @@ python3 -B ops_image_delta.py apply-member "$base_archive" "$member_delta" "$new
 ```
 
 After exact verification, rename only inside the new private candidate location.
+
+Native Docker-save framing can contain directory headers and use different raw
+headers/EOF padding from Python's canonical tar writer. Do not claim the native
+archive SHA after rewriting it with the original file-only format. The explicit
+format-2 reader preserves each checked 512-byte header, order and bounded zero
+EOF without filesystem extraction:
+
+```sh
+python3 -B ops_image_delta.py apply-raw-member "$base_archive" "$native_delta" "$new_partial_archive" \
+  --image-id "$actual_image_id" --base-sha256 "$base_sha256" \
+  --expected-archive-sha256 "$native_archive_sha256"
+```
+
+The trusted full target SHA is mandatory here. Only REG/AREG files and zero-size
+directories are accepted; links, sparse/contiguous types, unsafe paths, duplicate
+or file/ancestor collisions, bad checksums/sizes/EOF refuse. The output budget
+and 4 GiB floor are checked before creation and per write. The existing image
+config/platform/blob and full archive checks remain mandatory. The default
+`apply-member` remains format 1 and refuses format 2 before creating an output.
+Software evidence: 55 focused tests (37 native-format cases and 18 previous
+image/member cases), tiny synthetic OCI data with three public Docker headers.
+This unit proof does not itself transfer a production archive or load Docker.
+
 `ops_runtime_closure_repair.py` creates a **new** index directory, retains prior
 image mappings, verifies all old assets and refuses a source-index race. It does
 not switch config or export/start Docker. Its `--inventory` must describe actual
